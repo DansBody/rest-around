@@ -50,6 +50,19 @@ makes them walk and work faster (up to +35%). **Staff → Change job** retrains 
 role for half that role's hiring fee. Experience in every role is kept, so going back to a job
 they're already Apprentice or better at is free.
 
+**Abilities.** From Apprentice on, each role has an ability that charges while the staff member
+works (the ring around their portrait, bottom-left) and fires by itself at a good moment:
+
+| Role | Ability | Fires when | Effect |
+|---|---|---|---|
+| Waiter | Dash | guests are waiting (2+ open tasks or an impatient guest) | +90% walk & serve speed for 8 s |
+| Chef | Showtime | a dish has just started cooking | dish jumps 40% ahead, then cooks 2× for 10 s |
+| Cleaner | Whirlwind | 2+ bits of trash within 3 tiles | sweeps all of it at once |
+| Bartender | Juggle | a drink has just started | drink jumps 40% ahead, then mixes 2× for 10 s |
+
+A charged ability that finds no good moment for 20 s settles for a smaller one. Expert and Master
+staff charge faster. Tuning lives in `ABILITIES` in `src/data.js`.
+
 **Progression.** Coins buy furniture, staff, seeds, ingredients and room expansions. Gourmet points
 level you up, which unlocks bigger floor plans, more staff slots, more menu slots, new furniture
 and new dishes. Put ingredients from the garden, the market and the daily gift into a dish to

@@ -179,6 +179,23 @@ export const SKILL = {
   changeFee: 0.5,                               // retraining costs this × the new role's hire price…
   freeReturnLv: 2,                              // …but going back to a role you're Lv2+ in is free
 };
+// Abilities (one per role), unlocked at skill Lv2. They charge up while the staff member works
+// (`charge` seconds of work, slower when idle) and fire on their own at a good moment: a waiter dashes
+// when guests are waiting, a chef/bartender when a dish/drink has just started, a cleaner when
+// trash has piled up nearby. Expert/Master staff charge faster (chargePerLv per level above 2).
+export const ABILITIES = {
+  waiter: { id: 'dash', name: 'Dash', glyph: 'dash', color: '#2f9bff', charge: 40, dur: 8, speed: 1.9,
+    desc: 'Bursts into a sprint when guests are waiting: +90% walking and serving speed for 8 s.' },
+  chef: { id: 'showtime', name: 'Showtime', glyph: 'flame', color: '#ff7a2f', charge: 50, dur: 10, boost: 0.4, work: 2,
+    desc: 'Flips the pan with flair: the dish on the stove jumps 40% ahead, then cooks twice as fast for 10 s.' },
+  cleaner: { id: 'whirlwind', name: 'Whirlwind', glyph: 'whirl', color: '#30b85a', charge: 45, radius: 3,
+    desc: 'Spins through the room when trash piles up: sweeps every bit within 3 tiles at once.' },
+  bartender: { id: 'juggle', name: 'Juggle', glyph: 'juggle', color: '#b36bff', charge: 45, dur: 10, boost: 0.4, work: 2,
+    desc: 'Juggles the shakers: the drink in hand jumps 40% ahead, then mixes twice as fast for 10 s.' },
+};
+export const ABILITY_UNLOCK_LV = 2;
+export const ABILITY = { chargePerLv: 0.15, idleCharge: 0.35, impatientAfter: 20 };
+
 export function skillLevel(xp) {
   let lv = 1;
   while (lv < SKILL.levels.length && xp >= SKILL.levels[lv]) lv++;

@@ -5,7 +5,7 @@ import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
 import { PANELS, buildTray, skillLine } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { SNACKS } from '../data.js';
+import { SNACKS, SKILL, ABILITY_UNLOCK_LV } from '../data.js';
 import { audio } from '../audio.js';
 import { glyph } from './icons.js';
 import { glassFx } from './glass.js';
@@ -76,6 +76,10 @@ export class UI {
       h('button.btn.small', { title: 'Rotate right (E)', onclick: () => { cam.rotate(1); this.game.sfx('click'); } }, glyph('rotate_r', 20)));
     r.appendChild(this.el.camctl);
 
+    // staff ability dock: one button per staff member (keys 1–9)
+    this.el.abilities = h('div#abilities');
+    r.appendChild(this.el.abilities);
+
     this.el.toolbar = h('div#toolbar', TOOLS.map((t) => (this.toolBtns[t.id] = h('button.btn.tool', { onclick: () => this.onTool(t.id), title: t.label }, ic(t.icon, 26), h('span', t.label)))));
     r.appendChild(this.el.toolbar);
 
@@ -122,6 +126,32 @@ export class UI {
     for (const b of this.el.camctl.children) glassFx.attach(b, { blur: 2, strength: 22, bezel: 14 });
     glassFx.attach(this.el.panel, { blur: 14, strength: 60, bezel: 28 });
     glassFx.attach(this.el.info, { blur: 12, strength: 44, bezel: 24 });
+  }
+
+  // ---------------- staff abilities (display only: they charge and fire by themselves) ----------------
+  renderAbilities() {
+    const g = this.game, dock = this.el.abilities;
+    const key = g.build.active + '|' + g.staff.map((a) => `${a.id}:${a.role}:${a.abilityUnlocked()}`).join(',');
+    if (key !== this.abilityKey) {
+      this.abilityKey = key;
+      this.abilityBtns = g.staff.map((a) => {
+        const ab = a.ability;
+        const b = h('button.ability' + (a.abilityUnlocked() ? '' : '.locked'), { onclick: () => this.select(a), style: { '--c': ab.color } },
+          portrait(a.look, 44, 44, 'ab-face'),
+          h('span.ab-cd'),
+          h('span.ab-glyph', glyph(a.abilityUnlocked() ? ab.glyph : 'lock', 14)));
+        b.title = `${a.name} · ${ab.name}\n${ab.desc}` + (a.abilityUnlocked() ? '\nCharges while working and fires by itself.' : `\nUnlocks when ${a.name} is ${SKILL.titles[ABILITY_UNLOCK_LV - 1]} ${a.roleName}`);
+        return { a, b };
+      });
+      dock.replaceChildren(...this.abilityBtns.map((x) => x.b));
+      dock.style.display = g.build.active || !g.staff.length ? 'none' : '';
+    }
+    for (const { a, b } of this.abilityBtns) {
+      b.style.setProperty('--p', (a.boosted() ? 100 : a.charge * 100).toFixed(1) + '%');
+      b.classList.toggle('ready', a.abilityUnlocked() && a.charge >= 1);
+      b.classList.toggle('active', a.boosted());
+      b.classList.toggle('tired', a.napping);
+    }
   }
 
   // ---------------- toolbar & panels ----------------
@@ -206,6 +236,10 @@ export class UI {
       if (isStaff) {
         body.push(h('div.btnrow', SNACKS.map((s) => h('button.btn.small', { title: `Feed ${s.name} (+${s.energy} energy)`, onclick: () => { this.game.eco.feed(a, s.id); this.renderInfo(true); } },
           assets.iconEl(s.asset, 22), `×${this.game.state.snacks[s.id] || 0}`))));
+        const ab = a.ability;
+        this.infoCharge = h('i');
+        body.push(h('div.abil', { style: { '--c': ab.color, marginTop: '8px' }, title: ab.desc }, glyph(a.abilityUnlocked() ? ab.glyph : 'lock', 16), h('b', ab.name),
+          a.abilityUnlocked() ? h('div.pbar.grow', { style: { flex: 1 } }, this.infoCharge) : h('span', `unlocks at ${SKILL.titles[ABILITY_UNLOCK_LV - 1]}`)));
         body.push(h('div.btnrow',
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { outfit: a }; this.renderPanel(); } }, 'Change outfit'),
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { job: a }; this.renderPanel(); } }, 'Change job')));
@@ -220,6 +254,7 @@ export class UI {
       this.infoBar.style.width = a.energy + '%';
       this.infoBar.parentElement.className = 'pbar ' + (a.energy < 25 ? 'orange' : '');
       this.infoBarLbl.textContent = Math.round(a.energy) + '%';
+      if (this.infoCharge) { this.infoCharge.style.width = (a.boosted() ? 100 : a.charge * 100) + '%'; this.infoCharge.style.background = a.ability.color; }
     } else {
       this.infoMood.textContent = a.mood;
       this.infoTask.textContent = a.task;
@@ -260,6 +295,7 @@ export class UI {
       else if (PANELS[this.panel].tick) PANELS[this.panel].tick(this, this.el.panelBody);
     }
     this.renderInfo();
+    this.renderAbilities();
     const badge = (id, n) => {
       const b = this.toolBtns[id];
       let el = b.querySelector('.badge');

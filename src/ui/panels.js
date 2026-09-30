@@ -6,7 +6,7 @@ import { ACCESSORIES, roleLook } from '../looks.js';
 import {
   ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  OUTFIT_COLORS, CHARACTER_MODELS, SKILL,
+  OUTFIT_COLORS, CHARACTER_MODELS, SKILL, ABILITIES, ABILITY_UNLOCK_LV,
 } from '../data.js';
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
@@ -26,6 +26,12 @@ function confirmBtn(sel, label, ask, action) {
   return b;
 }
 const coinPill = (n) => h('span.pill', I('icon_coin', 18), fmt(n));
+/** The role's active ability: name + what it does (or when it unlocks). */
+function abilityLine(role, unlocked, long = false) {
+  const ab = ABILITIES[role];
+  return h('div.abil', { style: { '--c': ab.color }, title: ab.desc }, glyph(unlocked ? ab.glyph : 'lock', 15),
+    h('b', ab.name), long ? h('span', '— ' + ab.desc) : h('span', unlocked ? '· charges while working, fires by itself' : `· unlocks at ${SKILL.titles[ABILITY_UNLOCK_LV - 1]}`));
+}
 /** Five small stars for a staff skill level. */
 export function skillStars(lv, size = 13) {
   return h('span.skill-stars', { title: `Skill Lv${lv}: ${SKILL.titles[lv - 1]}` }, [1, 2, 3, 4, 5].map((i) => glyph(i <= lv ? 'star' : 'star_empty', size)));
@@ -67,6 +73,7 @@ function renderStaff(ui, body) {
       h('div.grow',
         h('h3', a.name, ' ', h('span.muted', '· ' + ROLES[a.role].name)),
         skillLine(a),
+        abilityLine(a.role, a.abilityUnlocked()),
         h('div.muted.task', a.napping ? '😴 Napping' : a.task),
         h('div', { style: { display: 'flex', alignItems: 'center', gap: '4px', margin: '4px 0' } }, I('icon_energy', 18), h('div.pbar' + (a.energy < 25 ? '.orange' : ''), { style: { flex: 1 } }, bar)),
         h('div.btnrow',
@@ -106,7 +113,7 @@ function renderJobChange(ui, body, a) {
         'Retrain', fee ? coinPill(fee) : h('span.pill', 'Free'));
     body.append(h('div.row' + (cur ? '.current' : ''),
       portrait(roleLook(role), 48, 48),
-      h('div.grow', h('h3', r.name), skillLine(a, role), h('div.muted', ROLE_NOTE[role]),
+      h('div.grow', h('h3', r.name), skillLine(a, role), h('div.muted', ROLE_NOTE[role]), abilityLine(role, a.skillLv(role) >= ABILITY_UNLOCK_LV, true),
         role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '4px', display: 'inline-block' } }, 'Needs a Juice Bar to work') : null),
       action));
   }

@@ -51,6 +51,10 @@ const G = {
   fast: [['path', { d: 'M3.5 6.5 11 12l-7.5 5.5zM12 6.5l7.5 5.5-7.5 5.5z', fill: 'currentColor', stroke: 'c', 'stroke-width': 1.2 }]],
   bowl: [['path', { d: 'M3.5 11.2h17a8.5 8.5 0 0 1-17 0z', fill: 'currentColor', 'fill-opacity': 0.14, stroke: 'c' }], ['path', { d: 'M9 8c0-1.6 1.1-2 1.1-3.6M13.4 8c0-1.6 1.1-2 1.1-3.6', stroke: 'c' }]],
   sparkles: [['path', { d: 'M10 3.5c.7 4.2 2.3 5.8 6.5 6.5-4.2.7-5.8 2.3-6.5 6.5-.7-4.2-2.3-5.8-6.5-6.5 4.2-.7 5.8-2.3 6.5-6.5z', fill: 'url(#g-gold)', stroke: '#e39b00', 'stroke-width': 1 }], ['path', { d: 'M18 14.5c.35 2 1.1 2.8 3 3.1-1.9.35-2.65 1.1-3 3.1-.35-2-1.1-2.75-3-3.1 1.9-.3 2.65-1.1 3-3.1z', fill: 'url(#g-gold)' }]],
+  dash: [['path', { d: 'M13.5 4.5h6M11 9h8.5M13 13.5h6.5', stroke: 'c', 'stroke-width': 1.8 }], ['path', { d: 'M8.6 3.5 3.8 11.6h4.4L6.9 20.5l6.8-10.2H9.3l2.2-6.8z', fill: 'currentColor', 'fill-opacity': 0.25, stroke: 'c', 'stroke-width': 1.5 }]],
+  flame: [['path', { d: 'M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.8 3-5.6 3.6-9.3 2.4 1.4 3.4 3.6 3.2 5.9 1-.8 1.6-2 1.7-3.4 2.4 1.9 4.5 4.3 4.5 7.1 0 3.4-2.7 5.9-6.5 5.9z', fill: 'url(#g-orange)', stroke: '#e0662a', 'stroke-width': 1.2 }], ['path', { d: 'M12 20.5c-1.6 0-2.7-1.1-2.7-2.6 0-1.7 1.3-2.4 1.9-3.9 1.8 1 3.5 2.3 3.5 4 0 1.4-1.1 2.5-2.7 2.5z', fill: '#ffe27a' }]],
+  whirl: [['path', { d: 'M4 8.5h10.5a3 3 0 1 0-3-3M3 12.5h15.5a3 3 0 1 1-3 3M5 16.5h6', stroke: 'c', 'stroke-width': 1.9 }]],
+  juggle: [['circle', { cx: 6.5, cy: 15.5, r: 3, fill: '#c9a4ff', stroke: '#8a55e6', 'stroke-width': 1.2 }], ['circle', { cx: 17.5, cy: 15.5, r: 3, fill: '#ff9fb1', stroke: '#e0506f', 'stroke-width': 1.2 }], ['circle', { cx: 12, cy: 6, r: 3, fill: '#9fdcff', stroke: '#2f8fdc', 'stroke-width': 1.2 }], ['path', { d: 'M5 11.2C6 7.6 8 6 9.3 5.6M19 11.2C18 7.6 16 6 14.7 5.6', stroke: 'c', 'stroke-width': 1.3, 'stroke-dasharray': '1.5 2.2' }]],
   pause: [['rect', { x: 6.5, y: 5, width: 3.6, height: 14, rx: 1.2, fill: 'currentColor' }], ['rect', { x: 13.9, y: 5, width: 3.6, height: 14, rx: 1.2, fill: 'currentColor' }]],
 };
 

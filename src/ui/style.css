@@ -112,6 +112,27 @@ button { font-family: inherit; color: inherit; }
 #camctl { position: absolute; right: 14px; bottom: 18px; display: flex; gap: 6px; }
 #camctl .btn { width: 44px; height: 44px; padding: 0; background: linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,.14)); }
 
+/* ---------- staff ability dock ---------- */
+#abilities { position: absolute; left: 14px; bottom: 18px; display: flex; flex-direction: column-reverse; gap: 8px; }
+.ability { position: relative; width: 54px; height: 54px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.2)); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow), var(--glass-inner), 0 0 0 2px transparent; transition: transform .2s cubic-bezier(.3,1.5,.5,1), box-shadow .3s; }
+.ability:hover { transform: scale(1.07); }
+.ability:active { transform: scale(.92); }
+.ability .ab-face { position: absolute; inset: 5px; width: 44px !important; height: 44px !important; border-radius: 50%; }
+.ability .ab-cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(transparent var(--p, 0%), rgba(20,20,35,.42) 0); }
+.ability .ab-glyph { position: absolute; right: -3px; bottom: -3px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: var(--c); box-shadow: 0 2px 6px rgba(0,0,0,.25), inset 0 1px 1px rgba(255,255,255,.6); }
+.ability .ab-glyph .glyph { color: #fff; }
+.ability.ready { box-shadow: var(--glass-shadow), var(--glass-inner), 0 0 0 2.5px var(--c), 0 0 16px var(--c); animation: abpulse 2.2s ease-in-out infinite; }
+@keyframes abpulse { 50% { box-shadow: var(--glass-shadow), var(--glass-inner), 0 0 0 2.5px var(--c), 0 0 4px var(--c); } }
+.ability.active { box-shadow: 0 0 0 3px var(--c), 0 0 22px var(--c); animation: none; }
+.ability.active .ab-face { animation: abspin .6s linear infinite; }
+@keyframes abspin { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+.ability.locked .ab-face, .ability.tired .ab-face { filter: grayscale(.85) opacity(.65); }
+.ability.locked .ab-glyph { background: rgba(120,120,135,.8); }
+
 /* ---------- toolbar: floating glass tab bar ---------- */
 #toolbar { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; padding: 6px; border-radius: 999px; }
 #toolbar.lg-on { background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.06) 55%, rgba(255,255,255,.12)), rgba(255,255,255,.12); }
@@ -160,6 +181,9 @@ button { font-family: inherit; color: inherit; }
 .skill { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); margin: 2px 0; flex-wrap: wrap; }
 .skill .xp { flex: 1 1 60px; min-width: 50px; height: 5px; }
 .skill-stars { display: inline-flex; gap: 0; }
+.abil { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; margin: 3px 0; color: var(--ink-soft); }
+.abil .glyph { color: var(--c); }
+.abil b { color: var(--ink); }
 .row.current { box-shadow: inset 0 0 0 2px rgba(255,138,61,.55), inset 0 1px 0 rgba(255,255,255,.8); }
 .portrait { width: 64px; height: 64px; flex: none; border-radius: 20px; background: radial-gradient(circle at 50% 35%, rgba(255,255,255,.95), rgba(255,236,214,.7)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.9), 0 2px 8px rgba(16,24,40,.1); }
 .swatches { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -210,7 +234,7 @@ kbd { background: rgba(255,255,255,.8); border-radius: 6px; padding: 1px 6px; bo
 #buildbanner.show { display: inline-flex; }
 
 /* ---------- info card ---------- */
-#info { position: absolute; left: 12px; top: 72px; width: 260px; display: none; padding: 14px; border-radius: 28px; }
+#info { position: absolute; left: 80px; top: 72px; width: 260px; display: none; padding: 14px; border-radius: 28px; }
 #info.show { display: block; animation: popin .35s cubic-bezier(.3,1.4,.5,1); }
 @keyframes popin { from { transform: scale(.85); opacity: 0; filter: blur(6px); } to { transform: none; opacity: 1; filter: none; } }
 .info-head { display: flex; gap: 12px; align-items: center; }
@@ -239,7 +263,7 @@ kbd { background: rgba(255,255,255,.8); border-radius: 6px; padding: 1px 6px; bo
 #celebrate .big-title { font-size: 26px; }
 
 /* ---------- debug ---------- */
-#debug { position: absolute; left: 12px; bottom: 96px; width: 300px; padding: 14px; border-radius: 24px; display: none; font-size: 13px; }
+#debug { position: absolute; left: 80px; bottom: 96px; width: 300px; padding: 14px; border-radius: 24px; display: none; font-size: 13px; }
 #debug.show { display: block; }
 #debug .btn { min-height: 28px; font-size: 12px; padding: 0 10px; }
 #debug label { display: flex; gap: 6px; align-items: center; font-weight: 700; margin: 4px 0; }
@@ -263,8 +287,11 @@ kbd { background: rgba(255,255,255,.8); border-radius: 6px; padding: 1px 6px; bo
   .tool .badge { right: 6px; }
   #toolbar { bottom: 10px; padding: 5px; }
   #camctl { bottom: auto; top: 112px; right: 10px; flex-direction: column; }
+  #abilities { bottom: 84px; left: 10px; flex-direction: row; flex-wrap: wrap; max-width: calc(100vw - 20px); gap: 6px; }
+  .ability { width: 46px; height: 46px; }
+  .ability .ab-face { inset: 4px; width: 38px !important; height: 38px !important; }
   #panel { top: auto; bottom: 86px; height: 62vh; right: 8px; width: calc(100vw - 16px); }
-  #info { top: auto; bottom: 90px; width: 230px; }
+  #info { top: 110px; bottom: auto; left: 8px; width: 230px; }
 }
 @media (max-width: 600px) {
   #hud { left: 8px; right: 8px; top: 8px; transform: none; flex-wrap: wrap; justify-content: center; gap: 5px; }
@@ -282,7 +309,7 @@ kbd { background: rgba(255,255,255,.8); border-radius: 6px; padding: 1px 6px; bo
   .bb-top .tabs { flex-wrap: nowrap; }
   .bb-top .done { order: -1; }
   #buildbanner { font-size: 12px; white-space: nowrap; }
-  #info { left: 8px; }
+  #info { left: 8px; top: 104px; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .glass, .card, .chip, .btn, #toolbar, .toast, #buildbanner { background: rgba(250,250,252,.96) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }

@@ -4,7 +4,7 @@
 import { Agent } from './agent.js';
 import { roleLook } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
-import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY, SKILL, skillLevel } from './data.js';
+import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY } from './data.js';
 import { choice, rand, randInt, manhattan, uid } from './util.js';
 
 export function makeStaff(game, role, name) {
@@ -23,6 +23,79 @@ export class Staff extends Agent {
     this.napping = false;
     this.staffId = uid();
     this.skills = {}; // role -> XP
+    this.charge = 0;     // 0..1 ability charge
+    this.fullT = 0;      // seconds the ability has been sitting fully charged
+    this.boostT = 0;     // seconds left on a timed ability (dash / showtime / juggle)
+    this.boostRole = null;
+  }
+
+  // ---------------- ability (charges while working, fires by itself) ----------------
+  get ability() { return ABILITIES[this.role]; }
+  abilityUnlocked() { return this.skillLv() >= ABILITY_UNLOCK_LV; }
+  /** Seconds of work to charge fully (faster for Expert/Master). */
+  chargeTime() { return this.ability.charge * (1 - ABILITY.chargePerLv * Math.max(0, this.skillLv() - ABILITY_UNLOCK_LV)); }
+  boosted() { return this.boostT > 0 && this.boostRole === this.role; }
+  /** Multiplier on how fast timed work (cooking, mixing, talking…) progresses. */
+  workMul() {
+    const ab = this.ability;
+    return this.skillMul * (this.boosted() ? (ab.work || ab.speed || 1) : 1);
+  }
+  updateAbility(dt) {
+    const g = this.game;
+    if (!this.abilityUnlocked() || this.napping || g.paused || this.boosted()) return;
+    if (this.charge < 1) {
+      this.charge = Math.min(1, this.charge + (dt / this.chargeTime()) * (this.job ? 1 : ABILITY.idleCharge));
+      this.fullT = 0;
+      return;
+    }
+    this.fullT += dt;
+    if (this.goodMoment(this.fullT > ABILITY.impatientAfter)) this.useAbility();
+  }
+  /** Is now worth spending the charge? `eager` lowers the bar after waiting a while. */
+  goodMoment(eager) {
+    const g = this.game, ab = this.ability, j = this.job;
+    switch (ab.id) {
+      case 'dash': {
+        if (!j || !['order', 'deliver', 'clear'].includes(j.type)) return false;
+        const queued = g.jobs.pending('waiter').length;
+        const c = j.customer || (j.ticket && j.ticket.customer);
+        return eager || queued >= 2 || (c && c.showPatience && c.patience < 0.5);
+      }
+      case 'showtime':
+      case 'juggle': {
+        const st = j && j.station;
+        return !!(st && st.cooking && st.cookTotal > 0 && st.cookT / st.cookTotal < (eager ? 0.8 : 0.5));
+      }
+      case 'whirlwind':
+        return this.trashNear().length >= (eager ? 1 : 2);
+    }
+    return false;
+  }
+  trashNear() { const r = this.ability.radius || 0; return this.game.world.trash.filter((t) => Math.abs(t.x - this.tx) + Math.abs(t.y - this.ty) <= r); }
+  useAbility() {
+    const g = this.game, ab = this.ability;
+    this.charge = 0; this.fullT = 0;
+    const at = g.at(this.x + 0.5, this.y + 0.5, 60);
+    if (ab.dur) { this.boostT = ab.dur; this.boostRole = this.role; }
+    if (ab.boost) {
+      // push the dish/drink currently on the station ahead
+      const st = this.job && this.job.station;
+      if (st && st.cooking) { st.cookT = Math.min(st.cookTotal, st.cookT + st.cookTotal * ab.boost); g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), ab.color, 6); }
+    }
+    if (ab.id === 'whirlwind') {
+      const near = this.trashNear();
+      for (const t of near) {
+        g.world.removeTrash(t);
+        g.fx.puff(g.at(t.x + 0.5, t.y + 0.5, 6), '#e8ddd0', 3);
+        g.fx.sparkle(g.at(t.x + 0.5, t.y + 0.5, 12), 5, '#fff6c2');
+      }
+      if (near.length) this.gainXp(near.length * (SKILL.xp.sweep || 1));
+      g.floatText(this.x + 0.5, this.y + 0.5, near.length > 1 ? `Whirlwind! ×${near.length}` : 'Whirlwind!', null, ab.color);
+    } else g.floatText(this.x + 0.5, this.y + 0.5, ab.name + '!', null, ab.color);
+    g.fx.sparkle(at, 14, ab.color);
+    this.emote('emote_sparkle', 1.5);
+    this.hop();
+    g.sfx(ab.id === 'whirlwind' ? 'sweep' : ab.id === 'showtime' ? 'sizzle' : 'levelup');
   }
 
   // ---------------- skill ----------------
@@ -30,7 +103,7 @@ export class Staff extends Agent {
   skillLv(role = this.role) { return skillLevel(this.xpIn(role)); }
   get skillMul() { return SKILL.mul[this.skillLv() - 1]; }
   /** Scaled duration of a timed action (skilled staff work faster). */
-  dur(sec) { return sec / this.skillMul; }
+  dur(sec) { return sec / this.workMul(); }
   gainXp(n) {
     const before = this.skillLv();
     this.skills[this.role] = this.xpIn() + n;
@@ -50,6 +123,7 @@ export class Staff extends Agent {
     if (role === this.role || !ROLES[role]) return;
     if (this.job) this.abortJob(true);
     this.role = role;
+    this.charge = 0; this.fullT = 0;
     if (role === 'chef') this.look.roleHat = 'chef';
     else if (this.look.roleHat === 'chef') this.look.roleHat = null;
     this.game.refreshCharacter(this);
@@ -64,7 +138,13 @@ export class Staff extends Agent {
 
   update(dt) {
     if (this.job && this.job.canceled) this.abortJob();
-    this.speedMul = this.skillMul;
+    this.updateAbility(dt);
+    if (this.boostT > 0) {
+      this.boostT = Math.max(0, this.boostT - dt);
+      const g = this.game;
+      if (this.boosted() && Math.random() < dt * 8) g.fx.puff(g.at(this.x + 0.5, this.y + 0.5, this.role === 'waiter' ? 4 : 50), this.ability.color, 1);
+    }
+    this.speedMul = this.skillMul * (this.boosted() && this.ability.speed ? this.ability.speed : 1);
     super.update(dt);
     if (this.job) this.energy = Math.max(0, this.energy - ENERGY.drainPerSec * dt);
   }
@@ -133,14 +213,14 @@ export class Staff extends Agent {
         this.do(() => {
           const t = j.ticket;
           if (!alive(st) || t.state !== 'queued') return fail();
-          st.cooking = t; st.cookT = 0; st.cookTotal = this.dur(dishById[t.dish].cook / (furnitureById[st.type].speed || 1));
+          st.cooking = t; st.cookT = 0; st.cookTotal = dishById[t.dish].cook / (furnitureById[st.type].speed || 1) / this.skillMul; // abilities speed up cookT instead
           t.state = 'cooking'; t.station = st;
           if (isDrink) this.held = { id: 'held_shaker' };
           g.sfx(isDrink ? 'shake' : 'sizzle');
         });
         this.wait(0, isDrink ? 'shake' : 'cook', {
           until: () => st.cookT >= st.cookTotal,
-          every: (dt) => { st.cookT += dt; if (!isDrink && Math.random() < dt * 3) g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), '#ffffff'); },
+          every: (dt) => { st.cookT += dt * (this.boosted() ? this.ability.work || 1 : 1); if (!isDrink && Math.random() < dt * 3) g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), '#ffffff'); },
         });
         this.do(() => {
           const t = j.ticket;

@@ -124,7 +124,8 @@ export class CharacterView {
     this.root.rotation.y = this.yaw;
     this.play(anim);
     this.setHeld(p.held);
-    if (this.inst.mixer) this.inst.mixer.update(dt);
+    // animations keep pace with sprinting / skilled staff
+    if (this.inst.mixer) this.inst.mixer.update(dt * (a.speedMul || 1));
   }
 
   /** World position of the top of the head (for bubbles and name tags). */
