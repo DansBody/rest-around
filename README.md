@@ -44,6 +44,12 @@ Your progress autosaves to `localStorage` every 10 seconds and when the tab clos
 Staff get tired while working. At zero energy they finish their task and nap; feed them snacks
 (bought in the Market) from the Staff panel or their info card to wake them instantly.
 
+**Skills & retraining.** Every finished job earns the staff member experience in their current
+role, raising their skill from Novice → Apprentice → Skilled → Expert → Master (★1–5); each level
+makes them walk and work faster (up to +35%). **Staff → Change job** retrains them into another
+role for half that role's hiring fee. Experience in every role is kept, so going back to a job
+they're already Apprentice or better at is free.
+
 **Progression.** Coins buy furniture, staff, seeds, ingredients and room expansions. Gourmet points
 level you up, which unlocks bigger floor plans, more staff slots, more menu slots, new furniture
 and new dishes. Put ingredients from the garden, the market and the daily gift into a dish to

@@ -169,3 +169,18 @@ export const DAY = {
 export const PATIENCE = { seat: 24, order: 38, food: 60 };
 export const SPEED = { customer: 1.9, staff: 2.8 };
 export const ENERGY = { drainPerSec: 0.3, napRegen: 0.35, wakeAt: 30, overnight: 40 };
+// Staff skill: finishing a job of their current role earns XP in that role. Every role keeps its own
+// XP, so a waiter who retrains as a chef and later comes back is still a skilled waiter.
+export const SKILL = {
+  xp: { order: 1, deliver: 1, clear: 1, cook: 2, drink: 2, sweep: 3, repair: 5 },
+  levels: [0, 40, 120, 260, 480],               // XP needed for skill Lv1..5
+  mul: [1, 1.08, 1.16, 1.25, 1.35],             // walk + work speed at each level
+  titles: ['Novice', 'Apprentice', 'Skilled', 'Expert', 'Master'],
+  changeFee: 0.5,                               // retraining costs this × the new role's hire price…
+  freeReturnLv: 2,                              // …but going back to a role you're Lv2+ in is free
+};
+export function skillLevel(xp) {
+  let lv = 1;
+  while (lv < SKILL.levels.length && xp >= SKILL.levels[lv]) lv++;
+  return lv;
+}

@@ -6,11 +6,11 @@ import { ACCESSORIES, roleLook } from '../looks.js';
 import {
   ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  OUTFIT_COLORS, CHARACTER_MODELS,
+  OUTFIT_COLORS, CHARACTER_MODELS, SKILL,
 } from '../data.js';
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
-import { gl } from './icons.js';
+import { gl, glyph } from './icons.js';
 import { glassFx } from './glass.js';
 
 const I = (id, s = 22) => assets.iconEl(id, s);
@@ -26,6 +26,21 @@ function confirmBtn(sel, label, ask, action) {
   return b;
 }
 const coinPill = (n) => h('span.pill', I('icon_coin', 18), fmt(n));
+/** Five small stars for a staff skill level. */
+export function skillStars(lv, size = 13) {
+  return h('span.skill-stars', { title: `Skill Lv${lv}: ${SKILL.titles[lv - 1]}` }, [1, 2, 3, 4, 5].map((i) => glyph(i <= lv ? 'star' : 'star_empty', size)));
+}
+/** "Skilled Chef" + stars + progress to the next skill level. */
+export function skillLine(a, role = a.role) {
+  const lv = a.skillLv(role), xp = a.xpIn(role);
+  const lo = SKILL.levels[lv - 1], hi = SKILL.levels[lv];
+  const frac = hi == null ? 1 : (xp - lo) / (hi - lo);
+  return h('div.skill',
+    skillStars(lv),
+    h('span', `${SKILL.titles[lv - 1]} ${ROLES[role].name}`),
+    h('div.pbar.gold.xp', { title: hi == null ? 'Max skill' : `${xp - lo}/${hi - lo} XP to ${SKILL.titles[lv]}` }, h('i', { style: { width: Math.round(frac * 100) + '%' } })));
+}
+
 
 // =====================================================================================
 export const PANELS = {
@@ -40,6 +55,7 @@ export const PANELS = {
 function renderStaff(ui, body) {
   const g = ui.game, s = g.state;
   if (ui.subview && ui.subview.outfit) return renderOutfit(ui, body, ui.subview.outfit);
+  if (ui.subview && ui.subview.job) return renderJobChange(ui, body, ui.subview.job);
   const staff = g.staff;
   const slots = staffSlots(s.level);
   body.append(h('div.muted', `${staff.length} / ${slots} staff slots · staff tire while working. Feed them snacks to perk them up!`));
@@ -50,11 +66,13 @@ function renderStaff(ui, body) {
       portrait(a.look, 64, 80),
       h('div.grow',
         h('h3', a.name, ' ', h('span.muted', '· ' + ROLES[a.role].name)),
+        skillLine(a),
         h('div.muted.task', a.napping ? '😴 Napping' : a.task),
         h('div', { style: { display: 'flex', alignItems: 'center', gap: '4px', margin: '4px 0' } }, I('icon_energy', 18), h('div.pbar' + (a.energy < 25 ? '.orange' : ''), { style: { flex: 1 } }, bar)),
         h('div.btnrow',
           SNACKS.map((sn) => h('button.btn.small', { title: `${sn.name}: +${sn.energy} energy (${s.snacks[sn.id] ? 'from pantry' : sn.price + ' coins'})`, onclick: () => g.eco.feed(a, sn.id) }, I(sn.asset, 20), `×${s.snacks[sn.id] || 0}`)),
           h('button.btn.small', { onclick: () => { ui.subview = { outfit: a }; ui.renderPanel(); } }, 'Outfit'),
+          h('button.btn.small', { onclick: () => { ui.subview = { job: a }; ui.renderPanel(); } }, 'Change job'),
           confirmBtn('button.btn.small.danger', 'Fire', `Let ${a.name} go?`, () => g.eco.fire(a)),
           h('button.btn.small', { onclick: () => ui.select(a), title: 'Show on the floor' }, gl('eye', null, 16))))));
   }
@@ -62,13 +80,38 @@ function renderStaff(ui, body) {
   const full = staff.length >= slots;
   for (const [role, r] of Object.entries(ROLES)) {
     const count = staff.filter((a) => a.role === role).length;
-    const note = { waiter: 'Takes orders, serves food, clears tables.', chef: 'Cooks at a free stove.', cleaner: 'Sweeps trash & repairs broken restrooms/arcades.', bartender: 'Mixes drinks at the Juice Bar.' }[role];
+    const note = ROLE_NOTE[role];
     body.append(h('div.row',
       portrait(roleLook(role), 48, 48),
       h('div.grow', h('h3', r.name, h('span.muted', ` · you have ${count}`)), h('div.muted', note)),
       h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => g.eco.hire(role) }, 'Hire ', coinPill(r.hire))));
   }
   if (full) body.append(h('div.muted', 'All slots are full — reach the next level for more.'));
+}
+const ROLE_NOTE = { waiter: 'Takes orders, serves food, clears tables.', chef: 'Cooks at a free stove.', cleaner: 'Sweeps trash & repairs broken restrooms/arcades.', bartender: 'Mixes drinks at the Juice Bar.' };
+function renderJobChange(ui, body, a) {
+  const g = ui.game;
+  if (!g.staff.includes(a)) { ui.subview = null; return renderStaff(ui, body); }
+  body.append(
+    h('div.btnrow', { style: { marginBottom: '8px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', 'Back', 14)), h('b', { style: { alignSelf: 'center' } }, `${a.name}'s career`)),
+    h('div.row', portrait(a.look, 64, 64), h('div.grow', h('h3', a.name), skillLine(a), h('div.muted', `Works ${Math.round((a.skillMul - 1) * 100)}% faster than a novice`))),
+    h('div.section-title', 'Retrain as'));
+  const roles = Object.keys(ROLES);
+  for (const role of roles) {
+    const r = ROLES[role], cur = role === a.role;
+    const fee = g.eco.jobChangeFee(a, role);
+    const action = cur
+      ? h('span.pill', 'Current job')
+      : h('button.btn.primary.small' + (fee && !g.eco.canAfford(fee) ? '.disabled' : ''), { onclick: () => { if (g.eco.changeJob(a, role)) { ui.subview = null; ui.renderPanel(); } } },
+        'Retrain', fee ? coinPill(fee) : h('span.pill', 'Free'));
+    body.append(h('div.row' + (cur ? '.current' : ''),
+      portrait(roleLook(role), 48, 48),
+      h('div.grow', h('h3', r.name), skillLine(a, role), h('div.muted', ROLE_NOTE[role]),
+        role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '4px', display: 'inline-block' } }, 'Needs a Juice Bar to work') : null),
+      action));
+  }
+  body.append(h('div.muted', { style: { marginTop: '6px', lineHeight: 1.5 } },
+    `Staff gain experience by finishing jobs in their current role and keep it in every role they've had. Skill makes them walk and work faster (up to +${Math.round((SKILL.mul[SKILL.mul.length - 1] - 1) * 100)}% as a Master). Retraining costs half the hiring fee — going back to a job they're already ${SKILL.titles[SKILL.freeReturnLv - 1]} or better at is free.`));
 }
 function tickStaff(ui, body) {
   // keep energy bars moving between full renders

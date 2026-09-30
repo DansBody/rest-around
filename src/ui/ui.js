@@ -3,9 +3,9 @@
 import { h, bus, fmt, fmtTime, clamp } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
-import { PANELS, buildTray } from './panels.js';
+import { PANELS, buildTray, skillLine } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { ROLES, SNACKS } from '../data.js';
+import { SNACKS } from '../data.js';
 import { audio } from '../audio.js';
 import { glyph } from './icons.js';
 import { glassFx } from './glass.js';
@@ -187,8 +187,9 @@ export class UI {
     const a = this.game.selected;
     const el = this.el.info;
     if (!a || a.gone || !this.game.agents.includes(a)) { el.classList.remove('show'); this.game.selected = null; this.infoFor = null; return; }
-    if (full || this.infoFor !== a) {
-      this.infoFor = a;
+    const key = a.kind === 'staff' ? a.role + a.skillLv() : '';
+    if (full || this.infoFor !== a || this.infoKey !== key) {
+      this.infoFor = a; this.infoKey = key;
       this.infoPortrait = portrait(a.look, 64, 80);
       this.infoTask = h('div.muted');
       this.infoBar = h('i');
@@ -197,7 +198,7 @@ export class UI {
       const body = [
         h('div.info-head', this.infoPortrait, h('div.grow',
           h('h3', a.name),
-          h('div.muted', isStaff ? ROLES[a.role].name : 'Guest'),
+          isStaff ? skillLine(a) : h('div.muted', 'Guest'),
           (this.infoMood = h('div', { style: { fontWeight: 900, fontSize: '14px' } })))),
         h('div', { style: { marginTop: '8px' } }, this.infoTask),
         h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' } }, assets.iconEl(isStaff ? 'icon_energy' : 'icon_patience', 22), h('div.pbar.grow', { style: { flex: 1 } }, this.infoBar), this.infoBarLbl),
@@ -205,7 +206,9 @@ export class UI {
       if (isStaff) {
         body.push(h('div.btnrow', SNACKS.map((s) => h('button.btn.small', { title: `Feed ${s.name} (+${s.energy} energy)`, onclick: () => { this.game.eco.feed(a, s.id); this.renderInfo(true); } },
           assets.iconEl(s.asset, 22), `×${this.game.state.snacks[s.id] || 0}`))));
-        body.push(h('div.btnrow', h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { outfit: a }; this.renderPanel(); } }, 'Change outfit')));
+        body.push(h('div.btnrow',
+          h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { outfit: a }; this.renderPanel(); } }, 'Change outfit'),
+          h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { job: a }; this.renderPanel(); } }, 'Change job')));
       }
       body.push(h('div.btnrow', h('button.btn.small', { onclick: () => { this.game.selected = null; this.renderInfo(); } }, 'Close')));
       el.replaceChildren(...body);

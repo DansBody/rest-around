@@ -24,7 +24,7 @@ export function serialize(game) {
       trash: w.trash.map((t) => ({ x: t.x, y: t.y })),
       dirty: w.seats.filter((st) => st.dirty).map((st) => [st.chair.x, st.chair.y]),
     },
-    staff: game.staff.map((a) => ({ name: a.name, role: a.role, look: a.look, energy: Math.round(a.energy), x: a.tx, y: a.ty })),
+    staff: game.staff.map((a) => ({ name: a.name, role: a.role, look: a.look, energy: Math.round(a.energy), skills: a.skills, x: a.tx, y: a.ty })),
   };
 }
 
@@ -125,6 +125,7 @@ function apply(game, data) {
     if (!sd || !ROLES[sd.role]) continue;
     const a = new Staff(game, sd.role, typeof sd.name === 'string' ? sd.name.slice(0, 16) : 'Pip', sanitizeLook(sd.look, sd.role));
     a.energy = num(sd.energy, 100, 0, 100);
+    if (sd.skills && typeof sd.skills === 'object') for (const r of Object.keys(ROLES)) { const xp = num(sd.skills[r], 0, 0, 1e7); if (xp) a.skills[r] = Math.floor(xp); }
     game.addStaff(a, Math.floor(num(sd.x, 1)), Math.floor(num(sd.y, 1)));
     maxId = Math.max(maxId, a.id);
     if (a.energy <= 0) a.energy = Math.min(ENERGY.wakeAt, 5);

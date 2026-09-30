@@ -4,7 +4,7 @@
 import { Agent } from './agent.js';
 import { roleLook } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
-import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY } from './data.js';
+import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY, SKILL, skillLevel } from './data.js';
 import { choice, rand, randInt, manhattan, uid } from './util.js';
 
 export function makeStaff(game, role, name) {
@@ -22,6 +22,40 @@ export class Staff extends Agent {
     this.job = null;
     this.napping = false;
     this.staffId = uid();
+    this.skills = {}; // role -> XP
+  }
+
+  // ---------------- skill ----------------
+  xpIn(role = this.role) { return this.skills[role] || 0; }
+  skillLv(role = this.role) { return skillLevel(this.xpIn(role)); }
+  get skillMul() { return SKILL.mul[this.skillLv() - 1]; }
+  /** Scaled duration of a timed action (skilled staff work faster). */
+  dur(sec) { return sec / this.skillMul; }
+  gainXp(n) {
+    const before = this.skillLv();
+    this.skills[this.role] = this.xpIn() + n;
+    const lv = this.skillLv();
+    if (lv > before) {
+      const g = this.game;
+      g.toast(`${this.name} is now ${/^[AEIOU]/.test(SKILL.titles[lv - 1]) ? 'an' : 'a'} ${SKILL.titles[lv - 1]} ${this.roleName}! (+${Math.round((SKILL.mul[lv - 1] - 1) * 100)}% speed)`, 'good');
+      g.fx.sparkle(g.at(this.x + 0.5, this.y + 0.5, 60), 10, '#ffd86b');
+      this.emote('emote_sparkle', 2);
+      this.hop();
+      g.sfx('levelup');
+      g.changed('staff');
+    }
+  }
+  /** Switch job. The current task goes back on the board; experience in every role is kept. */
+  changeRole(role) {
+    if (role === this.role || !ROLES[role]) return;
+    if (this.job) this.abortJob(true);
+    this.role = role;
+    if (role === 'chef') this.look.roleHat = 'chef';
+    else if (this.look.roleHat === 'chef') this.look.roleHat = null;
+    this.game.refreshCharacter(this);
+    this.game.fx.sparkle(this.game.at(this.x + 0.5, this.y + 0.5, 60), 12, '#bfe3ff');
+    this.emote('emote_sparkle', 2);
+    this.hop();
   }
 
   canNudge() { return !this.job && !this.napping; }
@@ -30,6 +64,7 @@ export class Staff extends Agent {
 
   update(dt) {
     if (this.job && this.job.canceled) this.abortJob();
+    this.speedMul = this.skillMul;
     super.update(dt);
     if (this.job) this.energy = Math.max(0, this.energy - ENERGY.drainPerSec * dt);
   }
@@ -76,14 +111,14 @@ export class Staff extends Agent {
         const c = j.customer, seat = j.seat;
         this.walk(0, 0, { goals: seatGoals(seat), onFail: fail });
         this.face({ x: seat.chair.x, y: seat.chair.y });
-        this.wait(1.0, 'talk');
+        this.wait(this.dur(1.0), 'talk');
         this.do(() => {
           if (c.state === 'waitOrder') c.takeOrder(this);
           // take everyone else's order at this table in the same visit
           const others = (seat.table.seats || []).map((s2) => s2.customer).filter((o) => o && o !== c && o.state === 'waitOrder' && o.orderJob && !o.orderJob.assignee);
           for (const o of others) { g.jobs.cancel(o.orderJob); o.orderJob = null; }
           if (others.length) {
-            this.wait(0.5 * others.length, 'talk');
+            this.wait(this.dur(0.5 * others.length), 'talk');
             this.do(() => { for (const o of others) if (o.state === 'waitOrder') o.takeOrder(this); this.finishJob(); });
           } else this.finishJob();
         });
@@ -98,7 +133,7 @@ export class Staff extends Agent {
         this.do(() => {
           const t = j.ticket;
           if (!alive(st) || t.state !== 'queued') return fail();
-          st.cooking = t; st.cookT = 0; st.cookTotal = dishById[t.dish].cook / (furnitureById[st.type].speed || 1);
+          st.cooking = t; st.cookT = 0; st.cookTotal = this.dur(dishById[t.dish].cook / (furnitureById[st.type].speed || 1));
           t.state = 'cooking'; t.station = st;
           if (isDrink) this.held = { id: 'held_shaker' };
           g.sfx(isDrink ? 'shake' : 'sizzle');
@@ -136,7 +171,7 @@ export class Staff extends Agent {
         const seat = j.seat;
         this.walk(0, 0, { goals: seatGoals(seat), onFail: fail });
         this.face({ x: seat.table.x, y: seat.table.y });
-        this.wait(0.9, 'cook');
+        this.wait(this.dur(0.9), 'cook');
         this.do(() => {
           seat.dirty = false;
           g.fx.sparkle(g.at(seat.table.x + 0.5, seat.table.y + 0.5, 40), 5, '#ffffff');
@@ -151,7 +186,7 @@ export class Staff extends Agent {
         tr.claimed = this;
         this.walk(tr.x, tr.y, { onFail: fail });
         this.do(() => { this.held = { id: 'held_broom' }; g.sfx('sweep'); });
-        this.wait(1.5, 'sweep', { every: (dt) => { if (Math.random() < dt * 5) g.fx.puff(g.at(tr.x + 0.5, tr.y + 0.5, 4), '#e8ddd0'); } });
+        this.wait(this.dur(1.5), 'sweep', { every: (dt) => { if (Math.random() < dt * 5) g.fx.puff(g.at(tr.x + 0.5, tr.y + 0.5, 4), '#e8ddd0'); } });
         this.do(() => {
           g.world.removeTrash(tr);
           g.fx.sparkle(g.at(tr.x + 0.5, tr.y + 0.5, 10), 6, '#fff6c2');
@@ -165,7 +200,7 @@ export class Staff extends Agent {
         this.walk(0, 0, { goals: w.accessFor(f), onFail: fail });
         this.face({ x: f.x, y: f.y });
         this.do(() => { this.held = { id: 'held_wrench' }; g.sfx('repair'); });
-        this.wait(3, 'repair', { every: (dt) => { if (Math.random() < dt * 4) g.fx.sparkle(g.at(f.x + 0.5, f.y + 0.5, 50), 2, '#ffd86b'); } });
+        this.wait(this.dur(3), 'repair', { every: (dt) => { if (Math.random() < dt * 4) g.fx.sparkle(g.at(f.x + 0.5, f.y + 0.5, 50), 2, '#ffd86b'); } });
         this.do(() => {
           if (alive(f)) g.eco.repairFacility(f);
           this.held = null;
@@ -177,7 +212,9 @@ export class Staff extends Agent {
   }
 
   finishJob() {
-    if (this.job) { this.game.jobs.finish(this.job); this.job.assignee = null; }
+    const j = this.job;
+    if (j) { this.game.jobs.finish(j); j.assignee = null; }
+    if (j && j.role === this.role) this.gainXp(SKILL.xp[j.type] || 1);
     this.job = null;
     this.task = 'Idle';
     this.waitMode = null;

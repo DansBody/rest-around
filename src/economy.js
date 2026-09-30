@@ -2,7 +2,7 @@
 // garden plots, daily gift, staff hiring/snacks, facility breakage & repair.
 import {
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS, SEEDS, WATER_DURATION,
-  snackById, ROLES, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS,
+  snackById, ROLES, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
 } from './data.js';
 import { makeStaff } from './staff.js';
 import { bus, choice, randInt, clamp } from './util.js';
@@ -178,6 +178,23 @@ export class Economy {
     g.toast(`${st.name} the ${ROLES[role].name} joined the team!`, 'good');
     g.changed('staff');
     return st;
+  }
+  /** Retraining fee to move a staff member into `role` (free back into a role they're good at). */
+  jobChangeFee(st, role) {
+    if (role === st.role) return 0;
+    return st.skillLv(role) >= SKILL.freeReturnLv ? 0 : Math.round(ROLES[role].hire * SKILL.changeFee);
+  }
+  changeJob(st, role) {
+    const g = this.game;
+    if (!ROLES[role] || role === st.role || !g.staff.includes(st)) return false;
+    const fee = this.jobChangeFee(st, role);
+    if (fee && !this.spend(fee, 'retraining')) return false;
+    const from = st.roleName;
+    st.changeRole(role);
+    g.sfx('levelup');
+    g.toast(`${st.name} retrained: ${from} → ${st.roleName}!`, 'good');
+    g.changed('staff');
+    return true;
   }
   fire(st) {
     const g = this.game;
