@@ -210,7 +210,7 @@ const SHAPES = {
 
   toilet(ctx, def, dir, ph, color, grid) {
     const m = isoCtx(ctx, def, dir, grid);
-    m.box(-0.46, -0.46, 0.46, -0.4, 0, 92, '#bcd6ec');
+    m.box(-0.3, -0.42, 0.3, -0.36, 0, 40, '#bcd6ec'); // little tiled splash-back
     m.box(-0.22, -0.36, 0.22, -0.16, 22, 58, '#fbfbff');
     m.box(-0.2, -0.16, 0.2, 0.26, 0, 24, '#fbfbff', { onTop: (c, TT) => topEllipse(c, TT, 0, 0.05, 0.15, '#dfeaf5', '#9fb6cc') });
     m.render();

@@ -3,7 +3,7 @@ import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait, drawPortrait, thumb } from './ui.js';
 import {
-  ROLES, SNACKS, DISHES, DISH_CATS, dishById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
+  ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
   SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, HAIR_STYLES, TOP_STYLES, BOTTOM_STYLES, HAT_STYLES,
 } from '../data.js';
@@ -247,7 +247,7 @@ export function buildTray(ui, bar) {
   const tabs = h('div.bb-top',
     BUILD_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.buildCat = c.id; b.setTool(null); } }, c.name)),
     h('div.grow'),
-    h('button.btn.primary', { onclick: () => b.exit() }, '✓ Done'));
+    h('button.btn.primary.done', { onclick: () => b.exit() }, '✓ Done'));
   const items = h('div.bb-items');
   const card = (key, name, price, lvl, sel, onclick, thumbFn, sub) => {
     const locked = lvl > s.level;

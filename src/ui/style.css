@@ -164,6 +164,10 @@ kbd { background: #fff; border-radius: 6px; padding: 1px 6px; box-shadow: 0 2px 
 .stat { background: rgba(255,236,205,.7); border-radius: 14px; padding: 8px; font-weight: 900; }
 .stat b { display: block; font-size: 22px; }
 
+#celebrate { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 24px)); text-align: center; display: none; }
+#celebrate.show { display: block; animation: popin .4s cubic-bezier(.3,1.6,.5,1); }
+#celebrate .big-title { font-size: 26px; }
+
 /* ---------- debug ---------- */
 #debug { position: absolute; left: 10px; bottom: 110px; width: 300px; border-width: 18px; border-image-width: 18px; display: none; font-size: 13px; }
 #debug.show { display: block; }
@@ -188,7 +192,20 @@ kbd { background: #fff; border-radius: 6px; padding: 1px 6px; box-shadow: 0 2px 
   #panel { top: auto; bottom: 90px; height: 62vh; right: 8px; }
   #info { top: auto; bottom: 96px; width: 220px; }
 }
-@media (max-width: 520px) {
+@media (max-width: 600px) {
+  #hud { left: 6px; right: 6px; top: 6px; transform: none; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  #hud .chip { font-size: 14px; min-height: 36px; border-width: 7px 11px 10px; border-image-width: 7px 11px 10px; }
+  #hud .chip > .ico { width: 22px; height: 22px; }
+  #hud .num { min-width: 30px; }
+  .stars > span { width: 17px !important; height: 17px !important; }
+  .stars img { width: 17px; height: 17px; }
   #hud .clock small, #hud .lvl-top span:last-child { display: none; }
-  .lvl-wrap { min-width: 70px; }
+  .lvl-wrap { min-width: 64px; }
+  #toasts, #buildbanner { top: 96px; }
+  #celebrate { top: 100px; }
+  .bb-top { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .bb-top .tab, .bb-top .btn { flex: none; }
+  .bb-top .done { order: -1; }
+  #buildbanner { font-size: 12px; white-space: nowrap; }
+  #info { left: 6px; }
 }

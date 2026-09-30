@@ -1,10 +1,10 @@
 // Canvas 2D renderer: floor, walls + door, depth-sorted furniture and characters, overlays.
 import { assets } from './assets.js';
-import { ISO, toScreen, DIRS } from './iso.js';
+import { toScreen, DIRS } from './iso.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById } from './data.js';
 import { drawDoll, emoteOffset } from './doll.js';
-import { clamp, easeOutBack, shade } from './util.js';
+import { clamp, easeOutBack } from './util.js';
 import { FONT } from './placeholder.js';
 
 const EPS = 1e-3;
@@ -193,7 +193,7 @@ export class Renderer {
   }
 
   drawFurniture(f, o = {}) {
-    const { ctx, game } = this;
+    const { ctx } = this;
     const cat = furnitureById[f.type];
     const [w, h] = f.fp;
     const c = toScreen(f.x + w / 2, f.y + h / 2);
@@ -358,7 +358,6 @@ export class Renderer {
       ctx.fillStyle = 'rgba(220,60,90,0.85)'; roundRect(ctx, x - tw / 2 - 5, y - 11, tw + 10, 16, 8); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.fillText(text, x, y + 1);
     };
-    const seen = new Set();
     for (const f of game.world.furniture) {
       const id = furnitureById[f.type].asset;
       if (!assets.isPlaceholder(id)) continue;
@@ -371,7 +370,7 @@ export class Renderer {
       if (ids.length) { const p = toScreen(a.x, a.y); tag(p.x, p.y + 24, `PH ×${ids.length} layers`); }
     }
     const fl = game.world.floorOf(0, 0).asset;
-    if (assets.isPlaceholder(fl) && !seen.has(fl)) { const p = toScreen(0.5, 0.5); tag(p.x, p.y, 'PH ' + fl); }
+    if (assets.isPlaceholder(fl)) { const p = toScreen(0.5, 0.5); tag(p.x, p.y, 'PH ' + fl); }
     ctx.restore();
   }
 

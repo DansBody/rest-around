@@ -119,14 +119,15 @@ export class UI {
     this.el.info = h('div.card#info');
     this.el.toasts = h('div#toasts');
     this.el.modal = h('div#modal');
-    r.append(this.el.info, this.el.toasts, this.el.modal);
+    this.el.celebrate = h('div#celebrate');
+    r.append(this.el.info, this.el.toasts, this.el.modal, this.el.celebrate);
 
     bus.on('toast', ({ msg, kind }) => this.toast(msg, kind));
     bus.on('changed', () => { this.dirty = true; });
     bus.on('build', (on) => this.onBuild(on));
     bus.on('buildChanged', () => this.renderBuild());
     bus.on('dayEnd', (s) => this.queueModal(() => this.summaryCard(s)));
-    bus.on('levelUp', (e) => this.queueModal(() => this.levelCard(e)));
+    bus.on('levelUp', (e) => this.celebrate(e));
     bus.on('dayStart', (d) => this.toast(`☀️ Day ${d} — doors open!`, 'good'));
     this.renderBuild();
     this.update(1);
@@ -359,12 +360,21 @@ export class UI {
       h('div.muted', { style: { marginBottom: '10px' } }, sm.noSeat ? `${sm.noSeat} guest(s) left because every seat was taken — more tables would help!` : dr >= 0 ? 'Word is spreading about your cozy little place.' : 'Keep things clean and fast to win back the stars.'),
       btn);
   }
-  levelCard(e) {
-    return h('div.card',
-      h('div', assets.iconEl('icon_level', 64)),
-      h('div.big-title', `Level ${e.level}!`),
+  /** Level-up card: non-blocking (the restaurant keeps running) and auto-dismissing. */
+  celebrate(e) {
+    // several level-ups in a row (e.g. a big dish level-up) merge into one card
+    if (this.levelAcc && this.el.celebrate.classList.contains('show')) { this.levelAcc.level = e.level; this.levelAcc.unlocks.push(...e.unlocks); }
+    else this.levelAcc = { level: e.level, unlocks: [...e.unlocks] };
+    const acc = this.levelAcc;
+    const hide = () => { this.el.celebrate.classList.remove('show'); this.levelAcc = null; };
+    this.el.celebrate.replaceChildren(h('div.card',
+      h('div', assets.iconEl('icon_level', 56)),
+      h('div.big-title', `Level ${acc.level}!`),
       h('div.muted', 'New things unlocked:'),
-      h('div', { style: { margin: '10px 0', fontWeight: 900, lineHeight: 1.6 } }, e.unlocks.length ? e.unlocks.map((u) => h('div', '✦ ' + u)) : 'More gourmet glory!'),
-      h('button.btn.primary', { onclick: () => this.closeModal() }, 'Yay!'));
+      h('div', { style: { margin: '8px 0', fontWeight: 900, lineHeight: 1.5, maxHeight: '40vh', overflow: 'auto' } }, acc.unlocks.length ? acc.unlocks.map((u) => h('div', '✦ ' + u)) : 'More gourmet glory!'),
+      h('button.btn.primary', { onclick: hide }, 'Yay!')));
+    this.el.celebrate.classList.add('show');
+    clearTimeout(this.celebrateTimer);
+    this.celebrateTimer = setTimeout(hide, 9000);
   }
 }

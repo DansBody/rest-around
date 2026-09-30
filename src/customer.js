@@ -4,7 +4,6 @@ import { Agent } from './agent.js';
 import { randomLook } from './looks.js';
 import { assets } from './assets.js';
 import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, dishPrice, dishPoints } from './data.js';
-import { DIRS } from './iso.js';
 import { DOOR_Y } from './world.js';
 import { choice, chance, rand, manhattan, uid } from './util.js';
 

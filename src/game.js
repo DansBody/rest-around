@@ -5,15 +5,15 @@ import { World } from './world.js';
 import { TileClaims } from './agent.js';
 import { Jobs } from './jobs.js';
 import { Customer } from './customer.js';
-import { Staff, makeStaff } from './staff.js';
+import { makeStaff } from './staff.js';
 import { DayCycle } from './day.js';
 import { Rating } from './rating.js';
 import { Economy } from './economy.js';
 import { Build } from './build.js';
 import { audio } from './audio.js';
 import { toScreen } from './iso.js';
-import { DISHES, MAX_LEVEL, gardenPlots } from './data.js';
-import { bus, clamp } from './util.js';
+import { DISHES, MAX_LEVEL } from './data.js';
+import { bus } from './util.js';
 
 export function defaultState() {
   const dishes = {};
@@ -193,6 +193,4 @@ export class Game {
     return this.eco.levelProgress(s.points, s.level);
   }
   maxLevel() { return MAX_LEVEL; }
-  gardenPlotCount() { return gardenPlots(this.state.level); }
-  clamp01(v) { return clamp(v, 0, 1); }
 }

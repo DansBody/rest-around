@@ -241,5 +241,4 @@ export class Staff extends Agent {
     this.hop();
   }
 
-  baseMode() { return super.baseMode(); }
 }
