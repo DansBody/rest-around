@@ -11,6 +11,17 @@ import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
 
 const I = (id, s = 22) => assets.iconEl(id, s);
+/** Danger button that asks for a second tap instead of a browser confirm() dialog. */
+function confirmBtn(sel, label, ask, action) {
+  let armed = false, timer = null;
+  const b = h(sel, { onclick: (e) => {
+    e.stopPropagation();
+    if (armed) { clearTimeout(timer); action(); return; }
+    armed = true; b.textContent = ask + ' ✓';
+    timer = setTimeout(() => { armed = false; b.textContent = label; }, 3000);
+  } }, label);
+  return b;
+}
 const coinPill = (n) => h('span.pill', I('icon_coin', 18), fmt(n));
 
 // =====================================================================================
@@ -41,7 +52,7 @@ function renderStaff(ui, body) {
         h('div.btnrow',
           SNACKS.map((sn) => h('button.btn.small', { title: `${sn.name}: +${sn.energy} energy (${s.snacks[sn.id] ? 'from pantry' : sn.price + ' coins'})`, onclick: () => g.eco.feed(a, sn.id) }, I(sn.asset, 20), `×${s.snacks[sn.id] || 0}`)),
           h('button.btn.small', { onclick: () => { ui.subview = { outfit: a }; ui.renderPanel(); } }, 'Outfit'),
-          h('button.btn.small.danger', { onclick: () => { if (confirm(`Let ${a.name} go?`)) g.eco.fire(a); } }, 'Fire'),
+          confirmBtn('button.btn.small.danger', 'Fire', `Let ${a.name} go?`, () => g.eco.fire(a)),
           h('button.btn.small', { onclick: () => ui.select(a), title: 'Show on the floor' }, '👁')))));
   }
   body.append(h('div.section-title', 'Hire'));
@@ -221,7 +232,7 @@ function renderSettings(ui, body) {
     toggle('Auto-open next day', 'autoNextDay'),
     h('div.btnrow',
       h('button.btn.small', { onclick: () => { ui.toast(save(g) ? 'Saved!' : 'Could not save (storage blocked?)', 'good'); } }, '💾 Save now'),
-      h('button.btn.small.danger', { onclick: () => { if (confirm('Erase your restaurant and start over?')) { g.resetting = true; clearSave(); location.reload(); } } }, 'Reset game')),
+      confirmBtn('button.btn.small.danger', 'Reset game', 'Tap again to erase everything', () => { g.resetting = true; clearSave(); location.reload(); })),
     h('div.muted', { style: { marginTop: '6px' } }, 'Progress autosaves every 10 seconds and when you close the tab.'),
     h('div.section-title', 'Controls'),
     h('div.muted', { style: { lineHeight: 1.8 } },
