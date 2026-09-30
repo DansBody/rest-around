@@ -254,8 +254,9 @@ export class Renderer {
     const key = w.size + ':' + w.floors.map((c) => c.join(',')).join(';');
     if (key === this.floorKey) return;
     this.floorKey = key;
+    if (this.floorGeo) this.floorGeo.dispose();
     this.floorGroup.clear();
-    const geo = new THREE.PlaneGeometry(TILE, TILE);
+    const geo = this.floorGeo = new THREE.PlaneGeometry(TILE, TILE);
     const mats = new Map();
     for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) {
       const fl = w.floorOf(x, y);
@@ -438,66 +439,89 @@ export class Renderer {
     for (const [a, cv] of this.chars) if (!live.has(a)) { cv.dispose(this.scene); this.chars.delete(a); }
   }
 
-  // ------------------------------------------------------------------ build mode visuals
+  // ------------------------------------------------------------------ build mode & debug visuals
+  // Flat markers (tiles, dots) come from a pool with shared geometry/materials: nothing is
+  // allocated per frame.
+  markerMat(color, op) {
+    const k = color + '|' + op;
+    if (!this.markerMats) this.markerMats = new Map();
+    let m = this.markerMats.get(k);
+    if (!m) { m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }); this.markerMats.set(k, m); }
+    return m;
+  }
+  marker(group, kind, x, y, color, op, h, size) {
+    const pool = group.userData.pool || (group.userData.pool = { tile: [], dot: [], used: { tile: 0, dot: 0 } });
+    if (!this.markerGeo) this.markerGeo = { tile: new THREE.PlaneGeometry(1, 1), dot: new THREE.CircleGeometry(0.5, 16) };
+    let m = pool[kind][pool.used[kind]];
+    if (!m) { m = new THREE.Mesh(this.markerGeo[kind]); m.rotation.x = -Math.PI / 2; group.add(m); pool[kind].push(m); }
+    pool.used[kind]++;
+    m.visible = true;
+    m.material = this.markerMat(color, op);
+    m.scale.set(size, size, 1);
+    m.position.set((x + 0.5) * TILE, h, (y + 0.5) * TILE);
+    return m;
+  }
+  beginMarkers(group) {
+    const pool = group.userData.pool;
+    if (pool) { for (const k of ['tile', 'dot']) { for (const m of pool[k]) m.visible = false; pool.used[k] = 0; } }
+  }
+
   syncBuild() {
     const b = this.game.build, grp = this.buildGroup;
-    grp.clear();
+    this.beginMarkers(grp);
+    if (this.ghostObj) this.ghostObj.visible = false;
+    if (this.gridLines) this.gridLines.visible = false;
     if (!b.active) return;
     const n = this.game.world.size;
     if (!this.gridLines || this.gridN !== n) {
+      if (this.gridLines) { grp.remove(this.gridLines); this.gridLines.geometry.dispose(); }
       const pts = [];
       for (let i = 0; i <= n; i++) { pts.push(i * TILE, 0.03, 0, i * TILE, 0.03, n * TILE, 0, 0.03, i * TILE, n * TILE, 0.03, i * TILE); }
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-      this.gridLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#6e4f3a', transparent: true, opacity: 0.25 }));
+      this.gridLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#6e4f3a', transparent: true, opacity: 0.3 }));
       this.gridN = n;
+      grp.add(this.gridLines);
     }
-    grp.add(this.gridLines);
-    const tile = (x, y, color, op = 0.45, inset = 0.06, h = 0.04) => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(TILE - inset * 2, TILE - inset * 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }));
-      m.rotation.x = -Math.PI / 2; m.position.set((x + 0.5) * TILE, h, (y + 0.5) * TILE); grp.add(m);
-    };
+    this.gridLines.visible = true;
     if (b.selected && !b.moving) {
-      const f = b.selected, pulse = 0.35 + Math.sin(this.time * 5) * 0.15;
-      for (let i = 0; i < f.fp[0]; i++) for (let j = 0; j < f.fp[1]; j++) tile(f.x + i, f.y + j, '#ffffff', pulse);
+      const f = b.selected, pulse = Math.round((0.35 + Math.sin(this.time * 5) * 0.15) * 20) / 20;
+      for (let i = 0; i < f.fp[0]; i++) for (let j = 0; j < f.fp[1]; j++) this.marker(grp, 'tile', f.x + i, f.y + j, '#ffffff', pulse, 0.04, TILE - 0.12);
     }
     const gh = b.ghost;
     if (!gh) return;
     const col = gh.valid ? '#78d282' : '#eb6464';
-    for (const t of gh.tiles || []) tile(t.x, t.y, col, 0.45);
-    for (const t of gh.access || []) {
-      const d = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), new THREE.MeshBasicMaterial({ color: t.ok ? '#ffffff' : '#eb6464', transparent: true, opacity: 0.85, depthWrite: false }));
-      d.rotation.x = -Math.PI / 2; d.position.set((t.x + 0.5) * TILE, 0.05, (t.y + 0.5) * TILE); grp.add(d);
-    }
+    for (const t of gh.tiles || []) this.marker(grp, 'tile', t.x, t.y, col, 0.45, 0.04, TILE - 0.12);
+    for (const t of gh.access || []) this.marker(grp, 'dot', t.x, t.y, t.ok ? '#ffffff' : '#eb6464', 0.85, 0.05, 0.7);
     if (gh.type) {
       const cat = furnitureById[gh.type];
       const key = gh.type + '|' + gh.valid;
       if (this.ghostKey !== key) {
+        if (this.ghostObj) grp.remove(this.ghostObj);
         this.ghostKey = key;
         this.ghostObj = models.instance(cat.asset, cat.tint);
         this.ghostObj.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.7; m.material.color.lerp(new THREE.Color(col), 0.35); m.castShadow = false; } });
+        grp.add(this.ghostObj);
       }
+      this.ghostObj.visible = true;
       this.placeFurniture(this.ghostObj, { x: gh.x, y: gh.y, dir: gh.dir, fp: World.footprint(gh.type, gh.dir) });
-      grp.add(this.ghostObj);
     }
   }
 
   syncDebug() {
     const g = this.game, grp = this.debugGroup;
-    grp.clear();
+    this.beginMarkers(grp);
+    if (this.debugLines) { for (const l of this.debugLines) { grp.remove(l); l.geometry.dispose(); } }
+    this.debugLines = [];
     if (!g.debug.grid) return;
     const w = g.world;
-    for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), new THREE.MeshBasicMaterial({ color: w.isWalkable(x, y) ? '#78c88c' : '#e65a5a', transparent: true, opacity: 0.3, depthWrite: false }));
-      m.rotation.x = -Math.PI / 2; m.position.set((x + 0.5) * TILE, 0.06, (y + 0.5) * TILE); grp.add(m);
-    }
+    for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) this.marker(grp, 'tile', x, y, w.isWalkable(x, y) ? '#78c88c' : '#e65a5a', 0.3, 0.06, 1.8);
+    if (!this.pathMats) this.pathMats = { customer: new THREE.LineBasicMaterial({ color: '#dc783c' }), staff: new THREE.LineBasicMaterial({ color: '#3c78dc' }) };
     for (const a of g.agents) {
-      for (const t of g.agentTiles.claims(a)) {
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ color: '#5a78dc', transparent: true, opacity: 0.45, depthWrite: false }));
-        m.rotation.x = -Math.PI / 2; m.position.set((t.x + 0.5) * TILE, 0.08, (t.y + 0.5) * TILE); grp.add(m);
-      }
+      for (const t of g.agentTiles.claims(a)) this.marker(grp, 'tile', t.x, t.y, '#5a78dc', 0.45, 0.08, 0.8);
       if (a.path && a.path.length) {
         const pts = [new THREE.Vector3(a.x * TILE, 0.12, a.y * TILE), ...a.path.map((t) => new THREE.Vector3((t.x + 0.5) * TILE, 0.12, (t.y + 0.5) * TILE))];
-        grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: a.kind === 'customer' ? '#dc783c' : '#3c78dc' })));
+        const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), this.pathMats[a.kind] || this.pathMats.staff);
+        grp.add(l); this.debugLines.push(l);
       }
     }
   }

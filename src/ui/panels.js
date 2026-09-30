@@ -2,7 +2,7 @@
 import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait, thumb } from '../portrait.js';
-import { ACCESSORIES } from '../looks.js';
+import { ACCESSORIES, roleLook } from '../looks.js';
 import {
   ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
@@ -62,7 +62,7 @@ function renderStaff(ui, body) {
     const count = staff.filter((a) => a.role === role).length;
     const note = { waiter: 'Takes orders, serves food, clears tables.', chef: 'Cooks at a free stove.', cleaner: 'Sweeps trash & repairs broken restrooms/arcades.', bartender: 'Mixes drinks at the Juice Bar.' }[role];
     body.append(h('div.row',
-      I(role === 'chef' ? 'hat_chef' : role === 'cleaner' ? 'held_broom' : role === 'bartender' ? 'held_shaker' : 'held_tray', 40),
+      portrait(roleLook(role), 48, 48),
       h('div.grow', h('h3', r.name, h('span.muted', ` · you have ${count}`)), h('div.muted', note)),
       h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => g.eco.hire(role) }, 'Hire ', coinPill(r.hire))));
   }

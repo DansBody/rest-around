@@ -12,8 +12,9 @@ function copy(c, w, h) {
   return n;
 }
 
-/** Idle-pose character portrait. */
+/** Idle-pose character portrait (square; w/h are the box it should fit). */
 export function portrait(look, w = 64, h = 80, cls = 'portrait') {
+  w = h = Math.min(w, h);
   const key = 'p|' + JSON.stringify(look);
   let c = cache.get(key);
   if (!c) {
@@ -21,7 +22,7 @@ export function portrait(look, w = 64, h = 80, cls = 'portrait') {
     const cv = new CharacterView(scene, { look, x: 0, y: 0, dir: 1, pose: {} }, assets.manifest);
     if (cv.inst.mixer) cv.inst.mixer.update(0.5);
     cv.root.position.set(0, 0, 0); cv.root.rotation.y = 0.35;
-    c = renderIcon(cv.root, 192, { pitch: 0.25, pad: 0.56 });
+    c = renderIcon(cv.root, 192, { pitch: 0.22, pad: 0.5 });
     cache.set(key, c);
   }
   const out = copy(c, w, h);

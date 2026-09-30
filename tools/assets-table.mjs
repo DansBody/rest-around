@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Regenerates the asset table in ASSETS.md from assets/manifest.json (optional helper — the game
+// Regenerates the asset tables in ASSETS.md from assets/manifest.json (optional helper — the game
 // itself never needs this). Usage:  node tools/assets-table.mjs
 import fs from 'fs';
 import path from 'path';
@@ -8,57 +8,43 @@ import { fileURLToPath } from 'url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/manifest.json'), 'utf8'));
 const docPath = path.join(root, 'ASSETS.md');
-const START = '<!-- ASSET-TABLE:START -->', END = '<!-- ASSET-TABLE:END -->';
+const esc = (s) => String(s || '').replace(/\|/g, '/');
 
-const GROUPS = {
-  1: 'Priority 1 — most visible (generate these first)',
-  2: 'Priority 2 — core content',
-  3: 'Priority 3 — polish',
-};
-
-function facing(a) {
-  const d = a.directions;
-  if (d[0] === 'any') return 'single view';
-  if (a.id.startsWith('door')) return 'fl only (left wall)';
-  if (a.category === 'wall') return 'fl only (mirrored in code for the right wall)';
-  if (d.length === 1) return d[0] + ' only';
-  return d.join(' + ') + ' (fr/br = mirrored)';
+function modelSource(m) {
+  if (m.parts) return 'composite: ' + m.parts.map((p) => '`' + p.model + '`').join(' + ');
+  if (m.file) return '`' + m.file + '`';
+  return '_procedural placeholder_ (`' + (m.placeholder && m.placeholder.shape) + '`)';
 }
-function extras(a) {
+function modelNotes(m) {
   const out = [];
-  if (a.footprint && (a.footprint[0] > 1 || a.footprint[1] > 1)) out.push(`footprint ${a.footprint[0]}×${a.footprint[1]} tiles`);
-  if (a.heightOffset) out.push(`heightOffset ${a.heightOffset}`);
-  if (a.surfaceHeight) out.push(`surface ${a.surfaceHeight}px up`);
-  if (a.seatHeight) out.push(`seat ${a.seatHeight}px up`);
-  if (a.hingeX != null) out.push(`hingeX ${a.hingeX}`);
-  if (a.slice) out.push(`9-slice ${a.slice.join('/')}`);
-  if (a.slot) out.push(`slot ${a.slot}`);
-  if (a.tintable) out.push('**tintable** (draw light grey)');
+  if (m.footprint && (m.footprint[0] > 1 || m.footprint[1] > 1)) out.push(`footprint ${m.footprint[0]}×${m.footprint[1]}`);
+  if (m.surfaceHeight) out.push(`surface ${m.surfaceHeight}`);
+  if (m.seatHeight) out.push(`seat ${m.seatHeight}`);
+  if (m.rotY) out.push(`rotY ${m.rotY}°`);
+  if (m.scale) out.push(`scale ${m.scale}`);
+  if (m.tintable) out.push('tintable');
+  if (m.accessories) out.push('accessories: ' + m.accessories.join(', '));
   return out.join('; ');
-}
-function files(a) {
-  if (!a.file.includes('{dir}')) return '`' + a.file + '`';
-  return a.directions.map((d) => '`' + a.file.replace('{dir}', d) + '`').join('<br>');
 }
 
 let md = '';
-let total = 0, fileCount = 0;
-for (const p of [1, 2, 3]) {
-  const list = manifest.assets.filter((a) => (a.priority || 2) === p);
+const groups = [['furniture', 'Furniture'], ['kitchen', 'Kitchen'], ['fun', 'Fun'], ['decor', 'Decor'], ['prop', 'Props'], ['food', 'Food & ingredients'], ['character', 'Characters']];
+md += `\n### 3D models (${manifest.models.length})\n`;
+for (const [cat, title] of groups) {
+  const list = manifest.models.filter((m) => m.category === cat);
   if (!list.length) continue;
-  md += `\n### ${GROUPS[p]}\n\n`;
-  md += '| id | file(s) | size (px) | facing | anchor | notes | description |\n|---|---|---|---|---|---|---|\n';
-  for (const a of list) {
-    total++;
-    fileCount += a.directions[0] === 'any' || !a.file.includes('{dir}') ? 1 : a.directions.length;
-    const anchor = a.anchor ? `${a.anchor[0]}, ${a.anchor[1]}` : 'center';
-    md += `| \`${a.id}\` | ${files(a)} | ${a.size[0]}×${a.size[1]} | ${facing(a)} | ${anchor} | ${extras(a)} | ${a.desc.replace(/\|/g, '/')} |\n`;
-  }
+  md += `\n**${title}**\n\n| id | source | notes |\n|---|---|---|\n`;
+  for (const m of list) md += `| \`${m.id}\` | ${modelSource(m)} | ${esc(modelNotes(m))} |\n`;
 }
-md = `\n_${total} assets, ${fileCount} PNG files. Generated from \`assets/manifest.json\` by \`node tools/assets-table.mjs\`._\n` + md;
+md += `\n### 2D images (${manifest.assets.length})\n\n| id | file | size (px) | notes |\n|---|---|---|---|\n`;
+for (const a of manifest.assets) {
+  const notes = [a.tintable ? 'tintable' : '', a.slice ? `9-slice ${a.slice.join('/')}` : '', a.model ? `rendered from model \`${a.model}\` unless the PNG exists` : ''].filter(Boolean).join('; ');
+  md += `| \`${a.id}\` | \`${a.file}\` | ${a.size[0]}×${a.size[1]} | ${esc(notes)} |\n`;
+}
 
+const START = '<!-- ASSET-TABLE:START -->', END = '<!-- ASSET-TABLE:END -->';
 const doc = fs.readFileSync(docPath, 'utf8');
-const a = doc.indexOf(START), b = doc.indexOf(END);
-if (a < 0 || b < 0) throw new Error('ASSETS.md is missing the table markers');
-fs.writeFileSync(docPath, doc.slice(0, a + START.length) + '\n' + md + '\n' + doc.slice(b));
-console.log(`ASSETS.md table updated: ${total} assets / ${fileCount} files`);
+const i = doc.indexOf(START), j = doc.indexOf(END);
+if (i < 0 || j < 0) throw new Error('ASSETS.md is missing the table markers');
+fs.writeFileSync(docPath, doc.slice(0, i + START.length) + '\n' + md + '\n' + doc.slice(j));
+console.log(`ASSETS.md updated: ${manifest.models.length} models, ${manifest.assets.length} images`);

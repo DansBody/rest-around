@@ -1,10 +1,12 @@
 # Rest Around ☕
 
-A cozy isometric restaurant-management sim for the browser. Seat chibi guests, take their
-orders, cook, serve, sweep up, fix the arcade, grow tomatoes, level your dishes and turn a tiny
-8×8 bistro into the most talked-about place in town.
+A cozy 3D restaurant-management sim for the browser. Seat chibi guests, take their orders,
+cook, serve, sweep up, fix the arcade, grow tomatoes, level your dishes and turn a tiny 8×8
+bistro into the most talked-about place in town.
 
-Plain HTML + JavaScript ES modules. **No build step, no framework, no external dependencies.**
+Plain HTML + JavaScript ES modules rendered with [three.js](https://threejs.org) (r169, vendored
+in `vendor/three`, MIT). **No build step, no framework, works offline.** 3D art is from Kay
+Lousberg's free CC0 KayKit packs.
 
 ## Run it
 
@@ -55,6 +57,8 @@ automatically after a short countdown (toggle in Settings).
 | | |
 |---|---|
 | Drag | pan the camera |
+| Right-drag / Shift-drag / two-finger twist | rotate the camera |
+| <kbd>Q</kbd> / <kbd>E</kbd> or the ⟲ ⟳ buttons | rotate 90° (⌂ recentres) |
 | Mouse wheel / pinch | zoom |
 | Click a character | info card (name, role or mood, task, energy/patience) |
 | <kbd>B</kbd> | build mode (the restaurant pauses while you build) |
@@ -66,44 +70,47 @@ In build mode, pick an item and click the floor. The preview is green when valid
 reason when not — the game refuses any layout that cuts part of the floor off from the door, blocks
 the working side of a stove/bar/restroom/arcade, or leaves a chair with no side to sit down from.
 Chairs automatically turn to face an adjacent table. Floors are painted by click/drag; wallpaper
-covers all walls; the **Room** tab buys bigger floor plans.
+covers all walls; the **Room** tab buys bigger floor plans. Walls between the camera and the room
+drop to a low cut-away so you can always see inside, whichever way you rotate.
 
 ## Art pipeline
 
-All art is listed in [`assets/manifest.json`](assets/manifest.json) with its file, category, pixel
-size, tile footprint, anchor, height offsets, available facings and (for characters) layer/slot.
-Anything missing is replaced by a generated placeholder at load time, so the full game is playable
-with no art at all. **Drop a correctly named PNG into `assets/` and reload — no code changes.**
+Everything in the world is a glTF model listed in [`assets/manifest.json`](assets/manifest.json)
+(`models`: file, scale, facing correction, footprint, surface/seat heights, tint rules, character
+accessories); UI images, icons and surface textures are PNGs listed under `assets`.
 
-* 2:1 dimetric isometric, **128 × 64 px tiles**, light from the top-left.
-* Furniture and characters are drawn facing **front-left** and **back-left**; the other two
-  facings are mirrored in code.
-* Characters are **paper dolls** (body, head, faces, hair, top, bottom, hat, held item, arms,
-  legs) aligned by rig slots in the manifest; all animation is procedural.
-* Many items are one grey shape recoloured by tint (chairs, tables, floors, wallpaper, outfits,
-  hair…), which keeps the list lean: **121 assets / 142 PNG files** in total.
-* Outside the building there is a lawn, a street with passers-by (guests walk along it to the
-  door) and garden beds that show what you've planted. Click a bed to open the Garden panel.
-* UI chrome (panel frames, buttons, HUD chips, icons, toolbar icons) is skinnable the same way
-  (9-slice images).
+* **Missing → placeholder.** A missing model becomes a procedural low-poly stand-in (today: the
+  toilet, the arcade cabinet, a few desserts/drinks and the held tools); a missing PNG becomes a
+  generated image. The whole game is always playable.
+* **Drop-in.** Put a correctly named `.gltf`/`.glb`/`.png` at the manifest path and reload — no
+  code changes. Food icons in the UI are rendered from the food models automatically.
+* **Scale:** 1 floor tile = 2 world units (the KayKit grid); models face +Z.
+* **Characters** are rigged KayKit Adventurers with 15 shared animations (walk, carry, sit, cook,
+  sweep, repair, nap, cheer…) chosen from each agent's activity; props (tray + dish, broom, wrench,
+  mug) attach to the hand bone, chefs wear a toque. The wardrobe (Staff → Outfit) swaps the
+  character, toggles helmet/hat/cape and tints the outfit.
+* **Tints:** shop variants (mint table, rose armchair, steel stove…) re-colour one model.
+* Outside: lawn, a street with passers-by (guests walk along it to the door), low-poly trees and
+  garden beds that grow whatever you plant (click a bed to open the Garden panel). Lighting follows
+  the clock — golden evening light, and lamps switch on for the dinner rush.
 
-[`ASSETS.md`](ASSETS.md) has the style-bible paragraph to prepend to image prompts, the rig
-reference, and the full asset table grouped by priority. After editing the manifest you can
-refresh that table with `node tools/assets-table.mjs` (optional helper; the game never needs Node).
+[`ASSETS.md`](ASSETS.md) documents the conventions, the sources/licences and the full generated
+asset tables (`node tools/assets-table.mjs` refreshes them; optional, the game never needs Node).
 
-## Why Canvas 2D (and not PixiJS)
+### Credits
 
-The brief allowed either. I chose the browser's built-in Canvas 2D:
+* 3D models: **Kay Lousberg** — KayKit Restaurant Bits, Furniture Bits, Character Pack:
+  Adventurers (CC0). www.kaylousberg.com
+* Fonts: Fredoka and Nunito (SIL Open Font License).
+* three.js (MIT).
 
-* **Zero dependencies** — nothing to pin, nothing to download, works offline and from any static
-  server forever.
-* **The scene is small** (≤ 196 floor tiles and ~100 sprites/layers per frame): Canvas 2D holds
-  a smooth frame rate here, so WebGL batching buys little.
-* **Immediate mode fits the design.** Depth order is recomputed every frame with a topological
-  sort (characters walk around and sit on furniture), and each paper-doll layer is drawn with its
-  own procedural transform — both are simpler as plain draw calls than as a retained scene graph.
-* Tinting is handled with cached multiply-composited canvases, and mirroring with a negative
-  scale; both are cheap one-time costs.
+## Why three.js
+
+The first version drew 2D sprites with Canvas 2D. Switching to free, consistent CC0 3D models made
+real-time 3D the better fit: models can be used as-is (no sprite baking), characters get proper
+skeletal animation, depth sorting is free (z-buffer), the camera can rotate and zoom, and lighting
+and shadows make the scene feel alive. three.js is vendored at a pinned version so the game
+stays offline-friendly and build-free.
 
 ## Debug panel (<kbd>`</kbd>)
 
@@ -118,18 +125,23 @@ without rendering and auto-opens new days.
 
 ```
 index.html              page shell
-assets/manifest.json    every asset: file, size, anchor, footprint, offsets, facings, rig slots
-assets/<folder>/        drop PNGs here (floor, wall, ground, furniture, props, character, food, ui)
+assets/manifest.json    3D models (file, scale, footprint, heights, tints, accessories) + 2D images
+assets/models/          glTF/GLB models (KayKit, CC0) — restaurant, furniture, characters, props
+assets/textures|food|ui PNG drop-in folders (surface textures, food icons, UI chrome)
 assets/fonts/           bundled OFL fonts (Nunito, Fredoka)
-ASSETS.md               art guide + generated asset table
-tools/assets-table.mjs  optional: regenerate the ASSETS.md table from the manifest
+vendor/three/           three.js r169 + GLTFLoader/SkeletonUtils (MIT), loaded via an import map
+ASSETS.md               asset guide + generated tables
+tools/assets-table.mjs  optional: regenerate the ASSETS.md tables from the manifest
 src/
-  main.js               boot: load assets → restore save → start loop, autosave
-  assets.js             manifest loader, PNG probing, placeholders, tint cache, mirroring
-  placeholder.js        placeholder art generator (iso boxes, doll parts, icons, UI frames)
-  iso.js camera.js      projection math, pan/zoom camera
-  renderer.js           floor, walls/door, topological depth sort, overlays, build preview
-  doll.js               paper-doll assembly + procedural animation
+  main.js               boot: load images → models → icons, restore save, start loop, autosave
+  assets.js             2D image loader, PNG probing, placeholders, tint cache
+  placeholder.js        generated placeholder images (textures, icons, UI frames)
+  models.js             glTF loader, procedural placeholder meshes, tinting, icon rendering
+  renderer.js           three.js scene: lawn/street/garden, room & cut-away walls, furniture,
+                        food, trash, lighting, build preview, debug overlays, 2D overlay layer
+  charview.js           animated character per agent: clip selection, props, hats, facing
+  portrait.js           3D-rendered portraits, shop thumbnails and food icons
+  iso.js camera.js      grid directions; orbit camera (pan/zoom/rotate)
   world.js              room grid, furniture, seats, access tiles, trash, reachability
   pathfinding.js        A* (4-dir, soft agent-avoidance costs)
   agent.js              movement, tile claims, blocked-step handling, action queue
@@ -154,15 +166,20 @@ Gameplay numbers (prices, cook times, patience, energy, arrival rates, level cur
 * **Guests in the room are not saved.** Staff, furniture, trash, dirty tables, broken
   facilities, stock, garden, dish levels, money and the clock are; after a reload the dining room
   starts empty (new guests arrive within seconds).
-* **Mirrored facings flip the lighting.** Right-facing sprites are mirrors, so their highlights sit
-  top-right — accepted by the brief; keep shading soft so it reads fine.
+* **Characters are fantasy adventurers** (the only free, animated set in the same KayKit style that
+  was reachable). Swap in townsfolk by adding another rigged glTF pack to the manifest (see
+  ASSETS.md).
+* **No eating animation** in the KayKit clip set: seated guests use the sitting idle, with food on
+  the table and crumbs/heart effects.
+* The toilet, arcade cabinet, desserts, two drinks, egg/milk/flour/lemon and the held tools are
+  procedural placeholder meshes until real models are added.
+* Performance: fine on any GPU; in software-rendered browsers (no WebGL acceleration) the
+  frame rate is low.
 * **Crowded 1-tile corridors:** agents never deadlock, but when two meet head-on in a dead-end
   they briefly pass through each other (after ~1.6 s of waiting) instead of backing up.
 * **Balance** is tuned for a relaxed first week; a big room with too few staff will lose guests
   until you hire more (that's the intended pressure, but the curve past level 8 is lightly tested).
-* **Placeholder labels:** placeholders don't show their asset id in the scene (it looked odd).
-  Turn on the debug **Asset overlay** to see which ids are still placeholders; UI icons also show
-  their id as a tooltip.
-* Missing PNGs show up as 404 lines in the browser console / server log while placeholders are in
-  use — harmless.
+* Turn on the debug **Asset overlay** to see which models/images are still placeholders.
+* Missing files show up as 404 lines in the browser console / server log while placeholders are
+  in use — harmless.
 * Audio starts after the first click or key press (browser autoplay rules).
