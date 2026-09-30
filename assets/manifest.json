@@ -4,12 +4,22 @@
   "grid": {
     "tileW": 128,
     "tileH": 64,
-    "wallHeight": 192,
-    "mirrorShade": "#e3dcd4",
+    "wallHeight": 160,
+    "mirrorShade": "#e6ded4",
     "lightFrom": "top-left"
+  },
+  "environment": {
+    "note": "Colours for code-drawn geometry: the wall top/end caps, the room foundation and the background beyond the ground tiles.",
+    "background": "#a8d47c",
+    "wallCap": "#fffaf1",
+    "wallCapSide": "#e9dfd0",
+    "wallCapThickness": 0.14,
+    "foundation": "#e9dcc6",
+    "foundationSide": "#d3c3a9"
   },
   "categoryColors": {
     "floor": "#eadbc6",
+    "ground": "#a8d47c",
     "wall": "#f3e4d2",
     "furniture": "#dcb48a",
     "kitchen": "#b7cadb",
@@ -23,10 +33,19 @@
     "emote": "#ffffff",
     "ui": "#f6e3c3"
   },
-  "font": {
-    "family": "Rest Around UI",
-    "file": "fonts/ui.woff2",
-    "fallback": "'Nunito','Varela Round','Trebuchet MS','Segoe UI',system-ui,sans-serif"
+  "fonts": {
+    "ui": {
+      "family": "RA Body",
+      "file": "fonts/ui.woff2",
+      "weight": "200 1000",
+      "fallback": "'Nunito','Varela Round','Trebuchet MS','Segoe UI',system-ui,sans-serif"
+    },
+    "display": {
+      "family": "RA Display",
+      "file": "fonts/display.woff2",
+      "weight": "600",
+      "fallback": "'Fredoka','Baloo 2','Nunito','Trebuchet MS',system-ui,sans-serif"
+    }
   },
   "characterRig": {
     "note": "Slot points are in pixels relative to the character root (feet center on the floor). Each layer image is drawn with its anchor on its slot. fr/br are mirrored fl/bl.",
@@ -73,10 +92,16 @@
     {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":true,"priority":1,"id":"floor_wood","file":"floor/floor_wood.png","category":"floor","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"floor","pattern":"planks"},"desc":"Isometric floor tile of light wooden planks running along the tile diagonal, drawn in light warm grey so it can be tinted; edges tile seamlessly."},
     {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":true,"priority":1,"id":"floor_checker","file":"floor/floor_checker.png","category":"floor","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"floor","pattern":"checker"},"desc":"Isometric floor tile, 2x2 checkerboard of glossy ceramic squares in light grey tones (tintable); seamless."},
     {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":true,"priority":1,"id":"floor_carpet","file":"floor/floor_carpet.png","category":"floor","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"floor","pattern":"carpet"},"desc":"Isometric soft carpet tile with a tiny stitched dot pattern in light grey (tintable); seamless."},
-    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":true,"priority":1,"id":"wall_plain","file":"wall/wall_plain.png","category":"wall","size":[64,224],"anchor":[32,208],"placeholder":{"shape":"wall","pattern":"plain"},"desc":"One segment of the LEFT back wall (runs up-right to down-left), 192px tall, plain plaster with a wooden skirting board and a top trim, light grey (tintable). Mirrored in code for the right wall."},
-    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":true,"priority":1,"id":"wall_stripe","file":"wall/wall_stripe.png","category":"wall","size":[64,224],"anchor":[32,208],"placeholder":{"shape":"wall","pattern":"stripe"},"desc":"Same wall segment as wall_plain but with vertical wallpaper stripes and a wainscot panel at the bottom, light grey (tintable)."},
-    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":false,"priority":1,"id":"door_frame","file":"wall/door_frame.png","category":"wall","size":[64,224],"anchor":[32,208],"placeholder":{"shape":"doorframe"},"desc":"Left-wall segment containing an arched doorway: warm wooden frame, dark shadowy opening, small welcome sign above. Same geometry as wall_plain."},
-    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":false,"priority":1,"id":"door_leaf","file":"wall/door_leaf.png","category":"wall","hingeX":17,"size":[64,224],"anchor":[32,208],"placeholder":{"shape":"doorleaf"},"desc":"The door panel only (rounded-top wooden door with a round window and brass knob) positioned exactly inside door_frame's opening; everything else transparent. The hinge line is at x = hingeX (17px)."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":true,"priority":1,"id":"wall_plain","file":"wall/wall_plain.png","category":"wall","size":[64,192],"anchor":[32,176],"placeholder":{"shape":"wall","pattern":"plain"},"desc":"One segment of the LEFT back wall (runs up-right to down-left), 160px tall, plain plaster with a wooden skirting board and a top trim, light grey (tintable). Mirrored in code for the right wall."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":true,"priority":1,"id":"wall_stripe","file":"wall/wall_stripe.png","category":"wall","size":[64,192],"anchor":[32,176],"placeholder":{"shape":"wall","pattern":"stripe"},"desc":"Same wall segment as wall_plain but with vertical wallpaper stripes and a wainscot panel at the bottom, light grey (tintable)."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":false,"priority":1,"id":"door_frame","file":"wall/door_frame.png","category":"wall","size":[64,192],"anchor":[32,176],"placeholder":{"shape":"doorframe"},"desc":"Left-wall segment containing an arched doorway: warm wooden frame, dark shadowy opening, small welcome sign above. Same geometry as wall_plain."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["fl"],"tintable":false,"priority":1,"id":"door_leaf","file":"wall/door_leaf.png","category":"wall","hingeX":17,"size":[64,192],"anchor":[32,176],"placeholder":{"shape":"doorleaf"},"desc":"The door panel only (rounded-top wooden door with a round window and brass knob) positioned exactly inside door_frame's opening; everything else transparent. The hinge line is at x = hingeX (17px)."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":false,"priority":1,"id":"ground_grass","file":"ground/ground_grass.png","category":"ground","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"ground","pattern":"grass"},"desc":"Isometric lawn tile: fresh soft-green grass with a few darker blades, seamless on all four edges."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":false,"priority":2,"id":"ground_path","file":"ground/ground_path.png","category":"ground","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"ground","pattern":"path"},"desc":"Isometric sidewalk tile of rounded rose-pink paving bricks with light grout lines, seamless."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":false,"priority":2,"id":"ground_road","file":"ground/ground_road.png","category":"ground","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"ground","pattern":"road"},"desc":"Isometric asphalt road tile, warm mid grey with faint speckles, seamless."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":false,"priority":2,"id":"ground_road_line","file":"ground/ground_road_line.png","category":"ground","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"ground","pattern":"roadline"},"desc":"Same as ground_road with a short white dashed lane line running through the middle, parallel to the tile's lower-left edge."},
+    {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":true,"priority":3,"id":"ground_soil","file":"ground/ground_soil.png","category":"ground","size":[128,64],"anchor":[64,32],"placeholder":{"shape":"ground","pattern":"soil"},"desc":"Isometric garden bed tile: dark tilled soil with three furrows and a low wooden edging, light enough to be tinted darker when watered (tintable)."},
+    {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":3,"id":"deco_tuft","file":"ground/deco_tuft.png","category":"ground","size":[40,24],"anchor":[20,20],"placeholder":{"shape":"tuft"},"desc":"A small tuft of grass with one tiny white flower, sits on lawn tiles for variety."},
     {"footprint":[1,1],"heightOffset":0,"directions":["any"],"tintable":true,"priority":1,"category":"furniture","id":"table_square","size":[128,128],"anchor":[64,96],"surfaceHeight":38,"placeholder":{"shape":"table","h":38},"desc":"Small square café table on a single pedestal leg, rounded corners, light neutral wood (tintable). Top surface ~38px above the floor.","file":"furniture/table_square.png"},
     {"footprint":[1,1],"heightOffset":0,"directions":["fl","bl"],"tintable":true,"priority":1,"category":"furniture","id":"chair_wood","size":[128,128],"anchor":[64,96],"seatHeight":20,"placeholder":{"shape":"chair","h":20,"back":34},"desc":"Simple wooden bistro chair with a rounded backrest, light neutral wood (tintable). fl = seat faces front-left, backrest at the back-right.","file":"furniture/chair_wood_{dir}.png"},
     {"footprint":[1,1],"heightOffset":0,"directions":["fl","bl"],"tintable":true,"priority":2,"category":"furniture","id":"chair_cushion","size":[128,128],"anchor":[64,96],"seatHeight":22,"placeholder":{"shape":"chair","h":22,"back":40,"cushion":true},"desc":"Plump upholstered chair with a puffy cushion and heart-shaped backrest, light neutral fabric (tintable).","file":"furniture/chair_cushion_{dir}.png"},
@@ -158,6 +183,7 @@
     {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":1,"category":"ui","id":"ui_button","size":[64,48],"slice":[18,18,18,18],"placeholder":{"shape":"button","color":"#fbe3b8"},"desc":"9-slice chunky rounded button, butter-cream face with a darker bottom lip (3D), brown outline.","file":"ui/ui_button.png"},
     {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":1,"category":"ui","id":"ui_button_primary","size":[64,48],"slice":[18,18,18,18],"placeholder":{"shape":"button","color":"#a8dcae"},"desc":"Same as ui_button in mint green (confirm / buy).","file":"ui/ui_button_primary.png"},
     {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":2,"category":"ui","id":"ui_button_danger","size":[64,48],"slice":[18,18,18,18],"placeholder":{"shape":"button","color":"#f4aaa6"},"desc":"Same as ui_button in soft coral red (sell / fire).","file":"ui/ui_button_danger.png"},
+    {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":2,"category":"ui","id":"ui_shelf","size":[96,64],"slice":[26,30,26,30],"placeholder":{"shape":"shelf"},"desc":"9-slice wooden plank shelf the bottom toolbar sits on: honey-coloured wood with grain lines, rounded ends, darker front lip.","file":"ui/ui_shelf.png"},
     {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":1,"category":"ui","id":"ui_chip","size":[64,48],"slice":[22,22,22,22],"placeholder":{"shape":"chip"},"desc":"9-slice pill-shaped HUD plate for the top bar: cream fill, brown outline, slight drop shadow.","file":"ui/ui_chip.png"},
     {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":3,"category":"ui","id":"ui_logo","size":[480,160],"placeholder":{"shape":"logo","text":"Rest Around"},"desc":"Game logo \"Rest Around\": chunky rounded lettering in cream with brown outline, a steaming teacup replacing the O, little sparkles.","file":"ui/ui_logo.png"},
     {"footprint":[0,0],"heightOffset":0,"directions":["any"],"tintable":false,"priority":1,"category":"ui","id":"icon_coin","size":[40,40],"anchor":[20,20],"placeholder":{"shape":"icon","glyph":"coin"},"desc":"UI icon: gold coin with a embossed spoon.","file":"ui/icon_coin.png"},

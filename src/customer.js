@@ -38,13 +38,17 @@ export class Customer extends Agent {
   }
 
   // ---------- arrival ----------
-  begin() {
-    this.x = 0.12; this.dir = 0; this.task = 'Arriving';
-    this.game.openDoor(1.4);
-    this.game.sfx('door');
-    this.gliding = true;
-    this.wait(0.5, null, { every: (dt, a) => { const k = Math.min(1, a.elapsed / 0.5); this.alpha = k; this.x = 0.12 + 0.38 * k; this.phase += dt * this.speed * 5; } });
-    this.do(() => { this.gliding = false; this.alpha = 1; this.x = 0.5; this.decide(); });
+  /** Walk in from the street: along the sidewalk, through the door, into the room. */
+  begin(fromY) {
+    const g = this.game, e = g.world.entry;
+    this.state = 'arriving'; this.task = 'Walking over'; this.alpha = 1;
+    this.x = -2.5; this.y = fromY;
+    this.glide(-2.5, e.y + 0.5);
+    this.glide(-1.1, e.y + 0.5);
+    this.wait(0, null, { until: () => !g.agentTiles.has(e.x, e.y) });
+    this.do(() => { this.claim(e.x, e.y); g.openDoor(1.4); g.sfx('door'); this.task = 'Arriving'; });
+    this.glide(0.5, e.y + 0.5);
+    this.do(() => this.decide());
   }
 
   decide() {
@@ -282,13 +286,15 @@ export class Customer extends Agent {
     this.do(() => this.exit());
   }
 
+  /** Out through the door and back onto the sidewalk, where they become a passer-by. */
   exit() {
+    const g = this.game;
     this.clearQueue();
-    this.game.openDoor(1.2);
-    this.face(2);
-    this.gliding = true;
-    this.wait(0.45, null, { every: (dt, a) => { const k = Math.min(1, a.elapsed / 0.45); this.alpha = 1 - k; this.x = 0.5 - 0.38 * k; this.y = DOOR_Y + 0.5; this.phase += dt * this.speed * 5; } });
-    this.do(() => { this.gliding = false; this.gone = true; this.releaseAll(); });
+    g.openDoor(1.4);
+    this.glide(-1.1, DOOR_Y + 0.5);
+    this.do(() => this.releaseAll());
+    this.glide(-2.5, DOOR_Y + 0.5);
+    this.do(() => { g.street.adopt(this, Math.random() < 0.5 ? -9 : g.world.size + 9); this.gone = true; });
   }
 
   baseMode() {

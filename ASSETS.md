@@ -2,8 +2,8 @@
 
 Everything the game draws comes from PNG files listed in [`assets/manifest.json`](assets/manifest.json).
 When a file is missing the game generates a clean placeholder at load time (same size, same anchor,
-soft rounded shape in the category color, labeled with its id), so the whole game is playable with
-zero art. **Drop a correctly named PNG into `assets/…` and reload — it replaces its placeholder with
+soft rounded shape in the category color), so the whole game is playable with zero art.
+Placeholders carry no text so the scene stays readable; the debug asset overlay labels them. **Drop a correctly named PNG into `assets/…` and reload — it replaces its placeholder with
 no code changes.**
 
 Press <kbd>`</kbd> in game → tick **Asset overlay** to see which assets are still placeholders
@@ -62,9 +62,15 @@ Press <kbd>`</kbd> in game → tick **Asset overlay** to see which assets are st
           v  bottom corner                        v
 ```
 
-Walls: one segment per floor tile along the back-left wall, 64×224 px, drawn for the LEFT wall
+Walls: one segment per floor tile along the back-left wall, 64×192 px (160 px tall), drawn for the LEFT wall
 (base line runs from the upper-right to the lower-left); the right wall is the same image mirrored
-and slightly shaded. The door replaces one left-wall segment (`door_frame` + `door_leaf`).
+and slightly shaded. The door replaces one left-wall segment (`door_frame` + `door_leaf`). The
+thick white top edge of the walls, their end caps and the room's foundation are simple geometry
+drawn in code; their colours are in `manifest.json → environment`.
+
+Outside the building: `ground_*` tiles (lawn, sidewalk, road, garden beds) plus `deco_tuft`. The
+street runs behind the left wall (guests walk along it to the door), and the garden beds to the
+right of the building show whatever you plant in the Garden panel.
 
 ---
 
@@ -130,7 +136,7 @@ Grouped by priority so the most visible art can be generated first. Sizes are th
 
 <!-- ASSET-TABLE:START -->
 
-_114 assets, 135 PNG files. Generated from `assets/manifest.json` by `node tools/assets-table.mjs`._
+_121 assets, 142 PNG files. Generated from `assets/manifest.json` by `node tools/assets-table.mjs`._
 
 ### Priority 1 — most visible (generate these first)
 
@@ -139,10 +145,11 @@ _114 assets, 135 PNG files. Generated from `assets/manifest.json` by `node tools
 | `floor_wood` | `floor/floor_wood.png` | 128×64 | single view | 64, 32 | **tintable** (draw light grey) | Isometric floor tile of light wooden planks running along the tile diagonal, drawn in light warm grey so it can be tinted; edges tile seamlessly. |
 | `floor_checker` | `floor/floor_checker.png` | 128×64 | single view | 64, 32 | **tintable** (draw light grey) | Isometric floor tile, 2x2 checkerboard of glossy ceramic squares in light grey tones (tintable); seamless. |
 | `floor_carpet` | `floor/floor_carpet.png` | 128×64 | single view | 64, 32 | **tintable** (draw light grey) | Isometric soft carpet tile with a tiny stitched dot pattern in light grey (tintable); seamless. |
-| `wall_plain` | `wall/wall_plain.png` | 64×224 | fl only (mirrored in code for the right wall) | 32, 208 | **tintable** (draw light grey) | One segment of the LEFT back wall (runs up-right to down-left), 192px tall, plain plaster with a wooden skirting board and a top trim, light grey (tintable). Mirrored in code for the right wall. |
-| `wall_stripe` | `wall/wall_stripe.png` | 64×224 | fl only (mirrored in code for the right wall) | 32, 208 | **tintable** (draw light grey) | Same wall segment as wall_plain but with vertical wallpaper stripes and a wainscot panel at the bottom, light grey (tintable). |
-| `door_frame` | `wall/door_frame.png` | 64×224 | fl only (left wall) | 32, 208 |  | Left-wall segment containing an arched doorway: warm wooden frame, dark shadowy opening, small welcome sign above. Same geometry as wall_plain. |
-| `door_leaf` | `wall/door_leaf.png` | 64×224 | fl only (left wall) | 32, 208 | hingeX 17 | The door panel only (rounded-top wooden door with a round window and brass knob) positioned exactly inside door_frame's opening; everything else transparent. The hinge line is at x = hingeX (17px). |
+| `wall_plain` | `wall/wall_plain.png` | 64×192 | fl only (mirrored in code for the right wall) | 32, 176 | **tintable** (draw light grey) | One segment of the LEFT back wall (runs up-right to down-left), 160px tall, plain plaster with a wooden skirting board and a top trim, light grey (tintable). Mirrored in code for the right wall. |
+| `wall_stripe` | `wall/wall_stripe.png` | 64×192 | fl only (mirrored in code for the right wall) | 32, 176 | **tintable** (draw light grey) | Same wall segment as wall_plain but with vertical wallpaper stripes and a wainscot panel at the bottom, light grey (tintable). |
+| `door_frame` | `wall/door_frame.png` | 64×192 | fl only (left wall) | 32, 176 |  | Left-wall segment containing an arched doorway: warm wooden frame, dark shadowy opening, small welcome sign above. Same geometry as wall_plain. |
+| `door_leaf` | `wall/door_leaf.png` | 64×192 | fl only (left wall) | 32, 176 | hingeX 17 | The door panel only (rounded-top wooden door with a round window and brass knob) positioned exactly inside door_frame's opening; everything else transparent. The hinge line is at x = hingeX (17px). |
+| `ground_grass` | `ground/ground_grass.png` | 128×64 | single view | 64, 32 |  | Isometric lawn tile: fresh soft-green grass with a few darker blades, seamless on all four edges. |
 | `table_square` | `furniture/table_square.png` | 128×128 | single view | 64, 96 | surface 38px up; **tintable** (draw light grey) | Small square café table on a single pedestal leg, rounded corners, light neutral wood (tintable). Top surface ~38px above the floor. |
 | `chair_wood` | `furniture/chair_wood_fl.png`<br>`furniture/chair_wood_bl.png` | 128×128 | fl + bl (fr/br = mirrored) | 64, 96 | seat 20px up; **tintable** (draw light grey) | Simple wooden bistro chair with a rounded backrest, light neutral wood (tintable). fl = seat faces front-left, backrest at the back-right. |
 | `stove_basic` | `furniture/stove_basic_fl.png`<br>`furniture/stove_basic_bl.png` | 128×144 | fl + bl (fr/br = mirrored) | 64, 112 | surface 46px up; **tintable** (draw light grey) | Compact enamel stove with two burners on top and an oven door with a round window on the front face, light grey (tintable). fl = front faces front-left. |
@@ -185,6 +192,9 @@ _114 assets, 135 PNG files. Generated from `assets/manifest.json` by `node tools
 
 | id | file(s) | size (px) | facing | anchor | notes | description |
 |---|---|---|---|---|---|---|
+| `ground_path` | `ground/ground_path.png` | 128×64 | single view | 64, 32 |  | Isometric sidewalk tile of rounded rose-pink paving bricks with light grout lines, seamless. |
+| `ground_road` | `ground/ground_road.png` | 128×64 | single view | 64, 32 |  | Isometric asphalt road tile, warm mid grey with faint speckles, seamless. |
+| `ground_road_line` | `ground/ground_road_line.png` | 128×64 | single view | 64, 32 |  | Same as ground_road with a short white dashed lane line running through the middle, parallel to the tile's lower-left edge. |
 | `chair_cushion` | `furniture/chair_cushion_fl.png`<br>`furniture/chair_cushion_bl.png` | 128×128 | fl + bl (fr/br = mirrored) | 64, 96 | seat 22px up; **tintable** (draw light grey) | Plump upholstered chair with a puffy cushion and heart-shaped backrest, light neutral fabric (tintable). |
 | `stove_deluxe` | `furniture/stove_deluxe_fl.png`<br>`furniture/stove_deluxe_bl.png` | 128×160 | fl + bl (fr/br = mirrored) | 64, 128 | surface 50px up | Fancy copper-and-cream range with four burners, brass knobs and a little chimney back panel. Not tinted. |
 | `bar_counter` | `furniture/bar_counter_fl.png`<br>`furniture/bar_counter_bl.png` | 192×160 | fl + bl (fr/br = mirrored) | 96, 112 | footprint 2×1 tiles; surface 54px up; **tintable** (draw light grey) | 2-tile bar counter with a wooden top, paneled front and a few bottles/glasses on a shelf behind; light neutral (tintable). fl = long side along x, serving side faces front-left. |
@@ -224,6 +234,7 @@ _114 assets, 135 PNG files. Generated from `assets/manifest.json` by `node tools
 | `emote_note` | `ui/emote_note.png` | 40×40 | single view | 20, 20 |  | Emote icon: music note, shown inside ui_bubble. |
 | `emote_broken` | `ui/emote_broken.png` | 40×40 | single view | 20, 20 |  | Emote icon: grey gear with a crack, shown inside ui_bubble. |
 | `ui_button_danger` | `ui/ui_button_danger.png` | 64×48 | single view | center | 9-slice 18/18/18/18 | Same as ui_button in soft coral red (sell / fire). |
+| `ui_shelf` | `ui/ui_shelf.png` | 96×64 | single view | center | 9-slice 26/30/26/30 | 9-slice wooden plank shelf the bottom toolbar sits on: honey-coloured wood with grain lines, rounded ends, darker front lip. |
 | `icon_clock` | `ui/icon_clock.png` | 40×40 | single view | 20, 20 |  | UI icon: round wall clock. |
 | `icon_gift` | `ui/icon_gift.png` | 40×40 | single view | 20, 20 |  | UI icon: wrapped gift box with bow. |
 | `icon_rotate` | `ui/icon_rotate.png` | 40×40 | single view | 20, 20 |  | UI icon: circular arrow. |
@@ -245,6 +256,8 @@ _114 assets, 135 PNG files. Generated from `assets/manifest.json` by `node tools
 
 | id | file(s) | size (px) | facing | anchor | notes | description |
 |---|---|---|---|---|---|---|
+| `ground_soil` | `ground/ground_soil.png` | 128×64 | single view | 64, 32 | **tintable** (draw light grey) | Isometric garden bed tile: dark tilled soil with three furrows and a low wooden edging, light enough to be tinted darker when watered (tintable). |
+| `deco_tuft` | `ground/deco_tuft.png` | 40×24 | single view | 20, 20 |  | A small tuft of grass with one tiny white flower, sits on lawn tiles for variety. |
 | `plant_tall` | `furniture/plant_tall.png` | 128×176 | single view | 64, 144 |  | Tall potted monstera / fiddle-leaf plant in a woven basket pot. |
 | `lamp_floor` | `furniture/lamp_floor.png` | 128×192 | single view | 64, 160 | **tintable** (draw light grey) | Floor lamp with a thin pole and a scalloped fabric shade, warm glow, light neutral (tintable). |
 | `dish_bread` | `food/dish_bread.png` | 64×64 | single view | 32, 52 |  | Cheesy Bread: golden toast slices with melted cheese. Icon also used on tables, trays and order bubbles. |
@@ -265,7 +278,9 @@ _114 assets, 135 PNG files. Generated from `assets/manifest.json` by `node tools
 
 ---
 
-## 7. Optional UI font
+## 7. Fonts
 
-If `assets/fonts/ui.woff2` exists it is loaded as the UI font (`manifest.font`). Otherwise the UI
-uses a rounded system font stack.
+Two fonts are bundled under `assets/fonts/` (both SIL Open Font License, licence files alongside):
+`ui.woff2` (Nunito, body text) and `display.woff2` (Fredoka SemiBold, titles, numbers, buttons).
+Replace either file to change the look; `manifest.json → fonts` holds the family names and fallback
+stacks used when a file is missing.

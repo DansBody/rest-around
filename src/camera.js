@@ -11,7 +11,7 @@ export class Camera {
   }
   setViewport(w, h) { this.vw = w; this.vh = h; this.clamp(); }
   setRoom(size) {
-    this.bounds = { x0: -size * ISO.hw, x1: size * ISO.hw, y0: -ISO.wallH * 0.6, y1: size * ISO.th + 120 };
+    this.bounds = { x0: -(size + 5) * ISO.hw, x1: (size + 3) * ISO.hw, y0: -ISO.wallH - 120, y1: size * ISO.th + 200 }; // room + street + garden
     this.clamp();
   }
   /** Fit the room to the viewport (leaving room for HUD bars). */

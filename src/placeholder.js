@@ -119,18 +119,25 @@ const SHAPES = {
 
   wall(ctx, def, dir, ph) {
     ctx.save();
-    ctx.transform(1, -0.5, 0, 1, 0, 32); // wall-plane coordinates: a = 0..64 along the wall, y = 0..192 down
+    ctx.transform(1, -0.5, 0, 1, 0, 32); // wall-plane coordinates: a = 0..64 along the wall, y = 0..H down
     const H = def.size[1] - 32;
     ctx.fillStyle = NEUTRAL; ctx.fillRect(0, 0, 64, H);
+    const wain = Math.round(H * 0.36);
     if (ph.pattern === 'stripe') {
-      ctx.fillStyle = '#e8e1d7';
-      for (let a = 4; a < 64; a += 16) ctx.fillRect(a, 0, 7, H - 70);
-      ctx.fillStyle = '#e4dbcf'; ctx.fillRect(0, H - 70, 64, 56);
-      ctx.strokeStyle = '#d3c8ba'; ctx.lineWidth = 1.5; ctx.strokeRect(6, H - 62, 52, 40);
+      ctx.fillStyle = '#ebe4da';
+      for (let a = 5; a < 64; a += 16) ctx.fillRect(a, 0, 7, H - wain);
+      ctx.fillStyle = '#e6ddd1'; ctx.fillRect(0, H - wain, 64, wain - 12);
+      ctx.strokeStyle = '#d8cdbf'; ctx.lineWidth = 1.5;
+      for (const a of [6, 36]) ctx.strokeRect(a, H - wain + 8, 22, wain - 28);
+      ctx.fillStyle = '#ddd2c4'; ctx.fillRect(0, H - wain - 4, 64, 5); // chair rail
+    } else {
+      // soft plaster mottling
+      ctx.fillStyle = 'rgba(215,205,192,0.14)';
+      for (const [x, y, r] of [[16, 44, 10], [46, 84, 12]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
     }
-    ctx.fillStyle = '#d7ccbf'; ctx.fillRect(0, H - 14, 64, 14); // skirting
-    ctx.fillStyle = '#e2d9cd'; ctx.fillRect(0, 0, 64, 8); // top trim
-    ctx.strokeStyle = 'rgba(120,100,85,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(0.5, 0.5, 63, H - 1);
+    ctx.fillStyle = '#d9cebf'; ctx.fillRect(0, H - 12, 64, 12); // skirting
+    ctx.fillStyle = '#ece5dc'; ctx.fillRect(0, H - 12, 64, 3);
+    ctx.fillStyle = '#e4dbcf'; ctx.fillRect(0, 0, 64, 7); // top trim
     ctx.restore();
   },
 
@@ -138,28 +145,65 @@ const SHAPES = {
     SHAPES.wall(ctx, def, 'fl', { pattern: 'plain' });
     ctx.save();
     ctx.transform(1, -0.5, 0, 1, 0, 32);
-    const H = def.size[1] - 32;
-    // tint the plain wall warm (door segment is not tinted by wallpaper)
-    ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#f6e2c9'; ctx.fillRect(0, 0, 64, H); ctx.globalCompositeOperation = 'source-over';
-    const arch = () => { ctx.beginPath(); ctx.moveTo(12, H); ctx.lineTo(12, 78); ctx.arc(32, 78, 20, Math.PI, 0); ctx.lineTo(52, H); ctx.closePath(); };
-    arch(); ctx.fillStyle = '#b8875a'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(17, H); ctx.lineTo(17, 80); ctx.arc(32, 80, 15, Math.PI, 0); ctx.lineTo(47, H); ctx.closePath();
+    const H = def.size[1] - 32, yA = H - 96;
+    // warm the plain wall (the door segment is not tinted by wallpaper)
+    ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#f8ead6'; ctx.fillRect(0, 0, 64, H); ctx.globalCompositeOperation = 'source-over';
+    ctx.beginPath(); ctx.moveTo(12, H); ctx.lineTo(12, yA); ctx.arc(32, yA, 20, Math.PI, 0); ctx.lineTo(52, H); ctx.closePath();
+    fillStroke(ctx, '#c4926a', '#8a5f40', 1.5);
+    ctx.beginPath(); ctx.moveTo(17, H); ctx.lineTo(17, yA + 2); ctx.arc(32, yA + 2, 15, Math.PI, 0); ctx.lineTo(47, H); ctx.closePath();
     ctx.fillStyle = '#4b3a34'; ctx.fill();
-    rr(ctx, 18, 28, 28, 14, 5); fillStroke(ctx, '#fff4dc', '#8a6446', 1.5);
+    rr(ctx, 17, yA - 42, 30, 14, 5); fillStroke(ctx, '#fff6e3', '#8a6446', 1.5);
+    ctx.fillStyle = '#e59a8c'; ctx.beginPath(); ctx.arc(32, yA - 35, 3, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   },
 
   doorleaf(ctx, def) {
     ctx.save();
     ctx.transform(1, -0.5, 0, 1, 0, 32);
-    const H = def.size[1] - 32;
-    ctx.beginPath(); ctx.moveTo(17, H); ctx.lineTo(17, 80); ctx.arc(32, 80, 15, Math.PI, 0); ctx.lineTo(47, H); ctx.closePath();
-    fillStroke(ctx, '#d9a878', '#7a5438', 1.5);
-    ctx.strokeStyle = '#b98758'; ctx.lineWidth = 1.2;
-    ctx.strokeRect(21, 118, 22, 30); ctx.strokeRect(21, 152, 22, 22);
-    circle(ctx, 32, 92, 7); fillStroke(ctx, '#cfe8f5', '#7a5438', 1.5);
-    circle(ctx, 42, 140, 2.5); fillStroke(ctx, '#f2cf5b', '#8a6a2a', 1);
+    const H = def.size[1] - 32, yA = H - 94;
+    ctx.beginPath(); ctx.moveTo(17, H); ctx.lineTo(17, yA); ctx.arc(32, yA, 15, Math.PI, 0); ctx.lineTo(47, H); ctx.closePath();
+    fillStroke(ctx, '#f1efe6', '#8f8676', 1.5);
+    ctx.strokeStyle = '#d6d0c2'; ctx.lineWidth = 1.2;
+    ctx.strokeRect(21, yA + 26, 22, 28); ctx.strokeRect(21, yA + 60, 22, H - yA - 66);
+    circle(ctx, 32, yA + 8, 7); fillStroke(ctx, '#cfe8f5', '#8f8676', 1.5);
+    circle(ctx, 42, yA + 56, 2.5); fillStroke(ctx, '#f2cf5b', '#8a6a2a', 1);
     ctx.restore();
+  },
+
+  ground(ctx, def, dir, ph) {
+    const [w, h] = def.size;
+    const P = (u, v) => [w / 2 + (u - v) * w / 2, (u + v) * h / 2];
+    const diamond = () => poly(ctx, [P(0, 0), P(1, 0), P(1, 1), P(0, 1)]);
+    const base = { grass: '#a8d47c', path: '#efbdb3', road: '#a2a6ab', roadline: '#a2a6ab', soil: '#dcc0a2' }[ph.pattern] || '#ccc';
+    diamond(); ctx.fillStyle = base; ctx.fill();
+    ctx.save(); diamond(); ctx.clip();
+    if (ph.pattern === 'grass') {
+      ctx.strokeStyle = '#93c36a'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      for (const [u, v] of [[0.2, 0.3], [0.62, 0.18], [0.45, 0.66], [0.8, 0.55], [0.3, 0.84], [0.72, 0.86]]) {
+        const [x, y] = P(u, v); ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.lineTo(x - 1, y - 5); ctx.moveTo(x + 1, y); ctx.lineTo(x + 3, y - 4); ctx.stroke();
+      }
+    } else if (ph.pattern === 'path') {
+      ctx.strokeStyle = '#dca79c'; ctx.lineWidth = 1.5;
+      for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(...P(0, i / 4)); ctx.lineTo(...P(1, i / 4)); ctx.stroke(); }
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) { const u = (j + (i % 2) * 0.5) / 2 + 0.25; ctx.beginPath(); ctx.moveTo(...P(u, i / 4)); ctx.lineTo(...P(u, (i + 1) / 4)); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; poly(ctx, [P(0, 0), P(1, 0), P(1, 0.08), P(0, 0.08)]); ctx.fill();
+    } else if (ph.pattern === 'road' || ph.pattern === 'roadline') {
+      ctx.fillStyle = 'rgba(80,80,90,0.18)';
+      for (const [u, v] of [[0.2, 0.3], [0.7, 0.2], [0.5, 0.7], [0.85, 0.8], [0.3, 0.6]]) { const [x, y] = P(u, v); ctx.fillRect(x, y, 2, 1.5); }
+      if (ph.pattern === 'roadline') { ctx.strokeStyle = '#fbf8ef'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(...P(0.5, 0.15)); ctx.lineTo(...P(0.5, 0.45)); ctx.moveTo(...P(0.5, 0.62)); ctx.lineTo(...P(0.5, 0.92)); ctx.stroke(); }
+    } else if (ph.pattern === 'soil') {
+      ctx.strokeStyle = '#c4a283'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (const v of [0.3, 0.5, 0.7]) { ctx.beginPath(); ctx.moveTo(...P(0.15, v)); ctx.lineTo(...P(0.85, v)); ctx.stroke(); }
+      ctx.strokeStyle = '#efe0cc'; ctx.lineWidth = 5; diamond(); ctx.stroke(); // wooden edging
+    }
+    ctx.restore();
+  },
+  tuft(ctx, def) {
+    const [w, h] = def.size;
+    ctx.strokeStyle = '#7fb85b'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    for (const [x0, dx, hh] of [[w / 2 - 6, -4, 12], [w / 2 - 1, 0, 16], [w / 2 + 4, 5, 12], [w / 2 + 9, 7, 8]]) { ctx.beginPath(); ctx.moveTo(x0, h - 4); ctx.quadraticCurveTo(x0, h - 4 - hh * 0.6, x0 + dx, h - 4 - hh); ctx.stroke(); }
+    circle(ctx, w / 2 + 11, h - 14, 2.8); fillStroke(ctx, '#fffdf5', '#d9cfb8', 1);
+    circle(ctx, w / 2 + 11, h - 14, 1); ctx.fillStyle = '#f5c65b'; ctx.fill();
   },
 
   table(ctx, def, dir, ph, color, grid) {
@@ -421,24 +465,34 @@ const SHAPES = {
   icon(ctx, def, dir, ph) { drawGlyph(ctx, ph.glyph, def.size[0], def.size[1]); },
   panel(ctx, def) {
     const [w, h] = def.size;
-    rr(ctx, 3, 5, w - 6, h - 6, 26); ctx.fillStyle = 'rgba(80,50,30,0.25)'; ctx.fill();
-    rr(ctx, 3, 3, w - 6, h - 8, 26); fillStroke(ctx, '#fff6e6', '#7b5238', 5);
-    rr(ctx, 11, 11, w - 22, h - 24, 18); ctx.setLineDash([5, 4]); ctx.strokeStyle = '#e7c9a4'; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]);
+    rr(ctx, 3, 6, w - 6, h - 7, 24); ctx.fillStyle = 'rgba(90,55,30,0.28)'; ctx.fill();
+    rr(ctx, 3, 3, w - 6, h - 8, 24); fillStroke(ctx, '#d39a68', '#7a4f31', 3); // wooden frame
+    rr(ctx, 11, 11, w - 22, h - 24, 16); fillStroke(ctx, '#fff8ec', '#b98356', 2); // paper
+    for (const [x, y] of [[17, 17], [w - 17, 17], [17, h - 19], [w - 17, h - 19]]) { circle(ctx, x, y, 2); ctx.fillStyle = '#e3c7a2'; ctx.fill(); }
   },
   button(ctx, def, dir, ph) {
     const [w, h] = def.size;
-    rr(ctx, 2, 5, w - 4, h - 7, 14); fillStroke(ctx, shade(ph.color, -0.25), '#6e4a33', 3);
-    rr(ctx, 2, 2, w - 4, h - 10, 14); fillStroke(ctx, ph.color, '#6e4a33', 3);
-    rr(ctx, 9, 7, w - 18, 7, 4); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+    rr(ctx, 2, 5, w - 4, h - 7, 16); fillStroke(ctx, shade(ph.color, -0.28), '#7a4f31', 2.5);
+    rr(ctx, 2, 2, w - 4, h - 10, 16); fillStroke(ctx, ph.color, '#7a4f31', 2.5);
+    rr(ctx, 10, 6, w - 20, 8, 4); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
   },
   chip(ctx, def) {
     const [w, h] = def.size;
-    rr(ctx, 2, 4, w - 4, h - 6, 20); ctx.fillStyle = 'rgba(80,50,30,0.25)'; ctx.fill();
-    rr(ctx, 2, 2, w - 4, h - 7, 20); fillStroke(ctx, '#fff6e6', '#7b5238', 3.5);
+    rr(ctx, 2, 5, w - 4, h - 6, 20); ctx.fillStyle = 'rgba(90,55,30,0.25)'; ctx.fill();
+    rr(ctx, 2, 2, w - 4, h - 7, 20); fillStroke(ctx, '#fff8ec', '#8b5e3c', 3);
+  },
+  shelf(ctx, def) {
+    const [w, h] = def.size;
+    rr(ctx, 2, 8, w - 4, h - 9, 18); ctx.fillStyle = 'rgba(90,55,30,0.3)'; ctx.fill();
+    rr(ctx, 2, 2, w - 4, h - 12, 18); fillStroke(ctx, '#dca36a', '#7a4f31', 3);
+    rr(ctx, 2, h - 22, w - 4, 12, 8); fillStroke(ctx, '#b47b45', '#7a4f31', 2.5);
+    ctx.strokeStyle = 'rgba(160,100,55,0.45)'; ctx.lineWidth = 1.5;
+    for (const y of [14, 24, 34]) { ctx.beginPath(); ctx.moveTo(12, y); ctx.bezierCurveTo(w * 0.3, y - 3, w * 0.6, y + 3, w - 12, y); ctx.stroke(); }
+    rr(ctx, 10, 6, w - 20, 4, 2); ctx.fillStyle = 'rgba(255,235,200,0.6)'; ctx.fill();
   },
   logo(ctx, def, dir, ph) {
     const [w, h] = def.size;
-    ctx.font = `900 ${Math.floor(h * 0.48)}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `600 ${Math.floor(h * 0.48)}px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round'; ctx.lineWidth = 14; ctx.strokeStyle = '#6b4230'; ctx.strokeText(ph.text, w / 2, h / 2);
     ctx.fillStyle = '#fff1d6'; ctx.fillText(ph.text, w / 2, h / 2);
     ctx.fillStyle = '#f6a5b2'; ctx.fillText(ph.text, w / 2, h / 2 + 3); ctx.fillStyle = '#fff4df'; ctx.fillText(ph.text, w / 2, h / 2 - 1);
@@ -458,7 +512,8 @@ const SHAPES = {
   },
 };
 
-export const FONT = "'Nunito','Varela Round','Trebuchet MS','Segoe UI',system-ui,sans-serif";
+export const FONT = "'RA Body','Nunito','Varela Round','Trebuchet MS','Segoe UI',system-ui,sans-serif";
+export const DISPLAY_FONT = "'RA Display','Fredoka','Baloo 2','RA Body','Nunito','Trebuchet MS',system-ui,sans-serif";
 
 function star(ctx, cx, cy, r1, r2, n = 5) {
   ctx.beginPath();
@@ -527,27 +582,9 @@ function drawGlyph(ctx, g, w, h) {
   ctx.restore();
 }
 
-function drawLabel(ctx, text, w, h, mirror) {
-  let size = Math.min(12, Math.max(7, w / 11));
-  ctx.font = `800 ${size}px ${FONT}`;
-  while (ctx.measureText(text).width > w - 8 && size > 6) { size -= 1; ctx.font = `800 ${size}px ${FONT}`; }
-  const tw = ctx.measureText(text).width;
-  const y = h - size - 4;
-  ctx.save();
-  if (mirror) { ctx.translate(w, 0); ctx.scale(-1, 1); }
-  ctx.globalAlpha = 0.85;
-  rr(ctx, w / 2 - tw / 2 - 4, y - 2, tw + 8, size + 5, (size + 5) / 2);
-  ctx.fillStyle = 'rgba(255,250,240,0.85)'; ctx.fill();
-  ctx.fillStyle = '#6b4b3a'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText(text, w / 2, y);
-  ctx.restore();
-}
-
-const NO_LABEL = new Set(['panel', 'button', 'chip', 'logo', 'icon', 'wall', 'doorframe', 'doorleaf', 'bubble']); // walls/icons: id shown in the debug asset overlay / tooltip
-
 /**
- * Build a placeholder canvas for a manifest entry.
- * @param mirrorText pre-mirror the label so it reads correctly when the sprite is drawn flipped.
+ * Build a placeholder canvas for a manifest entry. Placeholders carry no text; the debug
+ * "Asset overlay" tags them with their ids instead.
  */
 export function makePlaceholder(def, dir, grid, catColor, mirrorText = false) {
   const [w, h] = def.size;
@@ -556,12 +593,5 @@ export function makePlaceholder(def, dir, grid, catColor, mirrorText = false) {
   const ph = def.placeholder || { shape: 'generic' };
   const fn = SHAPES[ph.shape] || SHAPES.generic;
   try { fn(ctx, def, dir, ph, ph.color || catColor, grid); } catch (e) { console.warn('placeholder failed', def.id, e); SHAPES.generic(ctx, def, dir, ph, catColor); }
-  // Label with the asset id when there is room (tiny layers/icons are labeled via the debug asset overlay instead).
-  if (w >= 56 && h >= 40 && !NO_LABEL.has(ph.shape) && !/^[ch]_/.test(ph.shape)) {
-    ctx.save();
-    if (ph.shape === 'floor') ctx.globalAlpha = 0.3;
-    drawLabel(ctx, def.id + (dir !== 'any' ? `·${dir}` : ''), w, ph.shape === 'floor' ? h - 12 : h, mirrorText);
-    ctx.restore();
-  }
   return c;
 }

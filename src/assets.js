@@ -39,7 +39,7 @@ class AssetStore {
       for (const dir of def.directions) jobs.push([def, dir]);
     }
     let done = 0;
-    const fontJob = this.loadFont();
+    await this.loadFont(); // before placeholders, which draw text
     await Promise.all(jobs.map(async ([def, dir]) => {
       const file = def.file.replace('{dir}', dir);
       const img = await loadImage(BASE + file + '?v=' + (this.manifest.version || 1));
@@ -47,29 +47,28 @@ class AssetStore {
       const grid = this.manifest.grid;
       let rec;
       if (img) rec = { img, flipImg: img, placeholder: false, file };
-      else rec = { img: makePlaceholder(def, dir, grid, cat, false), flipImg: null, placeholder: true, file, cat };
-      if (rec.placeholder) {
-        // lazily-built flipped-label version for mirrored drawing
-        Object.defineProperty(rec, 'flipImg', { configurable: true, get: () => { const c = makePlaceholder(def, dir, grid, cat, true); Object.defineProperty(rec, 'flipImg', { value: c }); return c; } });
-      }
+      else { const ph = makePlaceholder(def, dir, grid, cat); rec = { img: ph, flipImg: ph, placeholder: true, file, cat }; }
       this.images.set(def.id + '|' + dir, rec);
       done++;
       if (onProgress) onProgress(done / jobs.length);
     }));
-    await fontJob;
   }
 
+  /** Optional bundled fonts (manifest.fonts.ui / .display). Missing files fall back to system fonts. */
   async loadFont() {
-    const f = this.manifest.font;
-    if (!f || !f.file || typeof FontFace === 'undefined') return;
-    try {
-      const res = await fetch(BASE + f.file, { method: 'HEAD' });
-      if (!res.ok) return;
-      const face = new FontFace(f.family, `url(${BASE + f.file})`);
-      await face.load();
-      document.fonts.add(face);
-      document.documentElement.style.setProperty('--font', `'${f.family}', ${f.fallback}`);
-    } catch { /* keep fallback font */ }
+    const fonts = this.manifest.fonts || {};
+    const root = document.documentElement.style;
+    await Promise.all(Object.entries(fonts).map(async ([role, f]) => {
+      const cssVar = role === 'display' ? '--font-display' : '--font';
+      root.setProperty(cssVar, f.fallback);
+      if (!f.file || typeof FontFace === 'undefined') return;
+      try {
+        const face = new FontFace(f.family, `url(${BASE + f.file})`, f.weight ? { weight: f.weight } : {});
+        await face.load();
+        document.fonts.add(face);
+        root.setProperty(cssVar, `'${f.family}', ${f.fallback}`);
+      } catch { /* keep the fallback stack */ }
+    }));
   }
 
   def(id) {

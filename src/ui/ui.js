@@ -136,9 +136,9 @@ export class UI {
   applySkin() {
     const st = document.documentElement.style;
     const set = (v, id) => { st.setProperty(v, `url(${assets.url(id)})`); };
-    set('--panel-img', 'ui_panel'); set('--btn-img', 'ui_button'); set('--btn-primary-img', 'ui_button_primary'); set('--btn-danger-img', 'ui_button_danger'); set('--chip-img', 'ui_chip');
+    set('--panel-img', 'ui_panel'); set('--shelf-img', 'ui_shelf'); set('--btn-img', 'ui_button'); set('--btn-primary-img', 'ui_button_primary'); set('--btn-danger-img', 'ui_button_danger'); set('--chip-img', 'ui_chip');
     const sl = (id) => (assets.def(id).slice || [16])[0];
-    st.setProperty('--panel-slice', sl('ui_panel')); st.setProperty('--btn-slice', sl('ui_button')); st.setProperty('--chip-slice', sl('ui_chip'));
+    st.setProperty('--panel-slice', sl('ui_panel')); st.setProperty('--btn-slice', sl('ui_button')); st.setProperty('--chip-slice', sl('ui_chip')); st.setProperty('--shelf-slice', sl('ui_shelf'));
   }
 
   // ---------------- toolbar & panels ----------------

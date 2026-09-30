@@ -72,6 +72,7 @@ export class Agent {
   // -------- action queue --------
   walk(x, y, opts = {}) { this.queue.push({ type: 'walk', x, y, goals: opts.goals, goalOk: opts.goalOk, onFail: opts.onFail }); return this; }
   face(dirOrTile) { this.queue.push({ type: 'face', v: dirOrTile }); return this; }
+  glide(x, y) { this.queue.push({ type: 'glide', x, y }); return this; }
   wait(t, mode = null, opts = {}) { this.queue.push({ type: 'wait', t, mode, ...opts }); return this; }
   do(fn) { this.queue.push({ type: 'do', fn }); return this; }
   clearQueue() { this.queue.length = 0; this.path = null; }
@@ -100,7 +101,7 @@ export class Agent {
       if (r === 'fail') { this.queue.shift(); if (a.onFail) a.onFail(); else this.onActionFail(a); continue; }
       break;
     }
-    this.moving = !!this.stepping;
+    this.moving = !!this.stepping || !!this.gliding;
     // stuck detector (debug panel / soak tests): trying to walk but not moving
     const walking = this.queue.length && this.queue[0].type === 'walk';
     if (walking && Math.abs(this.x - this._lx) + Math.abs(this.y - this._ly) < 1e-5) this.stuckT += dt; else this.stuckT = 0;
@@ -129,6 +130,13 @@ export class Agent {
         return 'running';
       }
       case 'walk': return this.runWalk(a, dt);
+      case 'glide': { // straight-line move off the tile grid (street / doorway)
+        const dx = a.x - this.x, dy = a.y - this.y, d = Math.hypot(dx, dy);
+        const step = Math.min(d, this.speed * dt);
+        if (d > 1e-4) { this.dir = dirFromDelta(dx, dy, this.dir); this.x += (dx / d) * step; this.y += (dy / d) * step; this.phase += step * Math.PI * 1.6; }
+        this.gliding = step < d - 1e-4;
+        return this.gliding ? 'running' : 'done';
+      }
     }
     return 'done';
   }

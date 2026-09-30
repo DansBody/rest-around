@@ -5,7 +5,7 @@ import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById } from './data.js';
 import { drawDoll, emoteOffset } from './doll.js';
 import { clamp, easeOutBack } from './util.js';
-import { FONT } from './placeholder.js';
+import { FONT, DISPLAY_FONT } from './placeholder.js';
 
 const EPS = 1e-3;
 
@@ -37,10 +37,14 @@ export class Renderer {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
+    this.drawGround();
     this.drawFloor();
     if (game.build.active || game.debug.grid) this.drawGrid();
     if (game.debug.grid) this.drawPathDebug();
+    this.drawOutsiders(false); // on the street, behind the walls
     this.drawWalls();
+    this.drawWallCaps();
+    this.drawOutsiders(true);  // stepping through the doorway
     this.drawTrash();
     this.drawSorted();
     this.drawBuildOverlay();
@@ -50,16 +54,74 @@ export class Renderer {
 
   drawBackground() {
     const { ctx, canvas } = this;
-    const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    g.addColorStop(0, '#f9e4c8'); g.addColorStop(1, '#f3cfb4');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // soft polka dots
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    const s = 46 * this.dpr, off = (this.time * 6 * this.dpr) % s;
-    for (let y = -s; y < canvas.height + s; y += s) for (let x = -s; x < canvas.width + s; x += s) {
-      const ox = ((y / s) % 2) * s / 2;
-      ctx.beginPath(); ctx.arc(x + ox + off, y + off * 0.5, 5 * this.dpr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = assets.manifest.environment?.background || '#a8d47c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  /** Visible tile range of the world (with margin), for culling outdoor tiles. */
+  viewTiles(margin = 2) {
+    const cam = this.game.camera;
+    const pts = [cam.toWorld(0, 0), cam.toWorld(cam.vw, 0), cam.toWorld(0, cam.vh), cam.toWorld(cam.vw, cam.vh)];
+    const gs = pts.map((p) => ({ x: (p.x / 64 + p.y / 32) / 2, y: (p.y / 32 - p.x / 64) / 2 }));
+    return {
+      x0: Math.floor(Math.min(...gs.map((g) => g.x))) - margin, x1: Math.ceil(Math.max(...gs.map((g) => g.x))) + margin,
+      y0: Math.floor(Math.min(...gs.map((g) => g.y))) - margin, y1: Math.ceil(Math.max(...gs.map((g) => g.y))) + margin,
+    };
+  }
+
+  /** What lies at an outdoor tile: street on the door side, the kitchen garden beside the right wall. */
+  groundAt(x, y) {
+    const w = this.game.world;
+    if (x >= 0 && y >= 0 && x < w.size && y < w.size) return null;
+    const plot = this.plotIndexAt(x, y);
+    if (plot >= 0) return 'ground_soil';
+    if (x === -1 && y === DOOR_Y) return 'ground_path';
+    if (x === -2 || x === -3 || x === -7) return 'ground_path';
+    if (x === -5) return 'ground_road_line';
+    if (x === -4 || x === -6) return 'ground_road';
+    return 'ground_grass';
+  }
+  /** Garden plots sit on the lawn to the right of the building, two columns wide. */
+  plotIndexAt(x, y) {
+    const w = this.game.world, n = this.game.state.garden.length;
+    const i = x - (w.size + 1), j = y - 1;
+    if (i < 0 || i > 1 || j < 0) return -1;
+    const k = j * 2 + i;
+    return k < n ? k : -1;
+  }
+
+  drawGround() {
+    const { ctx, game } = this;
+    const v = this.viewTiles();
+    for (let x = Math.max(v.x0, -14); x <= Math.min(v.x1, game.world.size + 14); x++) {
+      for (let y = Math.max(v.y0, -14); y <= Math.min(v.y1, game.world.size + 14); y++) {
+        const id = this.groundAt(x, y);
+        if (!id) continue;
+        const c = toScreen(x + 0.5, y + 0.5);
+        if (id === 'ground_soil') {
+          const p = game.state.garden[this.plotIndexAt(x, y)];
+          assets.draw(ctx, id, 'any', c.x, c.y, { tint: p && p.crop && p.water > 0 ? '#a88468' : '#fff4ea' });
+        } else assets.draw(ctx, id, 'any', c.x, c.y);
+        if (id === 'ground_grass') {
+          const hsh = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+          if (hsh % 100 < 22) assets.draw(ctx, 'deco_tuft', 'any', c.x + ((hsh >> 8) % 50) - 25, c.y + ((hsh >> 16) % 24) - 12);
+        }
+      }
     }
+    // crops growing in the garden plots (mirrors the Garden panel)
+    game.state.garden.forEach((p, i) => {
+      if (!p.crop) return;
+      const x = game.world.size + 1 + (i % 2), y = 1 + Math.floor(i / 2);
+      const c = toScreen(x + 0.5, y + 0.5);
+      for (const [du, dv] of [[-0.18, -0.12], [0.16, 0.14], [0.02, -0.02]]) {
+        const q = toScreen(x + 0.5 + du, y + 0.5 + dv);
+        const bob = p.prog >= 1 ? Math.abs(Math.sin(this.time * 3 + i)) * 3 : 0;
+        if (p.prog < 0.35) assets.draw(ctx, 'garden_sprout', 'any', q.x, q.y, { scale: 0.45 + p.prog });
+        else assets.drawIcon(ctx, 'ing_' + p.crop, q.x, q.y - 12 - bob, 16 + p.prog * 16);
+      }
+      if (p.prog >= 1) this.bubble(c.x, c.y - 34, 'icon_harvest', 0.55, this.time);
+      else if (p.water <= 0) this.bubble(c.x, c.y - 30, 'icon_water', 0.5, this.time);
+    });
   }
 
   drawFloor() {
@@ -67,12 +129,13 @@ export class Renderer {
     // subtle drop shadow under the room
     const L = toScreen(0, w.size), R = toScreen(w.size, 0), B = toScreen(w.size, w.size), T = toScreen(0, 0);
     ctx.save();
-    ctx.fillStyle = 'rgba(120,70,50,0.18)';
+    const env = assets.manifest.environment || {};
+    ctx.fillStyle = 'rgba(60,90,40,0.22)';
     ctx.beginPath(); ctx.moveTo(T.x, T.y + 10); ctx.lineTo(R.x + 10, R.y + 12); ctx.lineTo(B.x, B.y + 16); ctx.lineTo(L.x - 10, L.y + 12); ctx.closePath(); ctx.fill();
     // floor thickness edge (front sides of the room slab)
-    ctx.fillStyle = '#c99873';
+    ctx.fillStyle = env.foundation || '#e9dcc6';
     ctx.beginPath(); ctx.moveTo(L.x, L.y); ctx.lineTo(B.x, B.y); ctx.lineTo(B.x, B.y + 12); ctx.lineTo(L.x, L.y + 12); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#b58462';
+    ctx.fillStyle = env.foundationSide || '#d3c3a9';
     ctx.beginPath(); ctx.moveTo(B.x, B.y); ctx.lineTo(R.x, R.y); ctx.lineTo(R.x, R.y + 12); ctx.lineTo(B.x, B.y + 12); ctx.closePath(); ctx.fill();
     ctx.restore();
     for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) {
@@ -150,6 +213,38 @@ export class Renderer {
     }
   }
 
+  /** Thick white top edge and end caps of the two back walls (code-drawn geometry). */
+  drawWallCaps() {
+    const { ctx, game } = this;
+    const env = assets.manifest.environment || {};
+    const n = game.world.size, H = assets.grid.wallHeight, t = env.wallCapThickness ?? 0.14;
+    const P = (x, y, z) => { const p = toScreen(x, y); return [p.x, p.y - z]; };
+    const quad = (pts, fill) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(...p) : ctx.moveTo(...p))); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+    const top = env.wallCap || '#fffaf1', side = env.wallCapSide || '#e9dfd0';
+    ctx.save();
+    // end faces at the open front ends of each wall
+    quad([P(-t, n, H), P(0, n, H), P(0, n, 0), P(-t, n, 0)], side);
+    quad([P(n, -t, H), P(n, 0, H), P(n, 0, 0), P(n, -t, 0)], side);
+    // tops
+    quad([P(-t, -t, H), P(0, -t, H), P(0, n, H), P(-t, n, H)], top);
+    quad([P(-t, -t, H), P(n, -t, H), P(n, 0, H), P(-t, 0, H)], top);
+    ctx.strokeStyle = 'rgba(150,130,110,0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(...P(0, n, H)); ctx.lineTo(...P(0, 0, H)); ctx.lineTo(...P(n, 0, H)); ctx.stroke();
+    ctx.restore();
+  }
+
+  /** People outside: passers-by and guests walking the street (drawn before the walls), or in the doorway (after). */
+  drawOutsiders(doorway) {
+    const { ctx, game } = this;
+    const list = [...game.ambient, ...game.agents.filter((a) => a.visible && a.x < 0)];
+    const pick = list.filter((a) => (doorway ? a.x >= -0.95 : a.x < -0.95));
+    pick.sort((a, b) => a.x + a.y - (b.x + b.y));
+    for (const a of pick) {
+      const p = toScreen(a.x, a.y);
+      drawDoll(ctx, a.look, a.pose, DIRS[a.dir].face, p.x, p.y);
+    }
+  }
+
   drawTrash() {
     const { ctx, game } = this;
     for (const t of game.world.trash) {
@@ -171,7 +266,7 @@ export class Renderer {
       items.push({ kind: 'f', f, x0: f.x, y0: f.y, x1: f.x + w, y1: f.y + h, rect: [c.x - def.anchor[0], c.y - def.anchor[1], def.size[0], def.size[1]], depth: f.x + f.y + (w + h) / 2 });
     }
     for (const a of game.agents) {
-      if (!a.visible) continue;
+      if (!a.visible || a.x < 0) continue;
       const r = 0.3;
       let ax = a.x, ay = a.y;
       const it = { kind: 'a', a, x0: ax - r, y0: ay - r, x1: ax + r, y1: ay + r, depth: ax + ay };
@@ -265,14 +360,24 @@ export class Renderer {
       if (!a.visible) continue;
       const p = this.agentScreen(a);
       const eo = emoteOffset(a.pose);
-      const hx = p.x + eo[0], hy = p.y + eo[1] - (a.pose.hop > 0 && a.pose.hop < 1 ? Math.sin(a.pose.hop * Math.PI) * 13 : 0);
+      const hop = a.pose.hop > 0 && a.pose.hop < 1 ? Math.sin(a.pose.hop * Math.PI) * 13 : 0;
+      let hx = p.x + eo[0], hy = p.y + eo[1] - hop;
+      if (a.kind === 'staff' && a.x >= 0) {
+        // name tag over the head (like a name badge), bubble floats above it
+        const ny = p.y - (a.pose.lift || 0) - hop - (a.look.hat ? 134 : 106) + (a.pose.mode === 'nap' ? 9 : 0);
+        this.nameTag(p.x, ny, a.name);
+        hy = Math.min(hy, ny - 8);
+      }
+      if (a.showPatience && a.patience != null) {
+        // above the head so it never covers someone standing in front
+        const v = clamp(a.patience, 0, 1);
+        const by = p.y - (a.pose.lift || 0) - hop - (a.look.hat ? 132 : 108);
+        this.bar(p.x, by, 40, v, v > 0.5 ? '#8fd18a' : v > 0.25 ? '#f5c451' : '#ef6f6c', 6);
+        hy = Math.min(hy, by - 6);
+      }
       if (a.bubble) {
         const age = this.time - a.bubble.t0;
         this.bubble(hx, hy, a.bubble.icon, easeOutBack(age / 0.28) * (a.bubble.scale || 1), this.time, a.bubble.icon2);
-      }
-      if (a.showPatience && a.patience != null) {
-        const v = clamp(a.patience, 0, 1);
-        this.bar(p.x, p.y + 8, 44, v, v > 0.5 ? '#8fd18a' : v > 0.25 ? '#f5c451' : '#ef6f6c', 7);
       }
       if (a.kind === 'staff' && a.energy != null && (a.energy < 25 || game.selected === a)) {
         this.bar(p.x, p.y + 8, 40, a.energy / 100, a.energy < 25 ? '#f59f5b' : '#7cc3f0', 6);
@@ -286,6 +391,15 @@ export class Renderer {
       }
     }
     game.fx.draw(ctx, this.time);
+  }
+
+  nameTag(x, y, name) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.font = `600 13px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(70,45,30,0.85)';
+    ctx.strokeText(name, x, y); ctx.fillStyle = '#fffaf0'; ctx.fillText(name, x, y);
+    ctx.restore();
   }
 
   bar(x, y, w, v, color, h = 8) {

@@ -1,6 +1,6 @@
 // Floating numbers and little particles (puffs, sparkles, steam, crumbs, hearts). Runs on real time.
 import { assets } from './assets.js';
-import { FONT } from './placeholder.js';
+import { DISPLAY_FONT } from './placeholder.js';
 
 export class FX {
   constructor() { this.items = []; }
@@ -44,7 +44,7 @@ export class FX {
         const pop = p.age < 0.15 ? 0.6 + (p.age / 0.15) * 0.5 : p.age < 0.25 ? 1.1 - ((p.age - 0.15) / 0.1) * 0.1 : 1;
         ctx.globalAlpha = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
         ctx.translate(p.x, p.y); ctx.scale(pop, pop);
-        ctx.font = `900 22px ${FONT}`; ctx.textBaseline = 'middle';
+        ctx.font = `600 24px ${DISPLAY_FONT}`; ctx.textBaseline = 'middle';
         const tw = ctx.measureText(p.text).width;
         const iw = p.icon ? 24 : 0;
         const x0 = -(tw + iw) / 2;

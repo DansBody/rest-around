@@ -81,7 +81,9 @@ with no art at all. **Drop a correctly named PNG into `assets/` and reload — n
 * Characters are **paper dolls** (body, head, faces, hair, top, bottom, hat, held item, arms,
   legs) aligned by rig slots in the manifest; all animation is procedural.
 * Many items are one grey shape recoloured by tint (chairs, tables, floors, wallpaper, outfits,
-  hair…), which keeps the list lean: **114 assets / 135 PNG files** in total.
+  hair…), which keeps the list lean: **121 assets / 142 PNG files** in total.
+* Outside the building there is a lawn, a street with passers-by (guests walk along it to the
+  door) and garden beds that show what you've planted. Click a bed to open the Garden panel.
 * UI chrome (panel frames, buttons, HUD chips, icons, toolbar icons) is skinnable the same way
   (9-slice images).
 
@@ -117,7 +119,8 @@ without rendering and auto-opens new days.
 ```
 index.html              page shell
 assets/manifest.json    every asset: file, size, anchor, footprint, offsets, facings, rig slots
-assets/<folder>/        drop PNGs here (floor, wall, furniture, props, character, food, ui, fonts)
+assets/<folder>/        drop PNGs here (floor, wall, ground, furniture, props, character, food, ui)
+assets/fonts/           bundled OFL fonts (Nunito, Fredoka)
 ASSETS.md               art guide + generated asset table
 tools/assets-table.mjs  optional: regenerate the ASSETS.md table from the manifest
 src/
@@ -131,6 +134,7 @@ src/
   pathfinding.js        A* (4-dir, soft agent-avoidance costs)
   agent.js              movement, tile claims, blocked-step handling, action queue
   customer.js staff.js  customer and staff brains
+  ambient.js            passers-by on the street
   jobs.js               job board, priorities, dish salvage
   day.js rating.js      day cycle + arrivals, star rating
   economy.js            coins, points, levels, dishes, market, garden, gift, hiring, facilities
@@ -156,9 +160,9 @@ Gameplay numbers (prices, cook times, patience, energy, arrival rates, level cur
   they briefly pass through each other (after ~1.6 s of waiting) instead of backing up.
 * **Balance** is tuned for a relaxed first week; a big room with too few staff will lose guests
   until you hire more (that's the intended pressure, but the curve past level 8 is lightly tested).
-* **Placeholder labels:** placeholders show their asset id when the image is large enough; tiny
-  layers, icons and walls are identified by tooltip and the debug asset overlay instead, so the
-  chibi characters stay readable.
+* **Placeholder labels:** placeholders don't show their asset id in the scene (it looked odd).
+  Turn on the debug **Asset overlay** to see which ids are still placeholders; UI icons also show
+  their id as a tooltip.
 * Missing PNGs show up as 404 lines in the browser console / server log while placeholders are in
   use — harmless.
 * Audio starts after the first click or key press (browser autoplay rules).

@@ -67,6 +67,10 @@ export function setupInput(game, canvas, ui, debug) {
         const a = game.renderer.pickAgent(p.x, p.y);
         ui.select(a);
         if (a) game.sfx('click');
+        else {
+          const t = tileAt(p.x, p.y);
+          if (game.renderer.plotIndexAt(t.x, t.y) >= 0) { game.sfx('click'); ui.openPanel('garden'); }
+        }
       }
     }
     down = null;

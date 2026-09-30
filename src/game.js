@@ -10,6 +10,7 @@ import { DayCycle } from './day.js';
 import { Rating } from './rating.js';
 import { Economy } from './economy.js';
 import { Build } from './build.js';
+import { Street } from './ambient.js';
 import { audio } from './audio.js';
 import { toScreen } from './iso.js';
 import { DISHES, MAX_LEVEL } from './data.js';
@@ -48,6 +49,8 @@ export class Game {
     this.rating = new Rating(this);
     this.eco = new Economy(this);
     this.build = new Build(this);
+    this.street = new Street(this);
+    this.ambient = [];
     this.debug = { grid: false, labels: false, assets: false };
     this.timeScale = 1;
     this.simTime = 0;
@@ -140,6 +143,7 @@ export class Game {
     const target = this.doorHold > 0 ? 1 : 0;
     this.doorOpen += (target - this.doorOpen) * Math.min(1, realDt * 10);
     for (const a of this.agents) a.computePose(this.renderTime);
+    for (const w of this.ambient) w.computePose(this.renderTime);
     for (const f of this.world.furniture) if (f.bounce) { f.bounce -= realDt * 2.5; if (f.bounce <= 0) f.bounce = 0; }
   }
 
@@ -149,6 +153,7 @@ export class Game {
     this.day.update(dt);
     for (const a of [...this.agents]) a.update(dt);
     this.agents = this.agents.filter((a) => !a.gone);
+    this.street.update(dt);
     this.jobs.update(dt);
     this.eco.update(dt);
     this.rating.update(dt);
@@ -178,13 +183,12 @@ export class Game {
   toast(msg, kind) { bus.emit('toast', { msg, kind }); }
   changed(what) { bus.emit('changed', what); }
 
+  /** A guest appears at one end of the street and walks to the door. */
   spawnCustomer(force = false) {
-    const e = this.world.entry;
-    if (this.agentTiles.has(e.x, e.y) && !force) return null;
+    if (!force && this.customers.filter((c) => c.state === 'arriving').length >= 4) return null;
     const c = new Customer(this);
-    c.placeAt(e.x, e.y);
     this.agents.push(c);
-    c.begin();
+    c.begin(Math.random() < 0.5 ? -7 : this.world.size + 7);
     return c;
   }
 
