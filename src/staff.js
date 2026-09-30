@@ -76,27 +76,42 @@ export class Staff extends Agent {
         const c = j.customer, seat = j.seat;
         this.walk(0, 0, { goals: seatGoals(seat), onFail: fail });
         this.face({ x: seat.chair.x, y: seat.chair.y });
-        this.wait(1.2, 'talk');
-        this.do(() => { if (c.state === 'waitOrder') c.takeOrder(this); this.finishJob(); });
+        this.wait(1.0, 'talk');
+        this.do(() => {
+          if (c.state === 'waitOrder') c.takeOrder(this);
+          // take everyone else's order at this table in the same visit
+          const others = (seat.table.seats || []).map((s2) => s2.customer).filter((o) => o && o !== c && o.state === 'waitOrder' && o.orderJob && !o.orderJob.assignee);
+          for (const o of others) { g.jobs.cancel(o.orderJob); o.orderJob = null; }
+          if (others.length) {
+            this.wait(0.5 * others.length, 'talk');
+            this.do(() => { for (const o of others) if (o.state === 'waitOrder') o.takeOrder(this); this.finishJob(); });
+          } else this.finishJob();
+        });
         break;
       }
-      case 'cook': {
-        const st = j.station, t = j.ticket;
+      case 'cook':
+      case 'drink': {
+        // chefs cook at a stove, bartenders mix at the bar; the result waits on the counter for a waiter
+        const st = j.station, isDrink = j.type === 'drink';
         this.walk(0, 0, { goals: w.accessFor(st), onFail: fail });
         this.face({ x: st.x, y: st.y });
         this.do(() => {
-          if (!alive(st)) return fail();
+          const t = j.ticket;
+          if (!alive(st) || t.state !== 'queued') return fail();
           st.cooking = t; st.cookT = 0; st.cookTotal = dishById[t.dish].cook / (furnitureById[st.type].speed || 1);
           t.state = 'cooking'; t.station = st;
-          g.sfx('sizzle');
+          if (isDrink) this.held = { id: 'held_shaker' };
+          g.sfx(isDrink ? 'shake' : 'sizzle');
         });
-        this.wait(0, 'cook', {
+        this.wait(0, isDrink ? 'shake' : 'cook', {
           until: () => st.cookT >= st.cookTotal,
-          every: (dt) => { st.cookT += dt; if (Math.random() < dt * 3) { const p = g.worldPos({ x: st.x + 0.5, y: st.y + 0.5 }); g.fx.puff(p.x, p.y - 70, '#ffffff'); } },
+          every: (dt) => { st.cookT += dt; if (!isDrink && Math.random() < dt * 3) { const p = g.worldPos({ x: st.x + 0.5, y: st.y + 0.5 }); g.fx.puff(p.x, p.y - 70, '#ffffff'); } },
         });
         this.do(() => {
+          const t = j.ticket;
           st.cooking = null; st.ready = t; st.reservedBy = null; t.state = 'ready';
           t.deliverJob = g.jobs.add('deliver', { ticket: t, stove: st, customer: t.customer });
+          this.held = null;
           g.sfx('ding');
           this.finishJob();
         });
@@ -130,28 +145,6 @@ export class Staff extends Agent {
         });
         this.wait(0.35, 'carry');
         this.do(() => { this.held = null; this.finishJob(); });
-        break;
-      }
-      case 'drink': {
-        const bar = j.station, t = j.ticket;
-        this.walk(0, 0, { goals: w.accessFor(bar), onFail: fail });
-        this.face({ x: bar.x, y: bar.y });
-        this.do(() => {
-          if (!alive(bar)) return fail();
-          bar.cooking = t; bar.cookT = 0; bar.cookTotal = dishById[t.dish].cook / (furnitureById[bar.type].speed || 1);
-          t.state = 'cooking'; t.station = bar;
-          this.held = { id: 'held_shaker' };
-          g.sfx('shake');
-        });
-        this.wait(0, 'shake', { until: () => bar.cookT >= bar.cookTotal, every: (dt) => { bar.cookT += dt; } });
-        this.do(() => {
-          bar.cooking = null; bar.reservedBy = null; t.state = 'carrying';
-          this.held = { id: 'held_tray', dish: dishById[t.dish].asset };
-        });
-        this.walk(0, 0, { goals: seatGoals(t.seat), onFail: fail });
-        this.face({ x: t.seat.chair.x, y: t.seat.chair.y });
-        this.wait(0.25, 'carry');
-        this.do(() => { this.held = null; t.customer.receive(t); this.finishJob(); });
         break;
       }
       case 'sweep': {

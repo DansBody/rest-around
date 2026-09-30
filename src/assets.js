@@ -169,7 +169,10 @@ class AssetStore {
   iconEl(id, size = 24, cls = 'ico', tint) {
     const img = new Image();
     img.src = this.url(id, tint);
-    img.width = size; img.height = size;
+    const d = this.defs.get(id);
+    const [w, h] = d ? d.size : [1, 1];
+    // fit inside a size×size box keeping the manifest aspect ratio
+    img.width = Math.round(w >= h ? size : (size * w) / h); img.height = Math.round(w >= h ? (size * h) / w : size);
     img.className = cls;
     img.draggable = false;
     img.alt = '';

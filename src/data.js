@@ -161,6 +161,6 @@ export const DAY = {
     { id: 'closing', name: 'Closing', from: 20, mult: 0.45 },
   ],
 };
-export const PATIENCE = { seat: 22, order: 28, food: 50 };
-export const SPEED = { customer: 1.9, staff: 2.4 };
-export const ENERGY = { drainPerSec: 0.32, napRegen: 0.22, wakeAt: 30, overnight: 35 };
+export const PATIENCE = { seat: 24, order: 38, food: 60 };
+export const SPEED = { customer: 1.9, staff: 2.8 };
+export const ENERGY = { drainPerSec: 0.3, napRegen: 0.35, wakeAt: 30, overnight: 40 };

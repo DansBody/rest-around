@@ -154,6 +154,18 @@ export class Game {
     this.rating.update(dt);
   }
 
+  /** Advance the simulation quickly without rendering (debug soak tests). Auto-starts new days. */
+  fastForward(seconds, onDay) {
+    const days = [];
+    let t = 0;
+    while (t < seconds) {
+      if (this.paused) { days.push({ ...this.state.stats, day: this.state.day, rating: this.state.rating, coins: this.state.coins, level: this.state.level }); if (onDay) onDay(this); this.day.startNextDay(); }
+      this.step(0.05); t += 0.05;
+      this.fx.items.length = 0;
+    }
+    return days;
+  }
+
   openDoor(t = 1.2) { this.doorHold = Math.max(this.doorHold, t); }
 
   // ---------------- helpers used by agents ----------------

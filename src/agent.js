@@ -101,6 +101,11 @@ export class Agent {
       break;
     }
     this.moving = !!this.stepping;
+    // stuck detector (debug panel / soak tests): trying to walk but not moving
+    const walking = this.queue.length && this.queue[0].type === 'walk';
+    if (walking && Math.abs(this.x - this._lx) + Math.abs(this.y - this._ly) < 1e-5) this.stuckT += dt; else this.stuckT = 0;
+    this._lx = this.x; this._ly = this.y;
+    this.maxStuck = Math.max(this.maxStuck || 0, this.stuckT);
   }
 
   think() { /* brains override */ }

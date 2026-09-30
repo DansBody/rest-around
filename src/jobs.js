@@ -1,8 +1,9 @@
 // Job board: customers and the world post jobs; idle staff of the matching role claim them.
 import { uid, manhattan } from './util.js';
+import { dishById, furnitureById } from './data.js';
 
 const ROLE_OF = { order: 'waiter', deliver: 'waiter', clear: 'waiter', cook: 'chef', drink: 'bartender', sweep: 'cleaner', repair: 'cleaner' };
-const PRIORITY = { deliver: 3, order: 2, clear: 1, cook: 1, drink: 1, repair: 2, sweep: 1 };
+const PRIORITY = { deliver: 3, order: 2, clear: 2, cook: 1, drink: 1, repair: 2, sweep: 1 };
 export const JOB_LABEL = { order: 'Taking an order', deliver: 'Serving food', clear: 'Clearing a table', cook: 'Cooking', drink: 'Mixing a drink', sweep: 'Sweeping up', repair: 'Repairing' };
 
 export class Jobs {
@@ -55,7 +56,13 @@ export class Jobs {
       }
       const at = this.jobPos(j) || pos;
       const age = g.simTime - j.created;
-      const score = PRIORITY[j.type] * 100 + age * 2 - manhattan(pos.x, pos.y, at.x, at.y) * 3;
+      let score = PRIORITY[j.type] * 100 + age * 2 - manhattan(pos.x, pos.y, at.x, at.y) * 3;
+      if (j.ticket && target) {
+        // don't sink time into orders whose guest will have left before the dish is ready
+        const c = j.ticket.customer;
+        const left = c.pRate > 0 ? c.patience / c.pRate : 99;
+        if (left < dishById[j.ticket.dish].cook / (furnitureById[target.type].speed || 1) + 6) score -= 150;
+      }
       scored.push({ j, score, target });
     }
     if (!scored.length) return null;
@@ -85,6 +92,32 @@ export class Jobs {
       if (d < bd) { bd = d; best = f; }
     }
     return best;
+  }
+
+  /**
+   * A guest left while their dish was cooking or waiting on the counter: hand it to another guest
+   * who ordered the same dish and is still waiting in the queue, so the kitchen's work isn't wasted.
+   */
+  salvage(t) {
+    const st = t.station;
+    if (!st) return false;
+    const cooking = st.cooking === t, ready = st.ready === t;
+    if (!cooking && !ready) return false;
+    const j2 = this.list.find((j) => (j.type === 'cook' || j.type === 'drink') && !j.assignee && !j.canceled && !j.done && j.ticket.dish === t.dish && j.ticket.state === 'queued');
+    if (!j2) return false;
+    const t2 = j2.ticket;
+    this.cancel(j2);
+    t2.station = st;
+    if (cooking) {
+      const cj = t.job;
+      cj.ticket = t2; cj.customer = t2.customer; t2.job = cj; t2.state = 'cooking'; st.cooking = t2;
+    } else {
+      this.cancel(t.deliverJob);
+      st.ready = t2; t2.state = 'ready';
+      t2.deliverJob = this.add('deliver', { ticket: t2, stove: st, customer: t2.customer });
+    }
+    t.job = null; t.deliverJob = null; t.station = null;
+    return true;
   }
 
   has(pred) { return this.list.some((j) => !j.done && !j.canceled && pred(j)); }

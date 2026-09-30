@@ -112,9 +112,8 @@ export class UI {
 
     // ----- build tray -----
     this.el.buildbar = h('div#buildbar');
-    this.el.selbar = h('div#selbar');
     this.el.buildBanner = h('div#buildbanner', '🔨 Build mode — the restaurant is paused');
-    r.append(this.el.buildbar, this.el.selbar, this.el.buildBanner);
+    r.append(this.el.buildbar, this.el.buildBanner);
 
     // ----- info card, toasts, modal, debug host -----
     this.el.info = h('div.card#info');
@@ -186,12 +185,15 @@ export class UI {
     this.el.buildbar.classList.toggle('open', on);
     this.el.buildBanner.classList.toggle('show', on);
     if (on) { this.closePanel(); this.game.selected = null; this.buildCat = this.buildCat || 'dining'; }
+    // lift the room above the tray while building, and put it back afterwards
+    const cam = this.game.camera, lift = 95 / cam.zoom;
+    if (on) { const y0 = cam.y; cam.y += lift; cam.clamp(); this.camLift = cam.y - y0; } else if (this.camLift) { cam.y -= this.camLift; cam.clamp(); this.camLift = 0; }
     this.game.sfx(on ? 'open' : 'close');
     this.renderBuild();
   }
   renderBuild() {
     if (!this.el || !this.el.buildbar) return;
-    buildTray(this, this.el.buildbar, this.el.selbar);
+    buildTray(this, this.el.buildbar);
   }
 
   // ---------------- info card ----------------

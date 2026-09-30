@@ -543,7 +543,7 @@ function drawLabel(ctx, text, w, h, mirror) {
   ctx.restore();
 }
 
-const NO_LABEL = new Set(['panel', 'button', 'chip', 'logo', 'icon', 'wall', 'doorframe', 'doorleaf']); // walls/icons: id shown in the debug asset overlay / tooltip
+const NO_LABEL = new Set(['panel', 'button', 'chip', 'logo', 'icon', 'wall', 'doorframe', 'doorleaf', 'bubble']); // walls/icons: id shown in the debug asset overlay / tooltip
 
 /**
  * Build a placeholder canvas for a manifest entry.

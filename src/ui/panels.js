@@ -154,13 +154,13 @@ function renderGarden(ui, body) {
     if (!p.crop) {
       tile.append(h('b', 'Empty plot'), h('button.btn.small.primary', { onclick: () => { ui.seedPick = i; ui.renderPanel(); } }, I('icon_seed', 18), 'Plant'));
     } else {
-      tile.append(h('b', ingById[p.crop].name + (p.prog >= 1 ? ' — ready!' : '')),
+      tile.append(...[h('b', ingById[p.crop].name + (p.prog >= 1 ? ' — ready!' : '')),
         h('div', { style: { width: '100%' }, title: 'Growth' }, h('div.pbar.green', h('i', { style: { width: p.prog * 100 + '%' } }))),
         p.prog < 1 ? h('div', { style: { width: '100%', display: 'flex', alignItems: 'center', gap: '3px' }, title: 'Water' }, I('icon_water', 16), h('div.pbar' + (p.water <= 0 ? '.red' : ''), { style: { flex: 1 } }, h('i', { style: { width: p.water * 100 + '%' } }))) : null,
         p.prog >= 1
           ? h('button.btn.small.primary', { onclick: () => { const r = g.eco.harvest(i); if (r) ui.toast(`Harvested ${r.n} ${ingById[r.crop].name}!`, 'good'); } }, I('icon_harvest', 18), 'Harvest')
           : h('button.btn.small' + (p.water < 0.5 ? '.primary' : ''), { onclick: () => g.eco.water(i) }, I('icon_water', 18), p.water <= 0 ? 'Thirsty!' : 'Water'),
-        h('span.muted', p.prog >= 1 ? `+${seed.yield}` : `${Math.ceil((1 - p.prog) * seed.grow)}s left`));
+        h('span.muted', p.prog >= 1 ? `+${seed.yield}` : `${Math.ceil((1 - p.prog) * seed.grow)}s left`)].filter(Boolean));
     }
     grid.append(tile);
   });
@@ -240,9 +240,9 @@ const thumbCache = new Map();
 function cachedThumb(key, make) { if (!thumbCache.has(key)) thumbCache.set(key, make()); return cloneCanvas(thumbCache.get(key)); }
 function cloneCanvas(c) { const n = document.createElement('canvas'); n.width = c.width; n.height = c.height; n.style.cssText = c.style.cssText; n.getContext('2d').drawImage(c, 0, 0); return n; }
 
-export function buildTray(ui, bar, selbar) {
+export function buildTray(ui, bar) {
   const g = ui.game, b = g.build, s = g.state;
-  if (!b.active) { bar.replaceChildren(); selbar.classList.remove('show'); return; }
+  if (!b.active) { bar.replaceChildren(); return; }
   const cat = ui.buildCat || 'dining';
   const tabs = h('div.bb-top',
     BUILD_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.buildCat = c.id; b.setTool(null); } }, c.name)),
@@ -279,18 +279,17 @@ export function buildTray(ui, bar, selbar) {
   }
   const msgText = b.message ? b.message.text : b.moving ? 'Moving — click a new spot' : b.tool ? (b.tool.mode === 'floor' ? 'Click or drag over tiles to paint' : 'Click the floor to place · R rotates · right-click / Esc to stop') : 'Pick an item to buy, or click furniture to rotate / move / sell it';
   const msg = h('div.bmsg' + (b.message ? '.' + b.message.kind : ''), msgText);
-  bar.replaceChildren(h('div.card', tabs, items, h('div', { style: { marginTop: '4px' } }, msg)));
-
-  // selection mini-bar
+  // selected furniture: rotate / move / sell
   const f = b.selected;
+  let sel = null;
   if (f && !b.moving) {
     const cat2 = furnitureById[f.type];
-    selbar.replaceChildren(
-      h('span.chip', cat2.name + (f.broken ? ' (broken)' : '')),
-      h('button.btn', { onclick: () => b.rotateSelected() }, I('icon_rotate', 22), 'Rotate'),
-      h('button.btn', { onclick: () => b.startMove() }, I('icon_move', 22), 'Move'),
-      h('button.btn.danger', { onclick: () => b.sellSelected() }, I('icon_sell', 22), `Sell +${Math.floor(cat2.price * SELL_RATE)}`),
-      h('button.btn', { onclick: () => { b.selected = null; ui.renderBuild(); } }, '✕'));
-    selbar.classList.add('show');
-  } else selbar.classList.remove('show');
+    sel = h('div.bb-sel',
+      h('b', cat2.name + (f.broken ? ' (broken)' : '')),
+      h('button.btn.small', { onclick: () => b.rotateSelected() }, I('icon_rotate', 20), 'Rotate'),
+      h('button.btn.small', { onclick: () => b.startMove() }, I('icon_move', 20), 'Move'),
+      h('button.btn.small.danger', { onclick: () => b.sellSelected() }, I('icon_sell', 20), `Sell +${Math.floor(cat2.price * SELL_RATE)}`),
+      h('button.btn.small', { onclick: () => { b.selected = null; ui.renderBuild(); } }, '✕'));
+  }
+  bar.replaceChildren(h('div.card', sel, tabs, items, h('div', { style: { marginTop: '4px' } }, msg)));
 }

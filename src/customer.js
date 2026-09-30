@@ -247,7 +247,7 @@ export class Customer extends Agent {
     this.showPatience = false;
     this.cancelOrders();
     if (this.facility) { if (this.facility.reservedBy === this) this.facility.reservedBy = null; this.facility = null; }
-    if (reason === 'noSeat') { g.state.stats.noSeat++; g.rating.addService(0.35); this.emote('emote_sad', 2.2); }
+    if (reason === 'noSeat') { g.state.stats.noSeat++; this.emote('emote_sad', 2.2); } // turned away: counts as lost in the summary, no rating hit
     else { g.state.stats.lost++; g.rating.addService(0); this.emote('emote_angry', 2.4); this.shakeT = 0.8; this.expr = 'angry'; g.sfx('angry'); }
     if (this.seat) {
       const s = this.seat;
@@ -264,12 +264,14 @@ export class Customer extends Agent {
     if (this.orderJob) { g.jobs.cancel(this.orderJob); this.orderJob = null; }
     for (const t of this.tickets) {
       if (t.state === 'served') continue;
+      const salvaged = g.jobs.salvage(t);
       t.state = 'canceled';
+      if (salvaged) continue;
       g.jobs.cancel(t.job); g.jobs.cancel(t.deliverJob);
       const st = t.station;
       if (st && st.ready === t) { st.ready = null; const p = g.worldPos({ x: st.x + 0.5, y: st.y + 0.5 }); g.fx.puff(p.x, p.y - 50, '#e9e2da', 3); }
     }
-    g.jobs.cancelWhere((j) => j.customer === this);
+    g.jobs.cancelWhere((j) => j.customer === this && !(j.ticket && j.ticket.customer !== this));
   }
 
   leave() {

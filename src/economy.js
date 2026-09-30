@@ -38,7 +38,7 @@ export class Economy {
   levelProgress(points = this.s.points, level = this.s.level) {
     if (level >= MAX_LEVEL) return { cur: points, next: points, frac: 1 };
     const a = LEVEL_POINTS[level], b = LEVEL_POINTS[level + 1];
-    return { cur: points - a, next: b - a, frac: clamp((points - a) / (b - a), 0, 1) };
+    return { cur: Math.max(0, points - a), next: b - a, frac: clamp((points - a) / (b - a), 0, 1) };
   }
   levelUp() {
     const s = this.s, g = this.game;

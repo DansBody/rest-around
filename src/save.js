@@ -4,7 +4,7 @@ import { World } from './world.js';
 import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
-import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY } from './data.js';
+import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS } from './data.js';
 import { bumpUid, clamp } from './util.js';
 
 export const SAVE_KEY = 'restAround.save.v1';
@@ -67,7 +67,7 @@ function apply(game, data) {
     name: typeof s.name === 'string' ? s.name.slice(0, 24) : d.name,
     coins: Math.floor(num(s.coins, d.coins, 0, 1e9)),
     points: Math.floor(num(s.points, 0, 0, 1e9)),
-    level: Math.floor(num(s.level, 1, 1, MAX_LEVEL)),
+    level: 1, // derived from points below (never trust a saved level)
     rating: num(s.rating, d.rating, 0, 5),
     service: Array.isArray(s.service) ? s.service.filter((v) => typeof v === 'number').slice(-24) : [],
     day: Math.floor(num(s.day, 1, 1, 1e6)),
@@ -77,6 +77,7 @@ function apply(game, data) {
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,
   };
+  while (st.level < MAX_LEVEL && st.points >= LEVEL_POINTS[st.level + 1]) st.level++;
   for (const dish of DISHES) {
     const x = s.dishes && s.dishes[dish.id];
     if (!x) continue;
@@ -107,6 +108,11 @@ function apply(game, data) {
     if (tiles.some((t) => !w.inBounds(t.x, t.y) || w.furnitureAt(t.x, t.y) || w.isEntry(t.x, t.y))) continue;
     const it = w.addFurniture(f.t, x, y, dir, { uses: Math.floor(num(f.u, 0, 0, 999)), broken: !!f.b });
     if (f.ba > 0) it.breakAt = Math.floor(f.ba);
+  }
+  if (!w.byKind('stove').length) { // a kitchen always needs a stove
+    outer: for (let x = w.size - 1; x >= 0; x--) for (let y = 0; y < w.size - 1; y++) {
+      if (!w.furnitureAt(x, y) && !w.furnitureAt(x, y + 1) && !w.isEntry(x, y) && !w.isEntry(x, y + 1)) { w.addFurniture('stove_basic', x, y, 1); break outer; }
+    }
   }
   for (const t of wd.trash || []) if (t) w.addTrash(Math.floor(num(t.x, -1)), Math.floor(num(t.y, -1)));
   for (const [x, y] of Array.isArray(wd.dirty) ? wd.dirty : []) { const ch = w.furnitureAt(x, y); if (ch && ch.seat) ch.seat.dirty = true; }

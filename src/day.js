@@ -29,7 +29,7 @@ export class DayCycle {
   arrivalRate() {
     const g = this.game;
     const seats = Math.max(1, g.world.seats.length);
-    const perHour = (1.1 + g.state.rating * 1.05) * this.phase.mult * (0.7 + 0.3 * Math.min(seats, 20) / 4);
+    const perHour = (0.6 + g.state.rating * 0.78) * this.phase.mult * (0.55 + 0.45 * Math.sqrt(Math.min(seats, 24) / 4));
     const simSecPerHour = DAY.length / (DAY.endHour - DAY.startHour);
     return perHour / simSecPerHour;
   }
