@@ -165,7 +165,10 @@ class ModelStore {
     this.templates = new Map(); // id -> Object3D (normalized, facing +Z)
     this.placeholder = new Set();
     this.characters = new Map(); // id -> { scene, clips }
-    this.loader = new GLTFLoader();
+    // Hosts that only serve certain file types can remap model URLs (see README, "Hosting").
+    const manager = new THREE.LoadingManager();
+    if (typeof window !== 'undefined' && typeof window.RA_MODEL_URL === 'function') manager.setURLModifier(window.RA_MODEL_URL);
+    this.loader = new GLTFLoader(manager);
     this.tintCache = new Map();
   }
 

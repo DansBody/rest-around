@@ -20,6 +20,10 @@ python -m http.server 8000        # or: python3 -m http.server 8000
 
 Any static server works (`npx serve`, `php -S localhost:8000`, …). The game works offline.
 
+**Hosting:** if your host refuses `.gltf`/`.glb`/`.bin` files, upload them under other names and define
+`window.RA_MODEL_URL = (url) => newUrl` in a script before `src/main.js`; the model loader passes every
+model and texture URL through it.
+
 Your progress autosaves to `localStorage` every 10 seconds and when the tab closes.
 **Settings → Reset game** starts over.
 
