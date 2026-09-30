@@ -55,6 +55,12 @@ const G = {
   flame: [['path', { d: 'M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.8 3-5.6 3.6-9.3 2.4 1.4 3.4 3.6 3.2 5.9 1-.8 1.6-2 1.7-3.4 2.4 1.9 4.5 4.3 4.5 7.1 0 3.4-2.7 5.9-6.5 5.9z', fill: 'url(#g-orange)', stroke: '#e0662a', 'stroke-width': 1.2 }], ['path', { d: 'M12 20.5c-1.6 0-2.7-1.1-2.7-2.6 0-1.7 1.3-2.4 1.9-3.9 1.8 1 3.5 2.3 3.5 4 0 1.4-1.1 2.5-2.7 2.5z', fill: '#ffe27a' }]],
   whirl: [['path', { d: 'M4 8.5h10.5a3 3 0 1 0-3-3M3 12.5h15.5a3 3 0 1 1-3 3M5 16.5h6', stroke: 'c', 'stroke-width': 1.9 }]],
   juggle: [['circle', { cx: 6.5, cy: 15.5, r: 3, fill: '#c9a4ff', stroke: '#8a55e6', 'stroke-width': 1.2 }], ['circle', { cx: 17.5, cy: 15.5, r: 3, fill: '#ff9fb1', stroke: '#e0506f', 'stroke-width': 1.2 }], ['circle', { cx: 12, cy: 6, r: 3, fill: '#9fdcff', stroke: '#2f8fdc', 'stroke-width': 1.2 }], ['path', { d: 'M5 11.2C6 7.6 8 6 9.3 5.6M19 11.2C18 7.6 16 6 14.7 5.6', stroke: 'c', 'stroke-width': 1.3, 'stroke-dasharray': '1.5 2.2' }]],
+  sad: [['circle', { cx: 12, cy: 12, r: 9, fill: 'url(#g-sky)', stroke: '#2f8fdc', 'stroke-width': 1.1 }], ['path', { d: 'M8.4 16.4c1.9-1.9 5.3-1.9 7.2 0', stroke: '#154a7a', 'stroke-width': 1.6 }], ['circle', { cx: 9, cy: 10.4, r: 1.1, fill: '#154a7a' }], ['circle', { cx: 15, cy: 10.4, r: 1.1, fill: '#154a7a' }], ['path', { d: 'M16.6 12.3s1.3 1.6 1.3 2.4a1.3 1.3 0 0 1-2.6 0c0-.8 1.3-2.4 1.3-2.4z', fill: '#fff' }]],
+  zzz: [['path', { d: 'M4 13h6.5L4 20.5h6.5', stroke: '#5b7fd6', 'stroke-width': 2.2 }], ['path', { d: 'M12.5 7h5l-5 5.8h5', stroke: '#7d9be6', 'stroke-width': 1.9 }], ['path', { d: 'M17.5 2.5h3.5l-3.5 4h3.5', stroke: '#a5bbf0', 'stroke-width': 1.6 }]],
+  note: [['path', { d: 'M9 17.5V5.5l10-2v12', stroke: '#8a55e6', 'stroke-width': 1.9 }], ['ellipse', { cx: 6.7, cy: 17.6, rx: 2.8, ry: 2.2, fill: '#b58cff', stroke: '#8a55e6', 'stroke-width': 1.2 }], ['ellipse', { cx: 16.7, cy: 15.6, rx: 2.8, ry: 2.2, fill: '#b58cff', stroke: '#8a55e6', 'stroke-width': 1.2 }]],
+  broken: [['path', { d: gearPath(12, 12, 6.6, 8.8, 7), fill: '#c9d1da', stroke: '#6b7682', 'stroke-width': 1.3 }], ['circle', { cx: 12, cy: 12, r: 2.6, fill: '#fff', stroke: '#6b7682', 'stroke-width': 1.3 }], ['path', { d: 'M13.5 2.5l-2.4 5.2 2.8 1.2-3.3 5.6', stroke: '#ff4d4f', 'stroke-width': 1.8 }]],
+  menucard: [['rect', { x: 4.5, y: 2.5, width: 15, height: 19, rx: 2.4, fill: '#fff8ec', stroke: '#c9772f', 'stroke-width': 1.3 }], ['path', { d: 'M4.5 5a2.4 2.4 0 0 1 2.4-2.5h10.2A2.4 2.4 0 0 1 19.5 5v2.5h-15z', fill: '#ff8a3d' }],
+    ['path', { d: 'M8 11.2h8M8 14.2h8M8 17.2h5', stroke: '#c9a27a', 'stroke-width': 1.4 }], ['circle', { cx: 12, cy: 5.1, r: 1.1, fill: '#fff' }]],
   pause: [['rect', { x: 6.5, y: 5, width: 3.6, height: 14, rx: 1.2, fill: 'currentColor' }], ['rect', { x: 13.9, y: 5, width: 3.6, height: 14, rx: 1.2, fill: 'currentColor' }]],
 };
 
@@ -64,8 +70,20 @@ export const ICON_GLYPHS = {
   icon_clock: 'clock', icon_gift: 'gift', icon_energy: 'energy', icon_patience: 'patience', icon_rotate: 'rotate',
   icon_move: 'move', icon_sell: 'sell', icon_lock: 'lock', icon_water: 'water', icon_seed: 'seed', icon_harvest: 'harvest',
   tool_build: 'build', tool_staff: 'staff', tool_menu: 'menu', tool_garden: 'garden', tool_market: 'market', tool_settings: 'settings',
-  emote_heart: 'heart', emote_angry: 'angry',
+  emote_heart: 'heart', emote_angry: 'angry', emote_sad: 'sad', emote_zzz: 'zzz', emote_wait: 'patience',
+  emote_sparkle: 'sparkles', emote_note: 'note', emote_broken: 'broken', emote_menu: 'menucard',
 };
+
+const GRADS = { 'g-gold': ['#ffe27a', '#ffb31f'], 'g-violet': ['#d7b8ff', '#9a6bff'], 'g-sky': ['#9fdcff', '#3fa5f0'], 'g-rose': ['#ff9fb1', '#ff4f74'], 'g-orange': ['#ffc07a', '#ff8a3d'] };
+
+/** Standalone SVG data URL for a glyph (gradients inlined), for drawing on canvases. */
+export function glyphDataURL(name, color = '#3a3a44') {
+  const el = glyph(name, 128);
+  const ser = new XMLSerializer();
+  const defs = '<defs>' + Object.entries(GRADS).map(([id, [a, b]]) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`).join('') + '</defs>';
+  const inner = [...el.childNodes].map((n) => ser.serializeToString(n)).join('');
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="${NS}" viewBox="-1 -1 26 26" width="128" height="128" style="color:${color}" color="${color}">${defs}${inner}</svg>`);
+}
 
 let defsDone = false;
 function ensureDefs() {
@@ -75,7 +93,7 @@ function ensureDefs() {
   svg.setAttribute('width', '0'); svg.setAttribute('height', '0');
   svg.style.position = 'absolute';
   svg.setAttribute('aria-hidden', 'true');
-  const grads = { 'g-gold': ['#ffe27a', '#ffb31f'], 'g-violet': ['#d7b8ff', '#9a6bff'], 'g-sky': ['#9fdcff', '#3fa5f0'], 'g-rose': ['#ff9fb1', '#ff4f74'], 'g-orange': ['#ffc07a', '#ff8a3d'] };
+  const grads = GRADS;
   const defs = document.createElementNS(NS, 'defs');
   for (const [id, [a, b]] of Object.entries(grads)) {
     const lg = document.createElementNS(NS, 'linearGradient');

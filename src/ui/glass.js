@@ -34,6 +34,17 @@ export const glassFx = {
     this.refresh(el);
   },
 
+  /** Forget elements that left the page (after a UI rebuild). */
+  prune() {
+    if (!this.ro) return;
+    for (const [el, it] of this.items) {
+      if (el.isConnected) continue;
+      this.ro.unobserve(el);
+      if (it.filter) it.filter.remove();
+      this.items.delete(el);
+    }
+  },
+
   setEnabled(on) {
     this.enabled = on;
     for (const el of this.items.keys()) { const it = this.items.get(el); it.w = 0; this.refresh(el); }

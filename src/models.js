@@ -115,6 +115,46 @@ const SHAPES = {
     }
     return g;
   },
+  cookie() {
+    const g = new THREE.Group();
+    const dough = mat('#d9a066'), chip = mat('#5b3a28');
+    for (const [y, x, z, r] of [[0.05, -0.08, 0.04, 0.2], [0.14, 0.1, -0.05, -0.3]]) {
+      const c = new THREE.Group();
+      c.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.32, 0.09, 22), dough), 0, 0, 0));
+      for (const [cx, cz] of [[0.12, 0.08], [-0.14, 0.1], [0.02, -0.16], [-0.1, -0.06], [0.17, -0.1]]) c.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), chip), cx, 0.045, cz));
+      c.position.set(x, y, z); c.rotation.set(0.12, r, -0.08); g.add(c);
+    }
+    return g;
+  },
+  sandwich() {
+    // two triangle sandwiches, one leaning on the other
+    const g = new THREE.Group();
+    const tri = (r, h, color) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 3), mat(color)); return m; };
+    const make = () => {
+      const s = new THREE.Group();
+      let y = 0;
+      for (const [h, c, r] of [[0.12, '#f7e1b0', 0.42], [0.05, '#6cc35a', 0.5], [0.05, '#ef5a5a', 0.46], [0.045, '#ffd34d', 0.48], [0.12, '#f7e1b0', 0.42]]) {
+        const l = tri(r, h, c); l.position.y = y + h / 2; s.add(l); y += h;
+      }
+      return s;
+    };
+    const a = make(); a.rotation.y = 0.3; g.add(a);
+    const b = make(); b.position.set(0.18, 0.2, -0.18); b.rotation.set(0.9, -0.5, 0); g.add(b);
+    return g;
+  },
+  bento() {
+    const g = new THREE.Group();
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.24, 0.7), mat('#d8434f')), 0, 0.12, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.87, 0.04, 0.62), mat('#2f2a2a')), 0, 0.23, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.58), mat('#fbf8f0')), -0.2, 0.26, 0));      // rice
+    g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), mat('#e8506a')), -0.2, 0.31, 0));         // umeboshi
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.1, 0.58), mat('#d8434f')), 0.02, 0.27, 0));       // divider
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.2), mat('#f7d37a')), 0.23, 0.28, -0.16));     // tamagoyaki
+    g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), mat('#5fae4f')), 0.16, 0.3, 0.15));        // broccoli
+    const sausage = at(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.2, 10), mat('#f08a5d')), 0.32, 0.29, 0.14);
+    sausage.rotation.z = Math.PI / 2; g.add(sausage);
+    return g;
+  },
   trash() {
     const g = new THREE.Group();
     const paper = mat('#f3eee6');

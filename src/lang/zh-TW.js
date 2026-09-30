@@ -1,0 +1,173 @@
+// 繁體中文（台灣）. Keys are the English source strings; {placeholders} are filled in by t().
+export const ZH_TW = {
+  // ---------------- boot & general
+  'Setting the tables…': '正在擺桌子…',
+  'Unpacking the furniture…': '正在拆家具箱…',
+  'Could not load assets/manifest.json — run a local server (see README).': '無法載入 assets/manifest.json，請用本機伺服器開啟（見 README）。',
+  'Your save was damaged, so a fresh restaurant was opened. (A backup was kept.)': '存檔損毀，已開一間新餐廳（舊存檔有備份）。',
+  'Welcome back to {name}!': '歡迎回到 {name}！',
+  'Welcome to your new restaurant! Guests are on their way ☕': '歡迎來到你的新餐廳！客人正在路上 ☕',
+  '☀️ Day {d} — doors open!': '☀️ 第 {d} 天，開門營業！',
+  'Finish the day first!': '請先結束今天的營業！',
+  'Close': '關閉', 'Back': '返回', 'Cancel': '取消', 'Done': '完成', 'On': '開', 'Off': '關', 'Free': '免費',
+
+  // ---------------- HUD
+  'Coins': '金幣', 'Gourmet points & level': '美食點數與等級', 'Day clock': '時鐘', 'Daily gift!': '每日禮物！',
+  'Lv {n}': 'Lv {n}', 'Lv{n}': 'Lv{n}', 'MAX': '滿級', 'Day {n}': '第 {n} 天',
+  'Closed': '已打烊', 'Paused': '暫停中', 'Last guests…': '收尾中',
+  'Rotate left (Q)': '向左轉（Q）', 'Center view': '回到中央', 'Rotate right (E)': '向右轉（E）',
+  'Rating {a} → {b}': '評價 {a} → {b}',
+  'Service': '服務', 'Cleanliness': '整潔', 'Dish levels': '菜色等級', 'Decor': '裝飾', 'Upkeep': '設施維護',
+  'More stars bring more customers. Tap to close.': '星星越多，客人越多。點一下關閉。',
+  'Build mode — the restaurant is paused': '建造模式：餐廳暫停營業中',
+
+  // ---------------- toolbar & panels
+  'Build': '建造', 'Staff': '員工', 'Menu': '菜單', 'Garden': '菜園', 'Market': '市場', 'Settings': '設定',
+
+  // ---------------- info card
+  'Guest': '客人', 'Task: {task}': '工作：{task}',
+  '😴 Napping': '😴 打瞌睡中', '🥱 Tired': '🥱 很累', '😊 Cheerful': '😊 精神很好',
+  'Feed {snack} (+{n} energy)': '餵 {snack}（體力 +{n}）',
+  'Change outfit': '換裝', 'Change job': '轉職',
+  'unlocks at {title}': '{title}解鎖',
+
+  // ---------------- staff panel
+  '{n} / {m} staff slots · staff tire while working. Feed them snacks to perk them up!': '員工名額 {n} / {m}．員工工作會累，餵點心可以讓他們恢復精神！',
+  'Your team': '你的團隊', 'Hire': '雇用', 'Outfit': '服裝', 'Fire': '解雇', 'Let {name} go?': '確定讓 {name} 離開？',
+  'Show on the floor': '在店裡找到他', ' · you have {n}': '．目前 {n} 位',
+  'All slots are full — reach the next level for more.': '名額已滿，升到下一級可以多雇人。',
+  '{snack}: +{n} energy ({src})': '{snack}：體力 +{n}（{src}）', 'from pantry': '用庫存', '{n} coins': '{n} 金幣',
+  'Takes orders, serves food, clears tables.': '點餐、上菜、收桌子。',
+  'Cooks at a free stove.': '在空的爐台煮菜。',
+  'Sweeps trash & repairs broken restrooms/arcades.': '掃垃圾，修理故障的洗手間和街機。',
+  'Mixes drinks at the Juice Bar.': '在果汁吧台調飲料。',
+  'Skill Lv{n}: {title}': '技能 Lv{n}：{title}', 'Max skill': '技能已滿級', '{a}/{b} XP to {title}': '距離{title}還差 {a}/{b} 經驗',
+  '{title} {role}': '{title}{role}',
+  '· charges while working, fires by itself': '．工作時充能，自動施放', '· unlocks at {title}': '．{title}解鎖',
+  "{name}'s career": '{name} 的職涯', 'Works {n}% faster than a novice': '比新手快 {n}%', 'Retrain as': '轉職為',
+  'Current job': '目前職業', 'Retrain': '轉職', 'Needs a Juice Bar to work': '需要果汁吧台才能工作',
+  "Staff gain experience by finishing jobs in their current role and keep it in every role they've had. Skill makes them walk and work faster (up to +{n}% as a Master). Retraining costs half the hiring fee — going back to a job they're already {title} or better at is free.":
+    '員工完成目前職業的工作會累積經驗，而且每個做過的職業經驗都會保留。技能越高，走路和做事越快（大師最多快 {n}%）。轉職費用是雇用費的一半；回到已經達到{title}以上的職業則免費。',
+  "{name}'s wardrobe": '{name} 的衣櫃', 'Character': '角色', 'Wear': '配件', 'Outfit tint': '服裝色調', 'Original colours': '原本的顏色', 'Chef hat': '廚師帽',
+  'Characters come from the KayKit Adventurers pack (CC0). Drop in other glTF characters via assets/manifest.json.': '角色來自 KayKit Adventurers 素材包（CC0）。可以在 assets/manifest.json 加入其他 glTF 角色。',
+  'Knight': '騎士', 'Mage': '法師', 'Barbarian': '野蠻人', 'Rogue': '盜賊', 'Hooded Rogue': '兜帽盜賊',
+  'Helmet': '頭盔', 'Cape': '披風', 'Hat': '帽子', 'Hood': '兜帽',
+
+  // ---------------- skills & abilities
+  'Novice': '新手', 'Apprentice': '見習', 'Skilled': '熟練', 'Expert': '專家', 'Master': '大師',
+  '{name} is now a {title}! (+{n}% speed)': '{name} 升級為{title}了！（速度 +{n}%）',
+  '{name} is now an {title}! (+{n}% speed)': '{name} 升級為{title}了！（速度 +{n}%）',
+  'Dash': '衝刺', 'Showtime': '大顯身手', 'Whirlwind': '旋風掃除', 'Juggle': '雜耍調酒', '{ability}!': '{ability}！',
+  'Bursts into a sprint when guests are waiting: +90% walking and serving speed for 8 s.': '客人在等時全力衝刺：移動與服務速度 +90%，持續 8 秒。',
+  'Flips the pan with flair: the dish on the stove jumps 40% ahead, then cooks twice as fast for 10 s.': '帥氣甩鍋：爐上的菜進度直接 +40%，之後 10 秒煮菜速度 2 倍。',
+  'Spins through the room when trash piles up: sweeps every bit within 3 tiles at once.': '垃圾堆起來時原地旋轉：一次掃光周圍 3 格內所有垃圾。',
+  'Juggles the shakers: the drink in hand jumps 40% ahead, then mixes twice as fast for 10 s.': '雜耍搖酒器：手上的飲料進度 +40%，之後 10 秒調製速度 2 倍。',
+  'Charges while working and fires by itself.': '工作時充能，會自動施放。',
+  'Unlocks when {name} is {title}': '{name} 達到{title}時解鎖',
+
+  // ---------------- menu panel
+  'Starters': '前菜', 'Mains': '主菜', 'Desserts': '甜點', 'Drinks': '飲料',
+  'Drinks need a Juice Bar (Build → Kitchen) and a Bartender (Staff → Hire).': '飲料需要果汁吧台（建造 → 廚房）和調酒師（員工 → 雇用）。',
+  'No {cat} slots yet — they open up as you level.': '還沒有{cat}欄位，升級後會開放。',
+  '{ing}: {p}/{need} added · {n} in pantry': '{ing}：已放入 {p}/{need}．庫存 {n}',
+  'Unlocks at level {n}': '等級 {n} 解鎖', 'On menu': '已上架', 'Add to menu': '加入菜單', 'Add ingredients': '放入食材',
+  'Put pantry ingredients toward the next dish level': '把庫存食材投入，提升這道菜的等級',
+  'Collect every ingredient in a recipe to level a dish (Lv1→10): higher price and more gourmet points. Get ingredients from the Garden, the Market and the daily gift.':
+    '集齊食譜中的每種食材就能升級菜色（Lv1→10）：售價更高、美食點數更多。食材可以從菜園、市場和每日禮物取得。',
+
+  // ---------------- garden
+  'Plant seeds, keep the soil watered, and harvest fresh ingredients. Plots only grow while watered.': '播種、保持土壤濕潤，收成新鮮食材。菜園只有在有水時才會生長。',
+  'Empty plot': '空菜圃', 'Plant': '種植', ' — ready!': '：可以收成了！', 'Growth': '生長進度', 'Water': '澆水', 'Thirsty!': '口渴了！',
+  'Harvest': '收成', 'Harvested {n} {crop}!': '收成了 {n} 個{crop}！', '{n}s left': '還要 {n} 秒',
+  'Choose seeds for plot {n}': '選擇第 {n} 塊菜圃的種子', '{s}s to grow · yields {n}': '生長 {s} 秒．收成 {n} 個',
+  'Pantry': '庫存', 'Empty — grow or buy some ingredients!': '空空的：去種一點或買一點食材吧！',
+
+  // ---------------- market
+  'Daily gift': '每日禮物', 'Free ingredients and coins, once per day.': '每天一次，免費的食材和金幣。', 'Open!': '打開！',
+  'Ingredients': '食材', 'have {n}': '擁有 {n}', ' · grows in garden': '．菜園可種', 'Staff snacks': '員工點心',
+  '+{n} energy · you have {m}': '體力 +{n}．擁有 {m}',
+  'Daily Gift!': '每日禮物！', 'A friendly farmer dropped by with:': '親切的農夫送來了：', 'Thank you!': '謝謝！',
+
+  // ---------------- settings
+  'Language': '語言', 'Restaurant name': '餐廳名稱', 'Sound': '音效', 'Sound effects': '音效', 'Volume': '音量', 'Game': '遊戲',
+  'Auto-open next day': '自動開始下一天', 'Liquid glass refraction': '液態玻璃折射效果',
+  'Saved!': '已存檔！', 'Could not save (storage blocked?)': '無法存檔（瀏覽器儲存空間被封鎖？）', 'Save now': '立即存檔',
+  'Reset game': '重新開始', 'Tap again to erase everything': '再點一次會清除所有進度',
+  'Progress autosaves every 10 seconds and when you close the tab.': '每 10 秒和關閉分頁時都會自動存檔。',
+  'Controls': '操作方式',
+  'Drag to pan · Wheel or pinch to zoom · Right-drag, two-finger twist or ': '拖曳移動畫面．滾輪或雙指縮放．右鍵拖曳、雙指旋轉或 ',
+  ' to turn the camera · Click a character for details': ' 轉動鏡頭．點角色查看詳情',
+  ' build · ': ' 建造．', ' rotate · ': ' 旋轉．', ' sell · ': ' 賣掉．', ' cancel/close · ': ' 取消／關閉．', ' debug': ' 除錯',
+  'About': '關於',
+  'Rest Around — a cozy 3D bistro. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).': 'Rest Around：一間溫馨的 3D 小餐館。美術素材可以替換：把 glTF 模型或 PNG 放進 assets/（見 ASSETS.md）。',
+
+  // ---------------- build
+  'Tables & Chairs': '桌椅', 'Kitchen': '廚房', 'Fun': '娛樂', 'Floors': '地板', 'Walls': '牆面', 'Room': '房間', '/tile': '／格',
+  'Expand to {n}×{n}': '擴建到 {n}×{n}', 'Reach level {n} to unlock': '達到等級 {n} 解鎖', 'More room for tables, fun and decor!': '更多空間可以擺桌子、娛樂設施和裝飾！',
+  'Your restaurant is as big as it gets!': '你的餐廳已經擴建到最大了！',
+  'Moving — click a new spot': '移動中：點選新位置', 'Click or drag over tiles to paint': '點擊或拖曳地板來鋪設',
+  'Click the floor to place · R rotates · right-click / Esc to stop': '點地板放置．R 旋轉．右鍵／Esc 停止',
+  'Pick an item to buy, or click furniture to rotate / move / sell it': '選一樣東西購買，或點家具來旋轉／移動／賣掉',
+  ' (broken)': '（故障）', 'Rotate': '旋轉', 'Move': '移動', 'Sell +{n}': '賣掉 +{n}',
+  'Someone is sitting there': '有人坐在那裡', 'Guests are at this table': '這桌有客人', 'Busy cooking right now': '正在煮菜中', 'Someone is using it': '有人正在使用',
+  'Out of the room': '超出房間範圍', 'Something is already there': '那裡已經有東西了', 'Keep the doorway clear': '門口要保持暢通',
+  'Someone is standing there': '有人站在那裡', 'Clean up that mess first': '先把那裡清乾淨',
+  'That would cut off part of the floor from the door': '這樣會讓部分地板無法從門口走到',
+  'A chair needs a free side to sit down from': '椅子至少要有一側空著才能坐下', 'Needs free floor in front (white dots)': '前方需要空地（白點處）',
+  'Tip: chairs must face a table to seat guests (R to rotate)': '提示：椅子要面向桌子客人才會坐（R 旋轉）',
+  'That blocks access to the {name}': '這樣會擋住{name}的通道',
+  'Not enough coins': '金幣不夠', 'Placed {name} (−{n})': '已放置{name}（−{n}）', 'Already on the walls!': '牆上已經是這款了！',
+  'Walls redecorated (−{n})': '牆面換新了（−{n}）', 'Reach level {n} to expand': '達到等級 {n} 才能擴建', 'The restaurant is now {n}×{n}!': '餐廳擴建為 {n}×{n} 了！',
+  'You need at least one stove!': '至少要保留一個爐台！', 'Sold {name} (+{n})': '賣掉了{name}（+{n}）', 'Rotated': '已旋轉',
+  "Can't rotate here — no room": '這裡沒有空間可以旋轉', 'Click a new spot · R rotates · Esc cancels': '點選新位置．R 旋轉．Esc 取消', 'Moved': '已移動',
+
+  // ---------------- economy
+  'Not enough coins for {what} (need {n})': '金幣不夠{what}（需要 {n}）', 'Not enough coins (need {n})': '金幣不夠（需要 {n}）',
+  'hiring': '雇用', 'retraining': '轉職',
+  '{n} staff slots': '員工名額 {n} 位', '+1 {cat} menu slot': '{cat}欄位 +1', 'a new garden plot': '新的菜圃',
+  'dish: {name}': '新菜色：{name}', '{n}×{n} floor plan': '{n}×{n} 格局',
+  '{name} unlocks at level {n}': '{name}在等級 {n} 解鎖', 'Keep at least one dish on the menu!': '菜單上至少要留一道菜！',
+  'No free {cat} slots — take a dish off first or level up': '{cat}欄位滿了，先撤下一道菜或升級',
+  '{name} is already max level!': '{name}已經是最高等級了！', 'No matching ingredients in the pantry': '庫存裡沒有需要的食材',
+  '{name} reached Lv{n}! Price and points up.': '{name}升到 Lv{n}！售價和點數都提高了。',
+  'All staff slots are full — level up for more': '員工名額已滿，升級後可以多雇人',
+  '{name} the {role} joined the team!': '{role} {name} 加入團隊了！', '{name} retrained: {from} → {to}!': '{name} 轉職：{from} → {to}！',
+  '{name} waved goodbye.': '{name} 揮手道別了。', '{name} broke down! A cleaner can fix it.': '{name}故障了！清潔員可以修理。',
+
+  // ---------------- day summary & level up
+  'Open Day {n}': '開始第 {n} 天', 'Day {n} complete!': '第 {n} 天營業結束！',
+  'The chairs are up and the lights are low. Here’s how it went:': '椅子收好、燈也調暗了。今天的成績：',
+  'Guests served': '服務的客人', 'Guests lost': '流失的客人', 'Coins earned': '賺到的金幣', 'Gourmet points': '美食點數', 'Rating': '評價', 'Level': '等級',
+  '{n} guest(s) left because every seat was taken — more tables would help!': '有 {n} 位客人因為沒位子離開了，多放幾張桌子吧！',
+  'Word is spreading about your cozy little place.': '你這間溫馨小店的名聲越傳越遠了。',
+  'Keep things clean and fast to win back the stars.': '保持乾淨、出餐快，就能贏回星星。',
+  'Level {n}!': '升到等級 {n}！', 'New things unlocked:': '解鎖了新東西：', 'More gourmet glory!': '美食榮耀更上一層樓！', 'Yay!': '太棒了！',
+
+  // ---------------- data: roles, phases, dishes, ingredients, snacks, furniture, floors, walls
+  'Waiter': '服務生', 'Chef': '廚師', 'Cleaner': '清潔員', 'Bartender': '調酒師',
+  'Opening': '開店', 'Lunch Rush': '午餐尖峰', 'Afternoon': '午後', 'Dinner Rush': '晚餐尖峰', 'Closing': '打烊前',
+  'Garden Salad': '田園沙拉', 'Onion Rings': '洋蔥圈', 'Tomato Soup': '番茄湯', 'Classic Burger': '經典漢堡', 'Veggie Burger': '蔬菜漢堡',
+  'Hearty Stew': '暖心燉菜', 'Steak Dinner': '牛排套餐', 'Roast Ham Plate': '烤火腿盤', 'Caramel Pudding': '焦糖布丁', 'Sponge Cake': '海綿蛋糕',
+  'Lemon Pie': '檸檬派', 'Lemonade': '檸檬汁', 'Root Beer Float': '麥根沙士漂浮', 'Cheese Shake': '起司奶昔',
+  'Tomato': '番茄', 'Lettuce': '萵苣', 'Carrot': '紅蘿蔔', 'Potato': '馬鈴薯', 'Onion': '洋蔥', 'Burger Bun': '漢堡麵包', 'Steak': '牛排',
+  'Egg': '雞蛋', 'Milk': '牛奶', 'Cheese': '起司', 'Flour': '麵粉', 'Lemon': '檸檬', 'Ham': '火腿',
+  'Cookie': '餅乾', 'Sandwich': '三明治', 'Bento': '便當',
+  'Café Table': '咖啡桌', 'Wooden Table': '木桌', 'Mint Table': '薄荷桌', 'Rose Café Table': '玫瑰咖啡桌',
+  'Café Chair': '咖啡椅', 'Wooden Chair': '木椅', 'Mint Chair': '薄荷椅', 'Cozy Armchair': '舒適扶手椅', 'Rose Armchair': '玫瑰扶手椅',
+  'Cozy Stove': '溫馨爐台', 'Steel Stove': '不鏽鋼爐台', 'Grand Range': '豪華爐灶', 'Juice Bar': '果汁吧台', 'Restroom': '洗手間',
+  'Arcade Cabinet': '街機', 'Arcade Cabinet (Sky)': '天空藍街機', 'Cactus': '仙人掌', 'Big Cactus': '大仙人掌',
+  'Tomato Crate': '番茄箱', 'Carrot Crate': '紅蘿蔔箱', 'Standing Lamp': '立燈', 'Rose Lamp': '玫瑰立燈', 'Mint Lamp': '薄荷立燈',
+  'Oak Planks': '橡木地板', 'Walnut Planks': '胡桃木地板', 'Cream Tiles': '奶油色磁磚', 'Mint Tiles': '薄荷磁磚', 'Rose Carpet': '玫瑰地毯', 'Sky Carpet': '天空藍地毯',
+  'Cream Plaster': '奶油色灰泥牆', 'Peach Plaster': '蜜桃色灰泥牆', 'Mint Stripes': '薄荷條紋', 'Rose Stripes': '玫瑰條紋', 'Sky Stripes': '天空條紋',
+
+  // ---------------- tasks & moods (stored in English, translated for display)
+  'Idle': '待命', 'Napping (out of energy)': '打瞌睡（沒體力了）',
+  'Taking an order': '點餐中', 'Serving food': '上菜中', 'Clearing a table': '收桌子', 'Cooking': '煮菜中', 'Mixing a drink': '調飲料中',
+  'Sweeping up': '打掃中', 'Repairing': '修理中',
+  'Walking over': '走過來', 'Arriving': '進門中', 'Walking to a seat': '走向座位', 'Waiting for a clean table': '等待乾淨的桌子',
+  'Waiting to order': '等待點餐', 'Waiting for food': '等待上菜', 'Eating': '用餐中', 'Visiting the restroom': '去洗手間',
+  'Playing arcade': '玩街機', 'Heading home': '回家中',
+  'Hungry': '肚子餓', 'No free seats': '沒有空位', 'Waiting': '等待中', 'Nothing to eat!': '沒東西可以吃！', 'Excited': '好期待',
+  'Yum!': '好吃！', 'Delighted': '超開心', 'Satisfied': '很滿意',
+  'Tired of waiting for a seat': '等不到位子，不想等了', 'Nobody took my order!': '都沒人來點餐！', 'The food took forever!': '菜等太久了！',
+};

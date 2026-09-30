@@ -2,6 +2,8 @@
 import { THREE, models, renderIcon } from './models.js';
 import { CharacterView } from './charview.js';
 import { assets } from './assets.js';
+import { buildPlot, buildCrops, cropScale } from './plots.js';
+import { ICON_GLYPHS, glyphDataURL } from './ui/icons.js';
 
 const cache = new Map();
 function copy(c, w, h) {
@@ -52,6 +54,47 @@ export function thumb(assetId, tint, w = 72, h = 64) {
     cache.set(key, c);
   }
   return copy(c, w, h);
+}
+
+/** 3D garden plot thumbnail for the Garden panel (growth is quantized so thumbnails are reused). */
+export function plotThumb(p, w = 112, h = 96) {
+  const stage = p.crop ? Math.min(6, Math.floor(p.prog * 6)) : 0;
+  const key = 'plot|' + (p.crop || '') + '|' + stage + '|' + (p.crop && p.water > 0 ? 1 : 0);
+  let c = cache.get(key);
+  if (!c) {
+    const sp = assets.sprite('tex_soil', 'any');
+    let tex = null;
+    if (sp) { tex = new THREE.Texture(sp.img); tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace; }
+    const { group, soilMat } = buildPlot(tex);
+    if (p.crop && p.water > 0) soilMat.color.set('#9c7a62');
+    if (p.crop) {
+      const prog = (stage + 0.5) / 6, crops = buildCrops(p.crop, prog), s = cropScale(prog);
+      crops.children.forEach((c2) => c2.scale.setScalar(s));
+      group.add(crops);
+    }
+    c = renderIcon(group, 200, { pad: 0.52, pitch: 0.75 });
+    cache.set(key, c);
+  }
+  const out = copy(c, w, h);
+  out.className = 'plot-thumb';
+  return out;
+}
+
+/** In-world bubbles and floating icons draw 2D sprites: use the vector glyphs for them too. */
+export async function bakeGlyphIcons() {
+  await Promise.all(Object.entries(ICON_GLYPHS).map(([id, name]) => new Promise((resolve) => {
+    const def = assets.def(id);
+    if (!def || !assets.isPlaceholder(id)) return resolve();
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      c.getContext('2d').drawImage(img, 0, 0, 128, 128);
+      assets.override(id, c, true); // still a "placeholder": DOM icons keep using the crisp SVG
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = glyphDataURL(name);
+  })));
 }
 
 /** Food/ingredient icons: render from the model of the same id unless a real PNG was provided. */

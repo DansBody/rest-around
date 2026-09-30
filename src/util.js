@@ -49,8 +49,9 @@ export function fmt(n) {
   n = Math.floor(n);
   return n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : String(n);
 }
-export function fmtTime(hours) {
+export function fmtTime(hours, h24 = false) {
   const h = Math.floor(hours), m = Math.floor((hours - h) * 60);
+  if (h24) return `${h}:${String(m).padStart(2, '0')}`;
   const ampm = h >= 12 ? 'pm' : 'am';
   const h12 = ((h + 11) % 12) + 1;
   return `${h12}:${String(m).padStart(2, '0')}${ampm}`;

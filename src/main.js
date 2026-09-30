@@ -1,7 +1,7 @@
 // Entry point: load assets (placeholders for anything missing), restore the save, start the loop.
 import { assets } from './assets.js';
 import { models } from './models.js';
-import { bakeModelIcons } from './portrait.js';
+import { bakeModelIcons, bakeGlyphIcons } from './portrait.js';
 import { Game } from './game.js';
 import { Renderer } from './renderer.js';
 import { UI } from './ui/ui.js';
@@ -9,19 +9,23 @@ import { DebugPanel } from './ui/debug.js';
 import { setupInput } from './input.js';
 import { load, save } from './save.js';
 import { audio } from './audio.js';
+import { t, localizeData } from './i18n.js';
 
 const loading = document.getElementById('loading');
 const bar = loading.querySelector('.load-bar i');
 const msg = loading.querySelector('.load-msg');
 
 async function boot() {
+  localizeData();
+  loading.querySelector('.load-msg').textContent = t('Setting the tables…');
   try {
     await assets.load((p) => { bar.style.width = Math.round(p * 30) + '%'; });
-    msg.textContent = 'Unpacking the furniture…';
+    msg.textContent = t('Unpacking the furniture…');
     await models.load(assets.manifest, (p) => { bar.style.width = Math.round(30 + p * 70) + '%'; });
     bakeModelIcons();
+    await bakeGlyphIcons();
   } catch (e) {
-    msg.textContent = 'Could not load assets/manifest.json — run a local server (see README).';
+    msg.textContent = t('Could not load assets/manifest.json — run a local server (see README).');
     console.error(e);
     return;
   }
@@ -46,9 +50,9 @@ async function boot() {
   resize();
   game.camera.fit(game.world.size);
 
-  if (status === 'corrupt') ui.toast('Your save was damaged, so a fresh restaurant was opened. (A backup was kept.)', 'bad');
-  else if (status === 'loaded') ui.toast(`Welcome back to ${game.state.name}!`, 'good');
-  else ui.toast('Welcome to your new restaurant! Guests are on their way ☕', 'good');
+  if (status === 'corrupt') ui.toast(t('Your save was damaged, so a fresh restaurant was opened. (A backup was kept.)'), 'bad');
+  else if (status === 'loaded') ui.toast(t('Welcome back to {name}!', { name: game.state.name }), 'good');
+  else ui.toast(t('Welcome to your new restaurant! Guests are on their way ☕'), 'good');
 
   // autosave
   setInterval(() => { if (!game.resetting) save(game); }, 10000);

@@ -51,9 +51,11 @@ clip names differ — point `characterAnimationFile` at its animations and updat
   PNG at the listed path overrides that.
 * Surface textures (`tex_*`) are square, seamless, 256×256 (or a multiple), drawn light grey where
   marked *tintable* (floor and wallpaper colours come from the shop item's tint).
-* UI icons (`icon_*`, `tool_*`, and the heart/angry emotes in the day summary) fall back to
-  built-in vector glyphs (`src/ui/icons.js`) instead of a generated placeholder. A PNG at the
-  listed path still replaces them.
+* UI icons and emotes (`icon_*`, `tool_*`, `emote_*`) fall back to built-in vector glyphs
+  (`src/ui/icons.js`) instead of a generated placeholder, both in the UI and in the in-world
+  speech bubbles. A PNG at the listed path still replaces them.
+* Staff snacks (`snack_*`) are rendered from small procedural 3D models (cookie, sandwich,
+  bento), and the Garden panel renders its plots in 3D, so no 2D art is needed for them.
 
 ## Asset tables (generated)
 
@@ -61,7 +63,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (64)
+### 3D models (67)
 
 **Furniture**
 
@@ -151,6 +153,9 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `ing_milk` | _procedural placeholder_ (`bottle`) |  |
 | `ing_flour` | _procedural placeholder_ (`sack`) |  |
 | `ing_lemon` | _procedural placeholder_ (`lemon`) |  |
+| `m_snack_cookie` | _procedural placeholder_ (`cookie`) |  |
+| `m_snack_sandwich` | _procedural placeholder_ (`sandwich`) |  |
+| `m_snack_bento` | _procedural placeholder_ (`bento`) |  |
 
 **Characters**
 
@@ -162,7 +167,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `rogue` | `models/characters/Rogue.gltf` | accessories: Rogue_Cape |
 | `rogue_hooded` | `models/characters/Rogue_Hooded.gltf` | accessories: Rogue_Cape |
 
-### 2D images (74)
+### 2D images (71)
 
 | id | file | size (px) | notes |
 |---|---|---|---|
@@ -202,9 +207,9 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `ing_flour` | `food/ing_flour.png` | 48×48 | rendered from model `ing_flour` unless the PNG exists |
 | `ing_lemon` | `food/ing_lemon.png` | 48×48 | rendered from model `ing_lemon` unless the PNG exists |
 | `ing_ham` | `food/ing_ham.png` | 48×48 | rendered from model `ing_ham` unless the PNG exists |
-| `snack_cookie` | `food/snack_cookie.png` | 48×48 |  |
-| `snack_sandwich` | `food/snack_sandwich.png` | 48×48 |  |
-| `snack_bento` | `food/snack_bento.png` | 48×48 |  |
+| `snack_cookie` | `food/snack_cookie.png` | 48×48 | rendered from model `m_snack_cookie` unless the PNG exists |
+| `snack_sandwich` | `food/snack_sandwich.png` | 48×48 | rendered from model `m_snack_sandwich` unless the PNG exists |
+| `snack_bento` | `food/snack_bento.png` | 48×48 | rendered from model `m_snack_bento` unless the PNG exists |
 | `ui_bubble` | `ui/ui_bubble.png` | 64×60 |  |
 | `emote_heart` | `ui/emote_heart.png` | 40×40 |  |
 | `emote_angry` | `ui/emote_angry.png` | 40×40 |  |
@@ -215,7 +220,6 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `emote_note` | `ui/emote_note.png` | 40×40 |  |
 | `emote_broken` | `ui/emote_broken.png` | 40×40 |  |
 | `emote_menu` | `ui/emote_menu.png` | 40×40 |  |
-| `ui_logo` | `ui/ui_logo.png` | 480×160 |  |
 | `icon_coin` | `ui/icon_coin.png` | 40×40 |  |
 | `icon_points` | `ui/icon_points.png` | 40×40 |  |
 | `icon_star` | `ui/icon_star.png` | 40×40 |  |
@@ -238,7 +242,5 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `tool_garden` | `ui/tool_garden.png` | 64×64 |  |
 | `tool_market` | `ui/tool_market.png` | 64×64 |  |
 | `tool_settings` | `ui/tool_settings.png` | 64×64 |  |
-| `garden_soil` | `ui/garden_soil.png` | 112×72 |  |
-| `garden_sprout` | `ui/garden_sprout.png` | 48×48 |  |
 
 <!-- ASSET-TABLE:END -->

@@ -5,6 +5,7 @@ import { World } from './world.js';
 import { DIRS } from './iso.js';
 import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE } from './data.js';
 import { tileKey, bus } from './util.js';
+import { t } from './i18n.js';
 
 export class Build {
   constructor(game) {
@@ -48,10 +49,10 @@ export class Build {
 
   // ---------------- validation ----------------
   inUse(f) {
-    if (f.kind === 'chair' && f.seat && (f.seat.customer || f.seat.reserved)) return 'Someone is sitting there';
-    if (f.kind === 'table' && f.seats && f.seats.some((s) => s.customer || s.reserved)) return 'Guests are at this table';
-    if ((f.kind === 'stove' || f.kind === 'bar') && (f.cooking || f.ready || f.reservedBy)) return 'Busy cooking right now';
-    if ((f.kind === 'toilet' || f.kind === 'arcade') && f.reservedBy) return 'Someone is using it';
+    if (f.kind === 'chair' && f.seat && (f.seat.customer || f.seat.reserved)) return t('Someone is sitting there');
+    if (f.kind === 'table' && f.seats && f.seats.some((s) => s.customer || s.reserved)) return t('Guests are at this table');
+    if ((f.kind === 'stove' || f.kind === 'bar') && (f.cooking || f.ready || f.reservedBy)) return t('Busy cooking right now');
+    if ((f.kind === 'toilet' || f.kind === 'arcade') && f.reservedBy) return t('Someone is using it');
     return null;
   }
 
@@ -59,26 +60,26 @@ export class Build {
     const g = this.game, w = g.world;
     const tiles = w.tilesOf(type, x, y, dir);
     const res = { valid: false, reason: '', tiles, access: [], hint: '' };
-    for (const t of tiles) {
-      if (!w.inBounds(t.x, t.y)) { res.reason = 'Out of the room'; return res; }
-      if (w.furnitureAt(t.x, t.y)) { res.reason = 'Something is already there'; return res; }
-      if (w.isEntry(t.x, t.y)) { res.reason = 'Keep the doorway clear'; return res; }
-      if (g.agentTiles.has(t.x, t.y)) { res.reason = 'Someone is standing there'; return res; }
-      if (w.trashAt(t.x, t.y)) { res.reason = 'Clean up that mess first'; return res; }
+    for (const tl of tiles) {
+      if (!w.inBounds(tl.x, tl.y)) { res.reason = t('Out of the room'); return res; }
+      if (w.furnitureAt(tl.x, tl.y)) { res.reason = t('Something is already there'); return res; }
+      if (w.isEntry(tl.x, tl.y)) { res.reason = t('Keep the doorway clear'); return res; }
+      if (g.agentTiles.has(tl.x, tl.y)) { res.reason = t('Someone is standing there'); return res; }
+      if (w.trashAt(tl.x, tl.y)) { res.reason = t('Clean up that mess first'); return res; }
     }
     const blocked = new Set(tiles.map((t) => tileKey(t.x, t.y)));
     const reach = w.reachable(blocked);
     // every free floor tile must stay reachable from the door
     for (let i = 0; i < w.size; i++) for (let j = 0; j < w.size; j++) {
       const k = tileKey(i, j);
-      if (!w.occ.has(k) && !blocked.has(k) && !reach.has(k)) { res.reason = 'That would cut off part of the floor from the door'; return res; }
+      if (!w.occ.has(k) && !blocked.has(k) && !reach.has(k)) { res.reason = t('That would cut off part of the floor from the door'); return res; }
     }
     // the new item needs its working side free
     const probe = { type, kind: furnitureById[type].kind, x, y, dir, fp: World.footprint(type, dir) };
     const acc = World.accessTiles(probe);
     res.access = acc.map((t) => ({ ...t, ok: reach.has(tileKey(t.x, t.y)) }));
     if (acc.length && !res.access.some((t) => t.ok)) {
-      res.reason = probe.kind === 'chair' ? 'A chair needs a free side to sit down from' : 'Needs free floor in front (white dots)';
+      res.reason = probe.kind === 'chair' ? t('A chair needs a free side to sit down from') : t('Needs free floor in front (white dots)');
       return res;
     }
     if (probe.kind !== 'chair') res.access = res.access.filter((t) => w.inBounds(t.x, t.y));
@@ -86,12 +87,12 @@ export class Build {
     // ...and must not block anyone else's
     for (const f of w.furniture) {
       const a = World.accessTiles(f);
-      if (a.length && !a.some((t) => reach.has(tileKey(t.x, t.y)))) { res.reason = `That blocks access to the ${furnitureById[f.type].name}`; return res; }
+      if (a.length && !a.some((t) => reach.has(tileKey(t.x, t.y)))) { res.reason = t('That blocks access to the {name}', { name: furnitureById[f.type].name }); return res; }
     }
     if (probe.kind === 'chair') {
       const d = DIRS[dir];
-      const t = w.furnitureAt(x + d.dx, y + d.dy);
-      if (!t || t.kind !== 'table') res.hint = 'Tip: chairs must face a table to seat guests (R to rotate)';
+      const front = w.furnitureAt(x + d.dx, y + d.dy);
+      if (!front || front.kind !== 'table') res.hint = t('Tip: chairs must face a table to seat guests (R to rotate)');
     }
     res.valid = true;
     return res;
@@ -154,14 +155,14 @@ export class Build {
   // ---------------- actions ----------------
   place(type, x, y) {
     const g = this.game, cat = furnitureById[type];
-    if (cat.level > g.state.level) return this.say(`Unlocks at level ${cat.level}`, 'bad');
+    if (cat.level > g.state.level) return this.say(t('Unlocks at level {n}', { n: cat.level }), 'bad');
     const v = this.validate(type, x, y, this.dir);
     if (!v.valid) { g.sfx('error'); return this.say(v.reason, 'bad'); }
-    if (!g.eco.spend(cat.price, cat.name)) return this.say('Not enough coins', 'bad');
+    if (!g.eco.spend(cat.price, cat.name)) return this.say(t('Not enough coins'), 'bad');
     const f = g.world.addFurniture(type, x, y, this.dir);
     f.bounce = 1;
     g.sfx('place');
-    this.say(v.hint || `Placed ${cat.name} (−${cat.price})`, v.hint ? 'warn' : 'good');
+    this.say(v.hint || t('Placed {name} (−{n})', { name: cat.name, n: cat.price }), v.hint ? 'warn' : 'good');
     this.refresh();
     g.changed('build');
   }
@@ -169,7 +170,7 @@ export class Build {
   paint(x, y) {
     const g = this.game, w = g.world, fl = floorById[this.tool.id];
     if (!w.inBounds(x, y) || w.floors[x][y] === fl.id) return;
-    if (fl.level > g.state.level) return this.say(`Unlocks at level ${fl.level}`, 'bad');
+    if (fl.level > g.state.level) return this.say(t('Unlocks at level {n}', { n: fl.level }), 'bad');
     if (!g.eco.spend(fl.price, fl.name)) { this.painting = false; return; }
     w.floors[x][y] = fl.id;
     g.sfx('tap');
@@ -178,13 +179,13 @@ export class Build {
 
   applyWallpaper(id) {
     const g = this.game, w = g.world, wp = wallById[id];
-    if (wp.level > g.state.level) return this.say(`Unlocks at level ${wp.level}`, 'bad');
-    if (w.wallpaper === id) return this.say('Already on the walls!');
+    if (wp.level > g.state.level) return this.say(t('Unlocks at level {n}', { n: wp.level }), 'bad');
+    if (w.wallpaper === id) return this.say(t('Already on the walls!'));
     const cost = wp.price * (w.size * 2 - 1);
     if (!g.eco.spend(cost, wp.name)) return;
     w.wallpaper = id;
     g.sfx('place');
-    this.say(`Walls redecorated (−${cost})`, 'good');
+    this.say(t('Walls redecorated (−{n})', { n: cost }), 'good');
     g.changed('build');
   }
 
@@ -192,12 +193,12 @@ export class Build {
   expand() {
     const g = this.game, e = this.nextExpansion();
     if (!e) return;
-    if (e.level > g.state.level) return this.say(`Reach level ${e.level} to expand`, 'bad');
+    if (e.level > g.state.level) return this.say(t('Reach level {n} to expand', { n: e.level }), 'bad');
     if (!g.eco.spend(e.price, 'the expansion')) return;
     g.world.resize(e.size);
     g.camera.setRoom(e.size);
     g.sfx('levelup');
-    this.say(`The restaurant is now ${e.size}×${e.size}!`, 'good');
+    this.say(t('The restaurant is now {n}×{n}!', { n: e.size }), 'good');
     g.changed('build');
   }
 
@@ -206,7 +207,7 @@ export class Build {
     if (!f) return;
     const busy = this.inUse(f);
     if (busy) return this.say(busy, 'bad');
-    if (f.kind === 'stove' && g.world.byKind('stove').length <= 1) return this.say('You need at least one stove!', 'bad');
+    if (f.kind === 'stove' && g.world.byKind('stove').length <= 1) return this.say(t('You need at least one stove!'), 'bad');
     const cat = furnitureById[f.type];
     const refund = Math.floor(cat.price * SELL_RATE);
     this.detach(f);
@@ -214,7 +215,7 @@ export class Build {
     g.state.coins += refund;
     this.selected = null;
     g.sfx('coin');
-    this.say(`Sold ${cat.name} (+${refund})`, 'good');
+    this.say(t('Sold {name} (+{n})', { name: cat.name, n: refund }), 'good');
     g.changed('build');
   }
 
@@ -237,12 +238,12 @@ export class Build {
         f.dir = d; f.fp = World.footprint(f.type, d);
         w.furniture.push(f); w.changed();
         f.bounce = 1; g.sfx('click');
-        this.say('Rotated', 'good'); g.changed('build');
+        this.say(t('Rotated'), 'good'); g.changed('build');
         return;
       }
     }
     w.furniture.push(f); w.changed();
-    this.say("Can't rotate here — no room", 'bad');
+    this.say(t("Can't rotate here — no room"), 'bad');
   }
 
   startMove() {
@@ -254,7 +255,7 @@ export class Build {
     this.moving = { f, x: f.x, y: f.y, dir: f.dir };
     this.dir = f.dir; this.autoFace = false;
     this.game.world.removeFurniture(f);
-    this.say('Click a new spot · R rotates · Esc cancels');
+    this.say(t('Click a new spot · R rotates · Esc cancels'));
     this.refresh();
   }
   dropMove(x, y) {
@@ -266,7 +267,7 @@ export class Build {
     f.bounce = 1;
     this.moving = null; this.selected = f;
     g.sfx('place');
-    this.say(v.hint || 'Moved', v.hint ? 'warn' : 'good');
+    this.say(v.hint || t('Moved'), v.hint ? 'warn' : 'good');
     g.changed('build');
   }
   cancelMove() {

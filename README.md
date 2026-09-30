@@ -133,6 +133,15 @@ asset tables (`node tools/assets-table.mjs` refreshes them; optional, the game n
 * Fonts: Fredoka and Nunito (SIL Open Font License).
 * three.js (MIT).
 
+## Languages
+
+**Settings → Language** switches between English and 繁體中文 (Traditional Chinese) instantly;
+the first visit follows the browser language. Strings live in `src/lang/zh-TW.js`, keyed by the
+English text (`t('Hello {name}', { name })` in `src/i18n.js`); game data names (dishes,
+furniture, roles…) are localized in place. To add a language, copy `zh-TW.js`, translate the
+values and register it in `LANGS`/`DICTS` in `src/i18n.js`. The hidden debug panel stays in
+English.
+
 ## UI style
 
 The interface is "liquid glass": translucent frosted layers (HUD capsules, a floating tab bar,
@@ -180,6 +189,8 @@ src/
                         food, trash, lighting, build preview, debug overlays, 2D overlay layer
   charview.js           animated character per agent: clip selection, props, hats, facing
   abilityfx.js          staff ability visuals: charge ring, build-up, beam/shockwave, juggling
+  plots.js              garden plot meshes (3D garden + Garden panel thumbnails)
+  i18n.js lang/         t() translation helper; lang/zh-TW.js Traditional Chinese strings
   portrait.js           3D-rendered portraits, shop thumbnails and food icons
   iso.js camera.js      grid directions; orbit camera (pan/zoom/rotate)
   world.js              room grid, furniture, seats, access tiles, trash, reachability

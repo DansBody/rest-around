@@ -6,6 +6,7 @@ import { roleLook } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
 import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY } from './data.js';
 import { choice, rand, randInt, manhattan, uid, bus } from './util.js';
+import { t, titledRole } from './i18n.js';
 
 export function makeStaff(game, role, name) {
   const used = new Set(game.staff.map((s) => s.name));
@@ -106,8 +107,8 @@ export class Staff extends Agent {
         g.fx.sparkle(g.at(t.x + 0.5, t.y + 0.5, 12), 5, '#fff6c2');
       }
       if (near.length) this.gainXp(near.length * (SKILL.xp.sweep || 1));
-      g.fx.title(g.at(this.x, this.y, 95), near.length > 1 ? `Whirlwind! ×${near.length}` : 'Whirlwind!', ab.color);
-    } else g.fx.title(g.at(this.x, this.y, 95), ab.name + '!', ab.color);
+      g.fx.title(g.at(this.x, this.y, 95), t('{ability}!', { ability: ab.name }) + (near.length > 1 ? ` ×${near.length}` : ''), ab.color);
+    } else g.fx.title(g.at(this.x, this.y, 95), t('{ability}!', { ability: ab.name }), ab.color);
     g.fx.sparkle(at, 22, ab.color);
     g.fx.sparkle(at, 10, '#ffffff');
     this.emote('emote_sparkle', 1.5);
@@ -128,7 +129,8 @@ export class Staff extends Agent {
     const lv = this.skillLv();
     if (lv > before) {
       const g = this.game;
-      g.toast(`${this.name} is now ${/^[AEIOU]/.test(SKILL.titles[lv - 1]) ? 'an' : 'a'} ${SKILL.titles[lv - 1]} ${this.roleName}! (+${Math.round((SKILL.mul[lv - 1] - 1) * 100)}% speed)`, 'good');
+      const title = titledRole(SKILL.titles[lv - 1], this.roleName);
+      g.toast(t(/^[AEIOU]/.test(title) ? '{name} is now an {title}! (+{n}% speed)' : '{name} is now a {title}! (+{n}% speed)', { name: this.name, title, n: Math.round((SKILL.mul[lv - 1] - 1) * 100) }), 'good');
       g.fx.sparkle(g.at(this.x, this.y, 60), 10, '#ffd86b');
       this.emote('emote_sparkle', 2);
       this.hop();

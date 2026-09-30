@@ -185,7 +185,6 @@ class AssetStore {
     img.className = cls;
     img.draggable = false;
     img.alt = '';
-    if (this.isPlaceholder(id)) img.title = id + ' (placeholder)';
     return img;
   }
 }

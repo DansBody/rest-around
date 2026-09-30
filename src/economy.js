@@ -2,9 +2,10 @@
 // garden plots, daily gift, staff hiring/snacks, facility breakage & repair.
 import {
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS, SEEDS, WATER_DURATION,
-  snackById, ROLES, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
+  snackById, ROLES, DISH_CATS, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
 } from './data.js';
 import { makeStaff } from './staff.js';
+import { t } from './i18n.js';
 import { bus, choice, randInt, clamp } from './util.js';
 
 export class Economy {
@@ -21,7 +22,7 @@ export class Economy {
   canAfford(n) { return this.s.coins >= n; }
   spend(n, what = '') {
     if (n <= 0) return true;
-    if (this.s.coins < n) { this.game.toast(`Not enough coins${what ? ' for ' + what : ''} (need ${n})`, 'bad'); this.game.sfx('error'); return false; }
+    if (this.s.coins < n) { this.game.toast(what ? t('Not enough coins for {what} (need {n})', { what, n }) : t('Not enough coins (need {n})', { n }), 'bad'); this.game.sfx('error'); return false; }
     this.s.coins -= n;
     if (this.s.stats) this.s.stats.spent += n;
     this.game.changed('coins');
@@ -44,13 +45,13 @@ export class Economy {
     const before = { staff: staffSlots(s.level), menu: menuSlots(s.level), plots: gardenPlots(s.level) };
     s.level++;
     const unlocks = [];
-    if (staffSlots(s.level) > before.staff) unlocks.push(`${staffSlots(s.level)} staff slots`);
+    if (staffSlots(s.level) > before.staff) unlocks.push(t('{n} staff slots', { n: staffSlots(s.level) }));
     const m = menuSlots(s.level);
-    for (const k of Object.keys(m)) if (m[k] > before.menu[k]) unlocks.push(`+1 ${k} menu slot`);
-    if (gardenPlots(s.level) > before.plots) unlocks.push('a new garden plot');
-    for (const d of DISHES) if (d.level === s.level) unlocks.push(`dish: ${d.name}`);
+    for (const k of Object.keys(m)) if (m[k] > before.menu[k]) unlocks.push(t('+1 {cat} menu slot', { cat: DISH_CATS.find((c) => c.id === k).name }));
+    if (gardenPlots(s.level) > before.plots) unlocks.push(t('a new garden plot'));
+    for (const d of DISHES) if (d.level === s.level) unlocks.push(t('dish: {name}', { name: d.name }));
     for (const f of Object.values(furnitureById)) if (f.level === s.level) unlocks.push(f.name);
-    for (const e of EXPANSIONS) if (e.level === s.level) unlocks.push(`${e.size}×${e.size} floor plan`);
+    for (const e of EXPANSIONS) if (e.level === s.level) unlocks.push(t('{n}×{n} floor plan', { n: e.size }));
     this.syncGarden();
     bus.emit('levelUp', { level: s.level, unlocks });
     g.sfx('levelup');
@@ -62,13 +63,13 @@ export class Economy {
   menuCount(cat) { return Object.keys(this.s.dishes).filter((id) => this.s.dishes[id].on && dishById[id].cat === cat && this.dishUnlocked(id)).length; }
   toggleMenu(id) {
     const s = this.s, d = dishById[id], st = s.dishes[id];
-    if (!this.dishUnlocked(id)) return this.game.toast(`${d.name} unlocks at level ${d.level}`, 'bad');
+    if (!this.dishUnlocked(id)) return this.game.toast(t('{name} unlocks at level {n}', { name: d.name, n: d.level }), 'bad');
     if (st.on) {
       const foods = Object.keys(s.dishes).filter((k) => s.dishes[k].on && dishById[k].cat !== 'drink' && this.dishUnlocked(k));
-      if (d.cat !== 'drink' && foods.length <= 1) return this.game.toast('Keep at least one dish on the menu!', 'bad');
+      if (d.cat !== 'drink' && foods.length <= 1) return this.game.toast(t('Keep at least one dish on the menu!'), 'bad');
       st.on = false;
     } else {
-      if (this.menuCount(d.cat) >= menuSlots(s.level)[d.cat]) return this.game.toast(`No free ${d.cat} slots — take a dish off first or level up`, 'bad');
+      if (this.menuCount(d.cat) >= menuSlots(s.level)[d.cat]) return this.game.toast(t('No free {cat} slots — take a dish off first or level up', { cat: DISH_CATS.find((c) => c.id === d.cat).name }), 'bad');
       st.on = true;
     }
     this.game.sfx('click');
@@ -78,7 +79,7 @@ export class Economy {
   contribute(id) {
     const s = this.s, d = dishById[id], st = s.dishes[id], g = this.game;
     if (!this.dishUnlocked(id)) return;
-    if (st.lv >= MAX_DISH_LEVEL) return g.toast(`${d.name} is already max level!`);
+    if (st.lv >= MAX_DISH_LEVEL) return g.toast(t('{name} is already max level!', { name: d.name }));
     const need = levelUpCost(st.lv);
     let moved = 0;
     for (const ing of d.ings) {
@@ -86,11 +87,11 @@ export class Economy {
       const n = Math.min(have, need - cur);
       if (n > 0) { s.inv[ing] = have - n; st.prog[ing] = cur + n; moved += n; }
     }
-    if (!moved) { g.toast('No matching ingredients in the pantry', 'bad'); g.sfx('error'); return; }
+    if (!moved) { g.toast(t('No matching ingredients in the pantry'), 'bad'); g.sfx('error'); return; }
     if (d.ings.every((i) => (st.prog[i] || 0) >= need)) {
       st.lv++; st.prog = {};
       this.addPoints(st.lv * 6);
-      g.toast(`${d.name} reached Lv${st.lv}! Price and points up.`, 'good');
+      g.toast(t('{name} reached Lv{n}! Price and points up.', { name: d.name, n: st.lv }), 'good');
       g.sfx('levelup');
     } else g.sfx('pop');
     g.changed('menu');
@@ -168,14 +169,14 @@ export class Economy {
   // ---------------- staff ----------------
   hire(role) {
     const g = this.game, s = this.s;
-    if (g.staff.length >= staffSlots(s.level)) return g.toast('All staff slots are full — level up for more', 'bad');
-    if (!this.spend(ROLES[role].hire, 'hiring')) return;
+    if (g.staff.length >= staffSlots(s.level)) return g.toast(t('All staff slots are full — level up for more'), 'bad');
+    if (!this.spend(ROLES[role].hire, t('hiring'))) return;
     const st = makeStaff(g, role);
     const e = g.world.entry;
-    const t = g.freeTileNear(e.x + 1, e.y) || e;
-    g.addStaff(st, t.x, t.y);
+    const spot = g.freeTileNear(e.x + 1, e.y) || e;
+    g.addStaff(st, spot.x, spot.y);
     st.emote('emote_heart', 2); st.hop();
-    g.toast(`${st.name} the ${ROLES[role].name} joined the team!`, 'good');
+    g.toast(t('{name} the {role} joined the team!', { name: st.name, role: ROLES[role].name }), 'good');
     g.changed('staff');
     return st;
   }
@@ -188,11 +189,11 @@ export class Economy {
     const g = this.game;
     if (!ROLES[role] || role === st.role || !g.staff.includes(st)) return false;
     const fee = this.jobChangeFee(st, role);
-    if (fee && !this.spend(fee, 'retraining')) return false;
+    if (fee && !this.spend(fee, t('retraining'))) return false;
     const from = st.roleName;
     st.changeRole(role);
     g.sfx('levelup');
-    g.toast(`${st.name} retrained: ${from} → ${st.roleName}!`, 'good');
+    g.toast(t('{name} retrained: {from} → {to}!', { name: st.name, from, to: st.roleName }), 'good');
     g.changed('staff');
     return true;
   }
@@ -200,7 +201,7 @@ export class Economy {
     const g = this.game;
     if (st.job) st.abortJob();
     g.removeAgent(st);
-    g.toast(`${st.name} waved goodbye.`);
+    g.toast(t('{name} waved goodbye.', { name: st.name }));
     g.changed('staff');
   }
   feed(st, snackId) {
@@ -219,7 +220,7 @@ export class Economy {
     f.broken = true;
     g.fx.puff(g.at(f.x + 0.5, f.y + 0.5, 60), '#bdb5ae', 6);
     g.sfx('break');
-    g.toast(`${furnitureById[f.type].name} broke down! A cleaner can fix it.`, 'bad');
+    g.toast(t('{name} broke down! A cleaner can fix it.', { name: furnitureById[f.type].name }), 'bad');
     g.changed('broken');
   }
   repairFacility(f) {

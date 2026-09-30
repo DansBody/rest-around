@@ -539,30 +539,10 @@ const SHAPES = {
   },
   emote(ctx, def, dir, ph) { drawGlyph(ctx, ph.glyph, def.size[0], def.size[1]); },
   icon(ctx, def, dir, ph) { drawGlyph(ctx, ph.glyph, def.size[0], def.size[1]); },
-  logo(ctx, def, dir, ph) {
-    const [w, h] = def.size;
-    ctx.font = `600 ${Math.floor(h * 0.48)}px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round'; ctx.lineWidth = 14; ctx.strokeStyle = '#6b4230'; ctx.strokeText(ph.text, w / 2, h / 2);
-    ctx.fillStyle = '#fff1d6'; ctx.fillText(ph.text, w / 2, h / 2);
-    ctx.fillStyle = '#f6a5b2'; ctx.fillText(ph.text, w / 2, h / 2 + 3); ctx.fillStyle = '#fff4df'; ctx.fillText(ph.text, w / 2, h / 2 - 1);
-  },
-  soil(ctx, def) {
-    const [w, h] = def.size;
-    poly(ctx, [[w / 2, 6], [w - 4, h / 2 + 2], [w / 2, h - 4], [4, h / 2 + 2]]); fillStroke(ctx, '#c79a62', '#6b4b3a', 2.5);
-    poly(ctx, [[w / 2, 13], [w - 16, h / 2 + 2], [w / 2, h - 11], [16, h / 2 + 2]]); fillStroke(ctx, '#7a5438', '#5a3c28', 1.5);
-    ctx.strokeStyle = '#5f412c'; ctx.lineWidth = 2;
-    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(w / 2 - 22 + i * 14, h / 2 - 8 + i * 7); ctx.lineTo(w / 2 + 22 + i * 14, h / 2 + 14 + i * 7 - 22 + 8); ctx.stroke(); }
-  },
-  sprout(ctx, def) {
-    const [w, h] = def.size;
-    ctx.strokeStyle = '#4f8f4c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(w / 2, h - 6); ctx.lineTo(w / 2, h / 2); ctx.stroke();
-    ellipse(ctx, w / 2 - 9, h / 2 - 2, 10, 5.5); fillStroke(ctx, '#86c77f', '#3f7a45', 1.5);
-    ellipse(ctx, w / 2 + 9, h / 2 - 5, 10, 5.5); fillStroke(ctx, '#9bd48f', '#3f7a45', 1.5);
-  },
 };
 
-export const FONT = "'RA Body','Nunito','Varela Round','Trebuchet MS','Segoe UI',system-ui,sans-serif";
-export const DISPLAY_FONT = "'RA Display','Fredoka','Baloo 2','RA Body','Nunito','Trebuchet MS',system-ui,sans-serif";
+export const FONT = "'RA Body','Nunito','Varela Round','Trebuchet MS','Segoe UI','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif";
+export const DISPLAY_FONT = "'RA Display','Fredoka','Baloo 2','RA Body','Nunito','Trebuchet MS','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif";
 
 function star(ctx, cx, cy, r1, r2, n = 5) {
   ctx.beginPath();

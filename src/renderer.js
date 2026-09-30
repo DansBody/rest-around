@@ -5,6 +5,7 @@ import { THREE, models, TILE } from './models.js';
 import { assets } from './assets.js';
 import { CharacterView } from './charview.js';
 import { AbilityFx } from './abilityfx.js';
+import { buildPlot, buildCrops, cropScale, SPROUT_UNTIL } from './plots.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById } from './data.js';
 import { clamp, easeOutBack, lerp } from './util.js';
@@ -393,10 +394,7 @@ export class Renderer {
     const garden = this.game.state.garden;
     while (this.plots.length < garden.length) {
       const i = this.plots.length, t = this.plotTile(i);
-      const g = new THREE.Group();
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.28, 1.8), lam('#c79a62')); frame.position.y = 0.14; frame.castShadow = true; frame.receiveShadow = true; g.add(frame);
-      const soilMat = lam('#ffffff', { map: this.tex('tex_soil', 1) });
-      const soil = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.3, 1.55), soilMat); soil.position.y = 0.16; soil.receiveShadow = true; g.add(soil);
+      const { group: g, soilMat } = buildPlot(this.tex('tex_soil', 1));
       g.position.set((t.x + 0.5) * TILE, 0, (t.y + 0.5) * TILE);
       this.scene.add(g);
       this.plots.push({ g, soilMat, crop: null, cropKey: '' });
@@ -404,23 +402,14 @@ export class Renderer {
     garden.forEach((p, i) => {
       const v = this.plots[i];
       v.soilMat.color.set(p.crop && p.water > 0 ? '#9c7a62' : '#ffffff');
-      const key = p.crop ? p.crop + (p.prog < 0.35 ? ':s' : ':c') : '';
+      const key = p.crop ? p.crop + (p.prog < SPROUT_UNTIL ? ':s' : ':c') : '';
       if (key !== v.cropKey) {
         if (v.crop) v.g.remove(v.crop);
         v.crop = null; v.cropKey = key;
-        if (p.crop) {
-          const cg = new THREE.Group();
-          for (const [dx, dz] of [[-0.4, -0.35], [0.4, -0.35], [0, 0.05], [-0.4, 0.4], [0.4, 0.4]]) {
-            let m;
-            if (p.prog < 0.35) { m = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 6), lam('#7cc47a')); m.position.y = 0.17; }
-            else m = models.instance('ing_' + p.crop);
-            const w = new THREE.Group(); w.add(m); w.position.set(dx, 0.31, dz); cg.add(w);
-          }
-          v.g.add(cg); v.crop = cg;
-        }
+        if (p.crop) { v.crop = buildCrops(p.crop, p.prog); v.g.add(v.crop); }
       }
       if (v.crop) {
-        const s = p.prog < 0.35 ? 0.6 + p.prog * 1.5 : 0.35 + p.prog * 0.35;
+        const s = cropScale(p.prog);
         v.crop.children.forEach((w, k) => { w.scale.setScalar(s); w.position.y = 0.31 + (p.prog >= 1 ? Math.abs(Math.sin(this.time * 3 + k)) * 0.06 : 0); });
       }
     });
