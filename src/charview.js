@@ -121,7 +121,7 @@ export class CharacterView {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.yaw += d * Math.min(1, dt * 12);
     this.root.position.set(x, y, z);
-    this.root.rotation.y = this.yaw;
+    this.root.rotation.y = this.yaw + (a.spinT > 0 ? (1 - a.spinT / 0.8) * Math.PI * 4 : 0);
     this.play(anim);
     this.setHeld(p.held);
     // animations keep pace with sprinting / skilled staff

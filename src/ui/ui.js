@@ -80,6 +80,9 @@ export class UI {
     this.el.abilities = h('div#abilities');
     r.appendChild(this.el.abilities);
 
+    this.el.cutin = h('div#cutin');
+    r.appendChild(this.el.cutin);
+
     this.el.toolbar = h('div#toolbar', TOOLS.map((t) => (this.toolBtns[t.id] = h('button.btn.tool', { onclick: () => this.onTool(t.id), title: t.label }, ic(t.icon, 26), h('span', t.label)))));
     r.appendChild(this.el.toolbar);
 
@@ -112,6 +115,7 @@ export class UI {
     bus.on('buildChanged', () => this.renderBuild());
     bus.on('dayEnd', (s) => this.queueModal(() => this.summaryCard(s)));
     bus.on('levelUp', (e) => this.celebrate(e));
+    bus.on('ability', (a) => this.cutIn(a));
     bus.on('dayStart', (d) => this.toast(`☀️ Day ${d} — doors open!`, 'good'));
     this.renderBuild();
     this.update(1);
@@ -129,6 +133,18 @@ export class UI {
   }
 
   // ---------------- staff abilities (display only: they charge and fire by themselves) ----------------
+  /** Skill cut-in: a glass card slides in with the staff portrait and the ability name. */
+  cutIn(a) {
+    if (this.game.fastForwarding) return;
+    const ab = a.ability, el = this.el.cutin;
+    el.style.setProperty('--c', ab.color);
+    el.replaceChildren(
+      h('div.ci-face', portrait(a.look, 52, 52, 'ci-portrait'), h('span.ab-glyph', glyph(ab.glyph, 14))),
+      h('div.ci-text', h('b', ab.name + '!'), h('span', `${a.name} · ${a.roleName}`)));
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    clearTimeout(this.cutinTimer);
+    this.cutinTimer = setTimeout(() => el.classList.remove('show'), 1700);
+  }
   renderAbilities() {
     const g = this.game, dock = this.el.abilities;
     const key = g.build.active + '|' + g.staff.map((a) => `${a.id}:${a.role}:${a.abilityUnlocked()}`).join(',');
@@ -151,6 +167,7 @@ export class UI {
       b.classList.toggle('ready', a.abilityUnlocked() && a.charge >= 1);
       b.classList.toggle('active', a.boosted());
       b.classList.toggle('tired', a.napping);
+      b.classList.toggle('windup', a.windup > 0);
     }
   }
 

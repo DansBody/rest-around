@@ -13,6 +13,12 @@ export class FX {
     const near = this.items.filter((i) => i.type === 'text' && Math.abs(i.at.gx - at.gx) < 0.3 && Math.abs(i.at.gy - at.gy) < 0.3 && i.age < 0.4).length;
     this.push({ type: 'text', at, stack: near * 26, text, icon, color, life: 1.6 });
   }
+  /** Big popping headline (ability names). */
+  title(at, text, color) { this.push({ type: 'title', at, text, color, life: 1.4 }); }
+  /** Motes that fly inward to `at` (power gathering). */
+  gather(at, color, n = 1) {
+    for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, r = 38 + Math.random() * 26; this.push({ type: 'gather', at, ox: Math.cos(a) * r, oy: Math.sin(a) * r * 0.7, color, life: 0.45 + Math.random() * 0.2 }); }
+  }
   puff(at, color = '#fff', n = 1) {
     for (let i = 0; i < n; i++) this.push({ type: 'puff', at, dx: (Math.random() - 0.5) * 16, vx: (Math.random() - 0.5) * 20, vy: -18 - Math.random() * 14, r: 5 + Math.random() * 5, color, life: 0.9 + Math.random() * 0.4 });
   }
@@ -45,7 +51,24 @@ export class FX {
       if (!q) continue;
       const k = p.age / p.life, s = q.s;
       ctx.save();
-      if (p.type === 'text') {
+      if (p.type === 'title') {
+        const pop = p.age < 0.16 ? 1.9 - (p.age / 0.16) * 1.0 : p.age < 0.3 ? 0.9 + ((p.age - 0.16) / 0.14) * 0.1 : 1;
+        const rise = 30 * Math.min(1, k * 1.5);
+        ctx.globalAlpha = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
+        ctx.translate(q.x, q.y - rise * s); ctx.scale(pop * s, pop * s);
+        ctx.font = `800 30px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = p.color; ctx.shadowBlur = 18;
+        ctx.lineWidth = 8; ctx.strokeStyle = p.color; ctx.strokeText(p.text, 0, 0);
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.strokeText(p.text, 0, 0);
+        ctx.fillStyle = '#ffffff'; ctx.fillText(p.text, 0, 0);
+      } else if (p.type === 'gather') {
+        const e = k * k;
+        ctx.globalAlpha = Math.min(1, k * 3) * 0.9;
+        ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(q.x + p.ox * (1 - e) * s, q.y + p.oy * (1 - e) * s, (2.2 + 1.8 * k) * s, 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'text') {
         const pop = p.age < 0.15 ? 0.6 + (p.age / 0.15) * 0.5 : p.age < 0.25 ? 1.1 - ((p.age - 0.15) / 0.1) * 0.1 : 1;
         const rise = 55 * (1 - Math.pow(1 - Math.min(1, k), 3));
         ctx.globalAlpha = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;

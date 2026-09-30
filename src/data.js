@@ -194,7 +194,7 @@ export const ABILITIES = {
     desc: 'Juggles the shakers: the drink in hand jumps 40% ahead, then mixes twice as fast for 10 s.' },
 };
 export const ABILITY_UNLOCK_LV = 2;
-export const ABILITY = { chargePerLv: 0.15, idleCharge: 0.35, impatientAfter: 20 };
+export const ABILITY = { chargePerLv: 0.15, idleCharge: 0.35, impatientAfter: 20, windup: 0.9 };
 
 export function skillLevel(xp) {
   let lv = 1;

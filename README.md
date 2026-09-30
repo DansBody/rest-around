@@ -60,6 +60,12 @@ works (the ring around their portrait, bottom-left) and fires by itself at a goo
 | Cleaner | Whirlwind | 2+ bits of trash within 3 tiles | sweeps all of it at once |
 | Bartender | Juggle | a drink has just started | drink jumps 40% ahead, then mixes 2× for 10 s |
 
+You can see it coming: a coloured ring glows under the staff member from 70% charge and pulses
+when full; right before release they gather power for a moment (ring contracts, motes fly in, a
+filling "!" appears overhead), then a light beam and shockwave go off (Whirlwind's wave shows the
+swept area), the ability name pops up and a cut-in card slides in from the left. While it lasts
+the ring stays lit (and the bartender juggles).
+
 A charged ability that finds no good moment for 20 s settles for a smaller one. Expert and Master
 staff charge faster. Tuning lives in `ABILITIES` in `src/data.js`.
 
@@ -173,6 +179,7 @@ src/
   renderer.js           three.js scene: lawn/street/garden, room & cut-away walls, furniture,
                         food, trash, lighting, build preview, debug overlays, 2D overlay layer
   charview.js           animated character per agent: clip selection, props, hats, facing
+  abilityfx.js          staff ability visuals: charge ring, build-up, beam/shockwave, juggling
   portrait.js           3D-rendered portraits, shop thumbnails and food icons
   iso.js camera.js      grid directions; orbit camera (pan/zoom/rotate)
   world.js              room grid, furniture, seats, access tiles, trash, reachability

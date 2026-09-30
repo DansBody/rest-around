@@ -162,11 +162,13 @@ export class Game {
   fastForward(seconds, onDay) {
     const days = [];
     let t = 0;
+    this.fastForwarding = true;
     while (t < seconds) {
       if (this.paused) { days.push({ ...this.state.stats, day: this.state.day, rating: this.state.rating, coins: this.state.coins, level: this.state.level }); if (onDay) onDay(this); this.day.startNextDay(); }
       this.step(0.05); t += 0.05;
       this.fx.items.length = 0;
     }
+    this.fastForwarding = false;
     return days;
   }
 

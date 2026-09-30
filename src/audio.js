@@ -67,6 +67,8 @@ class Audio {
       case 'eat': T(400, 0.06, { vol: 0.15 }); T(460, 0.06, { vol: 0.15, at: 0.1 }); break;
       case 'yawn': T(500, 0.6, { type: 'triangle', vol: 0.1, slide: -250, attack: 0.1 }); break;
       case 'levelup': [523, 659, 784, 1047].forEach((f, i) => T(f, 0.22, { type: 'triangle', vol: 0.16, at: i * 0.09 })); break;
+      case 'charge': T(330, 0.85, { type: 'triangle', vol: 0.09, slide: 520, attack: 0.5 }); T(495, 0.85, { vol: 0.05, slide: 780, attack: 0.5 }); break;
+      case 'ability': this.noise(0.35, { vol: 0.12, freq: 1200, q: 0.8 }); [784, 988, 1175, 1568].forEach((f, i) => T(f, 0.3, { type: 'triangle', vol: 0.12, at: 0.04 + i * 0.05 })); break;
       case 'fanfare': [523, 659, 784, 659, 784, 1047].forEach((f, i) => T(f, 0.25, { type: 'triangle', vol: 0.15, at: i * 0.12 })); break;
       case 'open': T(660, 0.08, { vol: 0.12 }); T(990, 0.1, { vol: 0.1, at: 0.06 }); break;
       case 'close': T(990, 0.08, { vol: 0.1 }); T(660, 0.1, { vol: 0.1, at: 0.06 }); break;

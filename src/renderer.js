@@ -4,6 +4,7 @@
 import { THREE, models, TILE } from './models.js';
 import { assets } from './assets.js';
 import { CharacterView } from './charview.js';
+import { AbilityFx } from './abilityfx.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById } from './data.js';
 import { clamp, easeOutBack, lerp } from './util.js';
@@ -43,6 +44,7 @@ export class Renderer {
     this.roomSize = 0;
     this.floorKey = '';
     this.buildGroup = new THREE.Group(); this.scene.add(this.buildGroup);
+    this.abilityFx = new AbilityFx(this.scene);
     this.debugGroup = new THREE.Group(); this.scene.add(this.debugGroup);
   }
 
@@ -220,6 +222,7 @@ export class Renderer {
     this.syncTrash();
     this.syncGarden();
     this.syncCharacters(realDt);
+    this.abilityFx.update(g, this.chars, this.time, realDt);
     this.syncBuild();
     this.syncDebug();
     this.gl.render(this.scene, this.cam);
@@ -600,6 +603,7 @@ export class Renderer {
         }
       }
     }
+    this.abilityFx.drawOverlay(ctx, game, this.chars, (v) => this.projectV(v), z);
     game.fx.draw(ctx, (gx, gy, h) => this.project(gx, gy, h));
     if (game.debug.assets) this.drawAssetOverlay();
   }

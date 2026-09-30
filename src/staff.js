@@ -5,7 +5,7 @@ import { Agent } from './agent.js';
 import { roleLook } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
 import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY } from './data.js';
-import { choice, rand, randInt, manhattan, uid } from './util.js';
+import { choice, rand, randInt, manhattan, uid, bus } from './util.js';
 
 export function makeStaff(game, role, name) {
   const used = new Set(game.staff.map((s) => s.name));
@@ -25,6 +25,8 @@ export class Staff extends Agent {
     this.skills = {}; // role -> XP
     this.charge = 0;     // 0..1 ability charge
     this.fullT = 0;      // seconds the ability has been sitting fully charged
+    this.windup = 0;     // >0 while gathering power right before release
+    this.spinT = 0;      // whirlwind spin (visual)
     this.boostT = 0;     // seconds left on a timed ability (dash / showtime / juggle)
     this.boostRole = null;
   }
@@ -42,6 +44,13 @@ export class Staff extends Agent {
   }
   updateAbility(dt) {
     const g = this.game;
+    if (this.spinT > 0) this.spinT = Math.max(0, this.spinT - dt);
+    if (this.windup > 0) {
+      this.windup -= dt;
+      if (Math.random() < dt * 30) g.fx.gather(g.at(this.x, this.y, 45), this.ability.color, 1);
+      if (this.windup <= 0) { this.windup = 0; this.useAbility(); }
+      return;
+    }
     if (!this.abilityUnlocked() || this.napping || g.paused || this.boosted()) return;
     if (this.charge < 1) {
       this.charge = Math.min(1, this.charge + (dt / this.chargeTime()) * (this.job ? 1 : ABILITY.idleCharge));
@@ -49,7 +58,12 @@ export class Staff extends Agent {
       return;
     }
     this.fullT += dt;
-    if (this.goodMoment(this.fullT > ABILITY.impatientAfter)) this.useAbility();
+    if (this.goodMoment(this.fullT > ABILITY.impatientAfter)) {
+      // gather power for a moment (visible build-up), then release
+      this.windup = ABILITY.windup;
+      g.sfx('charge');
+      bus.emit('abilityWindup', this);
+    }
   }
   /** Is now worth spending the charge? `eager` lowers the bar after waiting a while. */
   goodMoment(eager) {
@@ -74,15 +88,17 @@ export class Staff extends Agent {
   trashNear() { const r = this.ability.radius || 0; return this.game.world.trash.filter((t) => Math.abs(t.x - this.tx) + Math.abs(t.y - this.ty) <= r); }
   useAbility() {
     const g = this.game, ab = this.ability;
-    this.charge = 0; this.fullT = 0;
-    const at = g.at(this.x + 0.5, this.y + 0.5, 60);
+    this.charge = 0; this.fullT = 0; this.windup = 0;
+    const at = g.at(this.x, this.y, 60);
     if (ab.dur) { this.boostT = ab.dur; this.boostRole = this.role; }
     if (ab.boost) {
       // push the dish/drink currently on the station ahead
       const st = this.job && this.job.station;
       if (st && st.cooking) { st.cookT = Math.min(st.cookTotal, st.cookT + st.cookTotal * ab.boost); g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), ab.color, 6); }
     }
+    bus.emit('ability', this);
     if (ab.id === 'whirlwind') {
+      this.spinT = 0.8;
       const near = this.trashNear();
       for (const t of near) {
         g.world.removeTrash(t);
@@ -90,12 +106,14 @@ export class Staff extends Agent {
         g.fx.sparkle(g.at(t.x + 0.5, t.y + 0.5, 12), 5, '#fff6c2');
       }
       if (near.length) this.gainXp(near.length * (SKILL.xp.sweep || 1));
-      g.floatText(this.x + 0.5, this.y + 0.5, near.length > 1 ? `Whirlwind! ×${near.length}` : 'Whirlwind!', null, ab.color);
-    } else g.floatText(this.x + 0.5, this.y + 0.5, ab.name + '!', null, ab.color);
-    g.fx.sparkle(at, 14, ab.color);
+      g.fx.title(g.at(this.x, this.y, 95), near.length > 1 ? `Whirlwind! ×${near.length}` : 'Whirlwind!', ab.color);
+    } else g.fx.title(g.at(this.x, this.y, 95), ab.name + '!', ab.color);
+    g.fx.sparkle(at, 22, ab.color);
+    g.fx.sparkle(at, 10, '#ffffff');
     this.emote('emote_sparkle', 1.5);
     this.hop();
-    g.sfx(ab.id === 'whirlwind' ? 'sweep' : ab.id === 'showtime' ? 'sizzle' : 'levelup');
+    g.sfx('ability');
+    g.sfx(ab.id === 'whirlwind' ? 'sweep' : ab.id === 'showtime' ? 'sizzle' : ab.id === 'juggle' ? 'shake' : 'pop');
   }
 
   // ---------------- skill ----------------
@@ -111,7 +129,7 @@ export class Staff extends Agent {
     if (lv > before) {
       const g = this.game;
       g.toast(`${this.name} is now ${/^[AEIOU]/.test(SKILL.titles[lv - 1]) ? 'an' : 'a'} ${SKILL.titles[lv - 1]} ${this.roleName}! (+${Math.round((SKILL.mul[lv - 1] - 1) * 100)}% speed)`, 'good');
-      g.fx.sparkle(g.at(this.x + 0.5, this.y + 0.5, 60), 10, '#ffd86b');
+      g.fx.sparkle(g.at(this.x, this.y, 60), 10, '#ffd86b');
       this.emote('emote_sparkle', 2);
       this.hop();
       g.sfx('levelup');
@@ -127,7 +145,7 @@ export class Staff extends Agent {
     if (role === 'chef') this.look.roleHat = 'chef';
     else if (this.look.roleHat === 'chef') this.look.roleHat = null;
     this.game.refreshCharacter(this);
-    this.game.fx.sparkle(this.game.at(this.x + 0.5, this.y + 0.5, 60), 12, '#bfe3ff');
+    this.game.fx.sparkle(this.game.at(this.x, this.y, 60), 12, '#bfe3ff');
     this.emote('emote_sparkle', 2);
     this.hop();
   }
@@ -142,7 +160,7 @@ export class Staff extends Agent {
     if (this.boostT > 0) {
       this.boostT = Math.max(0, this.boostT - dt);
       const g = this.game;
-      if (this.boosted() && Math.random() < dt * 8) g.fx.puff(g.at(this.x + 0.5, this.y + 0.5, this.role === 'waiter' ? 4 : 50), this.ability.color, 1);
+      if (this.boosted() && Math.random() < dt * 8) g.fx.puff(g.at(this.x, this.y, this.role === 'waiter' ? 4 : 50), this.ability.color, 1);
     }
     this.speedMul = this.skillMul * (this.boosted() && this.ability.speed ? this.ability.speed : 1);
     super.update(dt);
