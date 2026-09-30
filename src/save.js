@@ -123,7 +123,7 @@ function apply(game, data) {
   let maxId = 0;
   for (const sd of (data.staff || []).slice(0, 12)) {
     if (!sd || !ROLES[sd.role]) continue;
-    const a = new Staff(game, sd.role, typeof sd.name === 'string' ? sd.name.slice(0, 16) : 'Pip', sanitizeLook(sd.look));
+    const a = new Staff(game, sd.role, typeof sd.name === 'string' ? sd.name.slice(0, 16) : 'Pip', sanitizeLook(sd.look, sd.role));
     a.energy = num(sd.energy, 100, 0, 100);
     game.addStaff(a, Math.floor(num(sd.x, 1)), Math.floor(num(sd.y, 1)));
     maxId = Math.max(maxId, a.id);

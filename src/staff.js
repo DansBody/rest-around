@@ -105,7 +105,7 @@ export class Staff extends Agent {
         });
         this.wait(0, isDrink ? 'shake' : 'cook', {
           until: () => st.cookT >= st.cookTotal,
-          every: (dt) => { st.cookT += dt; if (!isDrink && Math.random() < dt * 3) { const p = g.worldPos({ x: st.x + 0.5, y: st.y + 0.5 }); g.fx.puff(p.x, p.y - 70, '#ffffff'); } },
+          every: (dt) => { st.cookT += dt; if (!isDrink && Math.random() < dt * 3) g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), '#ffffff'); },
         });
         this.do(() => {
           const t = j.ticket;
@@ -139,8 +139,7 @@ export class Staff extends Agent {
         this.wait(0.9, 'cook');
         this.do(() => {
           seat.dirty = false;
-          const p = g.worldPos({ x: seat.table.x + 0.5, y: seat.table.y + 0.5 });
-          g.fx.sparkle(p.x, p.y - 40, 5, '#ffffff');
+          g.fx.sparkle(g.at(seat.table.x + 0.5, seat.table.y + 0.5, 40), 5, '#ffffff');
           this.held = { id: 'held_tray', dish: 'dirty_plate' };
         });
         this.wait(0.35, 'carry');
@@ -152,11 +151,10 @@ export class Staff extends Agent {
         tr.claimed = this;
         this.walk(tr.x, tr.y, { onFail: fail });
         this.do(() => { this.held = { id: 'held_broom' }; g.sfx('sweep'); });
-        this.wait(1.5, 'sweep', { every: (dt) => { if (Math.random() < dt * 5) { const p = g.worldPos({ x: tr.x + 0.5, y: tr.y + 0.5 }); g.fx.puff(p.x, p.y - 4, '#e8ddd0'); } } });
+        this.wait(1.5, 'sweep', { every: (dt) => { if (Math.random() < dt * 5) g.fx.puff(g.at(tr.x + 0.5, tr.y + 0.5, 4), '#e8ddd0'); } });
         this.do(() => {
           g.world.removeTrash(tr);
-          const p = g.worldPos({ x: tr.x + 0.5, y: tr.y + 0.5 });
-          g.fx.sparkle(p.x, p.y - 10, 6, '#fff6c2');
+          g.fx.sparkle(g.at(tr.x + 0.5, tr.y + 0.5, 10), 6, '#fff6c2');
           this.held = null;
           this.finishJob();
         });
@@ -167,7 +165,7 @@ export class Staff extends Agent {
         this.walk(0, 0, { goals: w.accessFor(f), onFail: fail });
         this.face({ x: f.x, y: f.y });
         this.do(() => { this.held = { id: 'held_wrench' }; g.sfx('repair'); });
-        this.wait(3, 'repair', { every: (dt) => { if (Math.random() < dt * 4) { const p = g.worldPos({ x: f.x + 0.5, y: f.y + 0.5 }); g.fx.sparkle(p.x, p.y - 50, 2, '#ffd86b'); } } });
+        this.wait(3, 'repair', { every: (dt) => { if (Math.random() < dt * 4) g.fx.sparkle(g.at(f.x + 0.5, f.y + 0.5, 50), 2, '#ffd86b'); } });
         this.do(() => {
           if (alive(f)) g.eco.repairFacility(f);
           this.held = null;
@@ -192,8 +190,7 @@ export class Staff extends Agent {
     this.clearQueue();
     this.waitMode = null;
     if (this.held) {
-      const p = g.worldPos(this);
-      g.fx.puff(p.x, p.y - 50, '#efe6dc', 3);
+      g.fx.puff(g.at(this.x, this.y, 50), '#efe6dc', 3);
       this.held = null;
     }
     if (j) {

@@ -1,551 +1,685 @@
-// Canvas 2D renderer: floor, walls + door, depth-sorted furniture and characters, overlays.
+// Real-time 3D renderer (three.js). The simulation is unchanged: this module mirrors the world,
+// furniture, agents, trash and garden into a scene every frame, and draws speech bubbles, bars,
+// name tags and floating numbers on a 2D overlay canvas projected from 3D positions.
+import { THREE, models, TILE } from './models.js';
 import { assets } from './assets.js';
-import { toScreen, DIRS } from './iso.js';
+import { CharacterView } from './charview.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById } from './data.js';
-import { drawDoll, emoteOffset } from './doll.js';
-import { clamp, easeOutBack } from './util.js';
+import { clamp, easeOutBack, lerp } from './util.js';
 import { FONT, DISPLAY_FONT } from './placeholder.js';
 
-const EPS = 1e-3;
+const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
+const Y_UP = new THREE.Vector3(0, 1, 0);
+const tmpV = new THREE.Vector3();
+
+function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
+function hexMix(a, b, t) { return new THREE.Color(a).lerp(new THREE.Color(b), clamp(t, 0, 1)); }
 
 export class Renderer {
-  constructor(canvas, game) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+  constructor(glCanvas, overlay, game) {
     this.game = game;
-    this.dpr = 1;
+    this.canvas = glCanvas;
+    this.overlay = overlay;
+    this.ctx = overlay.getContext('2d');
     this.time = 0;
-    this.hitList = [];
+    this.dpr = 1;
+    this.gl = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true });
+    this.gl.shadowMap.enabled = true;
+    this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.gl.outputColorSpace = THREE.SRGBColorSpace;
+    this.scene = new THREE.Scene();
+    this.cam = new THREE.PerspectiveCamera(game.camera.fov, 1, 0.5, 500);
+    this.env = assets.manifest.environment || {};
+    this.texCache = new Map();
+    this.furn = new Map();      // uid -> view
+    this.chars = new Map();     // agent/walker -> CharacterView
+    this.trash = new Map();
+    this.plots = [];
+    this.lampLights = [];
+    this.raycaster = new THREE.Raycaster();
+    this.setupLights();
+    this.buildOutdoors();
+    this.roomSize = 0;
+    this.floorKey = '';
+    this.buildGroup = new THREE.Group(); this.scene.add(this.buildGroup);
+    this.debugGroup = new THREE.Group(); this.scene.add(this.debugGroup);
   }
 
+  // ------------------------------------------------------------------ setup
+  tex(id, repeat = 1) {
+    const k = id + '|' + repeat;
+    if (this.texCache.has(k)) return this.texCache.get(k);
+    const sp = assets.sprite(id, 'any');
+    const t = new THREE.Texture(sp ? sp.img : undefined);
+    t.needsUpdate = true;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(repeat, repeat);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    this.texCache.set(k, t);
+    return t;
+  }
+
+  setupLights() {
+    const s = this.scene;
+    this.hemi = new THREE.HemisphereLight(0xfff6e8, 0xb7a58e, 1.35);
+    s.add(this.hemi);
+    this.sun = new THREE.DirectionalLight(0xfff1dc, 2.1);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.0004;
+    this.sun.shadow.normalBias = 0.03;
+    this.sun.shadow.radius = 3;
+    s.add(this.sun); s.add(this.sun.target);
+    this.fill = new THREE.DirectionalLight(0xdfe8ff, 0.35);
+    this.fill.position.set(40, 20, -10);
+    s.add(this.fill);
+    s.background = new THREE.Color(this.env.background || '#bfe3f2');
+    s.fog = new THREE.Fog(s.background, 90, 190);
+  }
+
+  buildOutdoors() {
+    const g = new THREE.Group();
+    this.scene.add(g);
+    // lawn
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), lam('#ffffff', { map: this.tex('tex_grass', 65) }));
+    grass.rotation.x = -Math.PI / 2; grass.position.set(20, -0.02, 20); grass.receiveShadow = true;
+    g.add(grass);
+    // street behind the door-side wall: sidewalk (x -6..-2), road (-12..-6), far sidewalk (-14..-12)
+    const strip = (x0, x1, texId, y, rep) => {
+      const w = x1 - x0, L = 200;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, L), lam('#ffffff', { map: this.tex(texId, 1) }));
+      m.material.map = m.material.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(w / rep, L / rep);
+      m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, 20); m.receiveShadow = true;
+      g.add(m);
+    };
+    strip(-6, -2, 'tex_path', 0.01, 2);
+    strip(-12, -6, 'tex_road', 0.005, 4);
+    strip(-14, -12, 'tex_path', 0.01, 2);
+    const curb = lam('#e9e2d6');
+    for (const x of [-6, -12]) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.14, 200), curb); c.position.set(x, 0.07, 20); c.receiveShadow = true; g.add(c); }
+    const dash = lam('#fbf8ef');
+    for (let z = -80; z < 120; z += 4) { const d = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, 1.8), dash); d.position.set(-9, 0.02, z); g.add(d); }
+    // door path
+    const path = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), lam('#ffffff', { map: this.tex('tex_path', 1) }));
+    path.rotation.x = -Math.PI / 2; path.position.set(-1, 0.012, (DOOR_Y + 0.5) * TILE); path.receiveShadow = true;
+    g.add(path);
+    // street lamps
+    for (const z of [-4, 22]) g.add(this.streetLamp(-5.4, z));
+    this.outdoorGroup = g;
+    this.treeGroup = new THREE.Group(); g.add(this.treeGroup);
+  }
+
+  streetLamp(x, z) {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4, 8), lam('#6d6a7a')); pole.position.y = 2; pole.castShadow = true; g.add(pole);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), new THREE.MeshBasicMaterial({ color: '#fff4c8' })); head.position.y = 4.1; g.add(head);
+    head.userData.streetLamp = true;
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  tree(x, z, s = 1, seed = 0) {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * s, 0.3 * s, 1.6 * s, 7), lam('#a8744e'));
+    trunk.position.y = 0.8 * s; trunk.castShadow = true; g.add(trunk);
+    const greens = ['#7cc47a', '#8fd18a', '#6fb56d'];
+    for (let i = 0; i < 3; i++) {
+      const c = new THREE.Mesh(new THREE.IcosahedronGeometry((1.1 - i * 0.18) * s, 0), lam(greens[(i + seed) % 3], { flatShading: true }));
+      c.position.set(Math.sin(i * 2.1 + seed) * 0.35 * s, (1.9 + i * 0.75) * s, Math.cos(i * 2.1 + seed) * 0.35 * s);
+      c.rotation.set(seed + i, i, seed); c.castShadow = true; g.add(c);
+    }
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  buildRoom(n) {
+    if (this.room) this.scene.remove(this.room);
+    const room = new THREE.Group();
+    this.room = room;
+    this.scene.add(room);
+    const W = n * TILE, H = assets.grid.wallHeight || 3, T = assets.grid.wallThickness || 0.24;
+    // foundation slab
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(W + 0.6, 0.3, W + 0.6), lam(this.env.foundation || '#e9dcc6'));
+    slab.position.set(W / 2, -0.15, W / 2); slab.receiveShadow = true; room.add(slab);
+    this.floorGroup = new THREE.Group(); room.add(this.floorGroup);
+    this.floorKey = '';
+    // walls: 4 sides, each tile a segment (so the door can be a gap); front sides turn into low cutaways
+    this.wallMat = lam('#ffffff', { map: this.tex('tex_wall_plain', 1) });
+    const wain = lam(this.env.wainscot || '#e9dcc9'), cap = lam(this.env.wallCap || '#fffaf1');
+    this.sides = [];
+    const mkSide = (name, outward) => { const s = new THREE.Group(); s.userData = { name, outward, h: 1 }; room.add(s); this.sides.push(s); return s; };
+    const seg = (side, cx, cz, alongX, len = TILE, y0 = 0, y1 = H, withWain = true) => {
+      const w = alongX ? len : T, d = alongX ? T : len;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(w, y1 - y0, d), this.wallMat);
+      body.position.set(cx, (y0 + y1) / 2, cz); body.castShadow = true; body.receiveShadow = true; side.add(body);
+      if (withWain && y0 === 0) { const wn = new THREE.Mesh(new THREE.BoxGeometry(w + (alongX ? 0 : 0.06), 0.7, d + (alongX ? 0.06 : 0)), wain); wn.position.set(cx, 0.35, cz); wn.receiveShadow = true; side.add(wn); }
+      const c = new THREE.Mesh(new THREE.BoxGeometry(w + (alongX ? 0 : 0.1), 0.12, d + (alongX ? 0.1 : 0)), cap); c.position.set(cx, y1 + 0.06, cz); side.add(c);
+    };
+    const west = mkSide('west', { x: -1, z: 0 }), north = mkSide('north', { x: 0, z: -1 }), east = mkSide('east', { x: 1, z: 0 }), south = mkSide('south', { x: 0, z: 1 });
+    for (let i = 0; i < n; i++) {
+      const c = i * TILE + TILE / 2;
+      if (i === DOOR_Y) {
+        // doorway: two posts and a lintel
+        seg(west, -T / 2, i * TILE + 0.2, false, 0.4);
+        seg(west, -T / 2, i * TILE + TILE - 0.2, false, 0.4);
+        seg(west, -T / 2, c, false, TILE - 0.8, 2.35, H, false);
+      } else seg(west, -T / 2, c, false);
+      seg(north, c, -T / 2, true);
+      seg(east, W + T / 2, c, false);
+      seg(south, c, W + T / 2, true);
+    }
+    // corner posts
+    for (const [x, z] of [[-T / 2, -T / 2], [W + T / 2, -T / 2], [-T / 2, W + T / 2], [W + T / 2, W + T / 2]]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(T, H + 0.12, T), cap); p.position.set(x, (H + 0.12) / 2, z); p.castShadow = true;
+      (x < 0 ? west : east).add(p);
+    }
+    // front door (hinged on the lintel side), swings inward
+    this.door = new THREE.Group();
+    const leaf = models.instance('m_door'); leaf.scale.setScalar(0.78);
+    this.door.add(leaf);
+    this.door.position.set(-T / 2, 0, DOOR_Y * TILE + 0.37);
+    room.add(this.door);
+    // trees & garden around this room size
+    this.treeGroup.clear();
+    const trees = [[-17, -8, 1.3], [-17, 8, 1.1], [-16.5, 30, 1.4], [W + 9, -5, 1.2], [W + 12, W * 0.7, 1.4], [W + 7, W + 9, 1.1], [W * 0.3, W + 10, 1.3], [-3, W + 9, 1.0], [W * 0.7, -9, 1.25], [4, -10, 1.1]];
+    trees.forEach(([x, z, s], i) => this.treeGroup.add(this.tree(x, z, s, i)));
+    this.roomSize = n;
+    this.plots = [];
+  }
+
+  // ------------------------------------------------------------------ per frame
   resize() {
     const r = this.canvas.getBoundingClientRect();
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = Math.round(r.width * this.dpr);
-    this.canvas.height = Math.round(r.height * this.dpr);
+    this.gl.setPixelRatio(this.dpr);
+    this.gl.setSize(r.width, r.height, false);
+    this.overlay.width = Math.round(r.width * this.dpr);
+    this.overlay.height = Math.round(r.height * this.dpr);
+    this.cam.aspect = r.width / Math.max(1, r.height);
+    this.cam.updateProjectionMatrix();
     this.game.camera.setViewport(r.width, r.height);
   }
 
   render(realDt) {
+    const g = this.game;
     this.time += realDt;
-    const { ctx, game } = this;
-    const cam = game.camera;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.drawBackground();
-    ctx.setTransform(this.dpr * cam.zoom, 0, 0, this.dpr * cam.zoom, this.dpr * (cam.vw / 2 - cam.x * cam.zoom), this.dpr * (cam.vh / 2 - cam.y * cam.zoom));
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    this.drawGround();
-    this.drawFloor();
-    if (game.build.active || game.debug.grid) this.drawGrid();
-    if (game.debug.grid) this.drawPathDebug();
-    this.drawOutsiders(false); // on the street, behind the walls
-    this.drawWalls();
-    this.drawWallCaps();
-    this.drawOutsiders(true);  // stepping through the doorway
-    this.drawTrash();
-    this.drawSorted();
-    this.drawBuildOverlay();
-    this.drawOverlays();
-    if (game.debug.assets) this.drawAssetOverlay();
+    const c = g.camera;
+    c.update(realDt);
+    const p = c.position();
+    this.cam.position.set(p.x, p.y, p.z);
+    this.cam.lookAt(c.tx, 0.8, c.tz);
+    this.cam.fov = c.fov; this.cam.updateProjectionMatrix();
+    if (this.roomSize !== g.world.size) { this.buildRoom(g.world.size); g.camera.setRoom(g.world.size); }
+    this.updateLighting(realDt);
+    this.syncFloors();
+    this.syncWalls(realDt);
+    this.syncDoor();
+    this.syncFurniture(realDt);
+    this.syncTrash();
+    this.syncGarden();
+    this.syncCharacters(realDt);
+    this.syncBuild();
+    this.syncDebug();
+    this.gl.render(this.scene, this.cam);
+    this.drawOverlay();
   }
 
-  drawBackground() {
-    const { ctx, canvas } = this;
-    ctx.fillStyle = assets.manifest.environment?.background || '#a8d47c';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  updateLighting() {
+    const g = this.game, n = g.world.size * TILE;
+    const hr = g.day.hour;
+    // sun keeps a fixed "top-left" direction for the default view; colour/intensity follow the clock
+    const t = clamp((hr - 8) / 14, 0, 1);
+    const eve = clamp((hr - 17) / 3, 0, 1), night = clamp((hr - 20) / 2, 0, 1), morn = clamp((10 - hr) / 2, 0, 1);
+    const sunCol = hexMix('#fff4e2', '#ffc58f', eve).lerp(new THREE.Color('#9fb0ff'), night).lerp(new THREE.Color('#ffe6c4'), morn);
+    this.sun.color.copy(sunCol);
+    this.sun.intensity = lerp(2.1, 1.3, eve) * lerp(1, 0.45, night);
+    this.hemi.intensity = lerp(1.35, 1.0, eve) * lerp(1, 0.7, night);
+    this.hemi.color.copy(hexMix('#fff6e8', '#ffd9b5', eve).lerp(new THREE.Color('#aab8ff'), night));
+    const sky = hexMix(this.env.background || '#bfe3f2', '#f7c7a5', eve).lerp(new THREE.Color('#44507e'), night);
+    this.scene.background.copy(sky); this.scene.fog.color.copy(sky);
+    const cx = n / 2, cz = n / 2;
+    this.sun.position.set(cx - 22, 34 - t * 6, cz + 12 - t * 16);
+    this.sun.target.position.set(cx, 0, cz);
+    const r = n / 2 + 16;
+    const sc = this.sun.shadow.camera;
+    if (sc.right !== r) { sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 120; sc.updateProjectionMatrix(); }
+    this.lampOn = clamp((hr - 17.5) / 1.5, 0, 1);
+    this.outdoorGroup.traverse((o) => { if (o.userData.streetLamp) o.material.color.set(this.lampOn > 0.1 ? '#ffe9a8' : '#f4f0e6'); });
   }
 
-  /** Visible tile range of the world (with margin), for culling outdoor tiles. */
-  viewTiles(margin = 2) {
-    const cam = this.game.camera;
-    const pts = [cam.toWorld(0, 0), cam.toWorld(cam.vw, 0), cam.toWorld(0, cam.vh), cam.toWorld(cam.vw, cam.vh)];
-    const gs = pts.map((p) => ({ x: (p.x / 64 + p.y / 32) / 2, y: (p.y / 32 - p.x / 64) / 2 }));
-    return {
-      x0: Math.floor(Math.min(...gs.map((g) => g.x))) - margin, x1: Math.ceil(Math.max(...gs.map((g) => g.x))) + margin,
-      y0: Math.floor(Math.min(...gs.map((g) => g.y))) - margin, y1: Math.ceil(Math.max(...gs.map((g) => g.y))) + margin,
-    };
-  }
-
-  /** What lies at an outdoor tile: street on the door side, the kitchen garden beside the right wall. */
-  groundAt(x, y) {
+  syncFloors() {
     const w = this.game.world;
-    if (x >= 0 && y >= 0 && x < w.size && y < w.size) return null;
-    const plot = this.plotIndexAt(x, y);
-    if (plot >= 0) return 'ground_soil';
-    if (x === -1 && y === DOOR_Y) return 'ground_path';
-    if (x === -2 || x === -3 || x === -7) return 'ground_path';
-    if (x === -5) return 'ground_road_line';
-    if (x === -4 || x === -6) return 'ground_road';
-    return 'ground_grass';
-  }
-  /** Garden plots sit on the lawn to the right of the building, two columns wide. */
-  plotIndexAt(x, y) {
-    const w = this.game.world, n = this.game.state.garden.length;
-    const i = x - (w.size + 1), j = y - 1;
-    if (i < 0 || i > 1 || j < 0) return -1;
-    const k = j * 2 + i;
-    return k < n ? k : -1;
+    const key = w.size + ':' + w.floors.map((c) => c.join(',')).join(';');
+    if (key === this.floorKey) return;
+    this.floorKey = key;
+    this.floorGroup.clear();
+    const geo = new THREE.PlaneGeometry(TILE, TILE);
+    const mats = new Map();
+    for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) {
+      const fl = w.floorOf(x, y);
+      let m = mats.get(fl.id);
+      if (!m) { m = lam(fl.tint || '#ffffff', { map: this.tex(fl.asset, 1) }); mats.set(fl.id, m); }
+      const t = new THREE.Mesh(geo, m);
+      t.rotation.x = -Math.PI / 2; t.position.set(x * TILE + 1, 0.005, y * TILE + 1); t.receiveShadow = true;
+      this.floorGroup.add(t);
+    }
   }
 
-  drawGround() {
-    const { ctx, game } = this;
-    const v = this.viewTiles();
-    for (let x = Math.max(v.x0, -14); x <= Math.min(v.x1, game.world.size + 14); x++) {
-      for (let y = Math.max(v.y0, -14); y <= Math.min(v.y1, game.world.size + 14); y++) {
-        const id = this.groundAt(x, y);
-        if (!id) continue;
-        const c = toScreen(x + 0.5, y + 0.5);
-        if (id === 'ground_soil') {
-          const p = game.state.garden[this.plotIndexAt(x, y)];
-          assets.draw(ctx, id, 'any', c.x, c.y, { tint: p && p.crop && p.water > 0 ? '#a88468' : '#fff4ea' });
-        } else assets.draw(ctx, id, 'any', c.x, c.y);
-        if (id === 'ground_grass') {
-          const hsh = ((x * 73856093) ^ (y * 19349663)) >>> 0;
-          if (hsh % 100 < 22) assets.draw(ctx, 'deco_tuft', 'any', c.x + ((hsh >> 8) % 50) - 25, c.y + ((hsh >> 16) % 24) - 12);
+  syncWalls(dt) {
+    const wp = this.game.world.wall();
+    if (this.wallTexId !== wp.asset) { this.wallMat.map = this.tex(wp.asset, 1); this.wallMat.needsUpdate = true; this.wallTexId = wp.asset; }
+    this.wallMat.color.set(wp.tint || '#ffffff');
+    const v = this.game.camera.viewDir();
+    for (const s of this.sides) {
+      const o = s.userData.outward;
+      const front = o.x * v.x + o.z * v.z > 0.25; // wall stands between the camera and the room
+      const target = front ? 0.16 : 1;
+      s.userData.h += (target - s.userData.h) * Math.min(1, dt * 6);
+      s.scale.y = s.userData.h;
+      if (s.userData.name === 'west') this.doorHidden = s.userData.h < 0.5;
+    }
+  }
+
+  syncDoor() {
+    const open = this.game.doorOpen || 0;
+    this.door.rotation.y = -Math.PI / 2 + open * 1.35;
+    this.door.visible = !this.doorHidden;
+  }
+
+  placeFurniture(obj, f) {
+    const [w, h] = f.fp;
+    obj.position.set((f.x + w / 2) * TILE, 0, (f.y + h / 2) * TILE);
+    obj.rotation.y = DIR_YAW[f.dir];
+  }
+
+  syncFurniture(dt) {
+    const g = this.game, world = g.world, hide = g.build.moving;
+    const live = new Set();
+    let lamps = 0;
+    for (const f of world.furniture) {
+      if (f === hide) continue;
+      live.add(f.uid);
+      const cat = furnitureById[f.type];
+      const key = f.type + ':' + f.x + ':' + f.y + ':' + f.dir;
+      let v = this.furn.get(f.uid);
+      if (!v || v.key !== key) {
+        if (v) this.scene.remove(v.obj);
+        const obj = models.instance(cat.asset, cat.tint);
+        this.placeFurniture(obj, f);
+        this.scene.add(obj);
+        v = { obj, key, f, items: new Map(), base: obj.position.clone() };
+        this.furn.set(f.uid, v);
+      }
+      const o = v.obj;
+      // placement bounce & broken wobble
+      const b = f.bounce || 0;
+      o.scale.set(1 + Math.sin(b * Math.PI * 3) * 0.06 * b, 1 - Math.sin(b * Math.PI * 3) * 0.08 * b, 1 + Math.sin(b * Math.PI * 3) * 0.06 * b);
+      o.position.x = v.base.x + (f.broken ? Math.sin(this.time * 30) * (Math.sin(this.time * 2) > 0.6 ? 0.04 : 0) : 0);
+      if (f.broken && Math.random() < dt * 3) g.fx.puff(g.at(f.x + f.fp[0] / 2, f.y + f.fp[1] / 2, 80), '#b9b2ad');
+      const def = models.def(cat.asset) || {};
+      // things resting on the surface
+      const want = new Map();
+      if (f.kind === 'table' && f.seats) {
+        for (const s of f.seats) {
+          const dx = s.chair.x - f.x, dz = s.chair.y - f.y;
+          if (s.dirty) want.set('d' + s.chair.uid, { id: 'm_plate_dirty', off: [dx * 0.42, dz * 0.42], scale: 0.7 });
+          if (s.food) want.set('f' + s.chair.uid + s.food.dish, { dish: s.food.dish, off: [dx * 0.38 - dz * (s.drink ? 0.2 : 0), dz * 0.38 + dx * (s.drink ? 0.2 : 0)], scale: 0.5 });
+          if (s.drink) want.set('k' + s.chair.uid + s.drink.dish, { dish: s.drink.dish, off: [dx * 0.4 + dz * 0.25, dz * 0.4 - dx * 0.25], scale: 0.5 });
         }
       }
-    }
-    // crops growing in the garden plots (mirrors the Garden panel)
-    game.state.garden.forEach((p, i) => {
-      if (!p.crop) return;
-      const x = game.world.size + 1 + (i % 2), y = 1 + Math.floor(i / 2);
-      const c = toScreen(x + 0.5, y + 0.5);
-      for (const [du, dv] of [[-0.18, -0.12], [0.16, 0.14], [0.02, -0.02]]) {
-        const q = toScreen(x + 0.5 + du, y + 0.5 + dv);
-        const bob = p.prog >= 1 ? Math.abs(Math.sin(this.time * 3 + i)) * 3 : 0;
-        if (p.prog < 0.35) assets.draw(ctx, 'garden_sprout', 'any', q.x, q.y, { scale: 0.45 + p.prog });
-        else assets.drawIcon(ctx, 'ing_' + p.crop, q.x, q.y - 12 - bob, 16 + p.prog * 16);
+      if (f.kind === 'stove' || f.kind === 'bar') {
+        const item = f.ready || f.cooking;
+        if (f.cooking && !f.ready && f.kind === 'stove') want.set('pan', { id: 'm_pan', off: [0, 0.1], scale: 0.9, wob: true });
+        if (f.ready) want.set('r' + item.dish, { dish: item.dish, off: [0, 0.1], scale: 0.55 });
       }
-      if (p.prog >= 1) this.bubble(c.x, c.y - 34, 'icon_harvest', 0.55, this.time);
-      else if (p.water <= 0) this.bubble(c.x, c.y - 30, 'icon_water', 0.5, this.time);
+      for (const [k, it] of v.items) if (!want.has(k)) { o.remove(it); v.items.delete(k); }
+      for (const [k, spec] of want) {
+        let it = v.items.get(k);
+        if (!it) {
+          const id = spec.id || this.dishModel(spec.dish);
+          it = models.instance(id);
+          it.scale.setScalar(spec.scale);
+          o.add(it);
+          v.items.set(k, it);
+        }
+        // offsets are in world space; convert into the (rotated) furniture's local frame
+        tmpV.set(spec.off[0] * TILE, 0, spec.off[1] * TILE).applyAxisAngle(Y_UP, -o.rotation.y);
+        it.position.set(tmpV.x, (def.surfaceHeight || 1) + (spec.wob ? Math.abs(Math.sin(this.time * 10)) * 0.03 : 0), tmpV.z);
+      }
+      // evening lamps
+      if (def.light) {
+        if (!v.light) { v.light = new THREE.PointLight(0xffd9a0, 0, 9, 1.6); v.light.position.set(...def.light); o.add(v.light); }
+        v.light.intensity = lamps < 8 ? this.lampOn * 7 : 0;
+        lamps++;
+      }
+      if (f.kind === 'arcade') o.traverse((m) => { if (m.userData && m.userData.glow) m.material.color.setHSL((this.time * 0.15) % 1, 0.6, f.broken ? 0.25 : 0.72); });
+    }
+    for (const [uid, v] of this.furn) if (!live.has(uid)) { this.scene.remove(v.obj); this.furn.delete(uid); }
+  }
+
+  dishModel(dishId) { return dishById[dishId] ? dishById[dishId].asset : 'm_plate'; }
+
+  syncTrash() {
+    const live = new Set();
+    for (const t of this.game.world.trash) {
+      live.add(t.uid);
+      if (!this.trash.has(t.uid)) {
+        const o = models.instance('m_trash');
+        o.position.set((t.x + 0.5) * TILE + t.rot, 0, (t.y + 0.5) * TILE - t.rot * 0.5);
+        o.rotation.y = t.rot * 6;
+        this.scene.add(o);
+        this.trash.set(t.uid, o);
+      }
+    }
+    for (const [k, o] of this.trash) if (!live.has(k)) { this.scene.remove(o); this.trash.delete(k); }
+  }
+
+  /** Garden beds beside the building mirror the Garden panel. */
+  plotTile(i) { const n = this.game.world.size; return { x: n + 1 + (i % 2), y: 1 + Math.floor(i / 2) }; }
+  plotIndexAt(x, y) {
+    const n = this.game.world.size, cnt = this.game.state.garden.length;
+    const i = x - (n + 1), j = y - 1;
+    if (i < 0 || i > 1 || j < 0) return -1;
+    const k = j * 2 + i;
+    return k < cnt ? k : -1;
+  }
+  syncGarden() {
+    const garden = this.game.state.garden;
+    while (this.plots.length < garden.length) {
+      const i = this.plots.length, t = this.plotTile(i);
+      const g = new THREE.Group();
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.28, 1.8), lam('#c79a62')); frame.position.y = 0.14; frame.castShadow = true; frame.receiveShadow = true; g.add(frame);
+      const soilMat = lam('#ffffff', { map: this.tex('tex_soil', 1) });
+      const soil = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.3, 1.55), soilMat); soil.position.y = 0.16; soil.receiveShadow = true; g.add(soil);
+      g.position.set((t.x + 0.5) * TILE, 0, (t.y + 0.5) * TILE);
+      this.scene.add(g);
+      this.plots.push({ g, soilMat, crop: null, cropKey: '' });
+    }
+    garden.forEach((p, i) => {
+      const v = this.plots[i];
+      v.soilMat.color.set(p.crop && p.water > 0 ? '#9c7a62' : '#ffffff');
+      const key = p.crop ? p.crop + (p.prog < 0.35 ? ':s' : ':c') : '';
+      if (key !== v.cropKey) {
+        if (v.crop) v.g.remove(v.crop);
+        v.crop = null; v.cropKey = key;
+        if (p.crop) {
+          const cg = new THREE.Group();
+          for (const [dx, dz] of [[-0.4, -0.35], [0.4, -0.35], [0, 0.05], [-0.4, 0.4], [0.4, 0.4]]) {
+            let m;
+            if (p.prog < 0.35) { m = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 6), lam('#7cc47a')); m.position.y = 0.17; }
+            else m = models.instance('ing_' + p.crop);
+            const w = new THREE.Group(); w.add(m); w.position.set(dx, 0.31, dz); cg.add(w);
+          }
+          v.g.add(cg); v.crop = cg;
+        }
+      }
+      if (v.crop) {
+        const s = p.prog < 0.35 ? 0.6 + p.prog * 1.5 : 0.35 + p.prog * 0.35;
+        v.crop.children.forEach((w, k) => { w.scale.setScalar(s); w.position.y = 0.31 + (p.prog >= 1 ? Math.abs(Math.sin(this.time * 3 + k)) * 0.06 : 0); });
+      }
     });
   }
 
-  drawFloor() {
-    const { ctx, game } = this; const w = game.world;
-    // subtle drop shadow under the room
-    const L = toScreen(0, w.size), R = toScreen(w.size, 0), B = toScreen(w.size, w.size), T = toScreen(0, 0);
-    ctx.save();
-    const env = assets.manifest.environment || {};
-    ctx.fillStyle = 'rgba(60,90,40,0.22)';
-    ctx.beginPath(); ctx.moveTo(T.x, T.y + 10); ctx.lineTo(R.x + 10, R.y + 12); ctx.lineTo(B.x, B.y + 16); ctx.lineTo(L.x - 10, L.y + 12); ctx.closePath(); ctx.fill();
-    // floor thickness edge (front sides of the room slab)
-    ctx.fillStyle = env.foundation || '#e9dcc6';
-    ctx.beginPath(); ctx.moveTo(L.x, L.y); ctx.lineTo(B.x, B.y); ctx.lineTo(B.x, B.y + 12); ctx.lineTo(L.x, L.y + 12); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = env.foundationSide || '#d3c3a9';
-    ctx.beginPath(); ctx.moveTo(B.x, B.y); ctx.lineTo(R.x, R.y); ctx.lineTo(R.x, R.y + 12); ctx.lineTo(B.x, B.y + 12); ctx.closePath(); ctx.fill();
-    ctx.restore();
+  refreshCharacter(a) { const cv = this.chars.get(a); if (cv) { cv.dispose(this.scene); this.chars.delete(a); } }
+
+  syncCharacters(dt) {
+    const g = this.game;
+    const list = [...g.agents, ...g.ambient];
+    const live = new Set(list);
+    for (const a of list) {
+      let cv = this.chars.get(a);
+      if (!cv) { cv = new CharacterView(this.scene, a, assets.manifest); this.chars.set(a, cv); }
+      if (!a.pose) a.pose = {};
+      cv.root.visible = a.visible !== false;
+      cv.update(dt, g);
+    }
+    for (const [a, cv] of this.chars) if (!live.has(a)) { cv.dispose(this.scene); this.chars.delete(a); }
+  }
+
+  // ------------------------------------------------------------------ build mode visuals
+  syncBuild() {
+    const b = this.game.build, grp = this.buildGroup;
+    grp.clear();
+    if (!b.active) return;
+    const n = this.game.world.size;
+    if (!this.gridLines || this.gridN !== n) {
+      const pts = [];
+      for (let i = 0; i <= n; i++) { pts.push(i * TILE, 0.03, 0, i * TILE, 0.03, n * TILE, 0, 0.03, i * TILE, n * TILE, 0.03, i * TILE); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      this.gridLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#6e4f3a', transparent: true, opacity: 0.25 }));
+      this.gridN = n;
+    }
+    grp.add(this.gridLines);
+    const tile = (x, y, color, op = 0.45, inset = 0.06, h = 0.04) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(TILE - inset * 2, TILE - inset * 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.set((x + 0.5) * TILE, h, (y + 0.5) * TILE); grp.add(m);
+    };
+    if (b.selected && !b.moving) {
+      const f = b.selected, pulse = 0.35 + Math.sin(this.time * 5) * 0.15;
+      for (let i = 0; i < f.fp[0]; i++) for (let j = 0; j < f.fp[1]; j++) tile(f.x + i, f.y + j, '#ffffff', pulse);
+    }
+    const gh = b.ghost;
+    if (!gh) return;
+    const col = gh.valid ? '#78d282' : '#eb6464';
+    for (const t of gh.tiles || []) tile(t.x, t.y, col, 0.45);
+    for (const t of gh.access || []) {
+      const d = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), new THREE.MeshBasicMaterial({ color: t.ok ? '#ffffff' : '#eb6464', transparent: true, opacity: 0.85, depthWrite: false }));
+      d.rotation.x = -Math.PI / 2; d.position.set((t.x + 0.5) * TILE, 0.05, (t.y + 0.5) * TILE); grp.add(d);
+    }
+    if (gh.type) {
+      const cat = furnitureById[gh.type];
+      const key = gh.type + '|' + gh.valid;
+      if (this.ghostKey !== key) {
+        this.ghostKey = key;
+        this.ghostObj = models.instance(cat.asset, cat.tint);
+        this.ghostObj.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.7; m.material.color.lerp(new THREE.Color(col), 0.35); m.castShadow = false; } });
+      }
+      this.placeFurniture(this.ghostObj, { x: gh.x, y: gh.y, dir: gh.dir, fp: World.footprint(gh.type, gh.dir) });
+      grp.add(this.ghostObj);
+    }
+  }
+
+  syncDebug() {
+    const g = this.game, grp = this.debugGroup;
+    grp.clear();
+    if (!g.debug.grid) return;
+    const w = g.world;
     for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) {
-      const fl = w.floorOf(x, y);
-      const c = toScreen(x + 0.5, y + 0.5);
-      assets.draw(ctx, fl.asset, 'any', c.x, c.y, { tint: fl.tint });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), new THREE.MeshBasicMaterial({ color: w.isWalkable(x, y) ? '#78c88c' : '#e65a5a', transparent: true, opacity: 0.3, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.set((x + 0.5) * TILE, 0.06, (y + 0.5) * TILE); grp.add(m);
     }
-  }
-
-  drawGrid() {
-    const { ctx, game } = this; const w = game.world;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(110,80,60,0.18)'; ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let i = 0; i <= w.size; i++) {
-      let a = toScreen(i, 0), b = toScreen(i, w.size); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-      a = toScreen(0, i); b = toScreen(w.size, i); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-    }
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  tilePath(x, y, w = 1, h = 1, inset = 0) {
-    const ctx = this.ctx;
-    const a = toScreen(x + inset, y + inset), b = toScreen(x + w - inset, y + inset), c = toScreen(x + w - inset, y + h - inset), d = toScreen(x + inset, y + h - inset);
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath();
-  }
-
-  drawPathDebug() {
-    const { ctx, game } = this; const w = game.world;
-    ctx.save();
-    for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) {
-      this.tilePath(x, y, 1, 1, 0.06);
-      ctx.fillStyle = w.isWalkable(x, y) ? 'rgba(120,200,140,0.22)' : 'rgba(230,90,90,0.28)';
-      ctx.fill();
-    }
-    for (const a of game.agents) {
-      const k = game.agentTiles.claims(a);
-      for (const t of k) { this.tilePath(t.x, t.y, 1, 1, 0.3); ctx.fillStyle = 'rgba(90,120,220,0.35)'; ctx.fill(); }
+    for (const a of g.agents) {
+      for (const t of g.agentTiles.claims(a)) {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ color: '#5a78dc', transparent: true, opacity: 0.45, depthWrite: false }));
+        m.rotation.x = -Math.PI / 2; m.position.set((t.x + 0.5) * TILE, 0.08, (t.y + 0.5) * TILE); grp.add(m);
+      }
       if (a.path && a.path.length) {
-        ctx.strokeStyle = a.kind === 'customer' ? 'rgba(220,120,60,0.8)' : 'rgba(60,120,220,0.8)'; ctx.lineWidth = 3; ctx.setLineDash([6, 5]);
-        ctx.beginPath(); const p0 = toScreen(a.x, a.y); ctx.moveTo(p0.x, p0.y);
-        for (const t of a.path) { const p = toScreen(t.x + 0.5, t.y + 0.5); ctx.lineTo(p.x, p.y); }
-        ctx.stroke(); ctx.setLineDash([]);
+        const pts = [new THREE.Vector3(a.x * TILE, 0.12, a.y * TILE), ...a.path.map((t) => new THREE.Vector3((t.x + 0.5) * TILE, 0.12, (t.y + 0.5) * TILE))];
+        grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: a.kind === 'customer' ? '#dc783c' : '#3c78dc' })));
       }
     }
-    ctx.restore();
   }
 
-  drawWalls() {
-    const { ctx, game } = this; const w = game.world;
-    const wp = w.wall();
-    const grid = assets.grid;
-    for (let y = 0; y < w.size; y++) {
-      const p = toScreen(0, y + 0.5);
-      if (y === DOOR_Y) {
-        assets.draw(ctx, 'door_frame', 'fl', p.x, p.y);
-        const def = assets.def('door_leaf');
-        const open = game.doorOpen || 0;
-        const hinge = def.hingeX ?? 0;
-        const sp = assets.sprite('door_leaf', 'fl');
-        ctx.save();
-        ctx.translate(p.x - sp.ax + hinge, p.y);
-        ctx.scale(1 - open * 0.72, 1);
-        ctx.translate(-(p.x - sp.ax + hinge), -p.y);
-        assets.draw(ctx, 'door_leaf', 'fl', p.x, p.y);
-        ctx.restore();
-      } else assets.draw(ctx, wp.asset, 'fl', p.x, p.y, { tint: wp.tint });
-    }
-    const dark = grid.mirrorShade || '#e0d8d0';
-    const tint = mulHex(wp.tint, dark);
-    for (let x = 0; x < w.size; x++) {
-      const p = toScreen(x + 0.5, 0);
-      assets.draw(ctx, wp.asset, 'fr', p.x, p.y, { tint });
-    }
+  // ------------------------------------------------------------------ overlay (2D, projected)
+  /** Project a grid position (+ height in world units) to overlay pixels. */
+  project(gx, gy, h = 0) {
+    tmpV.set(gx * TILE, h, gy * TILE).project(this.cam);
+    if (tmpV.z > 1) return null;
+    return { x: (tmpV.x * 0.5 + 0.5) * this.overlay.width / this.dpr, y: (-tmpV.y * 0.5 + 0.5) * this.overlay.height / this.dpr, s: this.game.camera.zoom };
+  }
+  projectV(v) {
+    tmpV.copy(v).project(this.cam);
+    if (tmpV.z > 1) return null;
+    return { x: (tmpV.x * 0.5 + 0.5) * this.overlay.width / this.dpr, y: (-tmpV.y * 0.5 + 0.5) * this.overlay.height / this.dpr, s: this.game.camera.zoom };
   }
 
-  /** Thick white top edge and end caps of the two back walls (code-drawn geometry). */
-  drawWallCaps() {
+  drawOverlay() {
     const { ctx, game } = this;
-    const env = assets.manifest.environment || {};
-    const n = game.world.size, H = assets.grid.wallHeight, t = env.wallCapThickness ?? 0.14;
-    const P = (x, y, z) => { const p = toScreen(x, y); return [p.x, p.y - z]; };
-    const quad = (pts, fill) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(...p) : ctx.moveTo(...p))); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
-    const top = env.wallCap || '#fffaf1', side = env.wallCapSide || '#e9dfd0';
-    ctx.save();
-    // end faces at the open front ends of each wall
-    quad([P(-t, n, H), P(0, n, H), P(0, n, 0), P(-t, n, 0)], side);
-    quad([P(n, -t, H), P(n, 0, H), P(n, 0, 0), P(n, -t, 0)], side);
-    // tops
-    quad([P(-t, -t, H), P(0, -t, H), P(0, n, H), P(-t, n, H)], top);
-    quad([P(-t, -t, H), P(n, -t, H), P(n, 0, H), P(-t, 0, H)], top);
-    ctx.strokeStyle = 'rgba(150,130,110,0.35)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(...P(0, n, H)); ctx.lineTo(...P(0, 0, H)); ctx.lineTo(...P(n, 0, H)); ctx.stroke();
-    ctx.restore();
-  }
-
-  /** People outside: passers-by and guests walking the street (drawn before the walls), or in the doorway (after). */
-  drawOutsiders(doorway) {
-    const { ctx, game } = this;
-    const list = [...game.ambient, ...game.agents.filter((a) => a.visible && a.x < 0)];
-    const pick = list.filter((a) => (doorway ? a.x >= -0.95 : a.x < -0.95));
-    pick.sort((a, b) => a.x + a.y - (b.x + b.y));
-    for (const a of pick) {
-      const p = toScreen(a.x, a.y);
-      drawDoll(ctx, a.look, a.pose, DIRS[a.dir].face, p.x, p.y);
-    }
-  }
-
-  drawTrash() {
-    const { ctx, game } = this;
-    for (const t of game.world.trash) {
-      const p = toScreen(t.x + 0.5, t.y + 0.5);
-      assets.draw(ctx, 'trash_pile', 'any', p.x, p.y, { tint: t.tint, rot: t.rot * 0.2 });
-    }
-  }
-
-  // ---------------- depth-sorted pass ----------------
-  drawSorted() {
-    const { game } = this;
-    const items = [];
-    const hide = game.build.moving;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const z = game.camera.zoom;
+    // stoves & broken facilities
     for (const f of game.world.furniture) {
-      if (f === hide) continue;
-      const [w, h] = f.fp;
-      const def = assets.def(furnitureById[f.type].asset);
-      const c = toScreen(f.x + w / 2, f.y + h / 2);
-      items.push({ kind: 'f', f, x0: f.x, y0: f.y, x1: f.x + w, y1: f.y + h, rect: [c.x - def.anchor[0], c.y - def.anchor[1], def.size[0], def.size[1]], depth: f.x + f.y + (w + h) / 2 });
+      const def = models.def(furnitureById[f.type].asset) || {};
+      const top = (def.surfaceHeight || 1.2) + 1.1;
+      const q = this.project(f.x + f.fp[0] / 2, f.y + f.fp[1] / 2, top);
+      if (!q) continue;
+      if (f.cooking && f.cookTotal > 0 && !f.ready) this.bar(q.x, q.y, 56 * z, clamp(f.cookT / f.cookTotal, 0, 1), '#8fd18a', 8 * z);
+      if (f.ready) this.bubble(q.x, q.y, 'emote_sparkle', 0.7 * z);
+      if (f.broken) this.bubble(q.x, q.y - 4, 'emote_broken', 0.8 * z);
     }
-    for (const a of game.agents) {
-      if (!a.visible || a.x < 0) continue;
-      const r = 0.3;
-      let ax = a.x, ay = a.y;
-      const it = { kind: 'a', a, x0: ax - r, y0: ay - r, x1: ax + r, y1: ay + r, depth: ax + ay };
-      if (a.onTile) { // sitting / stepping into a furniture tile: share that tile's box, order by chair facing
-        const f = a.onTile;
-        it.x0 = f.x; it.y0 = f.y; it.x1 = f.x + f.fp[0]; it.y1 = f.y + f.fp[1];
-        it.sameTile = f; it.frontOf = f.dir <= 1; // front-facing chair: draw character after the chair
-      }
-      const p = toScreen(ax, ay);
-      it.rect = [p.x - 40, p.y - 140, 80, 150];
-      items.push(it);
-    }
-    const order = sortDepth(items);
-    this.hitList = [];
-    for (const it of order) {
-      if (it.kind === 'f') this.drawFurniture(it.f);
-      else { this.drawAgent(it.a); this.hitList.push(it); }
-    }
-  }
-
-  drawFurniture(f, o = {}) {
-    const { ctx } = this;
-    const cat = furnitureById[f.type];
-    const [w, h] = f.fp;
-    const c = toScreen(f.x + w / 2, f.y + h / 2);
-    const def = assets.def(cat.asset);
-    let rot = 0, jx = 0;
-    if (f.broken) { jx = Math.sin(this.time * 30) * (Math.sin(this.time * 2) > 0.6 ? 1.5 : 0); }
-    if (f.bounce) { const k = f.bounce; rot = 0; o.sy = 1 + Math.sin(k * Math.PI * 3) * 0.08 * k; }
-    const facing = DIRS[f.dir].face;
-    assets.draw(ctx, cat.asset, facing, c.x + jx, c.y, { tint: o.tint || cat.tint, alpha: o.alpha, sy: o.sy, rot });
-    if (o.ghost) return;
-    // things resting on surfaces
-    if (f.kind === 'table' && f.seats) {
-      const sh = def.surfaceHeight || 30;
-      for (const s of f.seats) {
-        const dx = s.chair.x - f.x, dy = s.chair.y - f.y;
-        const put = (id, off, lat) => {
-          const px = f.x + 0.5 + dx * off + dy * lat, py = f.y + 0.5 + dy * off - dx * lat;
-          const p = toScreen(px, py);
-          if (id === 'dirty_plate') assets.draw(ctx, id, 'any', p.x, p.y - sh);
-          else assets.draw(ctx, id, 'any', p.x, p.y - sh, { scale: 0.62 });
-        };
-        if (s.dirty) put('dirty_plate', 0.2, 0);
-        if (s.food) put(dishById[s.food.dish].asset, 0.18, s.drink ? 0.12 : 0);
-        if (s.drink) put(dishById[s.drink.dish].asset, 0.2, -0.16);
-      }
-    }
-    if ((f.kind === 'stove' || f.kind === 'bar') && (f.ready || f.cooking)) {
-      const sh = def.surfaceHeight || 40;
-      const item = f.ready || f.cooking;
-      const p = toScreen(f.x + w / 2, f.y + h / 2);
-      const wob = f.cooking && !f.ready ? Math.sin(this.time * 14) * 1.5 : 0;
-      assets.draw(ctx, dishById[item.dish].asset, 'any', p.x, p.y - sh + wob, { scale: 0.6, alpha: f.ready ? 1 : 0.9 });
-    }
-  }
-
-  agentScreen(a) {
-    const p = toScreen(a.x, a.y);
-    return p;
-  }
-
-  drawAgent(a) {
-    const p = this.agentScreen(a);
-    drawDoll(this.ctx, a.look, a.pose, DIRS[a.dir].face, p.x, p.y);
-    if (this.game.selected === a) {
-      const ctx = this.ctx;
-      ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
-      ctx.beginPath(); ctx.ellipse(p.x, p.y - (a.pose.lift || 0) + 1, 26, 11, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-    }
-  }
-
-  // ---------------- overlays ----------------
-  drawOverlays() {
-    const { ctx, game } = this;
-    // stove / bar progress bars and broken facility markers
-    for (const f of game.world.furniture) {
-      const [w, h] = f.fp;
-      const def = assets.def(furnitureById[f.type].asset);
-      const c = toScreen(f.x + w / 2, f.y + h / 2);
-      const top = c.y - def.anchor[1] + 8;
-      if (f.cooking && f.cookTotal > 0 && !f.ready) this.bar(c.x, top - 6, 56, clamp(f.cookT / f.cookTotal, 0, 1), '#8fd18a');
-      if (f.ready) this.bubble(c.x, top + 4, 'emote_sparkle', 0.7, this.time);
-      if (f.broken) {
-        this.bubble(c.x, top + 2, 'emote_broken', 0.8, this.time);
-        if (Math.random() < 0.08) game.fx.puff(c.x + (Math.random() - 0.5) * 30, c.y - def.anchor[1] * 0.6, '#b9b2ad');
-      }
-    }
-    // characters: bubbles, patience, labels
+    // garden hints
+    game.state.garden.forEach((p, i) => {
+      if (!p.crop) return;
+      const t = this.plotTile(i), q = this.project(t.x + 0.5, t.y + 0.5, 1.4);
+      if (!q) return;
+      if (p.prog >= 1) this.bubble(q.x, q.y, 'icon_harvest', 0.55 * z);
+      else if (p.water <= 0) this.bubble(q.x, q.y, 'icon_water', 0.5 * z);
+    });
+    // characters
+    const head = new THREE.Vector3();
     for (const a of game.agents) {
       if (!a.visible) continue;
-      const p = this.agentScreen(a);
-      const eo = emoteOffset(a.pose);
-      const hop = a.pose.hop > 0 && a.pose.hop < 1 ? Math.sin(a.pose.hop * Math.PI) * 13 : 0;
-      let hx = p.x + eo[0], hy = p.y + eo[1] - hop;
-      if (a.kind === 'staff' && a.x >= 0) {
-        // name tag over the head (like a name badge), bubble floats above it
-        const ny = p.y - (a.pose.lift || 0) - hop - (a.look.hat ? 134 : 106) + (a.pose.mode === 'nap' ? 9 : 0);
-        this.nameTag(p.x, ny, a.name);
-        hy = Math.min(hy, ny - 8);
-      }
+      const cv = this.chars.get(a);
+      if (!cv) continue;
+      const q = this.projectV(cv.headTop(head));
+      if (!q) continue;
+      let y = q.y;
+      if (a.kind === 'staff' && a.x >= 0) { this.nameTag(q.x, y, a.name, z); y -= 16 * z; }
       if (a.showPatience && a.patience != null) {
-        // above the head so it never covers someone standing in front
         const v = clamp(a.patience, 0, 1);
-        const by = p.y - (a.pose.lift || 0) - hop - (a.look.hat ? 132 : 108);
-        this.bar(p.x, by, 40, v, v > 0.5 ? '#8fd18a' : v > 0.25 ? '#f5c451' : '#ef6f6c', 6);
-        hy = Math.min(hy, by - 6);
+        this.bar(q.x, y - 2, 40 * z, v, v > 0.5 ? '#8fd18a' : v > 0.25 ? '#f5c451' : '#ef6f6c', 6 * z);
+        y -= 10 * z;
+      }
+      if (a.kind === 'staff' && a.energy != null && (a.energy < 25 || game.selected === a)) {
+        this.bar(q.x, y - 2, 40 * z, a.energy / 100, a.energy < 25 ? '#f59f5b' : '#7cc3f0', 6 * z);
+        y -= 10 * z;
       }
       if (a.bubble) {
         const age = this.time - a.bubble.t0;
-        this.bubble(hx, hy, a.bubble.icon, easeOutBack(age / 0.28) * (a.bubble.scale || 1), this.time, a.bubble.icon2);
+        this.bubble(q.x, y, a.bubble.icon, easeOutBack(age / 0.28) * z, a.bubble.icon2);
       }
-      if (a.kind === 'staff' && a.energy != null && (a.energy < 25 || game.selected === a)) {
-        this.bar(p.x, p.y + 8, 40, a.energy / 100, a.energy < 25 ? '#f59f5b' : '#7cc3f0', 6);
+      if (game.selected === a) {
+        const f = this.project(a.x, a.y, 0);
+        if (f) { ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.ellipse(f.x, f.y, 26 * z, 12 * z, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
       }
       if (game.debug.labels) {
-        ctx.save(); ctx.font = `800 12px ${FONT}`; ctx.textAlign = 'center';
-        const txt = `${a.name}: ${a.stateLabel()}`;
-        const tw = ctx.measureText(txt).width;
-        ctx.fillStyle = 'rgba(40,30,25,0.75)'; ctx.fillRect(p.x - tw / 2 - 4, p.y + 14, tw + 8, 17);
-        ctx.fillStyle = '#fff'; ctx.fillText(txt, p.x, p.y + 27); ctx.restore();
+        const f = this.project(a.x, a.y, 0);
+        if (f) {
+          ctx.save(); ctx.font = `800 12px ${FONT}`; ctx.textAlign = 'center';
+          const txt = `${a.name}: ${a.stateLabel()}`, tw = ctx.measureText(txt).width;
+          ctx.fillStyle = 'rgba(40,30,25,0.75)'; ctx.fillRect(f.x - tw / 2 - 4, f.y + 8, tw + 8, 17);
+          ctx.fillStyle = '#fff'; ctx.fillText(txt, f.x, f.y + 21); ctx.restore();
+        }
       }
     }
-    game.fx.draw(ctx, this.time);
-  }
-
-  nameTag(x, y, name) {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.font = `600 13px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(70,45,30,0.85)';
-    ctx.strokeText(name, x, y); ctx.fillStyle = '#fffaf0'; ctx.fillText(name, x, y);
-    ctx.restore();
+    game.fx.draw(ctx, (gx, gy, h) => this.project(gx, gy, h));
+    if (game.debug.assets) this.drawAssetOverlay();
   }
 
   bar(x, y, w, v, color, h = 8) {
     const ctx = this.ctx;
     ctx.save();
-    roundRect(ctx, x - w / 2 - 2, y - 2, w + 4, h + 4, (h + 4) / 2); ctx.fillStyle = 'rgba(90,60,45,0.85)'; ctx.fill();
-    roundRect(ctx, x - w / 2, y, w, h, h / 2); ctx.fillStyle = '#fff7ea'; ctx.fill();
-    if (v > 0) { roundRect(ctx, x - w / 2, y, Math.max(h, w * v), h, h / 2); ctx.fillStyle = color; ctx.fill(); }
+    rr(ctx, x - w / 2 - 2, y - 2, w + 4, h + 4, (h + 4) / 2); ctx.fillStyle = 'rgba(90,60,45,0.85)'; ctx.fill();
+    rr(ctx, x - w / 2, y, w, h, h / 2); ctx.fillStyle = '#fff7ea'; ctx.fill();
+    if (v > 0) { rr(ctx, x - w / 2, y, Math.max(h, w * v), h, h / 2); ctx.fillStyle = color; ctx.fill(); }
     ctx.restore();
   }
 
-  bubble(x, y, icon, s, t, icon2) {
+  nameTag(x, y, name, z = 1) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.font = `600 ${Math.round(13 * clamp(z, 0.8, 1.3))}px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(70,45,30,0.85)';
+    ctx.strokeText(name, x, y); ctx.fillStyle = '#fffaf0'; ctx.fillText(name, x, y);
+    ctx.restore();
+  }
+
+  bubble(x, y, icon, s, icon2) {
     if (s <= 0.01) return;
     const ctx = this.ctx;
-    const bob = Math.sin(t * 3) * 1.5;
+    const bob = Math.sin(this.time * 3) * 1.5;
     ctx.save();
     ctx.translate(x, y + bob);
     ctx.scale(s, s);
     const bsp = assets.sprite('ui_bubble', 'any');
     assets.draw(ctx, 'ui_bubble', 'any', 0, 0);
     const cy = -bsp.ay + (bsp.h - 14) / 2 + 1;
-    if (icon2) {
-      assets.drawIcon(ctx, icon, -10, cy, 30);
-      assets.drawIcon(ctx, icon2, 13, cy + 4, 22);
-    } else assets.drawIcon(ctx, icon, 0, cy, icon.startsWith('dish') || icon.startsWith('drink') ? 38 : 32);
+    if (icon2) { assets.drawIcon(ctx, icon, -10, cy, 30); assets.drawIcon(ctx, icon2, 13, cy + 4, 22); }
+    else assets.drawIcon(ctx, icon, 0, cy, icon.startsWith('dish') || icon.startsWith('drink') ? 38 : 32);
     ctx.restore();
-  }
-
-  drawBuildOverlay() {
-    const { ctx, game } = this;
-    const b = game.build;
-    if (!b.active) return;
-    // selected item highlight
-    if (b.selected && !b.moving) {
-      const f = b.selected;
-      ctx.save(); this.tilePath(f.x, f.y, f.fp[0], f.fp[1], 0.02);
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.setLineDash([10, 6]); ctx.lineDashOffset = -this.time * 30; ctx.stroke(); ctx.restore();
-    }
-    const g = b.ghost;
-    if (!g) return;
-    ctx.save();
-    const col = g.valid ? 'rgba(120,210,130,' : 'rgba(235,100,100,';
-    if (g.kind === 'floor') {
-      for (const t of g.tiles) { this.tilePath(t.x, t.y, 1, 1, 0.04); ctx.fillStyle = col + '0.35)'; ctx.fill(); }
-      ctx.restore(); return;
-    }
-    for (const t of g.tiles) {
-      this.tilePath(t.x, t.y, 1, 1, 0.03);
-      ctx.fillStyle = col + '0.4)'; ctx.fill();
-      ctx.strokeStyle = col + '0.95)'; ctx.lineWidth = 2.5; ctx.stroke();
-    }
-    for (const t of g.access || []) {
-      const p = toScreen(t.x + 0.5, t.y + 0.5);
-      ctx.fillStyle = t.ok ? 'rgba(255,255,255,0.8)' : 'rgba(235,100,100,0.85)';
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, 12, 6, 0, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.restore();
-    if (g.type) {
-      const f = { type: g.type, kind: furnitureById[g.type].kind, x: g.x, y: g.y, dir: g.dir, fp: World.footprint(g.type, g.dir) };
-      this.drawFurniture(f, { alpha: 0.72, ghost: true });
-    }
   }
 
   drawAssetOverlay() {
     const { ctx, game } = this;
     ctx.save();
     ctx.font = `800 11px ${FONT}`; ctx.textAlign = 'center';
-    const tag = (x, y, text) => {
+    const tag = (q, text) => {
+      if (!q) return;
       const tw = ctx.measureText(text).width;
-      ctx.fillStyle = 'rgba(220,60,90,0.85)'; roundRect(ctx, x - tw / 2 - 5, y - 11, tw + 10, 16, 8); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.fillText(text, x, y + 1);
+      ctx.fillStyle = 'rgba(220,60,90,0.85)'; rr(ctx, q.x - tw / 2 - 5, q.y - 11, tw + 10, 16, 8); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillText(text, q.x, q.y + 1);
     };
     for (const f of game.world.furniture) {
       const id = furnitureById[f.type].asset;
-      if (!assets.isPlaceholder(id)) continue;
-      const c = toScreen(f.x + f.fp[0] / 2, f.y + f.fp[1] / 2);
-      tag(c.x, c.y - 10, 'PH ' + id);
-    }
-    for (const a of game.agents) {
-      if (!a.visible) continue;
-      const ids = ['char_body', 'char_head', 'hair_' + a.look.hair[0], 'top_' + a.look.top[0], 'bottom_' + a.look.bottom[0]].filter((i) => assets.isPlaceholder(i));
-      if (ids.length) { const p = toScreen(a.x, a.y); tag(p.x, p.y + 24, `PH ×${ids.length} layers`); }
+      if (models.isPlaceholder(id)) tag(this.project(f.x + f.fp[0] / 2, f.y + f.fp[1] / 2, 1.5), 'PH ' + id);
     }
     const fl = game.world.floorOf(0, 0).asset;
-    if (assets.isPlaceholder(fl)) { const p = toScreen(0.5, 0.5); tag(p.x, p.y, 'PH ' + fl); }
+    if (assets.isPlaceholder(fl)) tag(this.project(1, 1, 0), 'PH ' + fl);
+    const wp = game.world.wall().asset;
+    if (assets.isPlaceholder(wp)) tag(this.project(0, 2, 2.5), 'PH ' + wp);
+    if (assets.isPlaceholder('tex_grass')) tag(this.project(-1, -1, 0), 'PH tex_grass');
     ctx.restore();
   }
 
-  /** Topmost character under a view-space point. */
+  // ------------------------------------------------------------------ picking
+  groundAt(vx, vy) {
+    const r = this.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2((vx / r.width) * 2 - 1, -(vy / r.height) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, this.cam);
+    const ray = this.raycaster.ray;
+    if (Math.abs(ray.direction.y) < 1e-6) return null;
+    const t = -ray.origin.y / ray.direction.y;
+    if (t < 0) return null;
+    return { x: ray.origin.x + ray.direction.x * t, z: ray.origin.z + ray.direction.z * t };
+  }
+  pickTile(vx, vy) {
+    const p = this.groundAt(vx, vy);
+    if (!p) return { x: -99, y: -99 };
+    return { x: Math.floor(p.x / TILE), y: Math.floor(p.z / TILE) };
+  }
+  panBetween(ax, ay, bx, by) {
+    const a = this.groundAt(ax, ay), b = this.groundAt(bx, by);
+    if (!a || !b) return;
+    const c = this.game.camera;
+    c.tx -= b.x - a.x; c.tz -= b.z - a.z; c.clamp();
+  }
   pickAgent(vx, vy) {
-    const w = this.game.camera.toWorld(vx, vy);
-    for (let i = this.hitList.length - 1; i >= 0; i--) {
-      const a = this.hitList[i].a;
-      const p = this.agentScreen(a);
-      const lift = a.pose.lift || 0;
-      if (w.x > p.x - 26 && w.x < p.x + 26 && w.y > p.y - lift - 118 && w.y < p.y - lift + 6) return a;
+    let best = null, bd = 1e9;
+    const head = new THREE.Vector3();
+    for (const a of this.game.agents) {
+      if (!a.visible || a.x < 0) continue;
+      const cv = this.chars.get(a);
+      if (!cv) continue;
+      const f = this.project(a.x, a.y, 0), h = this.projectV(cv.headTop(head));
+      if (!f || !h) continue;
+      const w = 22 * this.game.camera.zoom;
+      if (vx > f.x - w && vx < f.x + w && vy > h.y && vy < f.y + 6) {
+        const d = this.cam.position.distanceTo(cv.root.position);
+        if (d < bd) { bd = d; best = a; }
+      }
     }
-    return null;
+    return best;
   }
 }
 
-function mulHex(a, b) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-  const ch = (s) => Math.round((((pa >> s) & 255) * ((pb >> s) & 255)) / 255);
-  return '#' + [16, 8, 0].map((s) => ch(s).toString(16).padStart(2, '0')).join('');
-}
-
-export function roundRect(ctx, x, y, w, h, r) {
+export function roundRect(ctx, x, y, w, h, r) { rr(ctx, x, y, w, h, r); }
+function rr(ctx, x, y, w, h, r) {
   r = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
   ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-}
-
-// ---- isometric depth sort: topological order over screen-overlapping pairs ----
-function behind(a, b) {
-  if (a.x1 <= b.x0 + EPS) return true;
-  if (b.x1 <= a.x0 + EPS) return false;
-  if (a.y1 <= b.y0 + EPS) return true;
-  if (b.y1 <= a.y0 + EPS) return false;
-  // overlapping footprints: character sharing a furniture tile (sitting)
-  if (a.kind === 'a' && b.kind === 'f' && a.sameTile === b.f) return !a.frontOf;
-  if (b.kind === 'a' && a.kind === 'f' && b.sameTile === a.f) return b.frontOf;
-  return a.depth < b.depth;
-}
-function overlap(r1, r2) {
-  return r1[0] < r2[0] + r2[2] && r2[0] < r1[0] + r1[2] && r1[1] < r2[1] + r2[3] && r2[1] < r1[1] + r1[3];
-}
-export function sortDepth(items) {
-  items.sort((a, b) => a.depth - b.depth);
-  const n = items.length;
-  const before = items.map(() => []);
-  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-    if (!overlap(items[i].rect, items[j].rect)) continue;
-    if (behind(items[i], items[j])) before[j].push(i); else before[i].push(j);
-  }
-  const state = new Uint8Array(n); // 0 new, 1 visiting, 2 done
-  const out = [];
-  const visit = (i) => {
-    if (state[i] === 2) return;
-    if (state[i] === 1) return; // cycle: break it (fallback to depth order)
-    state[i] = 1;
-    for (const j of before[i]) visit(j);
-    state[i] = 2;
-    out.push(items[i]);
-  };
-  for (let i = 0; i < n; i++) visit(i);
-  return out;
 }

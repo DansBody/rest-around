@@ -198,6 +198,82 @@ const SHAPES = {
     }
     ctx.restore();
   },
+  /** Square seamless surface textures for the 3D floors, walls and ground. */
+  texture(ctx, def, dir, ph) {
+    const [w, h] = def.size;
+    const R = (seed) => { let x = Math.sin(seed * 999.1) * 10000; return x - Math.floor(x); };
+    const fill = (c) => { ctx.fillStyle = c; ctx.fillRect(0, 0, w, h); };
+    switch (ph.pattern) {
+      case 'planks': {
+        fill('#f3eee7');
+        const rows = 4, rh = h / rows;
+        for (let r = 0; r < rows; r++) {
+          ctx.fillStyle = r % 2 ? '#efe9e1' : '#f5f0ea'; ctx.fillRect(0, r * rh, w, rh);
+          ctx.fillStyle = '#d9cfc2'; ctx.fillRect(0, r * rh, w, 2);
+          const off = (r * 0.37 % 1) * w;
+          for (const x of [off, (off + w / 2) % w]) ctx.fillRect(x, r * rh, 2, rh);
+          ctx.strokeStyle = 'rgba(200,188,172,0.45)'; ctx.lineWidth = 1;
+          for (let i = 0; i < 3; i++) { const y = r * rh + rh * (0.3 + i * 0.2); ctx.beginPath(); ctx.moveTo(0, y); ctx.bezierCurveTo(w * 0.3, y - 2, w * 0.6, y + 2, w, y); ctx.stroke(); }
+        }
+        break;
+      }
+      case 'checker': {
+        fill('#f4efe8');
+        ctx.fillStyle = '#e2dbd0'; ctx.fillRect(0, 0, w / 2, h / 2); ctx.fillRect(w / 2, h / 2, w / 2, h / 2);
+        ctx.strokeStyle = '#d8d0c4'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, w - 2, h - 2); ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+        break;
+      }
+      case 'carpet': {
+        fill('#f1ece5');
+        ctx.fillStyle = '#e0d8cd';
+        for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { ctx.beginPath(); ctx.arc((i + 0.5) * w / 8 + (j % 2) * w / 16, (j + 0.5) * h / 8, 3, 0, Math.PI * 2); ctx.fill(); }
+        break;
+      }
+      case 'plaster': {
+        fill('#f6f2ec');
+        for (let i = 0; i < 40; i++) { ctx.fillStyle = `rgba(215,205,192,${0.08 + R(i) * 0.1})`; ctx.beginPath(); ctx.arc(R(i + 1) * w, R(i + 2) * h, 6 + R(i + 3) * 18, 0, Math.PI * 2); ctx.fill(); }
+        break;
+      }
+      case 'stripe': {
+        fill('#f6f2ec');
+        ctx.fillStyle = '#e9e2d8';
+        for (let x = 0; x < w; x += w / 8) ctx.fillRect(x + w / 32, 0, w / 16, h);
+        break;
+      }
+      case 'grass': {
+        fill('#a8d47c');
+        for (let i = 0; i < 260; i++) {
+          const x = R(i) * w, y = R(i + 7) * h, l = 3 + R(i + 3) * 5;
+          ctx.strokeStyle = R(i + 11) > 0.5 ? '#97c76c' : '#b6dd8c'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (R(i + 5) - 0.5) * 3, y - l); ctx.stroke();
+        }
+        break;
+      }
+      case 'path': {
+        fill('#efbdb3');
+        ctx.strokeStyle = '#dca79c'; ctx.lineWidth = 3;
+        const n = 4;
+        for (let r = 0; r < n; r++) {
+          ctx.beginPath(); ctx.moveTo(0, r * h / n); ctx.lineTo(w, r * h / n); ctx.stroke();
+          for (let c = 0; c < 2; c++) { const x = ((c + (r % 2) * 0.5) * w / 2) % w; ctx.beginPath(); ctx.moveTo(x, r * h / n); ctx.lineTo(x, (r + 1) * h / n); ctx.stroke(); }
+        }
+        break;
+      }
+      case 'road': {
+        fill('#a2a6ab');
+        for (let i = 0; i < 300; i++) { ctx.fillStyle = R(i) > 0.5 ? 'rgba(80,80,90,0.18)' : 'rgba(255,255,255,0.12)'; ctx.fillRect(R(i + 1) * w, R(i + 2) * h, 2, 2); }
+        break;
+      }
+      case 'soil': {
+        fill('#8a6448');
+        ctx.strokeStyle = '#6f4f38'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+        for (let y = h / 6; y < h; y += h / 3) { ctx.beginPath(); ctx.moveTo(10, y); ctx.lineTo(w - 10, y); ctx.stroke(); }
+        for (let i = 0; i < 80; i++) { ctx.fillStyle = 'rgba(60,40,28,0.3)'; ctx.fillRect(R(i) * w, R(i + 9) * h, 3, 3); }
+        break;
+      }
+      default: fill('#e8e0d4');
+    }
+  },
   tuft(ctx, def) {
     const [w, h] = def.size;
     ctx.strokeStyle = '#7fb85b'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';

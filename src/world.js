@@ -1,7 +1,7 @@
 // The restaurant room: square floor grid, walls with the street door, furniture occupancy, seats, trash.
 import { DIRS } from './iso.js';
 import { furnitureById, floorById, wallById } from './data.js';
-import { assets } from './assets.js';
+import { models } from './models.js';
 import { uid, tileKey, randInt } from './util.js';
 
 export const DOOR_Y = 3; // door sits in the left (x = -1) wall at this row; the room grows toward +x/+y so it never moves
@@ -39,8 +39,8 @@ export class World {
 
   static footprint(type, dir) {
     const cat = furnitureById[type];
-    const def = assets.def(cat.asset);
-    const [w, h] = def.footprint || [1, 1];
+    const def = models.def(cat.asset);
+    const [w, h] = (def && def.footprint) || [1, 1];
     return dir === 0 || dir === 2 ? [h, w] : [w, h];
   }
 

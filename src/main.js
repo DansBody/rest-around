@@ -1,5 +1,7 @@
 // Entry point: load assets (placeholders for anything missing), restore the save, start the loop.
 import { assets } from './assets.js';
+import { models } from './models.js';
+import { bakeModelIcons } from './portrait.js';
 import { Game } from './game.js';
 import { Renderer } from './renderer.js';
 import { UI } from './ui/ui.js';
@@ -14,7 +16,10 @@ const msg = loading.querySelector('.load-msg');
 
 async function boot() {
   try {
-    await assets.load((p) => { bar.style.width = Math.round(p * 100) + '%'; });
+    await assets.load((p) => { bar.style.width = Math.round(p * 30) + '%'; });
+    msg.textContent = 'Unpacking the furniture…';
+    await models.load(assets.manifest, (p) => { bar.style.width = Math.round(30 + p * 70) + '%'; });
+    bakeModelIcons();
   } catch (e) {
     msg.textContent = 'Could not load assets/manifest.json — run a local server (see README).';
     console.error(e);
@@ -26,7 +31,7 @@ async function boot() {
   if (status !== 'loaded') game.newGame();
 
   const canvas = document.getElementById('view');
-  const renderer = new Renderer(canvas, game);
+  const renderer = new Renderer(canvas, document.getElementById('overlay'), game);
   game.renderer = renderer;
   const ui = new UI(game, document.getElementById('ui'));
   ui.init();
@@ -36,7 +41,7 @@ async function boot() {
   audio.setVolume(game.state.settings.volume);
   document.title = `${game.state.name} · Rest Around`;
 
-  const resize = () => { renderer.resize(); game.camera.setRoom(game.world.size); };
+  const resize = () => { renderer.resize(); };
   window.addEventListener('resize', resize);
   resize();
   game.camera.fit(game.world.size);

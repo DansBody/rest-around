@@ -5,7 +5,6 @@ import {
   snackById, ROLES, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS,
 } from './data.js';
 import { makeStaff } from './staff.js';
-import { toScreen } from './iso.js';
 import { bus, choice, randInt, clamp } from './util.js';
 
 export class Economy {
@@ -55,8 +54,7 @@ export class Economy {
     this.syncGarden();
     bus.emit('levelUp', { level: s.level, unlocks });
     g.sfx('levelup');
-    const c = toScreen(g.world.size / 2, g.world.size / 2);
-    g.fx.sparkle(c.x, c.y - 60, 30, '#ffd86b');
+    g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 30, '#ffd86b');
   }
 
   // ---------------- dishes ----------------
@@ -202,8 +200,7 @@ export class Economy {
     const g = this.game;
     if (f.broken) return;
     f.broken = true;
-    const c = toScreen(f.x + 0.5, f.y + 0.5);
-    g.fx.puff(c.x, c.y - 60, '#bdb5ae', 6);
+    g.fx.puff(g.at(f.x + 0.5, f.y + 0.5, 60), '#bdb5ae', 6);
     g.sfx('break');
     g.toast(`${furnitureById[f.type].name} broke down! A cleaner can fix it.`, 'bad');
     g.changed('broken');
@@ -212,8 +209,7 @@ export class Economy {
     const g = this.game, cat = furnitureById[f.type];
     f.broken = false; f.uses = 0;
     f.breakAt = randInt(cat.breakAfter[0], cat.breakAfter[1]);
-    const c = toScreen(f.x + 0.5, f.y + 0.5);
-    g.fx.sparkle(c.x, c.y - 60, 12, '#ffd86b');
+    g.fx.sparkle(g.at(f.x + 0.5, f.y + 0.5, 60), 12, '#ffd86b');
     g.sfx('ding');
     g.changed('broken');
   }

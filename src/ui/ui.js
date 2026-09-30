@@ -2,7 +2,7 @@
 // end-of-day summary and level-up cards. Chrome images come from the manifest (skinnable).
 import { h, bus, fmt, fmtTime, clamp } from '../util.js';
 import { assets } from '../assets.js';
-import { drawDoll } from '../doll.js';
+import { portrait } from '../portrait.js';
 import { PANELS, buildTray } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
 import { ROLES, SNACKS } from '../data.js';
@@ -17,37 +17,7 @@ const TOOLS = [
   { id: 'settings', label: 'Settings', icon: 'tool_settings' },
 ];
 
-export function makeCanvas(w, h, cls) {
-  const c = document.createElement('canvas');
-  c.width = w * 2; c.height = h * 2;
-  c.style.width = w + 'px'; c.style.height = h + 'px';
-  if (cls) c.className = cls;
-  return c;
-}
-export function drawPortrait(c, look, o = {}) {
-  const ctx = c.getContext('2d');
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, c.width, c.height);
-  const s = (c.height / 150) * (o.zoom || 1);
-  drawDoll(ctx, look, { mode: o.mode || 'idle', t: o.t || 0, expr: o.expr, held: o.held, seed: 1, lift: 0 }, o.facing || 'fl', c.width / 2, c.height - 10 * s + (o.dy || 0) * s, s);
-}
-export function portrait(look, w = 64, h = 80, o = {}) {
-  const c = makeCanvas(w, h, 'portrait');
-  drawPortrait(c, look, o);
-  return c;
-}
-export function thumb(assetId, tint, w = 72, h = 64, facing = 'fl') {
-  const c = makeCanvas(w, h);
-  const sp = assets.sprite(assetId, facing);
-  if (!sp) return c;
-  const ctx = c.getContext('2d');
-  const s = Math.min(c.width / sp.w, c.height / sp.h) * 0.96;
-  const img = tint && sp.def.tintable ? assets.tinted(sp, tint) : sp.img;
-  ctx.translate(c.width / 2, c.height / 2);
-  if (sp.flip) ctx.scale(-1, 1);
-  ctx.drawImage(img, (-sp.w * s) / 2, (-sp.h * s) / 2, sp.w * s, sp.h * s);
-  return c;
-}
+export { portrait, thumb } from '../portrait.js';
 
 export class UI {
   constructor(game, root) {
@@ -96,6 +66,14 @@ export class UI {
 
     // ----- toolbar -----
     this.toolBtns = {};
+    // camera controls (the scene is real 3D: rotate in 90deg steps, recenter)
+    const cam = this.game.camera;
+    this.el.camctl = h('div#camctl',
+      h('button.btn.small', { title: 'Rotate left (Q)', onclick: () => { cam.rotate(-1); this.game.sfx('click'); } }, '⟲'),
+      h('button.btn.small', { title: 'Center view', onclick: () => { cam.fit(this.game.world.size); this.game.sfx('click'); } }, '⌂'),
+      h('button.btn.small', { title: 'Rotate right (E)', onclick: () => { cam.rotate(1); this.game.sfx('click'); } }, '⟳'));
+    r.appendChild(this.el.camctl);
+
     this.el.toolbar = h('div#toolbar', TOOLS.map((t) => (this.toolBtns[t.id] = h('button.btn.tool', { onclick: () => this.onTool(t.id), title: t.label }, ic(t.icon, 44), h('span', t.label)))));
     r.appendChild(this.el.toolbar);
 
@@ -183,12 +161,10 @@ export class UI {
   // ---------------- build ----------------
   onBuild(on) {
     this.el.toolbar.style.display = on ? 'none' : '';
+    this.el.camctl.style.bottom = on ? '260px' : '';
     this.el.buildbar.classList.toggle('open', on);
     this.el.buildBanner.classList.toggle('show', on);
     if (on) { this.closePanel(); this.game.selected = null; this.buildCat = this.buildCat || 'dining'; }
-    // lift the room above the tray while building, and put it back afterwards
-    const cam = this.game.camera, lift = 95 / cam.zoom;
-    if (on) { const y0 = cam.y; cam.y += lift; cam.clamp(); this.camLift = cam.y - y0; } else if (this.camLift) { cam.y -= this.camLift; cam.clamp(); this.camLift = 0; }
     this.game.sfx(on ? 'open' : 'close');
     this.renderBuild();
   }
@@ -230,8 +206,6 @@ export class UI {
       el.replaceChildren(...body);
       el.classList.add('show');
     }
-    const t = this.game.renderTime;
-    drawPortrait(this.infoPortrait, a.look, { t, expr: a.kind === 'customer' && a.expr ? a.expr : a.napping ? 'sleepy' : null, mode: a.napping ? 'nap' : 'idle' });
     if (a.kind === 'staff') {
       this.infoMood.textContent = a.napping ? '😴 Napping' : a.energy < 25 ? '🥱 Tired' : '😊 Cheerful';
       this.infoTask.textContent = 'Task: ' + a.task;

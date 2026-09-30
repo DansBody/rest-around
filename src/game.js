@@ -12,13 +12,12 @@ import { Economy } from './economy.js';
 import { Build } from './build.js';
 import { Street } from './ambient.js';
 import { audio } from './audio.js';
-import { toScreen } from './iso.js';
 import { DISHES, MAX_LEVEL } from './data.js';
 import { bus } from './util.js';
 
 export function defaultState() {
   const dishes = {};
-  for (const d of DISHES) dishes[d.id] = { lv: 1, prog: {}, on: d.id === 'salad' || d.id === 'omurice' };
+  for (const d of DISHES) dishes[d.id] = { lv: 1, prog: {}, on: d.id === 'salad' || d.id === 'burger' };
   return {
     v: 1,
     name: 'Maple Nook',
@@ -26,7 +25,7 @@ export function defaultState() {
     rating: 2.6, service: [],
     day: 1, clock: 0,
     dishes,
-    inv: { tomato: 2, lettuce: 2, egg: 2 },
+    inv: { tomato: 2, lettuce: 2, bun: 2 },
     snacks: { cookie: 1 },
     garden: [],
     giftDay: 0,
@@ -175,10 +174,12 @@ export class Game {
 
   // ---------------- helpers used by agents ----------------
   sfx(name) { audio.play(name); }
-  worldPos(a) { return toScreen(a.x, a.y); }
+  /** Rebuild a character's 3D model after its look changed (outfit editor). */
+  refreshCharacter(a) { if (this.renderer) this.renderer.refreshCharacter(a); }
+  /** World anchor for effects: grid position + height (legacy px, ~40 px per world unit). */
+  at(gx, gy, hPx = 0) { return { gx, gy, h: hPx / 40 }; }
   floatText(tileX, tileY, text, icon, color, lift = 110) {
-    const p = toScreen(tileX, tileY);
-    this.fx.text(p.x, p.y - lift, text, icon, color);
+    this.fx.text(this.at(tileX, tileY, lift), text, icon, color);
   }
   toast(msg, kind) { bus.emit('toast', { msg, kind }); }
   changed(what) { bus.emit('changed', what); }

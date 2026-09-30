@@ -2,7 +2,7 @@
 // maybe restroom / arcade → leave. Patience drains while waiting to be seated, to order, and for food.
 import { Agent } from './agent.js';
 import { randomLook } from './looks.js';
-import { assets } from './assets.js';
+import { models } from './models.js';
 import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, dishPrice, dishPoints } from './data.js';
 import { DOOR_Y } from './world.js';
 import { choice, chance, rand, manhattan, uid } from './util.js';
@@ -110,7 +110,7 @@ export class Customer extends Agent {
     if (!this.game.world.furniture.includes(ch)) return this.giveUpSeat();
     this.onTile = ch;
     this.x = ch.x + 0.5; this.y = ch.y + 0.5;
-    this.lift = assets.def(furnitureById[ch.type].asset).seatHeight || 18;
+    this.lift = (models.def(furnitureById[ch.type].asset) || {}).seatHeight || 0.55;
     this.dir = ch.dir;
     seat.customer = this; seat.reserved = null;
     this.state = 'waitOrder'; this.task = 'Waiting to order'; this.mood = 'Hungry';
@@ -160,7 +160,7 @@ export class Customer extends Agent {
     this.showPatience = false; this.bubble = null;
     this.hop();
     const t = rand(6, 8.5);
-    this.wait(t, 'eat', { every: (dt) => { if (Math.random() < dt * 1.2) { const p = this.game.worldPos(this); this.game.fx.crumbs(p.x, p.y - 60 - this.lift); } } });
+    this.wait(t, 'eat', { every: (dt) => { if (Math.random() < dt * 1.2) { this.game.fx.crumbs(this.game.at(this.x, this.y, 70)); } } });
     this.do(() => this.finishMeal());
   }
 
@@ -180,7 +180,7 @@ export class Customer extends Agent {
     seat.food = null; seat.drink = null; seat.dirty = true;
     g.jobs.add('clear', { seat });
     this.tickets = [];
-    if (s > 0.5) { this.emote('emote_heart', 2); const p = g.worldPos(this); g.fx.hearts(p.x, p.y - 110 - this.lift); this.mood = 'Delighted'; }
+    if (s > 0.5) { this.emote('emote_heart', 2); g.fx.hearts(g.at(this.x, this.y, 110)); this.mood = 'Delighted'; }
     else { this.emote('emote_sparkle', 1.6); this.mood = 'Satisfied'; }
     this.hop();
     this.wait(0.6);
@@ -272,7 +272,7 @@ export class Customer extends Agent {
       if (salvaged) continue;
       g.jobs.cancel(t.job); g.jobs.cancel(t.deliverJob);
       const st = t.station;
-      if (st && st.ready === t) { st.ready = null; const p = g.worldPos({ x: st.x + 0.5, y: st.y + 0.5 }); g.fx.puff(p.x, p.y - 50, '#e9e2da', 3); }
+      if (st && st.ready === t) { st.ready = null; g.fx.puff(g.at(st.x + 0.5, st.y + 0.5, 50), '#e9e2da', 3); }
     }
     g.jobs.cancelWhere((j) => j.customer === this && !(j.ticket && j.ticket.customer !== this));
   }

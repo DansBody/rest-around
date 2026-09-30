@@ -2,7 +2,6 @@
 // for anything missing. Dropping a correctly named PNG into assets/ replaces its placeholder on the
 // next reload — no code changes. All sizes, anchors and offsets come from the manifest.
 import { makePlaceholder } from './placeholder.js';
-import { configureIso } from './iso.js';
 
 const BASE = 'assets/';
 
@@ -32,7 +31,6 @@ class AssetStore {
     const res = await fetch(BASE + 'manifest.json', { cache: 'no-cache' });
     if (!res.ok) throw new Error('Could not load assets/manifest.json (' + res.status + ')');
     this.manifest = await res.json();
-    configureIso(this.manifest.grid);
     const jobs = [];
     for (const def of this.manifest.assets) {
       this.defs.set(def.id, def);
@@ -91,6 +89,15 @@ class AssetStore {
     const rec = this.images.get(id + '|' + key);
     if (!rec) return null;
     return { def, key, flip, rec, img: flip ? rec.flipImg : rec.img, w: def.size[0], h: def.size[1], ax: def.anchor ? def.anchor[0] : def.size[0] / 2, ay: def.anchor ? def.anchor[1] : def.size[1] / 2 };
+  }
+
+  /** Replace an image with a generated one (e.g. an icon rendered from its 3D model). */
+  override(id, canvas, stillPlaceholder = false) {
+    const def = this.defs.get(id);
+    if (!def) return;
+    for (const d of def.directions) this.images.set(id + '|' + d, { img: canvas, flipImg: canvas, placeholder: stillPlaceholder, generated: true });
+    for (const k of [...this.tintCache.keys()]) if (k.startsWith(id + '|')) this.tintCache.delete(k);
+    for (const k of [...this.urlCache.keys()]) if (k.startsWith(id + '|')) this.urlCache.delete(k);
   }
 
   isPlaceholder(id) {

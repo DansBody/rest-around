@@ -1,11 +1,12 @@
 // Panel contents. Each panel re-renders on state changes (and once a second when `live`).
 import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
-import { portrait, drawPortrait, thumb } from './ui.js';
+import { portrait, thumb } from '../portrait.js';
+import { ACCESSORIES } from '../looks.js';
 import {
   ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, HAIR_STYLES, TOP_STYLES, BOTTOM_STYLES, HAT_STYLES,
+  OUTFIT_COLORS, CHARACTER_MODELS,
 } from '../data.js';
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
@@ -44,7 +45,7 @@ function renderStaff(ui, body) {
   for (const a of staff) {
     const bar = h('i', { style: { width: a.energy + '%' } });
     body.append(h('div.row', { 'data-staff': a.id },
-      portrait(a.look, 64, 80, { mode: a.napping ? 'nap' : 'idle' }),
+      portrait(a.look, 64, 80),
       h('div.grow',
         h('h3', a.name, ' ', h('span.muted', '· ' + ROLES[a.role].name)),
         h('div.muted.task', a.napping ? '😴 Napping' : a.task),
@@ -82,32 +83,28 @@ function tickStaff(ui, body) {
 function renderOutfit(ui, body, a) {
   const g = ui.game;
   const look = a.look;
-  const pc = portrait(look, 150, 190, { zoom: 1 });
+  const refresh = () => { g.refreshCharacter(a); g.changed('look'); ui.renderPanel(); };
+  const names = { knight: 'Knight', mage: 'Mage', barbarian: 'Barbarian', rogue: 'Rogue', rogue_hooded: 'Hooded Rogue' };
+  const accName = (n) => n.split('_').slice(1).join(' ').replace('Hooded', 'Hood');
+  const pc = portrait(look, 150, 190);
   pc.style.margin = '0 auto'; pc.style.display = 'block';
-  let facing = 'fl';
-  const redraw = () => drawPortrait(pc, look, { facing, t: g.renderTime });
-  const set = () => { redraw(); g.changed('look'); };
-  const cycle = (arr, cur, d) => arr[(arr.indexOf(cur) + d + arr.length) % arr.length];
-  const stepper = (label, get, setv, arr) => h('div.orow', h('span', label), h('div.stepper',
-    h('button.btn.small', { onclick: () => { setv(cycle(arr, get(), -1)); set(); ui.renderPanel(); } }, '◀'),
-    h('span', get() || 'none'),
-    h('button.btn.small', { onclick: () => { setv(cycle(arr, get(), 1)); set(); ui.renderPanel(); } }, '▶')));
-  const swatches = (label, colors, get, setv) => h('div.orow', h('span', label), h('div.swatches', colors.map((c) => h('span.sw' + (get() === c ? '.on' : ''), { style: { background: c }, onclick: () => { setv(c); set(); ui.renderPanel(); } }))));
+  const models = CHARACTER_MODELS;
   body.append(
     h('div.btnrow', { style: { marginBottom: '6px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, '◀ Back'), h('b', { style: { alignSelf: 'center' } }, `${a.name}'s wardrobe`)),
     pc,
-    h('div.btnrow', { style: { justifyContent: 'center' } }, h('button.btn.small', { onclick: () => { facing = { fl: 'fr', fr: 'br', br: 'bl', bl: 'fl' }[facing]; redraw(); } }, '↻ Turn')),
-    swatches('Skin', SKIN_TONES, () => look.skin, (v) => { look.skin = v; }),
-    stepper('Hair', () => look.hair[0], (v) => { look.hair[0] = v; }, HAIR_STYLES),
-    swatches('', HAIR_COLORS, () => look.hair[1], (v) => { look.hair[1] = v; }),
-    stepper('Top', () => look.top[0], (v) => { look.top[0] = v; }, TOP_STYLES),
-    swatches('', OUTFIT_COLORS, () => look.top[1], (v) => { look.top[1] = v; }),
-    stepper('Bottom', () => look.bottom[0], (v) => { look.bottom[0] = v; }, BOTTOM_STYLES),
-    swatches('', OUTFIT_COLORS, () => look.bottom[1], (v) => { look.bottom[1] = v; }),
-    stepper('Hat', () => (look.hat ? look.hat[0] : null), (v) => { look.hat = v ? [v, look.hat ? look.hat[1] : '#ffffff'] : null; }, HAT_STYLES),
-    look.hat ? swatches('', ['#ffffff', ...OUTFIT_COLORS], () => look.hat[1], (v) => { look.hat[1] = v; }) : null,
-    swatches('Shoes', ['#6b5040', '#5b5b6e', '#b86a5a', '#f2efe9', '#6a8fb3', '#e59aa8'], () => look.shoe, (v) => { look.shoe = v; }));
-  ui.outfitCanvas = { pc, redraw };
+    h('div.orow', h('span', 'Character'), h('div.stepper',
+      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + models.length - 1) % models.length]; look.hide = []; refresh(); } }, '◀'),
+      h('span', names[look.model] || look.model),
+      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + 1) % models.length]; look.hide = []; refresh(); } }, '▶'))),
+    h('div.orow', h('span', 'Wear'), h('div.btnrow', (ACCESSORIES[look.model] || []).map((n) => {
+      const on = !(look.hide || []).includes(n);
+      return h('button.btn.small' + (on ? '.primary' : ''), { onclick: () => { look.hide = on ? [...(look.hide || []), n] : (look.hide || []).filter((x) => x !== n); refresh(); } }, (on ? '✓ ' : '') + accName(n));
+    }))),
+    h('div.orow', h('span', 'Outfit tint'), h('div.swatches',
+      h('span.sw' + (!look.tint ? '.on' : ''), { style: { background: 'linear-gradient(135deg,#fff 45%,#e9dccb 55%)' }, title: 'Original colours', onclick: () => { look.tint = null; refresh(); } }),
+      OUTFIT_COLORS.map((c) => h('span.sw' + (look.tint === c ? '.on' : ''), { style: { background: c }, onclick: () => { look.tint = c; refresh(); } })))),
+    h('div.orow', h('span', 'Chef hat'), h('button.btn.small' + (look.roleHat ? '.primary' : ''), { onclick: () => { look.roleHat = look.roleHat ? null : 'chef'; refresh(); } }, look.roleHat ? 'On' : 'Off')),
+    h('div.muted', 'Characters come from the KayKit Adventurers pack (CC0). Drop in other glTF characters via assets/manifest.json.'));
 }
 
 // ------------------------------------------------------------------ menu
