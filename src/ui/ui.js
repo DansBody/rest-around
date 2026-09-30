@@ -7,6 +7,8 @@ import { PANELS, buildTray } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
 import { ROLES, SNACKS } from '../data.js';
 import { audio } from '../audio.js';
+import { glyph } from './icons.js';
+import { glassFx } from './glass.js';
 
 const TOOLS = [
   { id: 'build', label: 'Build', icon: 'tool_build' },
@@ -32,7 +34,6 @@ export class UI {
   }
 
   init() {
-    this.applySkin();
     const r = this.root;
     const ic = (id, s) => assets.iconEl(id, s);
 
@@ -58,7 +59,8 @@ export class UI {
     this.el.phase = h('small', 'Opening');
     this.el.day = h('small', 'Day 1');
     const clock = h('div.chip', { title: 'Day clock' }, ic('icon_clock', 28), h('div.clock', h('span', this.el.day), this.el.time, this.el.phase));
-    this.el.speed = h('div.chip', { style: { display: 'none', fontSize: '15px' } }, '⏩ 1×');
+    this.el.speedTxt = h('span', '1×');
+    this.el.speed = h('div.chip', { style: { display: 'none', fontSize: '15px' } }, glyph('fast', 18), this.el.speedTxt);
     this.el.gift = h('div.chip#gift', { title: 'Daily gift!', onclick: () => this.claimGift() }, ic('icon_gift', 30));
     this.el.hud = h('div#hud', coin, lvl, rating, clock, this.el.speed, this.el.gift);
     this.el.ratingTip = h('div.card.rating-tip');
@@ -69,12 +71,12 @@ export class UI {
     // camera controls (the scene is real 3D: rotate in 90deg steps, recenter)
     const cam = this.game.camera;
     this.el.camctl = h('div#camctl',
-      h('button.btn.small', { title: 'Rotate left (Q)', onclick: () => { cam.rotate(-1); this.game.sfx('click'); } }, '⟲'),
-      h('button.btn.small', { title: 'Center view', onclick: () => { cam.fit(this.game.world.size); this.game.sfx('click'); } }, '⌂'),
-      h('button.btn.small', { title: 'Rotate right (E)', onclick: () => { cam.rotate(1); this.game.sfx('click'); } }, '⟳'));
+      h('button.btn.small', { title: 'Rotate left (Q)', onclick: () => { cam.rotate(-1); this.game.sfx('click'); } }, glyph('rotate', 20)),
+      h('button.btn.small', { title: 'Center view', onclick: () => { cam.fit(this.game.world.size); this.game.sfx('click'); } }, glyph('recenter', 20)),
+      h('button.btn.small', { title: 'Rotate right (E)', onclick: () => { cam.rotate(1); this.game.sfx('click'); } }, glyph('rotate_r', 20)));
     r.appendChild(this.el.camctl);
 
-    this.el.toolbar = h('div#toolbar', TOOLS.map((t) => (this.toolBtns[t.id] = h('button.btn.tool', { onclick: () => this.onTool(t.id), title: t.label }, ic(t.icon, 44), h('span', t.label)))));
+    this.el.toolbar = h('div#toolbar', TOOLS.map((t) => (this.toolBtns[t.id] = h('button.btn.tool', { onclick: () => this.onTool(t.id), title: t.label }, ic(t.icon, 26), h('span', t.label)))));
     r.appendChild(this.el.toolbar);
 
     // ----- side panel -----
@@ -82,7 +84,7 @@ export class UI {
     this.el.panelIcon = h('span');
     this.el.panelBody = h('div.panel-body');
     this.el.panel = h('div.card#panel',
-      h('div.panel-head', this.el.panelIcon, this.el.panelTitle, h('button.btn.small.xbtn', { onclick: () => this.closePanel(), title: 'Close' }, '✕')),
+      h('div.panel-head', this.el.panelIcon, this.el.panelTitle, h('button.btn.small.xbtn', { onclick: () => this.closePanel(), title: 'Close' }, glyph('close', 16))),
       this.el.panelBody);
     this.el.panel.addEventListener('pointerdown', () => { this.pointerInPanel = true; });
     window.addEventListener('pointerup', () => { setTimeout(() => { this.pointerInPanel = false; }, 0); });
@@ -90,7 +92,7 @@ export class UI {
 
     // ----- build tray -----
     this.el.buildbar = h('div#buildbar');
-    this.el.buildBanner = h('div#buildbanner', '🔨 Build mode — the restaurant is paused');
+    this.el.buildBanner = h('div#buildbanner', glyph('build', 16), 'Build mode — the restaurant is paused');
     r.append(this.el.buildbar, this.el.buildBanner);
 
     // ----- info card, toasts, modal, debug host -----
@@ -109,14 +111,17 @@ export class UI {
     bus.on('dayStart', (d) => this.toast(`☀️ Day ${d} — doors open!`, 'good'));
     this.renderBuild();
     this.update(1);
+    this.initGlass();
   }
 
-  applySkin() {
-    const st = document.documentElement.style;
-    const set = (v, id) => { st.setProperty(v, `url(${assets.url(id)})`); };
-    set('--panel-img', 'ui_panel'); set('--shelf-img', 'ui_shelf'); set('--btn-img', 'ui_button'); set('--btn-primary-img', 'ui_button_primary'); set('--btn-danger-img', 'ui_button_danger'); set('--chip-img', 'ui_chip');
-    const sl = (id) => (assets.def(id).slice || [16])[0];
-    st.setProperty('--panel-slice', sl('ui_panel')); st.setProperty('--btn-slice', sl('ui_button')); st.setProperty('--chip-slice', sl('ui_chip')); st.setProperty('--shelf-slice', sl('ui_shelf'));
+  /** Lens-rim refraction on the floating chrome (Chromium only; elsewhere the CSS frost stays). */
+  initGlass() {
+    glassFx.enabled = this.game.state.settings.glass !== false;
+    for (const c of this.el.hud.children) glassFx.attach(c, { blur: 3, strength: 22, bezel: 12 });
+    glassFx.attach(this.el.toolbar, { blur: 2.5, strength: 32, bezel: 18 });
+    for (const b of this.el.camctl.children) glassFx.attach(b, { blur: 2, strength: 22, bezel: 14 });
+    glassFx.attach(this.el.panel, { blur: 14, strength: 60, bezel: 28 });
+    glassFx.attach(this.el.info, { blur: 12, strength: 44, bezel: 24 });
   }
 
   // ---------------- toolbar & panels ----------------
@@ -136,7 +141,7 @@ export class UI {
     this.subview = null;
     const p = PANELS[id];
     this.el.panelTitle.textContent = p.title;
-    this.el.panelIcon.replaceChildren(assets.iconEl(p.icon, 36));
+    this.el.panelIcon.replaceChildren(assets.iconEl(p.icon, 30));
     this.el.panel.classList.add('open');
     for (const [k, b] of Object.entries(this.toolBtns)) b.classList.toggle('active', k === id);
     this.el.panelBody.scrollTop = 0;
@@ -240,10 +245,10 @@ export class UI {
     this.el.ratingNum.textContent = s.rating.toFixed(1);
     this.el.day.textContent = 'Day ' + s.day;
     this.el.time.textContent = fmtTime(g.day.hour);
-    this.el.phase.textContent = g.paused ? 'Closed' : g.build.active ? 'Paused (build)' : g.day.hour >= 22 ? 'Last guests…' : g.day.phase.name;
+    this.el.phase.textContent = g.paused ? 'Closed' : g.build.active ? 'Paused' : g.day.hour >= 22 ? 'Last guests…' : g.day.phase.name;
     this.el.gift.style.display = g.eco.giftAvailable() ? '' : 'none';
     this.el.speed.style.display = g.timeScale !== 1 ? '' : 'none';
-    this.el.speed.textContent = `⏩ ${g.timeScale}×`;
+    this.el.speedTxt.textContent = `${g.timeScale}×`;
     if (this.el.ratingTip.classList.contains('show')) this.renderRatingTip();
     if (this.panel) {
       const age = performance.now() - (this.lastPanelRender || 0);
@@ -276,7 +281,7 @@ export class UI {
     if (!r) return;
     const items = Object.entries(r.got).map(([k, v]) => h('span.ing', assets.iconEl('ing_' + k, 22), '×' + v));
     this.queueModal(() => h('div.card',
-      h('div', assets.iconEl('icon_gift', 64)),
+      h('div.hero-ico', assets.iconEl('icon_gift', 64)),
       h('div.big-title', 'Daily Gift!'),
       h('div.muted', 'A friendly farmer dropped by with:'),
       h('div.ings', { style: { justifyContent: 'center', margin: '10px 0' } }, items, h('span.ing', assets.iconEl('icon_coin', 22), '+' + r.coins)),
@@ -342,10 +347,10 @@ export class UI {
     const acc = this.levelAcc;
     const hide = () => { this.el.celebrate.classList.remove('show'); this.levelAcc = null; };
     this.el.celebrate.replaceChildren(h('div.card',
-      h('div', assets.iconEl('icon_level', 56)),
+      h('div.hero-ico', assets.iconEl('icon_level', 56)),
       h('div.big-title', `Level ${acc.level}!`),
       h('div.muted', 'New things unlocked:'),
-      h('div', { style: { margin: '8px 0', fontWeight: 900, lineHeight: 1.5, maxHeight: '40vh', overflow: 'auto' } }, acc.unlocks.length ? acc.unlocks.map((u) => h('div', '✦ ' + u)) : 'More gourmet glory!'),
+      h('div', { style: { margin: '8px 0', fontWeight: 900, lineHeight: 1.5, maxHeight: '40vh', overflow: 'auto' } }, acc.unlocks.length ? acc.unlocks.map((u) => h('div', { style: { display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center' } }, glyph('sparkles', 16), u)) : 'More gourmet glory!'),
       h('button.btn.primary', { onclick: hide }, 'Yay!')));
     this.el.celebrate.classList.add('show');
     clearTimeout(this.celebrateTimer);

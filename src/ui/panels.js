@@ -10,6 +10,8 @@ import {
 } from '../data.js';
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
+import { gl } from './icons.js';
+import { glassFx } from './glass.js';
 
 const I = (id, s = 22) => assets.iconEl(id, s);
 /** Danger button that asks for a second tap instead of a browser confirm() dialog. */
@@ -54,7 +56,7 @@ function renderStaff(ui, body) {
           SNACKS.map((sn) => h('button.btn.small', { title: `${sn.name}: +${sn.energy} energy (${s.snacks[sn.id] ? 'from pantry' : sn.price + ' coins'})`, onclick: () => g.eco.feed(a, sn.id) }, I(sn.asset, 20), `×${s.snacks[sn.id] || 0}`)),
           h('button.btn.small', { onclick: () => { ui.subview = { outfit: a }; ui.renderPanel(); } }, 'Outfit'),
           confirmBtn('button.btn.small.danger', 'Fire', `Let ${a.name} go?`, () => g.eco.fire(a)),
-          h('button.btn.small', { onclick: () => ui.select(a), title: 'Show on the floor' }, '👁')))));
+          h('button.btn.small', { onclick: () => ui.select(a), title: 'Show on the floor' }, gl('eye', null, 16))))));
   }
   body.append(h('div.section-title', 'Hire'));
   const full = staff.length >= slots;
@@ -90,15 +92,15 @@ function renderOutfit(ui, body, a) {
   pc.style.margin = '0 auto'; pc.style.display = 'block';
   const models = CHARACTER_MODELS;
   body.append(
-    h('div.btnrow', { style: { marginBottom: '6px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, '◀ Back'), h('b', { style: { alignSelf: 'center' } }, `${a.name}'s wardrobe`)),
+    h('div.btnrow', { style: { marginBottom: '6px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', 'Back', 14)), h('b', { style: { alignSelf: 'center' } }, `${a.name}'s wardrobe`)),
     pc,
     h('div.orow', h('span', 'Character'), h('div.stepper',
-      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + models.length - 1) % models.length]; look.hide = []; refresh(); } }, '◀'),
+      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + models.length - 1) % models.length]; look.hide = []; refresh(); } }, gl('back', null, 14)),
       h('span', names[look.model] || look.model),
-      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + 1) % models.length]; look.hide = []; refresh(); } }, '▶'))),
+      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + 1) % models.length]; look.hide = []; refresh(); } }, gl('forward', null, 14)))),
     h('div.orow', h('span', 'Wear'), h('div.btnrow', (ACCESSORIES[look.model] || []).map((n) => {
       const on = !(look.hide || []).includes(n);
-      return h('button.btn.small' + (on ? '.primary' : ''), { onclick: () => { look.hide = on ? [...(look.hide || []), n] : (look.hide || []).filter((x) => x !== n); refresh(); } }, (on ? '✓ ' : '') + accName(n));
+      return h('button.btn.small' + (on ? '.primary' : ''), { onclick: () => { look.hide = on ? [...(look.hide || []), n] : (look.hide || []).filter((x) => x !== n); refresh(); } }, on ? gl('check', accName(n), 14) : accName(n));
     }))),
     h('div.orow', h('span', 'Outfit tint'), h('div.swatches',
       h('span.sw' + (!look.tint ? '.on' : ''), { style: { background: 'linear-gradient(135deg,#fff 45%,#e9dccb 55%)' }, title: 'Original colours', onclick: () => { look.tint = null; refresh(); } }),
@@ -135,8 +137,8 @@ function renderMenu(ui, body) {
         h('div', { style: { display: 'flex', gap: '6px', margin: '2px 0' } }, coinPill(dishPrice(d, st.lv)), h('span.pill', I('icon_points', 18), dishPoints(d, st.lv)), h('span.pill', '⏱ ' + d.cook + 's')),
         unlocked ? h('div.ings', ings) : h('div.muted', I('icon_lock', 16), ` Unlocks at level ${d.level}`),
         unlocked ? h('div.btnrow',
-          h('button.btn.small' + (st.on ? '.primary' : ''), { onclick: () => g.eco.toggleMenu(d.id) }, st.on ? '✓ On menu' : 'Add to menu'),
-          maxed ? null : h('button.btn.small' + (canAdd ? '' : '.disabled'), { onclick: () => g.eco.contribute(d.id), title: 'Put pantry ingredients toward the next dish level' }, '🥣 Add ingredients')) : null)));
+          h('button.btn.small' + (st.on ? '.primary' : ''), { onclick: () => g.eco.toggleMenu(d.id) }, st.on ? gl('check', 'On menu', 14) : 'Add to menu'),
+          maxed ? null : h('button.btn.small' + (canAdd ? '' : '.disabled'), { onclick: () => g.eco.contribute(d.id), title: 'Put pantry ingredients toward the next dish level' }, gl('bowl', 'Add ingredients', 15))) : null)));
   }
   body.append(h('div.muted', { style: { marginTop: '6px' } }, 'Collect every ingredient in a recipe to level a dish (Lv1→10): higher price and more gourmet points. Get ingredients from the Garden, the Market and the daily gift.'));
 }
@@ -219,7 +221,8 @@ function renderSettings(ui, body) {
   name.addEventListener('change', () => { s.name = name.value.trim().slice(0, 24) || 'Maple Nook'; document.title = `${s.name} · Rest Around`; });
   const vol = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: s.settings.volume });
   vol.addEventListener('input', () => { s.settings.volume = +vol.value; audio.setVolume(+vol.value); });
-  const toggle = (label, key, after) => h('div.toggle', h('span', label), h('button.btn.small' + (s.settings[key] ? '.primary' : ''), { onclick: () => { s.settings[key] = !s.settings[key]; if (after) after(); ui.renderPanel(); } }, s.settings[key] ? 'On' : 'Off'));
+  const toggle = (label, key, after) => h('div.toggle', h('span', label),
+    h('button.switch' + (s.settings[key] ? '.on' : ''), { role: 'switch', 'aria-checked': String(!!s.settings[key]), title: label, onclick: () => { s.settings[key] = !s.settings[key]; if (after) after(); ui.renderPanel(); } }));
   body.append(
     h('div.section-title', 'Restaurant name'), name,
     h('div.section-title', 'Sound'),
@@ -227,16 +230,17 @@ function renderSettings(ui, body) {
     h('div.orow', h('span', 'Volume'), vol),
     h('div.section-title', 'Game'),
     toggle('Auto-open next day', 'autoNextDay'),
+    glassFx.supported ? toggle('Liquid glass refraction', 'glass', () => glassFx.setEnabled(s.settings.glass)) : null,
     h('div.btnrow',
-      h('button.btn.small', { onclick: () => { ui.toast(save(g) ? 'Saved!' : 'Could not save (storage blocked?)', 'good'); } }, '💾 Save now'),
+      h('button.btn.small', { onclick: () => { ui.toast(save(g) ? 'Saved!' : 'Could not save (storage blocked?)', 'good'); } }, gl('save', 'Save now', 15)),
       confirmBtn('button.btn.small.danger', 'Reset game', 'Tap again to erase everything', () => { g.resetting = true; clearSave(); location.reload(); })),
     h('div.muted', { style: { marginTop: '6px' } }, 'Progress autosaves every 10 seconds and when you close the tab.'),
     h('div.section-title', 'Controls'),
     h('div.muted', { style: { lineHeight: 1.8 } },
-      'Drag to pan · Wheel to zoom · Click a character for details', h('br'),
+      'Drag to pan · Wheel or pinch to zoom · Right-drag, two-finger twist or ', h('kbd', 'Q'), '/', h('kbd', 'E'), ' to turn the camera · Click a character for details', h('br'),
       h('kbd', 'B'), ' build · ', h('kbd', 'R'), ' rotate · ', h('kbd', 'Del'), ' sell · ', h('kbd', 'Esc'), ' cancel/close · ', h('kbd', '`'), ' debug'),
     h('div.section-title', 'About'),
-    h('div.muted', 'Rest Around — a cozy isometric bistro. Art is swappable: drop PNGs into assets/ (see ASSETS.md).'));
+    h('div.muted', 'Rest Around — a cozy 3D bistro. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).'));
 }
 
 // ------------------------------------------------------------------ build tray
@@ -253,9 +257,9 @@ export function buildTray(ui, bar) {
   if (!b.active) { bar.replaceChildren(); return; }
   const cat = ui.buildCat || 'dining';
   const tabs = h('div.bb-top',
-    BUILD_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.buildCat = c.id; b.setTool(null); } }, c.name)),
+    h('div.tabs', BUILD_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.buildCat = c.id; b.setTool(null); } }, c.name))),
     h('div.grow'),
-    h('button.btn.primary.done', { onclick: () => b.exit() }, '✓ Done'));
+    h('button.btn.primary.done', { onclick: () => b.exit() }, gl('check', 'Done', 16)));
   const items = h('div.bb-items');
   const card = (key, name, price, lvl, sel, onclick, thumbFn, sub) => {
     const locked = lvl > s.level;
@@ -297,7 +301,7 @@ export function buildTray(ui, bar) {
       h('button.btn.small', { onclick: () => b.rotateSelected() }, I('icon_rotate', 20), 'Rotate'),
       h('button.btn.small', { onclick: () => b.startMove() }, I('icon_move', 20), 'Move'),
       h('button.btn.small.danger', { onclick: () => b.sellSelected() }, I('icon_sell', 20), `Sell +${Math.floor(cat2.price * SELL_RATE)}`),
-      h('button.btn.small', { onclick: () => { b.selected = null; ui.renderBuild(); } }, '✕'));
+      h('button.btn.small', { onclick: () => { b.selected = null; ui.renderBuild(); } }, gl('close', null, 14)));
   }
   bar.replaceChildren(h('div.card', sel, tabs, items, h('div', { style: { marginTop: '4px' } }, msg)));
 }

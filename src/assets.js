@@ -2,6 +2,7 @@
 // for anything missing. Dropping a correctly named PNG into assets/ replaces its placeholder on the
 // next reload — no code changes. All sizes, anchors and offsets come from the manifest.
 import { makePlaceholder } from './placeholder.js';
+import { ICON_GLYPHS, glyph } from './ui/icons.js';
 
 const BASE = 'assets/';
 
@@ -173,6 +174,8 @@ class AssetStore {
 
   /** <img> element for an icon (title = asset id so placeholders are identifiable). */
   iconEl(id, size = 24, cls = 'ico', tint) {
+    // UI icons without a real PNG use the built-in vector glyphs (crisper than a placeholder)
+    if (ICON_GLYPHS[id] && this.isPlaceholder(id)) return glyph(ICON_GLYPHS[id], size, cls + ' glyph');
     const img = new Image();
     img.src = this.url(id, tint);
     const d = this.defs.get(id);

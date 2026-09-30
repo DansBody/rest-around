@@ -1,8 +1,9 @@
 # Rest Around — Asset Guide (3D)
 
 The game renders in real-time 3D with three.js. Every world object is a **glTF model** listed in
-[`assets/manifest.json`](assets/manifest.json) → `models`; UI chrome, icons and surface textures are
-**PNG images** listed under `assets`.
+[`assets/manifest.json`](assets/manifest.json) → `models`; icons, emotes and surface textures are
+**PNG images** listed under `assets`. The UI itself ("liquid glass" panels, buttons, tab bar) is
+plain CSS in `src/ui/style.css`, so it needs no images.
 
 * **Missing file → placeholder.** A model that isn't there gets a procedural low-poly stand-in
   (the restroom toilet and the arcade cabinet are placeholders today); a missing PNG gets a
@@ -20,16 +21,18 @@ The game renders in real-time 3D with three.js. Every world object is a **glTF m
 | [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | all characters + their shared animations |
 | Fredoka, Nunito (Google Fonts) | SIL OFL 1.1 | UI fonts (`assets/fonts`, licences alongside) |
 
-The character files were slimmed for the web: weapons removed and the 15 animations the game
-uses moved into one shared `models/characters/animations.glb` (all five characters share the
-same rig, so any character plays any clip).
+The character files were slimmed for the web: weapons removed, the 15 animations the game uses
+moved into one shared `models/characters/animations.glb` (all five characters share the same rig,
+so any character plays any clip), and each character saved as `.gltf` + `.bin` + an external
+`*_texture.png`. Keep textures external: some hosts block the `blob:` URLs three.js uses for
+textures embedded in a `.glb`, and the characters then render untextured (white).
 
 ## Conventions for models
 
 | Rule | Value |
 |---|---|
 | Units | **1 floor tile = 2 world units** (KayKit's grid). A 1-tile item fits in 2×2 units. |
-| Up / front | +Y is up. The item's **front faces +Z** (use `rotY` in the manifest to fix models that face another way — KayKit chairs use `rotY: 180`). |
+| Up / front | +Y is up. The item's **front faces +Z** (use `rotY` in the manifest to fix models that face another way — KayKit models already face +Z). |
 | Origin | The loader centres the model on X/Z and puts its lowest point on the floor (`center: false` keeps the file's own origin, used for the door hinge). |
 | Size | `scale` in the manifest; `surfaceHeight` (where dishes sit) and `seatHeight` are in world units. |
 | Tinting | `tintable: true` models can be recoloured per shop item. Furniture is re-coloured (the texture is greyed, then tinted); food is lightly multiplied. |
@@ -38,7 +41,7 @@ same rig, so any character plays any clip).
 | Characters | A rigged glTF using the KayKit rig bone names (`handslot.r`, `head`). `accessories` lists mesh names the wardrobe can toggle. Animation names are mapped in `characterAnimations` (idle, walk, carry, sit, cook, sweep, nap, …). |
 
 **To add a different character pack** (e.g. casual townsfolk from Kenney or Quaternius): add an
-entry to `models` with `category: "character"`, point `file` at the `.glb`, and — if its rig or
+entry to `models` with `category: "character"`, point `file` at the `.gltf`, and — if its rig or
 clip names differ — point `characterAnimationFile` at its animations and update
 `characterAnimations`. Then add the id to `CHARACTER_MODELS` in `src/data.js`.
 
@@ -48,8 +51,9 @@ clip names differ — point `characterAnimationFile` at its animations and updat
   PNG at the listed path overrides that.
 * Surface textures (`tex_*`) are square, seamless, 256×256 (or a multiple), drawn light grey where
   marked *tintable* (floor and wallpaper colours come from the shop item's tint).
-* UI frames (`ui_panel`, `ui_button*`, `ui_chip`, `ui_shelf`) are 9-slice images; `slice` gives
-  the border sizes.
+* UI icons (`icon_*`, `tool_*`, and the heart/angry emotes in the day summary) fall back to
+  built-in vector glyphs (`src/ui/icons.js`) instead of a generated placeholder. A PNG at the
+  listed path still replaces them.
 
 ## Asset tables (generated)
 
@@ -65,9 +69,9 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 |---|---|---|
 | `m_table_round` | `models/restaurant/table_round_A_small.gltf` | surface 1; tintable |
 | `m_table_square` | `models/furniture/table_medium.gltf` | surface 1; tintable |
-| `m_chair_a` | `models/restaurant/chair_A.gltf` | seat 0.55; rotY 180°; tintable |
-| `m_chair_wood` | `models/furniture/chair_A_wood.gltf` | seat 0.55; rotY 180°; tintable |
-| `m_armchair` | `models/furniture/armchair.gltf` | seat 0.55; rotY 180°; scale 0.8; tintable |
+| `m_chair_a` | `models/restaurant/chair_A.gltf` | seat 0.55; tintable |
+| `m_chair_wood` | `models/furniture/chair_A_wood.gltf` | seat 0.55; tintable |
+| `m_armchair` | `models/furniture/armchair.gltf` | seat 0.55; scale 0.8; tintable |
 
 **Kitchen**
 
@@ -152,13 +156,13 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 | id | source | notes |
 |---|---|---|
-| `knight` | `models/characters/Knight.glb` | accessories: Knight_Helmet, Knight_Cape |
-| `mage` | `models/characters/Mage.glb` | accessories: Mage_Hat, Mage_Cape |
-| `barbarian` | `models/characters/Barbarian.glb` | accessories: Barbarian_Hat, Barbarian_Cape |
-| `rogue` | `models/characters/Rogue.glb` | accessories: Rogue_Cape |
-| `rogue_hooded` | `models/characters/Rogue_Hooded.glb` | accessories: Rogue_Cape |
+| `knight` | `models/characters/Knight.gltf` | accessories: Knight_Helmet, Knight_Cape |
+| `mage` | `models/characters/Mage.gltf` | accessories: Mage_Hat, Mage_Cape |
+| `barbarian` | `models/characters/Barbarian.gltf` | accessories: Barbarian_Hat, Barbarian_Cape |
+| `rogue` | `models/characters/Rogue.gltf` | accessories: Rogue_Cape |
+| `rogue_hooded` | `models/characters/Rogue_Hooded.gltf` | accessories: Rogue_Cape |
 
-### 2D images (80)
+### 2D images (74)
 
 | id | file | size (px) | notes |
 |---|---|---|---|
@@ -211,12 +215,6 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `emote_note` | `ui/emote_note.png` | 40×40 |  |
 | `emote_broken` | `ui/emote_broken.png` | 40×40 |  |
 | `emote_menu` | `ui/emote_menu.png` | 40×40 |  |
-| `ui_panel` | `ui/ui_panel.png` | 96×96 | 9-slice 32/32/32/32 |
-| `ui_button` | `ui/ui_button.png` | 64×48 | 9-slice 18/18/18/18 |
-| `ui_button_primary` | `ui/ui_button_primary.png` | 64×48 | 9-slice 18/18/18/18 |
-| `ui_button_danger` | `ui/ui_button_danger.png` | 64×48 | 9-slice 18/18/18/18 |
-| `ui_shelf` | `ui/ui_shelf.png` | 96×64 | 9-slice 26/30/26/30 |
-| `ui_chip` | `ui/ui_chip.png` | 64×48 | 9-slice 22/22/22/22 |
 | `ui_logo` | `ui/ui_logo.png` | 480×160 |  |
 | `icon_coin` | `ui/icon_coin.png` | 40×40 |  |
 | `icon_points` | `ui/icon_points.png` | 40×40 |  |

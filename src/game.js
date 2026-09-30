@@ -31,7 +31,7 @@ export function defaultState() {
     giftDay: 0,
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, days: 0 },
-    settings: { sound: true, volume: 0.7, autoNextDay: true },
+    settings: { sound: true, volume: 0.7, autoNextDay: true, glass: true },
     tutorialSeen: false,
   };
 }

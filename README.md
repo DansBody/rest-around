@@ -108,6 +108,16 @@ asset tables (`node tools/assets-table.mjs` refreshes them; optional, the game n
 * Fonts: Fredoka and Nunito (SIL Open Font License).
 * three.js (MIT).
 
+## UI style
+
+The interface is "liquid glass": translucent frosted layers (HUD capsules, a floating tab bar,
+side sheets, the build tray) over the 3D scene, with a bright specular rim, soft depth shadows,
+iOS-style switches and SF-Symbols-like vector icons (`src/ui/icons.js`). On Chromium browsers
+`src/ui/glass.js` adds real lens refraction at the rims (an SVG displacement map sized to each
+element, used as a `backdrop-filter`); other browsers keep the frosted blur. The colours are CSS
+variables at the top of `src/ui/style.css`, and `prefers-reduced-transparency` switches to solid
+panels.
+
 ## Why three.js
 
 The first version drew 2D sprites with Canvas 2D. Switching to free, consistent CC0 3D models made
@@ -130,8 +140,8 @@ without rendering and auto-opens new days.
 ```
 index.html              page shell
 assets/manifest.json    3D models (file, scale, footprint, heights, tints, accessories) + 2D images
-assets/models/          glTF/GLB models (KayKit, CC0) — restaurant, furniture, characters, props
-assets/textures|food|ui PNG drop-in folders (surface textures, food icons, UI chrome)
+assets/models/          glTF models (KayKit, CC0) — restaurant, furniture, characters, props
+assets/textures|food|ui PNG drop-in folders (surface textures, food icons, UI icons)
 assets/fonts/           bundled OFL fonts (Nunito, Fredoka)
 vendor/three/           three.js r169 + GLTFLoader/SkeletonUtils (MIT), loaded via an import map
 ASSETS.md               asset guide + generated tables
@@ -139,7 +149,7 @@ tools/assets-table.mjs  optional: regenerate the ASSETS.md tables from the manif
 src/
   main.js               boot: load images → models → icons, restore save, start loop, autosave
   assets.js             2D image loader, PNG probing, placeholders, tint cache
-  placeholder.js        generated placeholder images (textures, icons, UI frames)
+  placeholder.js        generated placeholder images (textures, icons, emotes)
   models.js             glTF loader, procedural placeholder meshes, tinting, icon rendering
   renderer.js           three.js scene: lawn/street/garden, room & cut-away walls, furniture,
                         food, trash, lighting, build preview, debug overlays, 2D overlay layer
@@ -159,7 +169,8 @@ src/
   fx.js input.js        floating numbers & particles, mouse/touch/keyboard
   data.js               all gameplay tuning (prices, unlocks, dishes, timings)
   looks.js              character look generation
-  ui/                   HUD, toolbar, panels, build tray, info card, modals, debug panel, CSS
+  ui/                   HUD, tab bar, panels, build tray, info card, modals, debug panel, CSS;
+                        icons.js (vector UI glyphs), glass.js (liquid-glass rim refraction)
 ```
 
 Gameplay numbers (prices, cook times, patience, energy, arrival rates, level curve) are all in
@@ -187,3 +198,6 @@ Gameplay numbers (prices, cook times, patience, energy, arrival rates, level cur
 * Missing files show up as 404 lines in the browser console / server log while placeholders are
   in use — harmless.
 * Audio starts after the first click or key press (browser autoplay rules).
+* **Liquid glass refraction** (the lens bending at the edge of panels and the tab bar) needs a
+  Chromium browser (Chrome, Edge, Arc…). Safari and Firefox show the same frosted glass without
+  the bending. It can be turned off in Settings if a slow GPU struggles.

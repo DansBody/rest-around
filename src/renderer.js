@@ -575,11 +575,11 @@ export class Renderer {
       if (a.kind === 'staff' && a.x >= 0) { this.nameTag(q.x, y, a.name, z); y -= 16 * z; }
       if (a.showPatience && a.patience != null) {
         const v = clamp(a.patience, 0, 1);
-        this.bar(q.x, y - 2, 40 * z, v, v > 0.5 ? '#8fd18a' : v > 0.25 ? '#f5c451' : '#ef6f6c', 6 * z);
+        this.bar(q.x, y - 2, 40 * z, v, v > 0.5 ? '#34c759' : v > 0.25 ? '#ffb31f' : '#ff4d4f', 6 * z);
         y -= 10 * z;
       }
       if (a.kind === 'staff' && a.energy != null && (a.energy < 25 || game.selected === a)) {
-        this.bar(q.x, y - 2, 40 * z, a.energy / 100, a.energy < 25 ? '#f59f5b' : '#7cc3f0', 6 * z);
+        this.bar(q.x, y - 2, 40 * z, a.energy / 100, a.energy < 25 ? '#ff8a3d' : '#2f9bff', 6 * z);
         y -= 10 * z;
       }
       if (a.bubble) {
@@ -607,18 +607,26 @@ export class Renderer {
   bar(x, y, w, v, color, h = 8) {
     const ctx = this.ctx;
     ctx.save();
-    rr(ctx, x - w / 2 - 2, y - 2, w + 4, h + 4, (h + 4) / 2); ctx.fillStyle = 'rgba(90,60,45,0.85)'; ctx.fill();
-    rr(ctx, x - w / 2, y, w, h, h / 2); ctx.fillStyle = '#fff7ea'; ctx.fill();
-    if (v > 0) { rr(ctx, x - w / 2, y, Math.max(h, w * v), h, h / 2); ctx.fillStyle = color; ctx.fill(); }
+    ctx.shadowColor = 'rgba(16,24,40,0.25)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+    rr(ctx, x - w / 2 - 2, y - 2, w + 4, h + 4, (h + 4) / 2); ctx.fillStyle = 'rgba(255,255,255,0.82)'; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    if (v > 0) {
+      rr(ctx, x - w / 2, y, Math.max(h, w * v), h, h / 2); ctx.fillStyle = color; ctx.fill();
+      rr(ctx, x - w / 2 + 1, y + 1, Math.max(h, w * v) - 2, h * 0.4, h * 0.2); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fill();
+    }
     ctx.restore();
   }
 
   nameTag(x, y, name, z = 1) {
     const ctx = this.ctx;
+    const k = clamp(z, 0.8, 1.3);
     ctx.save();
-    ctx.font = `600 ${Math.round(13 * clamp(z, 0.8, 1.3))}px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(70,45,30,0.85)';
-    ctx.strokeText(name, x, y); ctx.fillStyle = '#fffaf0'; ctx.fillText(name, x, y);
+    ctx.font = `700 ${Math.round(11.5 * k)}px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(name).width, ph = 17 * k;
+    ctx.shadowColor = 'rgba(16,24,40,0.25)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1;
+    rr(ctx, x - tw / 2 - 7 * k, y - ph / 2, tw + 14 * k, ph, ph / 2); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#1d1d1f'; ctx.fillText(name, x, y + 0.5);
     ctx.restore();
   }
 

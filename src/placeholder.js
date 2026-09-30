@@ -530,42 +530,15 @@ const SHAPES = {
     ellipse(ctx, w * 0.6, h * 0.16, 6, 3); fillStroke(ctx, '#7cbf6a', '#3f7a45', 1.2);
   },
   bubble(ctx, def) {
+    // frosted-glass speech bubble: soft white body, faint rim, small tail
     const [w, h] = def.size;
-    ctx.beginPath();
-    rr(ctx, 2, 2, w - 4, h - 16, 18);
-    fillStroke(ctx, '#fffdf8', '#8a6a55', 2.5);
-    poly(ctx, [[w / 2 - 8, h - 15.5], [w / 2 + 8, h - 15.5], [w / 2, h - 2]]); fillStroke(ctx, '#fffdf8', null);
-    ctx.beginPath(); ctx.moveTo(w / 2 - 8, h - 14); ctx.lineTo(w / 2, h - 2); ctx.lineTo(w / 2 + 8, h - 14); ctx.strokeStyle = '#8a6a55'; ctx.lineWidth = 2.5; ctx.stroke();
+    const body = () => { ctx.beginPath(); rr(ctx, 3, 3, w - 6, h - 17, 20); ctx.moveTo(w / 2 - 7, h - 14.5); ctx.quadraticCurveTo(w / 2 - 1, h - 9, w / 2, h - 3); ctx.quadraticCurveTo(w / 2 + 2, h - 9, w / 2 + 8, h - 14.5); };
+    ctx.save(); ctx.shadowColor = 'rgba(16,24,40,0.22)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1.5;
+    body(); ctx.fillStyle = 'rgba(255,255,255,0.93)'; ctx.fill(); ctx.restore();
+    rr(ctx, 3.5, 3.5, w - 7, h - 18, 19.5); ctx.strokeStyle = 'rgba(200,205,220,0.7)'; ctx.lineWidth = 1; ctx.stroke();
   },
   emote(ctx, def, dir, ph) { drawGlyph(ctx, ph.glyph, def.size[0], def.size[1]); },
   icon(ctx, def, dir, ph) { drawGlyph(ctx, ph.glyph, def.size[0], def.size[1]); },
-  panel(ctx, def) {
-    const [w, h] = def.size;
-    rr(ctx, 3, 6, w - 6, h - 7, 24); ctx.fillStyle = 'rgba(90,55,30,0.28)'; ctx.fill();
-    rr(ctx, 3, 3, w - 6, h - 8, 24); fillStroke(ctx, '#d39a68', '#7a4f31', 3); // wooden frame
-    rr(ctx, 11, 11, w - 22, h - 24, 16); fillStroke(ctx, '#fff8ec', '#b98356', 2); // paper
-    for (const [x, y] of [[17, 17], [w - 17, 17], [17, h - 19], [w - 17, h - 19]]) { circle(ctx, x, y, 2); ctx.fillStyle = '#e3c7a2'; ctx.fill(); }
-  },
-  button(ctx, def, dir, ph) {
-    const [w, h] = def.size;
-    rr(ctx, 2, 5, w - 4, h - 7, 16); fillStroke(ctx, shade(ph.color, -0.28), '#7a4f31', 2.5);
-    rr(ctx, 2, 2, w - 4, h - 10, 16); fillStroke(ctx, ph.color, '#7a4f31', 2.5);
-    rr(ctx, 10, 6, w - 20, 8, 4); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
-  },
-  chip(ctx, def) {
-    const [w, h] = def.size;
-    rr(ctx, 2, 5, w - 4, h - 6, 20); ctx.fillStyle = 'rgba(90,55,30,0.25)'; ctx.fill();
-    rr(ctx, 2, 2, w - 4, h - 7, 20); fillStroke(ctx, '#fff8ec', '#8b5e3c', 3);
-  },
-  shelf(ctx, def) {
-    const [w, h] = def.size;
-    rr(ctx, 2, 8, w - 4, h - 9, 18); ctx.fillStyle = 'rgba(90,55,30,0.3)'; ctx.fill();
-    rr(ctx, 2, 2, w - 4, h - 12, 18); fillStroke(ctx, '#dca36a', '#7a4f31', 3);
-    rr(ctx, 2, h - 22, w - 4, 12, 8); fillStroke(ctx, '#b47b45', '#7a4f31', 2.5);
-    ctx.strokeStyle = 'rgba(160,100,55,0.45)'; ctx.lineWidth = 1.5;
-    for (const y of [14, 24, 34]) { ctx.beginPath(); ctx.moveTo(12, y); ctx.bezierCurveTo(w * 0.3, y - 3, w * 0.6, y + 3, w - 12, y); ctx.stroke(); }
-    rr(ctx, 10, 6, w - 20, 4, 2); ctx.fillStyle = 'rgba(255,235,200,0.6)'; ctx.fill();
-  },
   logo(ctx, def, dir, ph) {
     const [w, h] = def.size;
     ctx.font = `600 ${Math.floor(h * 0.48)}px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

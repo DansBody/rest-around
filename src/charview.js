@@ -4,6 +4,7 @@
 import { THREE, models, TILE } from './models.js';
 
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
+const SIT_FORWARD = 0.68;
 
 export class CharacterView {
   constructor(scene, agent, manifest) {
@@ -108,8 +109,8 @@ export class CharacterView {
       const ch = a.onTile;
       x = (ch.x + 0.5) * TILE; z = (ch.y + 0.5) * TILE;
       target = DIR_YAW[ch.dir];
-      // nudge back toward the backrest so the sit pose lands on the seat
-      x -= Math.sin(target) * 0.12; z -= Math.cos(target) * 0.12;
+      // the sit clip shifts the hips back by ~0.7 units; step forward so they land on the seat
+      x += Math.sin(target) * SIT_FORWARD; z += Math.cos(target) * SIT_FORWARD;
       anim = 'sit';
     } else if (p.moving) anim = p.held && p.held.id === 'held_tray' ? 'carry' : 'walk';
     else if (p.mode && p.mode !== 'idle' && p.mode !== 'carry') anim = p.mode;
