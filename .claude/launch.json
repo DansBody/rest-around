@@ -4,8 +4,23 @@
     {
       "name": "rest-around",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8000", "--bind", "127.0.0.1"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8000",
+        "--bind",
+        "127.0.0.1"
+      ],
       "port": 8000
+    },
+    {
+      "name": "refillit",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8123"
+      ],
+      "port": 8123
     }
   ]
 }

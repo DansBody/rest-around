@@ -1,6 +1,13 @@
-// Synthesized sound effects (WebAudio, no files). Unlocks on the first user gesture.
+// Synthesized sound effects and a little lo-fi café loop (WebAudio, no files). Unlocks on the first user gesture.
+const BEAT = 60 / 74, BAR = BEAT * 4;
+const mhz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+// Cmaj9 · Am9 · Dm9 · G13 — warm electric-piano voicings
+const CHORDS = [[48, 52, 55, 59, 62], [45, 48, 52, 55, 59], [50, 53, 57, 60, 64], [43, 47, 53, 57, 64]];
+const BASS = [36, 33, 38, 31];
+const PENTA = [72, 74, 76, 79, 81, 84, 86];
+
 class Audio {
-  constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; this.last = {}; }
+  constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; this.last = {}; this.musicEnabled = true; this.musicTimer = null; this.music = null; }
 
   unlock() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
@@ -11,6 +18,7 @@ class Audio {
       this.master = this.ctx.createGain();
       this.master.gain.value = this.volume * 0.5;
       this.master.connect(this.ctx.destination);
+      if (this.musicEnabled) this.startMusic();
     } catch { this.ctx = null; }
   }
   setVolume(v) { this.volume = v; if (this.master) this.master.gain.value = v * 0.5; }
@@ -38,6 +46,83 @@ class Audio {
     src.connect(f); f.connect(g); g.connect(this.master);
     src.start(t);
   }
+
+  // ---------------- café music ----------------
+  setMusic(on) { this.musicEnabled = on; if (on) this.startMusic(); else this.stopMusic(); }
+  startMusic() {
+    if (!this.ctx || !this.enabled || !this.musicEnabled || this.musicTimer) return;
+    const c = this.ctx;
+    this.music = c.createGain();
+    this.music.gain.setValueAtTime(0.0001, c.currentTime);
+    this.music.gain.linearRampToValueAtTime(0.5, c.currentTime + 5);
+    this.music.connect(this.master);
+    this.bar = 0; this.nextBar = c.currentTime + 0.4;
+    this.musicTimer = setInterval(() => this.scheduleMusic(), 400);
+    this.scheduleMusic();
+  }
+  stopMusic() {
+    clearInterval(this.musicTimer); this.musicTimer = null;
+    const m = this.music; this.music = null;
+    if (m) { m.gain.cancelScheduledValues(0); m.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.25); setTimeout(() => m.disconnect(), 1500); }
+  }
+  scheduleMusic() {
+    const c = this.ctx;
+    if (!c || !this.music) return;
+    while (this.nextBar < c.currentTime + 1.5) { this.playBar(this.bar++, this.nextBar); this.nextBar += BAR; }
+  }
+  /** One bar: chord stabs, bass, a soft beat, vinyl crackle and a sparse pentatonic melody. */
+  playBar(n, t0) {
+    const idx = n % 4, chord = CHORDS[idx];
+    const hit = (t, vol, dur) => chord.forEach((m, i) => this.voice(t + i * 0.014, mhz(m), dur, vol));
+    hit(t0, 0.05, BEAT * 3.2);
+    hit(t0 + BEAT * 1.5, 0.032, BEAT * 1.2);
+    if (n % 2) hit(t0 + BEAT * 3.5, 0.03, BEAT * 1.2);
+    this.voice(t0, mhz(BASS[idx]), BEAT * 1.6, 0.17, 'triangle', 500);
+    this.voice(t0 + BEAT * 2, mhz(BASS[idx] + (idx === 3 ? 0 : 7)), BEAT * 1.2, 0.12, 'triangle', 500);
+    // beat
+    this.kick(t0); this.kick(t0 + BEAT * 2.5);
+    this.snare(t0 + BEAT); this.snare(t0 + BEAT * 3);
+    for (let i = 0; i < 8; i++) this.hat(t0 + i * BEAT / 2 + (i % 2 ? BEAT * 0.09 : 0), i % 2 ? 0.026 : 0.04);
+    for (let i = 0; i < 7; i++) this.click(t0 + Math.random() * BAR);
+    // melody
+    let p = (n * 3) % PENTA.length;
+    for (let i = 0; i < 8; i++) {
+      if (Math.random() > 0.34) continue;
+      p = Math.max(0, Math.min(PENTA.length - 1, p + Math.floor(Math.random() * 5) - 2));
+      const t = t0 + i * BEAT / 2 + (i % 2 ? BEAT * 0.09 : 0), f = mhz(PENTA[p]);
+      this.voice(t, f, 1.3, 0.05, 'triangle', 3200);
+      this.voice(t + BEAT * 0.75, f, 1.0, 0.016, 'triangle', 2400);
+    }
+  }
+  voice(t, f, dur, vol, type = 'sine', lp = 2400) {
+    const c = this.ctx, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain(), g2 = c.createGain(), fl = c.createBiquadFilter();
+    o.type = type; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 9;
+    o2.type = 'sine'; o2.frequency.value = f * 2.01; g2.gain.value = 0.2;
+    fl.type = 'lowpass'; fl.frequency.value = lp;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * 0.4), t + Math.min(0.3, dur * 0.4));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(fl); fl.connect(this.music);
+    o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+  }
+  kick(t) {
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.16);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(this.music); o.start(t); o.stop(t + 0.25);
+  }
+  hush(t, dur, vol, freq, type, q = 0.7) {
+    const c = this.ctx, len = Math.max(1, Math.floor(c.sampleRate * dur)), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+    const g = c.createGain(); g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(this.music); src.start(t);
+  }
+  snare(t) { this.hush(t, 0.16, 0.1, 1700, 'bandpass', 0.8); }
+  hat(t, vol) { this.hush(t, 0.05, vol, 7500, 'highpass', 0.5); }
+  click(t) { this.hush(t, 0.012, 0.045, 2600, 'bandpass', 1.2); }
 
   play(name) {
     if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;

@@ -1,4 +1,4 @@
-# Rest Around — Asset Guide (3D)
+# Refillit — Asset Guide (3D)
 
 The game renders in real-time 3D with three.js. Every world object is a **glTF model** listed in
 [`assets/manifest.json`](assets/manifest.json) → `models`; icons, emotes and surface textures are
@@ -6,7 +6,7 @@ The game renders in real-time 3D with three.js. Every world object is a **glTF m
 plain CSS in `src/ui/style.css`, so it needs no images.
 
 * **Missing file → placeholder.** A model that isn't there gets a procedural low-poly stand-in
-  (the restroom toilet and the arcade cabinet are placeholders today); a missing PNG gets a
+  (the restroom toilet is a placeholder today); a missing PNG gets a
   generated image. The game is always fully playable.
 * **Drop-in replacement.** Put a correctly named `.gltf`/`.glb` or `.png` at the path in the
   manifest and reload — no code changes.
@@ -16,8 +16,9 @@ plain CSS in `src/ui/style.css`, so it needs no images.
 
 | Pack | License | Used for |
 |---|---|---|
-| [KayKit Restaurant Bits](https://kaylousberg.itch.io/restaurant-bits) by Kay Lousberg | CC0 | tables, chairs, stoves, counters (bar), door, plates, bowls, pan, crates, burgers, stew, dinner plate, all vegetable/meat ingredients |
-| [KayKit Furniture Bits](https://kaylousberg.itch.io/furniture-bits) by Kay Lousberg | CC0 | wooden table & chair, armchair, standing lamp, cacti |
+| [KayKit Restaurant Bits](https://kaylousberg.itch.io/restaurant-bits) by Kay Lousberg | CC0 | round table, chair, door, plate |
+| [KayKit Furniture Bits](https://kaylousberg.itch.io/furniture-bits) by Kay Lousberg | CC0 | square table, wooden chair, armchair |
+| Refillit's own props, food, drinks and icons | made with Meshy for this game | everything else in the café (see below) |
 | [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | the guests and passers-by (staff are our own characters) + their shared animations |
 | Fredoka, Nunito (Google Fonts) | SIL OFL 1.1 | UI fonts (`assets/fonts`, licences alongside) |
 
@@ -48,6 +49,48 @@ rebuild after changing a model or a clip: download the remesh GLB and run
 `python tools/build_character.py <id> <remesh.glb>`. They *are* the staff: every staff member is one of
 them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, so the number of staff
 slots tops out at the size of the cast. They're never random guests; the KayKit characters are only guests.
+
+**Café props, drinks, bakes and icons (Refillit's own art).** Everything that makes the place a café
+was made with Meshy from text prompts (the concept art only set the mood), then slimmed by
+`tools/build_prop.py`. Large models are 2 000–9 000 triangles with a 512–1024 px JPG texture
+(`assets/models/cafe/`, ~10 MB in all).
+
+| What | Models (`assets/models/cafe/`) |
+|---|---|
+| Counter & bar | `espresso_machine` (on `counter` = `m_espresso`; the stainless `espresso_machine_silver` is a Meshy retexture of it [10]), `grinder` (`m_espresso_deluxe`), `pastry_case`, `counter` (cashier) |
+| Seating, shelves, plants | `sofa`, `bookshelf` (also the reading nook and `m_library`), `monstera`, `planter`, `flower_box`, `floor_lamp`, `teddy`, `welcome_sign`, `table_plant` (sits on every table) |
+| Hung on the walls | `menu_board`, `wall_frame`, `wall_sconce`, `hanging_plant` |
+| Drinks | `cup_espresso`, `cup_americano`, `cup_latte`, `cup_cappuccino`, `cup_mocha`, `mug_cocoa`, `cup_matcha`, `glass_iced` (iced americano and berry lemonade are tinted copies) |
+| Bakes | `croissant`, `cookie`, `muffin`, `cheesecake` |
+| Garden produce | `strawberry`, `blueberry`, `lemon`, `mint` |
+| 2D | `assets/food/ing_*.png` (market goods), `assets/ui/tool_*.png` + `icon_coin.png` (tab bar and coin), `assets/textures/doormat.png` |
+
+The 2D art came from the same text-to-image model with a pure white background; the background is cut
+out with a flood fill (see "Icons" below).
+
+Pipeline, with Meshy costs in brackets:
+
+1. **Image** [9]: Meshy text-to-image with **gpt-image-2**. Prompt pattern: *"<the object, every
+   feature>. Single game prop in cute stylized soft 3D toy style, smooth glossy materials, warm colours,
+   three-quarter front view, centred, plain white background."* Look at it before spending more. (A
+   reference crop plus `generate_multi_view` image-to-image [12] gives front/side/back views and a
+   tighter model for big furniture; text-to-image cannot do multi-view.)
+2. **3D** [30]: image-to-3d (Meshy 7, textured, GLB) from that image, or multi-image-to-3d from the views.
+3. **Remesh** [5] to 2 000–9 000 triangles, origin at the bottom, and download the GLB.
+4. **Build**: `python tools/build_prop.py <name> <remesh.glb> --fit W,D,H` (world units, 1 tile = 2; add
+   `--stretch X,Y,Z` for a too-shallow counter, `--rot DEG` if the front isn't +Z, `--tex` for the texture size).
+   It writes `models/cafe/<name>.gltf` + `.bin` + a JPG texture.
+5. **Register**: a manifest model entry (compose with `parts` when it sits on a counter), then
+   `node tools/assets-table.mjs`. Reload.
+
+A model is placed on its tile by the manifest: `footprint`, `surfaceHeight` (where the finished drink
+or bake is shown), `cookProp` / `cookScale` (the cup shown while the espresso machine brews), `light`
+(evening glow), `tintable` + `tintMode` (`multiply` keeps the model's own colours).
+
+**Icons.** `ing_*.png`, `tool_*.png` and `icon_coin.png` are 3D-looking illustrations from text-to-image.
+Background removal is a flood fill from the corners (anything near-white that touches the border goes),
+a 1 px erode and a soft edge, then a crop to the artwork. A PNG at a manifest path replaces the
+vector fallback icon (or the icon rendered from the model) without code changes.
 
 ### Adding another own character
 
@@ -90,7 +133,7 @@ The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in t
 | Origin | The loader centres the model on X/Z and puts its lowest point on the floor (`center: false` keeps the file's own origin, used for the door hinge). |
 | Size | `scale` in the manifest; `surfaceHeight` (where dishes sit) and `seatHeight` are in world units. |
 | Tinting | `tintable: true` models can be recoloured per shop item. Furniture is re-coloured (the texture is greyed, then tinted); food is lightly multiplied. |
-| Multi-tile | `footprint: [w, h]` in tiles for the "front" orientation (e.g. the 2×1 juice bar). |
+| Multi-tile | `footprint: [w, h]` in tiles for the "front" orientation (e.g. the 2×1 library wall). |
 | Composites | `parts` builds one item from several models (salad = bowl + lettuce + tomato slices). |
 | Characters | A rigged glTF using the KayKit rig bone names (`handslot.r`, `head`). `accessories` lists mesh names the wardrobe can toggle. Animation names are mapped in `characterAnimations` (idle, walk, carry, sit, cook, sweep, nap, …). |
 
@@ -117,7 +160,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (72)
+### 3D models (66)
 
 **Furniture**
 
@@ -133,28 +176,34 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 | id | source | notes |
 |---|---|---|
-| `m_stove` | `models/restaurant/stove_single.gltf` | surface 1.2; tintable |
-| `m_stove_deluxe` | `models/restaurant/stove_multi.gltf` | surface 1.2 |
-| `m_counter` | `models/restaurant/kitchencounter_straight_A.gltf` |  |
-| `m_counter_deco` | `models/restaurant/kitchencounter_straight_A_decorated.gltf` |  |
-| `m_bar` | composite: `m_counter` + `m_counter_deco` | footprint 2×1; surface 1; tintable |
+| `m_espresso_machine` | `models/cafe/espresso_machine.gltf` |  |
+| `m_counter_cafe` | `models/cafe/counter.gltf` | surface 1 |
+| `m_espresso` | composite: `m_counter_cafe` + `m_espresso_machine` | surface 1; tintable |
+| `m_espresso_machine_silver` | `models/cafe/espresso_machine_silver.gltf` |  |
+| `m_espresso_silver` | composite: `m_counter_cafe` + `m_espresso_machine_silver` | surface 1 |
+| `m_espresso_deluxe` | composite: `m_counter_cafe` + `m_espresso_machine` + `m_grinder` | surface 1 |
+| `m_pastry_case` | `models/cafe/pastry_case.gltf` | surface 1.5 |
 
 **Fun**
 
 | id | source | notes |
 |---|---|---|
 | `m_toilet` | _procedural placeholder_ (`toilet`) |  |
-| `m_arcade` | _procedural placeholder_ (`arcade`) | tintable |
+| `m_bookshelf` | `models/cafe/bookshelf.gltf` |  |
+| `m_library` | composite: `m_bookshelf` + `m_bookshelf` | footprint 2×1 |
 
 **Decor**
 
 | id | source | notes |
 |---|---|---|
-| `m_cactus` | `models/furniture/cactus_medium_A.gltf` | scale 1.3 |
-| `m_cactus_b` | `models/furniture/cactus_medium_B.gltf` | scale 1.5 |
-| `m_lamp` | `models/furniture/lamp_standing.gltf` | tintable |
-| `m_crate_tomatoes` | `models/restaurant/crate_tomatoes.gltf` | scale 0.8 |
-| `m_crate_carrots` | `models/restaurant/crate_carrots.gltf` | scale 0.8 |
+| `m_sofa` | `models/cafe/sofa.gltf` | footprint 2×1 |
+| `m_monstera` | `models/cafe/monstera.gltf` |  |
+| `m_monstera_big` | `models/cafe/monstera.gltf` | scale 1.22 |
+| `m_planter` | `models/cafe/planter.gltf` | footprint 2×1 |
+| `m_flower_box` | `models/cafe/flower_box.gltf` |  |
+| `m_floor_lamp` | `models/cafe/floor_lamp.gltf` | tintable |
+| `m_teddy` | `models/cafe/teddy.gltf` |  |
+| `m_welcome_sign` | `models/cafe/welcome_sign.gltf` |  |
 
 **Props**
 
@@ -163,53 +212,37 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `m_door` | `models/restaurant/door_A.gltf` |  |
 | `m_plate` | `models/restaurant/plate.gltf` |  |
 | `m_plate_dirty` | `models/restaurant/plate_dirty.gltf` |  |
-| `m_bowl` | `models/restaurant/bowl.gltf` |  |
-| `m_pan` | `models/restaurant/pan_A.gltf` |  |
 | `m_trash` | _procedural placeholder_ (`trash`) |  |
 | `m_tray` | _procedural placeholder_ (`tray`) |  |
 | `m_broom` | _procedural placeholder_ (`broom`) |  |
 | `m_wrench` | _procedural placeholder_ (`wrench`) |  |
-| `m_chefhat` | _procedural placeholder_ (`chefhat`) |  |
 | `m_mug` | `models/props/mug_full.gltf` |  |
+| `m_grinder` | `models/cafe/grinder.gltf` |  |
+| `m_table_plant` | `models/cafe/table_plant.gltf` |  |
+| `m_baristahat` | _procedural placeholder_ (`baristacap`) |  |
 
 **Food & ingredients**
 
 | id | source | notes |
 |---|---|---|
-| `dish_salad` | composite: `m_bowl` + `ing_lettuce_chopped` + `ing_tomato_slices` |  |
-| `ing_lettuce_chopped` | `models/restaurant/food_ingredient_lettuce_chopped.gltf` |  |
-| `ing_tomato_slices` | `models/restaurant/food_ingredient_tomato_slices.gltf` |  |
-| `dish_onionrings` | composite: `m_plate` + `ing_onion_rings` |  |
-| `ing_onion_rings` | `models/restaurant/food_ingredient_onion_rings.gltf` |  |
-| `dish_soup` | `models/restaurant/stew_bowl.gltf` | tintable |
-| `dish_burger` | `models/restaurant/food_burger.gltf` |  |
-| `dish_veggieburger` | `models/restaurant/food_vegetableburger.gltf` |  |
-| `dish_stew` | `models/restaurant/food_stew.gltf` |  |
-| `dish_steak` | `models/restaurant/food_dinner.gltf` |  |
-| `dish_ham` | composite: `m_plate` + `ing_ham_cooked` |  |
-| `ing_ham_cooked` | `models/restaurant/food_ingredient_ham_cooked.gltf` |  |
-| `dish_pudding` | _procedural placeholder_ (`pudding`) |  |
-| `dish_cake` | _procedural placeholder_ (`cake`) |  |
-| `dish_pie` | _procedural placeholder_ (`pie`) |  |
-| `drink_lemonade` | _procedural placeholder_ (`glass`) |  |
-| `drink_rootbeer` | `models/props/mug_full.gltf` | scale 1.6 |
-| `drink_milkshake` | _procedural placeholder_ (`glass`) |  |
-| `ing_tomato` | `models/restaurant/food_ingredient_tomato.gltf` |  |
-| `ing_lettuce` | `models/restaurant/food_ingredient_lettuce.gltf` |  |
-| `ing_carrot` | `models/restaurant/food_ingredient_carrot.gltf` |  |
-| `ing_potato` | `models/restaurant/food_ingredient_potato.gltf` |  |
-| `ing_onion` | `models/restaurant/food_ingredient_onion.gltf` |  |
-| `ing_bun` | `models/restaurant/food_ingredient_bun.gltf` |  |
-| `ing_steak` | `models/restaurant/food_ingredient_steak.gltf` |  |
-| `ing_cheese` | `models/restaurant/food_ingredient_cheese.gltf` |  |
-| `ing_ham` | `models/restaurant/food_ingredient_ham.gltf` |  |
-| `ing_egg` | _procedural placeholder_ (`egg`) |  |
-| `ing_milk` | _procedural placeholder_ (`bottle`) |  |
-| `ing_flour` | _procedural placeholder_ (`sack`) |  |
-| `ing_lemon` | _procedural placeholder_ (`lemon`) |  |
-| `m_snack_cookie` | _procedural placeholder_ (`cookie`) |  |
-| `m_snack_sandwich` | _procedural placeholder_ (`sandwich`) |  |
-| `m_snack_bento` | _procedural placeholder_ (`bento`) |  |
+| `dish_espresso` | `models/cafe/cup_espresso.gltf` |  |
+| `dish_americano` | `models/cafe/cup_americano.gltf` |  |
+| `dish_latte` | `models/cafe/cup_latte.gltf` |  |
+| `dish_cappuccino` | `models/cafe/cup_cappuccino.gltf` |  |
+| `dish_mocha` | `models/cafe/cup_mocha.gltf` |  |
+| `dish_hotchoc` | `models/cafe/mug_cocoa.gltf` |  |
+| `dish_matcha` | `models/cafe/cup_matcha.gltf` |  |
+| `dish_icedlatte` | `models/cafe/glass_iced.gltf` |  |
+| `dish_icedamericano` | `models/cafe/glass_iced.gltf` | tintable |
+| `dish_berrylemonade` | `models/cafe/glass_iced.gltf` | tintable |
+| `dish_croissant` | `models/cafe/croissant.gltf` |  |
+| `dish_cookie` | `models/cafe/cookie.gltf` |  |
+| `dish_muffin` | `models/cafe/muffin.gltf` |  |
+| `dish_cheesecake` | `models/cafe/cheesecake.gltf` |  |
+| `ing_strawberry` | `models/cafe/strawberry.gltf` |  |
+| `ing_blueberry` | `models/cafe/blueberry.gltf` |  |
+| `ing_lemon` | `models/cafe/lemon.gltf` |  |
+| `ing_mint` | `models/cafe/mint.gltf` |  |
 
 **Characters**
 
@@ -226,7 +259,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `cheetie` | `models/characters/Cheetie.gltf` | own rig + clips |
 | `oritokki` | `models/characters/Oritokki.gltf` | own rig + clips |
 
-### 2D images (71)
+### 2D images (73)
 
 | id | file | size (px) | notes |
 |---|---|---|---|
@@ -239,36 +272,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `tex_path` | `textures/tex_path.png` | 256×256 |  |
 | `tex_road` | `textures/tex_road.png` | 256×256 |  |
 | `tex_soil` | `textures/tex_soil.png` | 256×256 |  |
-| `dish_salad` | `food/dish_salad.png` | 64×64 | rendered from model `dish_salad` unless the PNG exists |
-| `dish_onionrings` | `food/dish_onionrings.png` | 64×64 | rendered from model `dish_onionrings` unless the PNG exists |
-| `dish_soup` | `food/dish_soup.png` | 64×64 | rendered from model `dish_soup` unless the PNG exists |
-| `dish_burger` | `food/dish_burger.png` | 64×64 | rendered from model `dish_burger` unless the PNG exists |
-| `dish_veggieburger` | `food/dish_veggieburger.png` | 64×64 | rendered from model `dish_veggieburger` unless the PNG exists |
-| `dish_stew` | `food/dish_stew.png` | 64×64 | rendered from model `dish_stew` unless the PNG exists |
-| `dish_steak` | `food/dish_steak.png` | 64×64 | rendered from model `dish_steak` unless the PNG exists |
-| `dish_ham` | `food/dish_ham.png` | 64×64 | rendered from model `dish_ham` unless the PNG exists |
-| `dish_pudding` | `food/dish_pudding.png` | 64×64 | rendered from model `dish_pudding` unless the PNG exists |
-| `dish_cake` | `food/dish_cake.png` | 64×64 | rendered from model `dish_cake` unless the PNG exists |
-| `dish_pie` | `food/dish_pie.png` | 64×64 | rendered from model `dish_pie` unless the PNG exists |
-| `drink_lemonade` | `food/drink_lemonade.png` | 64×64 | rendered from model `drink_lemonade` unless the PNG exists |
-| `drink_rootbeer` | `food/drink_rootbeer.png` | 64×64 | rendered from model `drink_rootbeer` unless the PNG exists |
-| `drink_milkshake` | `food/drink_milkshake.png` | 64×64 | rendered from model `drink_milkshake` unless the PNG exists |
-| `ing_tomato` | `food/ing_tomato.png` | 48×48 | rendered from model `ing_tomato` unless the PNG exists |
-| `ing_lettuce` | `food/ing_lettuce.png` | 48×48 | rendered from model `ing_lettuce` unless the PNG exists |
-| `ing_carrot` | `food/ing_carrot.png` | 48×48 | rendered from model `ing_carrot` unless the PNG exists |
-| `ing_potato` | `food/ing_potato.png` | 48×48 | rendered from model `ing_potato` unless the PNG exists |
-| `ing_onion` | `food/ing_onion.png` | 48×48 | rendered from model `ing_onion` unless the PNG exists |
-| `ing_bun` | `food/ing_bun.png` | 48×48 | rendered from model `ing_bun` unless the PNG exists |
-| `ing_steak` | `food/ing_steak.png` | 48×48 | rendered from model `ing_steak` unless the PNG exists |
-| `ing_egg` | `food/ing_egg.png` | 48×48 | rendered from model `ing_egg` unless the PNG exists |
-| `ing_milk` | `food/ing_milk.png` | 48×48 | rendered from model `ing_milk` unless the PNG exists |
-| `ing_cheese` | `food/ing_cheese.png` | 48×48 | rendered from model `ing_cheese` unless the PNG exists |
-| `ing_flour` | `food/ing_flour.png` | 48×48 | rendered from model `ing_flour` unless the PNG exists |
-| `ing_lemon` | `food/ing_lemon.png` | 48×48 | rendered from model `ing_lemon` unless the PNG exists |
-| `ing_ham` | `food/ing_ham.png` | 48×48 | rendered from model `ing_ham` unless the PNG exists |
-| `snack_cookie` | `food/snack_cookie.png` | 48×48 | rendered from model `m_snack_cookie` unless the PNG exists |
-| `snack_sandwich` | `food/snack_sandwich.png` | 48×48 | rendered from model `m_snack_sandwich` unless the PNG exists |
-| `snack_bento` | `food/snack_bento.png` | 48×48 | rendered from model `m_snack_bento` unless the PNG exists |
+| `tex_doormat` | `textures/doormat.png` | 512×512 |  |
 | `ui_bubble` | `ui/ui_bubble.png` | 64×60 |  |
 | `emote_heart` | `ui/emote_heart.png` | 40×40 |  |
 | `emote_angry` | `ui/emote_angry.png` | 40×40 |  |
@@ -301,5 +305,36 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `tool_garden` | `ui/tool_garden.png` | 64×64 |  |
 | `tool_market` | `ui/tool_market.png` | 64×64 |  |
 | `tool_settings` | `ui/tool_settings.png` | 64×64 |  |
+| `dish_espresso` | `food/dish_espresso.png` | 64×64 | rendered from model `dish_espresso` unless the PNG exists |
+| `dish_americano` | `food/dish_americano.png` | 64×64 | rendered from model `dish_americano` unless the PNG exists |
+| `dish_latte` | `food/dish_latte.png` | 64×64 | rendered from model `dish_latte` unless the PNG exists |
+| `dish_cappuccino` | `food/dish_cappuccino.png` | 64×64 | rendered from model `dish_cappuccino` unless the PNG exists |
+| `dish_mocha` | `food/dish_mocha.png` | 64×64 | rendered from model `dish_mocha` unless the PNG exists |
+| `dish_hotchoc` | `food/dish_hotchoc.png` | 64×64 | rendered from model `dish_hotchoc` unless the PNG exists |
+| `dish_matcha` | `food/dish_matcha.png` | 64×64 | rendered from model `dish_matcha` unless the PNG exists |
+| `dish_icedamericano` | `food/dish_icedamericano.png` | 64×64 | rendered from model `dish_icedamericano` unless the PNG exists |
+| `dish_icedlatte` | `food/dish_icedlatte.png` | 64×64 | rendered from model `dish_icedlatte` unless the PNG exists |
+| `dish_berrylemonade` | `food/dish_berrylemonade.png` | 64×64 | rendered from model `dish_berrylemonade` unless the PNG exists |
+| `dish_croissant` | `food/dish_croissant.png` | 64×64 | rendered from model `dish_croissant` unless the PNG exists |
+| `dish_cookie` | `food/dish_cookie.png` | 64×64 | rendered from model `dish_cookie` unless the PNG exists |
+| `dish_muffin` | `food/dish_muffin.png` | 64×64 | rendered from model `dish_muffin` unless the PNG exists |
+| `dish_cheesecake` | `food/dish_cheesecake.png` | 64×64 | rendered from model `dish_cheesecake` unless the PNG exists |
+| `ing_beans` | `food/ing_beans.png` | 48×48 |  |
+| `ing_milk` | `food/ing_milk.png` | 48×48 |  |
+| `ing_sugar` | `food/ing_sugar.png` | 48×48 |  |
+| `ing_flour` | `food/ing_flour.png` | 48×48 |  |
+| `ing_butter` | `food/ing_butter.png` | 48×48 |  |
+| `ing_egg` | `food/ing_egg.png` | 48×48 |  |
+| `ing_chocolate` | `food/ing_chocolate.png` | 48×48 |  |
+| `ing_cream` | `food/ing_cream.png` | 48×48 |  |
+| `ing_matcha` | `food/ing_matcha.png` | 48×48 |  |
+| `ing_strawberry` | `food/ing_strawberry.png` | 48×48 | rendered from model `ing_strawberry` unless the PNG exists |
+| `ing_blueberry` | `food/ing_blueberry.png` | 48×48 | rendered from model `ing_blueberry` unless the PNG exists |
+| `ing_lemon` | `food/ing_lemon.png` | 48×48 | rendered from model `ing_lemon` unless the PNG exists |
+| `ing_mint` | `food/ing_mint.png` | 48×48 | rendered from model `ing_mint` unless the PNG exists |
+| `snack_cookie` | `food/snack_cookie.png` | 48×48 | rendered from model `dish_cookie` unless the PNG exists |
+| `snack_sandwich` | `food/snack_sandwich.png` | 48×48 | rendered from model `dish_croissant` unless the PNG exists |
+| `snack_bento` | `food/snack_bento.png` | 48×48 | rendered from model `dish_cheesecake` unless the PNG exists |
+| `tool_decor` | `ui/tool_decor.png` | 64×64 |  |
 
 <!-- ASSET-TABLE:END -->

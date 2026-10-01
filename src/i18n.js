@@ -1,7 +1,7 @@
 // Tiny i18n: English source strings are the keys; `t('Hello {name}', { name })` looks the string
 // up in the active language and fills in {placeholders}. Game data names (dishes, furniture…) are
 // localized in place by localizeData(). The chosen language is remembered in localStorage.
-import { DISHES, DISH_CATS, INGREDIENTS, SNACKS, FURNITURE, FLOORS, WALLS, ROLES, DAY, SKILL, ABILITIES } from './data.js';
+import { DISHES, DISH_CATS, INGREDIENTS, SNACKS, FURNITURE, FLOORS, WALLS, WALL_DECOR, ROLES, DAY, SKILL, ABILITIES } from './data.js';
 import { ZH_TW } from './lang/zh-TW.js';
 
 export const LANGS = { en: 'English', 'zh-TW': '繁體中文' };
@@ -42,7 +42,7 @@ export function tt(s) { return lang === 'en' || !s ? s : (DICTS[lang][s] ?? s); 
 
 /** Localize names/descriptions baked into the game data (keeps the English originals). */
 export function localizeData() {
-  const list = [...DISHES, ...DISH_CATS, ...INGREDIENTS, ...SNACKS, ...FURNITURE, ...FLOORS, ...WALLS, ...Object.values(ROLES), ...DAY.phases, ...Object.values(ABILITIES)];
+  const list = [...DISHES, ...DISH_CATS, ...INGREDIENTS, ...SNACKS, ...FURNITURE, ...FLOORS, ...WALLS, ...WALL_DECOR, ...Object.values(ROLES), ...DAY.phases, ...Object.values(ABILITIES)];
   for (const o of list) {
     if (o.nameEn == null) o.nameEn = o.name;
     o.name = t(o.nameEn);

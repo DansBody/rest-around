@@ -47,7 +47,7 @@ export class CharacterView {
   setHat(kind) {
     if (this.hat) { this.hat.parent && this.hat.parent.remove(this.hat); this.hat = null; }
     if (!kind || !this.inst.bones.head) return;
-    const hat = models.instance(kind === 'chef' ? 'm_chefhat' : kind);
+    const hat = models.instance(kind === 'chef' ? 'm_baristahat' : kind);
     hat.scale.setScalar(1.05);
     hat.position.set(0, 1.12, 0);
     this.inst.bones.head.add(hat);

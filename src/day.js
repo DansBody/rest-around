@@ -73,6 +73,7 @@ export class DayCycle {
     s.day++;
     s.clock = 0;
     s.stats = this.freshStats();
+    g.eco.rollQuest();
     for (const st of g.staff) { st.energy = Math.min(100, st.energy + ENERGY.overnight); if (st.napping && st.energy >= ENERGY.wakeAt) { st.clearQueue(); st.wake(); } }
     g.jobs.list = g.jobs.list.filter((j) => j.type === 'sweep' || j.type === 'repair' || j.type === 'clear');
     this.nextSpawn = 4;

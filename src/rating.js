@@ -1,6 +1,6 @@
 // Rating (0–5 stars) from service speed, cleanliness, dish levels, decor and broken facilities.
 // The displayed rating drifts toward the target so it reacts over the course of a day.
-import { dishById } from './data.js';
+import { dishById, wallDecorById } from './data.js';
 import { clamp } from './util.js';
 
 export const RATING_WEIGHTS = { service: 0.38, clean: 0.2, dishes: 0.12, decor: 0.2, repair: 0.1 };
@@ -22,7 +22,8 @@ export class Rating {
     const clean = clamp(1 - w.trash.length / (1.5 + area / 22), 0, 1);
     const menu = Object.keys(st.dishes).filter((id) => st.dishes[id].on && dishById[id].level <= st.level);
     const dishes = menu.length ? clamp(menu.reduce((a, id) => a + st.dishes[id].lv, 0) / menu.length / 10, 0, 1) : 0;
-    const decor = clamp(w.decorScore() / (area * 0.55), 0, 1);
+    const walls = (st.wallDeco || []).reduce((a, id) => a + ((wallDecorById[id] || {}).decor || 0), 0);
+    const decor = clamp((w.decorScore() + walls) / (area * 0.55), 0, 1);
     const broken = w.furniture.filter((f) => f.broken).length;
     const repair = clamp(1 - broken * 0.35, 0, 1);
     this.parts = { service, clean, dishes, decor, repair };

@@ -48,7 +48,7 @@ export class DebugPanel {
   breakOne() {
     const g = this.game;
     const list = g.world.furniture.filter((f) => (f.kind === 'toilet' || f.kind === 'arcade') && !f.broken);
-    if (!list.length) return g.toast('No working restroom/arcade to break (buy one in Build → Fun)', 'bad');
+    if (!list.length) return g.toast('No working restroom or reading nook to break (buy one in Build → Nooks)', 'bad');
     g.eco.breakFacility(list[Math.floor(Math.random() * list.length)]);
   }
 

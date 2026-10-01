@@ -15,13 +15,16 @@ const loading = document.getElementById('loading');
 const bar = loading.querySelector('.load-bar i');
 const msg = loading.querySelector('.load-msg');
 
+/** Fill the loading bar and the cup on the loading card. */
+function setLoad(pct) { const v = Math.round(pct) + '%'; bar.style.width = v; loading.style.setProperty('--p', v); }
+
 async function boot() {
   localizeData();
-  loading.querySelector('.load-msg').textContent = t('Setting the tables…');
+  loading.querySelector('.load-msg').textContent = t('Warming up the espresso machine…');
   try {
-    await assets.load((p) => { bar.style.width = Math.round(p * 30) + '%'; });
-    msg.textContent = t('Unpacking the furniture…');
-    await models.load(assets.manifest, (p) => { bar.style.width = Math.round(30 + p * 70) + '%'; });
+    await assets.load((p) => setLoad(p * 30));
+    msg.textContent = t('Unpacking the coffee beans…');
+    await models.load(assets.manifest, (p) => setLoad(30 + p * 70));
     bakeModelIcons();
     await bakeGlyphIcons();
   } catch (e) {
@@ -42,17 +45,18 @@ async function boot() {
   const debug = new DebugPanel(game, ui, document.getElementById('ui'));
   setupInput(game, canvas, ui, debug);
   audio.enabled = game.state.settings.sound;
+  audio.musicEnabled = game.state.settings.music !== false;
   audio.setVolume(game.state.settings.volume);
-  document.title = `${game.state.name} · Rest Around`;
+  document.title = `${game.state.name} · Refillit`;
 
   const resize = () => { renderer.resize(); };
   window.addEventListener('resize', resize);
   resize();
   game.camera.fit(game.world.size);
 
-  if (status === 'corrupt') ui.toast(t('Your save was damaged, so a fresh restaurant was opened. (A backup was kept.)'), 'bad');
+  if (status === 'corrupt') ui.toast(t('Your save was damaged, so a fresh café was opened. (A backup was kept.)'), 'bad');
   else if (status === 'loaded') ui.toast(t('Welcome back to {name}!', { name: game.state.name }), 'good');
-  else ui.toast(t('Welcome to your new restaurant! Guests are on their way ☕'), 'good');
+  else ui.toast(t('Welcome to your new café! Guests are on their way ☕'), 'good');
 
   // autosave
   setInterval(() => { if (!game.resetting) save(game); }, 10000);

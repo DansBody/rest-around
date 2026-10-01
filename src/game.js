@@ -12,26 +12,28 @@ import { Economy } from './economy.js';
 import { Build } from './build.js';
 import { Street } from './ambient.js';
 import { audio } from './audio.js';
-import { DISHES, MAX_LEVEL } from './data.js';
+import { DISHES, MAX_LEVEL, START_WALL_DECOR } from './data.js';
 import { bus } from './util.js';
 
 export function defaultState() {
   const dishes = {};
-  for (const d of DISHES) dishes[d.id] = { lv: 1, prog: {}, on: d.id === 'salad' || d.id === 'burger' };
+  for (const d of DISHES) dishes[d.id] = { lv: 1, prog: {}, on: d.id === 'espresso' || d.id === 'americano' };
   return {
     v: 1,
-    name: 'Maple Nook',
+    name: 'Sunny Café',
     coins: 200, points: 0, level: 1,
     rating: 2.6, service: [],
     day: 1, clock: 0,
     dishes,
-    inv: { tomato: 2, lettuce: 2, bun: 2 },
+    inv: { beans: 4, sugar: 2, milk: 2 },
+    wallDeco: [...START_WALL_DECOR],
+    quest: null,
     snacks: { cookie: 1 },
     garden: [],
     giftDay: 0,
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, days: 0 },
-    settings: { sound: true, volume: 0.7, autoNextDay: true, glass: true },
+    settings: { sound: true, music: true, volume: 0.7, autoNextDay: true, glass: true },
     tutorialSeen: false,
   };
 }
@@ -81,10 +83,15 @@ export class Game {
     w.addFurniture('chair_oak', 4, 6, 2);
     w.addFurniture('plant_fern', 7, 7, 1);
     w.addFurniture('lamp_butter', 0, 7, 1);
+    w.addFurniture('welcome', 1, 1, 1);
+    w.addFurniture('cashier', 5, 0, 1);
+    w.addFurniture('bookshelf', 2, 0, 1);
+    w.addFurniture('sofa', 0, 5, 0);   // against the west wall, facing the room
     for (let x = 4; x < 8; x++) for (let y = 0; y < 2; y++) w.floors[x][y] = 'fl_cream';
     this.addStaff(makeStaff(this, 'waiter', 'mochalatte'), 2, 2);
     this.addStaff(makeStaff(this, 'chef', 'bbaekko'), 6, 2);
     this.eco.syncGarden();
+    this.eco.rollQuest();
     this.day.nextSpawn = 3;
     this.rating.recompute();
   }

@@ -7,7 +7,7 @@ import { CharacterView } from './charview.js';
 import { AbilityFx } from './abilityfx.js';
 import { buildPlot, buildCrops, cropScale, SPROUT_UNTIL } from './plots.js';
 import { DOOR_Y, World } from './world.js';
-import { furnitureById, dishById } from './data.js';
+import { furnitureById, dishById, wallDecorById, wallSlots } from './data.js';
 import { clamp, easeOutBack, lerp } from './util.js';
 import { FONT, DISPLAY_FONT } from './placeholder.js';
 
@@ -16,6 +16,14 @@ const Y_UP = new THREE.Vector3(0, 1, 0);
 const tmpV = new THREE.Vector3();
 
 function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
+/** A little painted sign (shop sign, OPEN plaque) as a texture. */
+function signTexture(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
 function hexMix(a, b, t) { return new THREE.Color(a).lerp(new THREE.Color(b), clamp(t, 0, 1)); }
 
 export class Renderer {
@@ -39,6 +47,7 @@ export class Renderer {
     this.trash = new Map();
     this.plots = [];
     this.lampLights = [];
+    this.decoLights = [];
     this.raycaster = new THREE.Raycaster();
     this.setupLights();
     this.buildOutdoors();
@@ -184,12 +193,96 @@ export class Renderer {
     this.door.add(leaf);
     this.door.position.set(-T / 2, 0, DOOR_Y * TILE + 0.37);
     room.add(this.door);
+    this.buildDressing(room, W, T);
     // trees & garden around this room size
     this.treeGroup.clear();
     const trees = [[-17, -8, 1.3], [-17, 8, 1.1], [-16.5, 30, 1.4], [W + 9, -5, 1.2], [W + 12, W * 0.7, 1.4], [W + 7, W + 9, 1.1], [W * 0.3, W + 10, 1.3], [-3, W + 9, 1.0], [W * 0.7, -9, 1.25], [4, -10, 1.1]];
     trees.forEach(([x, z, s], i) => this.treeGroup.add(this.tree(x, z, s, i)));
     this.roomSize = n;
     this.plots = [];
+  }
+
+  /** Café dressing that belongs to the building: OPEN plaque, shop sign, door mat, flower boxes outside. */
+  buildDressing(room, W, T) {
+    // wall decoration groups (one per wall, so each can hide with its wall's cut-away)
+    this.decoSides = {};
+    for (const side of this.sides) { const dg = new THREE.Group(); room.add(dg); this.decoSides[side.userData.name] = dg; side.userData.deco = dg; }
+    this.wallKey = '';
+    this.decoLights = [];
+
+    // OPEN plaque, hanging on the inside of the door
+    const openTex = signTexture(256, 144, (ctx, w, h) => {
+      ctx.fillStyle = '#2f7d6b'; roundRect(ctx, 6, 6, w - 12, h - 12, 26); ctx.fill();
+      ctx.lineWidth = 8; ctx.strokeStyle = '#f7ecd8'; ctx.stroke();
+      ctx.fillStyle = '#f7ecd8'; ctx.font = `800 70px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('OPEN', w / 2, h / 2 + 4);
+    });
+    const open = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.26), new THREE.MeshBasicMaterial({ map: openTex, transparent: true }));
+    open.rotation.y = Math.PI; open.position.set(0.62, 1.55, -0.33);
+    this.door.add(open);
+
+    // shop sign above the doorway (both faces)
+    const signTex = signTexture(512, 160, (ctx, w, h) => {
+      ctx.fillStyle = '#6e4328'; roundRect(ctx, 4, 4, w - 8, h - 8, 30); ctx.fill();
+      ctx.lineWidth = 7; ctx.strokeStyle = '#f0d3a2'; roundRect(ctx, 14, 14, w - 28, h - 28, 22); ctx.stroke();
+      ctx.fillStyle = '#fbeed6'; ctx.font = `800 84px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('Refillit', w / 2 - 22, h / 2 + 6);
+      ctx.font = '700 64px sans-serif'; ctx.fillText('\u2615', w - 76, h / 2 + 4);
+    });
+    const sign = new THREE.Group();
+    for (const [rot, off] of [[0, 0.05], [Math.PI, -0.05]]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.78), new THREE.MeshBasicMaterial({ map: signTex, transparent: true }));
+      m.rotation.y = rot; m.position.z = off; sign.add(m);
+    }
+    sign.rotation.y = Math.PI / 2;      // faces ±x, i.e. the street and the room
+    sign.position.set(-T / 2, 2.62, DOOR_Y * TILE + TILE / 2);
+    room.add(sign);
+    this.signMesh = sign;
+
+    // door mat just inside the door (lies diagonal so its cup reads upright from the default camera)
+    const matHolder = new THREE.Group();
+    const matMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4), lam('#ffffff', { map: this.tex('tex_doormat', 1), transparent: true }));
+    matMesh.rotation.x = -Math.PI / 2; matMesh.receiveShadow = true;
+    matHolder.add(matMesh); matHolder.rotation.y = Math.PI / 4; matHolder.position.set(1.7, 0.016, (DOOR_Y + 0.5) * TILE);
+    room.add(matHolder);
+
+    // flower boxes and a welcome sign outside
+    const outside = (id, x, z, rot, sc = 1) => { const o = models.instance(id); o.position.set(x, 0, z); o.rotation.y = rot; o.scale.setScalar(sc); room.add(o); };
+    outside('m_welcome_sign', -1.5, DOOR_Y * TILE - 0.9, -Math.PI / 2 + 0.25);
+    outside('m_flower_box', -1.1, DOOR_Y * TILE + TILE + 1.4, -Math.PI / 2, 0.9);
+    for (const f of [0.22, 0.52, 0.8]) outside('m_flower_box', W * f, W + 1.15, Math.PI, 0.95);
+    for (const f of [0.28, 0.7]) outside('m_flower_box', W + 1.15, W * f, -Math.PI / 2, 0.95);
+    outside('m_planter', W * 0.5, -1.2, 0, 1);
+  }
+
+  /** Hang the owned wall decorations in slot order: north wall first, then west, east, south. */
+  syncWallDecor() {
+    const g = this.game, W = g.world.size * TILE;
+    const owned = (g.state.wallDeco || []).filter((id) => wallDecorById[id]);
+    const key = g.world.size + '|' + owned.join(',');
+    if (key !== this.wallKey) {
+      this.wallKey = key;
+      for (const dg of Object.values(this.decoSides)) dg.clear();
+      this.decoLights = [];
+      const slots = wallSlots(g.world.size, DOOR_Y);
+      owned.forEach((id, i) => {
+        const w = wallDecorById[id], slot = slots[i];
+        if (!slot) return;
+        const o = models.instance(w.asset, w.tint);
+        o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
+        const sz = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+        const d = sz.z / 2 + 0.04, y = w.y - sz.y / 2;
+        const holder = new THREE.Group();
+        holder.add(o);
+        if (w.light) { const L = new THREE.PointLight(0xffc98a, 0, 7, 1.5); L.position.set(0, sz.y * 0.6, 0.55); holder.add(L); this.decoLights.push(L); }
+        if (slot.side === 'north') { holder.position.set(slot.a, y, d); }
+        else if (slot.side === 'west') { holder.position.set(d, y, slot.a); holder.rotation.y = Math.PI / 2; }
+        else if (slot.side === 'east') { holder.position.set(W - d, y, slot.a); holder.rotation.y = -Math.PI / 2; }
+        else { holder.position.set(slot.a, y, W - d); holder.rotation.y = Math.PI; }
+        this.decoSides[slot.side].add(holder);
+      });
+    }
+    const glow = 0.5 + this.lampOn * 3;
+    for (const L of this.decoLights) L.intensity = glow;
   }
 
   // ------------------------------------------------------------------ per frame
@@ -218,6 +311,7 @@ export class Renderer {
     this.updateLighting(realDt);
     this.syncFloors();
     this.syncWalls(realDt);
+    this.syncWallDecor();
     this.syncDoor();
     this.syncFurniture(realDt);
     this.syncTrash();
@@ -283,6 +377,7 @@ export class Renderer {
       const target = front ? 0.16 : 1;
       s.userData.h += (target - s.userData.h) * Math.min(1, dt * 6);
       s.scale.y = s.userData.h;
+      if (s.userData.deco) s.userData.deco.visible = s.userData.h > 0.92;
       if (s.userData.name === 'west') this.doorHidden = s.userData.h < 0.5;
     }
   }
@@ -326,6 +421,7 @@ export class Renderer {
       const def = models.def(cat.asset) || {};
       // things resting on the surface
       const want = new Map();
+      if (f.kind === 'table') want.set('plant', { id: 'm_table_plant', off: [0, 0], scale: 0.8 });
       if (f.kind === 'table' && f.seats) {
         for (const s of f.seats) {
           const dx = s.chair.x - f.x, dz = s.chair.y - f.y;
@@ -336,7 +432,7 @@ export class Renderer {
       }
       if (f.kind === 'stove' || f.kind === 'bar') {
         const item = f.ready || f.cooking;
-        if (f.cooking && !f.ready && f.kind === 'stove') want.set('pan', { id: 'm_pan', off: [0, 0.1], scale: 0.9, wob: true });
+        if (f.cooking && !f.ready && f.kind === 'stove') want.set('pan', { id: def.cookProp || 'm_pan', off: [0, def.cookProp ? 0.3 : 0.1], scale: def.cookScale || 0.9, wob: true });
         if (f.ready) want.set('r' + item.dish, { dish: item.dish, off: [0, 0.1], scale: 0.55 });
       }
       for (const [k, it] of v.items) if (!want.has(k)) { o.remove(it); v.items.delete(k); }
@@ -352,6 +448,21 @@ export class Renderer {
         // offsets are in world space; convert into the (rotated) furniture's local frame
         tmpV.set(spec.off[0] * TILE, 0, spec.off[1] * TILE).applyAxisAngle(Y_UP, -o.rotation.y);
         it.position.set(tmpV.x, (def.surfaceHeight || 1) + (spec.wob ? Math.abs(Math.sin(this.time * 10)) * 0.03 : 0), tmpV.z);
+      }
+      // steam: over the machine while it brews, over hot drinks on the tables
+      v.steamT = (v.steamT || 0) - dt;
+      if (v.steamT <= 0) {
+        v.steamT = 0.3 + Math.random() * 0.25;
+        const cx = f.x + f.fp[0] / 2, cy = f.y + f.fp[1] / 2;
+        if (f.kind === 'stove' && f.cooking && !f.ready) g.fx.steam(g.at(cx, cy, 98));
+        if (f.kind === 'table' && f.seats) {
+          for (const s of f.seats) {
+            const hot = s.food && dishById[s.food.dish] && ['coffee', 'tea'].includes(dishById[s.food.dish].cat);
+            if (!hot || !s.customer || s.customer.state !== 'eating') continue;
+            const dx = s.chair.x - f.x, dz = s.chair.y - f.y;
+            g.fx.steam(g.at(cx + dx * 0.38, cy + dz * 0.38, 58));
+          }
+        }
       }
       // evening lamps
       if (def.light) {

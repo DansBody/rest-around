@@ -4,7 +4,7 @@ import { assets } from '../assets.js';
 import { portrait, thumb, plotThumb } from '../portrait.js';
 import { ACCESSORIES, roleLook, nextCast } from '../looks.js';
 import {
-  ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
+  ROLES, SNACKS, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
   UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV,
 } from '../data.js';
@@ -53,6 +53,7 @@ export function skillLine(a, role = a.role) {
 export const PANELS = {
   staff: { title: 'Staff', icon: 'tool_staff', render: renderStaff, tick: tickStaff },
   menu: { title: 'Menu', icon: 'tool_menu', render: renderMenu },
+  decor: { title: 'Decor', icon: 'tool_decor', render: renderDecor },
   garden: { title: 'Garden', icon: 'tool_garden', live: true, render: renderGarden },
   market: { title: 'Market', icon: 'tool_market', render: renderMarket },
   settings: { title: 'Settings', icon: 'tool_settings', render: renderSettings },
@@ -98,7 +99,7 @@ function renderStaff(ui, body) {
   }
   if (full) body.append(h('div.muted', t('All slots are full — reach the next level for more.')));
 }
-const ROLE_NOTE = { waiter: 'Takes orders, serves food, clears tables.', chef: 'Cooks at a free stove.', cleaner: 'Sweeps trash & repairs broken restrooms/arcades.', bartender: 'Mixes drinks at the Juice Bar.' };
+const ROLE_NOTE = { waiter: 'Takes orders, serves drinks, clears tables.', chef: 'Brews at a free espresso station.', cleaner: 'Sweeps up and tidies the restrooms and reading nooks.', bartender: 'Plates bakes at the Pastry Case.' };
 function renderJobChange(ui, body, a) {
   const g = ui.game;
   if (!g.staff.includes(a)) { ui.subview = null; return renderStaff(ui, body); }
@@ -117,7 +118,7 @@ function renderJobChange(ui, body, a) {
     body.append(h('div.row' + (cur ? '.current' : ''),
       portrait(roleLook(role, a.look.model), 48, 48),
       h('div.grow', h('h3', r.name), skillLine(a, role), h('div.muted', t(ROLE_NOTE[role])), abilityLine(role, a.skillLv(role) >= ABILITY_UNLOCK_LV, true),
-        role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '4px', display: 'inline-block' } }, t('Needs a Juice Bar to work')) : null),
+        role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '4px', display: 'inline-block' } }, t('Needs a Pastry Case to work')) : null),
       action));
   }
   body.append(h('div.muted', { style: { marginTop: '6px', lineHeight: 1.5 } },
@@ -157,19 +158,19 @@ function renderOutfit(ui, body, a) {
       const on = !(look.hide || []).includes(n);
       return h('button.btn.small' + (on ? '.primary' : ''), { onclick: () => { look.hide = on ? [...(look.hide || []), n] : (look.hide || []).filter((x) => x !== n); refresh(); } }, on ? gl('check', accName(n), 14) : accName(n));
     })))] : [],
-    h('div.orow', h('span', t('Chef hat')), h('button.btn.small' + (look.roleHat ? '.primary' : ''), { onclick: () => { look.roleHat = look.roleHat ? null : 'chef'; refresh(); } }, look.roleHat ? t('On') : t('Off'))),
+    h('div.orow', h('span', t('Barista cap')), h('button.btn.small' + (look.roleHat ? '.primary' : ''), { onclick: () => { look.roleHat = look.roleHat ? null : 'chef'; refresh(); } }, look.roleHat ? t('On') : t('Off'))),
     h('div.muted', t('Staff are our own characters, and take the name of the one they wear.')));
 }
 
 // ------------------------------------------------------------------ menu
 function renderMenu(ui, body) {
   const g = ui.game, s = g.state;
-  const cat = ui.menuCat || 'starter';
+  const cat = ui.menuCat || 'coffee';
   const slots = menuSlots(s.level);
   body.append(h('div.tabs', DISH_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.menuCat = c.id; ui.renderPanel(); } }, `${c.name} ${g.eco.menuCount(c.id)}/${slots[c.id]}`))));
-  if (cat === 'drink') {
+  if (cat === EXTRA_CAT) {
     const ok = g.world.byKind('bar').length && g.staff.some((a) => a.role === 'bartender');
-    if (!ok) body.append(h('div.row', I('emote_menu', 32), h('div.grow.muted', t('Drinks need a Juice Bar (Build → Kitchen) and a Bartender (Staff → Hire).'))));
+    if (!ok) body.append(h('div.row', I('emote_menu', 32), h('div.grow.muted', t('Bakes need a Pastry Case (Build → Coffee Bar) and a Baker (Staff → Hire).'))));
   }
   if (slots[cat] === 0) body.append(h('div.muted', { style: { margin: '6px 2px' } }, t('No {cat} slots yet — they open up as you level.', { cat: DISH_CATS.find((c) => c.id === cat).name })));
   for (const d of DISHES.filter((x) => x.cat === cat)) {
@@ -192,13 +193,35 @@ function renderMenu(ui, body) {
           h('button.btn.small' + (st.on ? '.primary' : ''), { onclick: () => g.eco.toggleMenu(d.id) }, st.on ? gl('check', t('On menu'), 14) : t('Add to menu')),
           maxed ? null : h('button.btn.small' + (canAdd ? '' : '.disabled'), { onclick: () => g.eco.contribute(d.id), title: t('Put pantry ingredients toward the next dish level') }, gl('bowl', t('Add ingredients'), 15))) : null)));
   }
-  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Collect every ingredient in a recipe to level a dish (Lv1→10): higher price and more gourmet points. Get ingredients from the Garden, the Market and the daily gift.')));
+  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Collect every ingredient in a recipe to level a drink or bake (Lv1→10): higher price and more café points. Get ingredients from the Garden, the Market and the daily gift.')));
+}
+
+// ------------------------------------------------------------------ decor
+/** Wall decorations: buy them here and they hang on the walls by themselves. */
+function renderDecor(ui, body) {
+  const g = ui.game, s = g.state;
+  const spots = g.eco.wallSlotCount();
+  const parts = g.rating.parts;
+  body.append(h('div.decor-score', I('icon_star', 26), h('div.grow', h('div', t('Café charm')), h('div.pbar.gold', { style: { marginTop: '4px' } }, h('i', { style: { width: Math.round(parts.decor * 100) + '%' } }))), h('span', Math.round(parts.decor * 100) + '%')));
+  body.append(h('div.muted', t('Wall decorations hang up on their own. {n} / {m} wall spots used. Furniture and plants live in Build → Decor.', { n: s.wallDeco.length, m: spots })));
+  body.append(h('div.section-title', t('Wall decorations')));
+  for (const w of WALL_DECOR) {
+    const owned = s.wallDeco.includes(w.id), locked = w.level > s.level;
+    const th = thumb(w.asset, w.tint);
+    body.append(h('div.row' + (locked ? '.locked' : ''),
+      h('div.thumb-slot', th),
+      h('div.grow', h('h3', w.name), h('div.muted', t('Charm +{n}', { n: w.decor })), locked ? h('div.muted', I('icon_lock', 14), ' ' + t('Unlocks at level {n}', { n: w.level })) : null),
+      owned
+        ? h('button.btn.small', { onclick: () => g.eco.sellWallDecor(w.id), title: t('Take it down and get half back') }, I('icon_sell', 18), '+' + Math.floor(w.price * 0.5))
+        : locked ? I('icon_lock', 24)
+          : h('button.btn.small.primary' + (g.eco.canAfford(w.price) ? '' : '.disabled'), { onclick: () => g.eco.buyWallDecor(w.id) }, coinPill(w.price))));
+  }
 }
 
 // ------------------------------------------------------------------ garden
 function renderGarden(ui, body) {
   const g = ui.game, s = g.state;
-  body.append(h('div.muted', t('Plant seeds, keep the soil watered, and harvest fresh ingredients. Plots only grow while watered.')));
+  body.append(h('div.muted', t('Plant seeds, keep the soil watered, and harvest fresh herbs and berries. Plots only grow while watered.')));
   const pick = ui.seedPick;
   const grid = h('div.grid2', { style: { marginTop: '8px' } });
   s.garden.forEach((p, i) => {
@@ -263,16 +286,17 @@ function renderMarket(ui, body) {
 function renderSettings(ui, body) {
   const g = ui.game, s = g.state;
   const name = h('input', { type: 'text', value: s.name, maxlength: 24 });
-  name.addEventListener('change', () => { s.name = name.value.trim().slice(0, 24) || 'Maple Nook'; document.title = `${s.name} · Rest Around`; });
+  name.addEventListener('change', () => { s.name = name.value.trim().slice(0, 24) || 'Sunny Café'; document.title = `${s.name} · Refillit`; });
   const vol = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: s.settings.volume });
   vol.addEventListener('input', () => { s.settings.volume = +vol.value; audio.setVolume(+vol.value); });
   const toggle = (label, key, after) => h('div.toggle', h('span', label),
     h('button.switch' + (s.settings[key] ? '.on' : ''), { role: 'switch', 'aria-checked': String(!!s.settings[key]), title: label, onclick: () => { s.settings[key] = !s.settings[key]; if (after) after(); ui.renderPanel(); } }));
   body.append(
     h('div.section-title', t('Language')), langPicker(ui),
-    h('div.section-title', t('Restaurant name')), name,
+    h('div.section-title', t('Café name')), name,
     h('div.section-title', t('Sound')),
-    toggle(t('Sound effects'), 'sound', () => { audio.enabled = s.settings.sound; audio.unlock(); g.sfx('click'); }),
+    toggle(t('Sound effects'), 'sound', () => { audio.enabled = s.settings.sound; audio.unlock(); g.sfx('click'); if (!s.settings.sound) audio.stopMusic(); else audio.setMusic(s.settings.music !== false); }),
+    toggle(t('Café music'), 'music', () => { audio.unlock(); audio.setMusic(!!s.settings.music && s.settings.sound); }),
     h('div.orow', h('span', t('Volume')), vol),
     h('div.section-title', t('Game')),
     toggle(t('Auto-open next day'), 'autoNextDay'),
@@ -286,7 +310,7 @@ function renderSettings(ui, body) {
       t('Drag to pan · Wheel or pinch to zoom · Right-drag, two-finger twist or '), h('kbd', 'Q'), '/', h('kbd', 'E'), t(' to turn the camera · Click a character for details'), h('br'),
       h('kbd', 'B'), t(' build · '), h('kbd', 'R'), t(' rotate · '), h('kbd', 'Del'), t(' sell · '), h('kbd', 'Esc'), t(' cancel/close · '), h('kbd', '`'), t(' debug')),
     h('div.section-title', t('About')),
-    h('div.muted', t('Rest Around — a cozy 3D bistro. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).')));
+    h('div.muted', t('Refillit — a cozy 3D café. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).')));
 }
 
 function langPicker(ui) {
@@ -295,7 +319,7 @@ function langPicker(ui) {
 
 // ------------------------------------------------------------------ build tray
 const BUILD_CATS = [
-  { id: 'dining', name: 'Tables & Chairs' }, { id: 'kitchen', name: 'Kitchen' }, { id: 'fun', name: 'Fun' }, { id: 'decor', name: 'Decor' },
+  { id: 'dining', name: 'Tables & Chairs' }, { id: 'kitchen', name: 'Coffee Bar' }, { id: 'fun', name: 'Nooks' }, { id: 'decor', name: 'Decor' },
   { id: 'floor', name: 'Floors' }, { id: 'wall', name: 'Walls' }, { id: 'room', name: 'Room' },
 ];
 const thumbCache = new Map();
@@ -337,7 +361,7 @@ export function buildTray(ui, bar) {
     items.append(e
       ? h('div.row', { style: { flex: 1 } }, I('icon_move', 40), h('div.grow', h('h3', t('Expand to {n}×{n}', { n: e.size })), h('div.muted', e.level > s.level ? t('Reach level {n} to unlock', { n: e.level }) : t('More room for tables, fun and decor!'))),
         h('button.btn.primary' + (e.level > s.level ? '.disabled' : ''), { onclick: () => b.expand() }, coinPill(e.price)))
-      : h('div.row', { style: { flex: 1 } }, h('div.grow', h('h3', t('Your restaurant is as big as it gets!')))));
+      : h('div.row', { style: { flex: 1 } }, h('div.grow', h('h3', t('Your café is as big as it gets!')))));
   }
   const msgText = b.message ? b.message.text : t(b.moving ? 'Moving — click a new spot' : b.tool ? (b.tool.mode === 'floor' ? 'Click or drag over tiles to paint' : 'Click the floor to place · R rotates · right-click / Esc to stop') : 'Pick an item to buy, or click furniture to rotate / move / sell it');
   const msg = h('div.bmsg' + (b.message ? '.' + b.message.kind : ''), msgText);

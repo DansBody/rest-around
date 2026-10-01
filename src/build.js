@@ -51,7 +51,7 @@ export class Build {
   inUse(f) {
     if (f.kind === 'chair' && f.seat && (f.seat.customer || f.seat.reserved)) return t('Someone is sitting there');
     if (f.kind === 'table' && f.seats && f.seats.some((s) => s.customer || s.reserved)) return t('Guests are at this table');
-    if ((f.kind === 'stove' || f.kind === 'bar') && (f.cooking || f.ready || f.reservedBy)) return t('Busy cooking right now');
+    if ((f.kind === 'stove' || f.kind === 'bar') && (f.cooking || f.ready || f.reservedBy)) return t('Busy brewing right now');
     if ((f.kind === 'toilet' || f.kind === 'arcade') && f.reservedBy) return t('Someone is using it');
     return null;
   }
@@ -198,7 +198,7 @@ export class Build {
     g.world.resize(e.size);
     g.camera.setRoom(e.size);
     g.sfx('levelup');
-    this.say(t('The restaurant is now {n}×{n}!', { n: e.size }), 'good');
+    this.say(t('The café is now {n}×{n}!', { n: e.size }), 'good');
     g.changed('build');
   }
 
@@ -207,7 +207,7 @@ export class Build {
     if (!f) return;
     const busy = this.inUse(f);
     if (busy) return this.say(busy, 'bad');
-    if (f.kind === 'stove' && g.world.byKind('stove').length <= 1) return this.say(t('You need at least one stove!'), 'bad');
+    if (f.kind === 'stove' && g.world.byKind('stove').length <= 1) return this.say(t('You need at least one espresso station!'), 'bad');
     const cat = furnitureById[f.type];
     const refund = Math.floor(cat.price * SELL_RATE);
     this.detach(f);

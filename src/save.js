@@ -4,9 +4,10 @@ import { World } from './world.js';
 import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
-import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES } from './data.js';
+import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, wallDecorById, START_WALL_DECOR } from './data.js';
 import { bumpUid, clamp } from './util.js';
 
+// Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
 export const SAVE_KEY = 'restAround.save.v1';
 const num = (v, d, lo = -Infinity, hi = Infinity) => (typeof v === 'number' && isFinite(v) ? clamp(v, lo, hi) : d);
 
@@ -89,7 +90,11 @@ function apply(game, data) {
   for (const i of INGREDIENTS) { const n = Math.floor(num(s.inv && s.inv[i.id], 0, 0, 1e6)); if (n) st.inv[i.id] = n; }
   st.snacks = {};
   for (const sn of SNACKS) { const n = Math.floor(num(s.snacks && s.snacks[sn.id], 0, 0, 1e6)); if (n) st.snacks[sn.id] = n; }
-  st.garden = Array.isArray(s.garden) ? s.garden.slice(0, 6).map((p) => ({ crop: p && typeof p.crop === 'string' ? p.crop : null, prog: num(p && p.prog, 0, 0, 1), water: num(p && p.water, 0, 0, 1) })) : [];
+  st.garden = Array.isArray(s.garden) ? s.garden.slice(0, 6).map((p) => ({ crop: p && SEEDS.some((x) => x.crop === p.crop) ? p.crop : null, prog: num(p && p.prog, 0, 0, 1), water: num(p && p.water, 0, 0, 1) })) : [];
+  // wall decorations & the daily goal (saves from before the café opened start with the starter set)
+  st.wallDeco = Array.isArray(s.wallDeco) ? s.wallDeco.filter((id, i, a) => wallDecorById[id] && a.indexOf(id) === i) : [...START_WALL_DECOR];
+  const q = s.quest;
+  st.quest = q && QUESTS.some((x) => x.id === q.id) ? { id: q.id, target: Math.max(1, Math.floor(num(q.target, 5, 1, 1e6))), prog: Math.floor(num(q.prog, 0, 0, 1e6)), done: !!q.done } : null;
   const stats = s.stats && typeof s.stats === 'object' ? s.stats : null;
   st.stats = { ...game.day.freshStats(), ...(stats || {}) };
 
@@ -137,5 +142,6 @@ function apply(game, data) {
   bumpUid(maxId + 1000);
   game.eco.syncGarden();
   game.day.nextSpawn = 4;
+  if (!game.state.quest) game.eco.rollQuest();
   game.rating.recompute();
 }

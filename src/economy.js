@@ -1,9 +1,11 @@
-// Economy & progression: coins, gourmet points, levels, dish leveling via ingredients, market,
+// Economy & progression: coins, café points, levels, dish leveling via ingredients, market,
 // garden plots, daily gift, staff hiring/snacks, facility breakage & repair.
 import {
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS, SEEDS, WATER_DURATION,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
+  EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots,
 } from './data.js';
+import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
 import { nextCast } from './looks.js';
 import { t } from './i18n.js';
@@ -16,7 +18,7 @@ export class Economy {
   // ---------------- money & points ----------------
   earn(coins, points, tx, ty, lift = 110) {
     const g = this.game, s = this.s;
-    if (coins > 0) { s.coins += coins; s.stats.coins += coins; s.totals.coins += coins; g.floatText(tx, ty, '+' + coins, 'icon_coin', '#ffe27a', lift); g.sfx('coin'); }
+    if (coins > 0) { this.questProgress('coins', coins); s.coins += coins; s.stats.coins += coins; s.totals.coins += coins; g.floatText(tx, ty, '+' + coins, 'icon_coin', '#ffe27a', lift); g.sfx('coin'); }
     if (points > 0) { g.floatText(tx, ty, '+' + points, 'icon_points', '#bfe6ff', lift - 30); this.addPoints(points); }
     g.changed('coins');
   }
@@ -52,11 +54,64 @@ export class Economy {
     if (gardenPlots(s.level) > before.plots) unlocks.push(t('a new garden plot'));
     for (const d of DISHES) if (d.level === s.level) unlocks.push(t('dish: {name}', { name: d.name }));
     for (const f of Object.values(furnitureById)) if (f.level === s.level) unlocks.push(f.name);
+    for (const w of WALL_DECOR) if (w.level === s.level) unlocks.push(w.name);
     for (const e of EXPANSIONS) if (e.level === s.level) unlocks.push(t('{n}×{n} floor plan', { n: e.size }));
     this.syncGarden();
     bus.emit('levelUp', { level: s.level, unlocks });
     g.sfx('levelup');
     g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 30, '#ffd86b');
+  }
+
+  // ---------------- daily goal ----------------
+  /** A fresh goal for the day (never the same kind twice in a row). */
+  rollQuest() {
+    const s = this.s, prev = s.quest && s.quest.id;
+    const g = this.game, canBake = g.world.byKind('bar').length && g.staff.some((a) => a.role === 'bartender');
+    const q = choice(QUESTS.filter((x) => x.id !== prev && (x.id !== 'bakes' || canBake)));
+    let target = Math.max(2, Math.round(q.base + q.perLevel * s.level));
+    if (q.id === 'coins') target = Math.round(target / 5) * 5;
+    s.quest = { id: q.id, target, prog: 0, done: false };
+    this.game.changed('quest');
+  }
+  questReward() { return { coins: 25 + this.s.level * 10, points: 6 + this.s.level * 3 }; }
+  questProgress(kind, n = 1) {
+    const q = this.s.quest;
+    if (!q || q.done || q.id !== kind || n <= 0) return;
+    q.prog = Math.min(q.target, q.prog + n);
+    this.game.changed('quest');
+    if (q.prog < q.target) return;
+    q.done = true;
+    const r = this.questReward(), g = this.game, s = this.s;
+    s.coins += r.coins; s.stats.coins += r.coins; s.totals.coins += r.coins;
+    g.toast(t('Daily goal complete! +{c} coins, +{p} points', { c: r.coins, p: r.points }), 'good');
+    g.sfx('levelup');
+    g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 18, '#ffd86b');
+    this.addPoints(r.points);
+    g.changed('coins');
+  }
+
+  // ---------------- wall decorations ----------------
+  wallSlotCount() { return wallSlots(this.game.world.size, DOOR_Y).length; }
+  buyWallDecor(id) {
+    const s = this.s, w = wallDecorById[id], g = this.game;
+    if (!w || s.wallDeco.includes(id)) return;
+    if (w.level > s.level) return g.toast(t('{name} unlocks at level {n}', { name: w.name, n: w.level }), 'bad');
+    if (s.wallDeco.length >= this.wallSlotCount()) return g.toast(t('The walls are full — expand the café for more room!'), 'bad');
+    if (!this.spend(w.price, w.name)) return;
+    s.wallDeco.push(id);
+    g.sfx('coin');
+    g.rating.recompute();
+    g.changed('wall');
+  }
+  sellWallDecor(id) {
+    const s = this.s, w = wallDecorById[id], g = this.game;
+    if (!w || !s.wallDeco.includes(id)) return;
+    s.wallDeco = s.wallDeco.filter((x) => x !== id);
+    s.coins += Math.floor(w.price * 0.5);
+    g.sfx('coin');
+    g.toast(t('Sold {name} (+{n})', { name: w.name, n: Math.floor(w.price * 0.5) }));
+    g.rating.recompute();
+    g.changed('wall'); g.changed('coins');
   }
 
   // ---------------- dishes ----------------
@@ -66,8 +121,8 @@ export class Economy {
     const s = this.s, d = dishById[id], st = s.dishes[id];
     if (!this.dishUnlocked(id)) return this.game.toast(t('{name} unlocks at level {n}', { name: d.name, n: d.level }), 'bad');
     if (st.on) {
-      const foods = Object.keys(s.dishes).filter((k) => s.dishes[k].on && dishById[k].cat !== 'drink' && this.dishUnlocked(k));
-      if (d.cat !== 'drink' && foods.length <= 1) return this.game.toast(t('Keep at least one dish on the menu!'), 'bad');
+      const foods = Object.keys(s.dishes).filter((k) => s.dishes[k].on && dishById[k].cat !== EXTRA_CAT && this.dishUnlocked(k));
+      if (d.cat !== EXTRA_CAT && foods.length <= 1) return this.game.toast(t('Keep at least one dish on the menu!'), 'bad');
       st.on = false;
     } else {
       if (this.menuCount(d.cat) >= menuSlots(s.level)[d.cat]) return this.game.toast(t('No free {cat} slots — take a dish off first or level up', { cat: DISH_CATS.find((c) => c.id === d.cat).name }), 'bad');

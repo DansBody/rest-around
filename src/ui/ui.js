@@ -5,7 +5,7 @@ import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
 import { PANELS, buildTray, skillLine } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { SNACKS, SKILL, ABILITY_UNLOCK_LV } from '../data.js';
+import { SNACKS, SKILL, ABILITY_UNLOCK_LV, questById } from '../data.js';
 import { audio } from '../audio.js';
 import { glyph } from './icons.js';
 import { glassFx } from './glass.js';
@@ -15,6 +15,7 @@ const TOOLS = [
   { id: 'build', label: 'Build', icon: 'tool_build' },
   { id: 'staff', label: 'Staff', icon: 'tool_staff' },
   { id: 'menu', label: 'Menu', icon: 'tool_menu' },
+  { id: 'decor', label: 'Decor', icon: 'tool_decor' },
   { id: 'garden', label: 'Garden', icon: 'tool_garden' },
   { id: 'market', label: 'Market', icon: 'tool_market' },
   { id: 'settings', label: 'Settings', icon: 'tool_settings' },
@@ -63,7 +64,7 @@ export class UI {
     if (this.modalOpen) { this.el.modal.replaceChildren(this.modalOpen()); this.el.modal.classList.add('show'); }
     this.update(1);
     this.initGlass();
-    document.title = `${this.game.state.name} · Rest Around`;
+    document.title = `${this.game.state.name} · Refillit`;
   }
 
   buildDom() {
@@ -74,10 +75,12 @@ export class UI {
     // ----- HUD -----
     this.el = {};
     const coin = h('div.chip', { title: t('Coins') }, ic('icon_coin', 30), (this.el.coins = h('span.num', '0')));
-    this.el.lvlNum = h('span', 'Lv 1');
+    this.el.lvlNum = h('b', 'Lv 1');
+    this.el.brandName = h('span.bname', this.game.state.name);
     this.el.lvlTxt = h('span.muted', '0/0');
     this.el.lvlBar = h('i');
-    const lvl = h('div.chip', { title: t('Gourmet points & level') }, ic('icon_points', 30), h('div.lvl-wrap', h('div.lvl-top', this.el.lvlNum, this.el.lvlTxt), h('div.pbar', this.el.lvlBar)));
+    const lvl = h('div.chip.brand', { title: t('Café level & points') }, h('div.badge-c', ic('tool_menu', 28), this.el.lvlNum),
+      h('div.lvl-wrap', h('div.lvl-top', this.el.brandName, this.el.lvlTxt), h('div.pbar', this.el.lvlBar)));
     this.el.stars = h('span.stars');
     this.starEls = [];
     for (let i = 0; i < 5; i++) {
@@ -100,6 +103,15 @@ export class UI {
     this.el.ratingTip = h('div.card.rating-tip');
     r.append(this.el.hud, this.el.ratingTip);
 
+    // daily goal (top-left, under the HUD)
+    this.el.questIcon = h('div.q-ico');
+    this.el.questText = h('div.q-text');
+    this.el.questBar = h('i');
+    this.el.questN = h('span.q-n');
+    this.el.questReward = h('span.q-reward');
+    this.el.quest = h('div#quest.glass', this.el.questIcon, h('div.q-body', this.el.questText, h('div.q-row', h('div.pbar.green', this.el.questBar), this.el.questN), this.el.questReward));
+    r.appendChild(this.el.quest);
+
     // ----- toolbar -----
     this.toolBtns = {};
     // camera controls (the scene is real 3D: rotate in 90deg steps, recenter)
@@ -117,7 +129,7 @@ export class UI {
     this.el.cutin = h('div#cutin');
     r.appendChild(this.el.cutin);
 
-    this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label) }, ic(tool.icon, 26), h('span', t(tool.label))))));
+    this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label) }, ic(tool.icon, 38), h('span', t(tool.label))))));
     r.appendChild(this.el.toolbar);
 
     // ----- side panel -----
@@ -133,7 +145,7 @@ export class UI {
 
     // ----- build tray -----
     this.el.buildbar = h('div#buildbar');
-    this.el.buildBanner = h('div#buildbanner', glyph('build', 16), t('Build mode — the restaurant is paused'));
+    this.el.buildBanner = h('div#buildbanner', glyph('build', 16), t('Build mode — the café is paused'));
     r.append(this.el.buildbar, this.el.buildBanner);
 
     // ----- info card, toasts, modal, debug host -----
@@ -149,6 +161,7 @@ export class UI {
   initGlass() {
     glassFx.enabled = this.game.state.settings.glass !== false;
     for (const c of this.el.hud.children) glassFx.attach(c, { blur: 3, strength: 22, bezel: 12 });
+    glassFx.attach(this.el.quest, { blur: 3, strength: 24, bezel: 14 });
     glassFx.attach(this.el.toolbar, { blur: 2.5, strength: 32, bezel: 18 });
     for (const b of this.el.camctl.children) glassFx.attach(b, { blur: 2, strength: 22, bezel: 14 });
     glassFx.attach(this.el.panel, { blur: 14, strength: 60, bezel: 28 });
@@ -314,6 +327,8 @@ export class UI {
     this.el.coins.textContent = fmt(s.coins);
     const lp = g.levelProgress();
     this.el.lvlNum.textContent = t('Lv {n}', { n: s.level });
+    if (this.el.brandName.textContent !== s.name) this.el.brandName.textContent = s.name;
+    this.updateQuest();
     this.el.lvlTxt.textContent = s.level >= g.maxLevel() ? t('MAX') : `${fmt(lp.cur)}/${fmt(lp.next)}`;
     this.el.lvlBar.style.width = lp.frac * 100 + '%';
     for (let i = 0; i < 5; i++) {
@@ -346,10 +361,28 @@ export class UI {
     badge('market', g.eco.giftAvailable() ? 1 : 0);
   }
 
+  /** Daily goal card: icon, text, progress and the reward. */
+  updateQuest() {
+    const g = this.game, q = g.state.quest, el = this.el.quest;
+    if (!q || !questById[q.id] || g.build.active) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    const def = questById[q.id];
+    if (this.questIconId !== q.id) {
+      this.questIconId = q.id;
+      this.el.questIcon.replaceChildren(assets.iconEl({ cups: 'tool_menu', guests: 'tool_staff', bakes: 'dish_croissant', coins: 'icon_coin' }[q.id] || 'icon_coin', 32));
+    }
+    const r = g.eco.questReward();
+    this.el.questText.textContent = q.done ? t('Daily goal complete!') : t(def.text, { n: q.target });
+    this.el.questBar.style.width = (q.prog / q.target * 100) + '%';
+    this.el.questN.textContent = `${q.prog}/${q.target}`;
+    this.el.questReward.textContent = q.done ? '✓' : t('Reward: {c} coins · {p} pts', { c: r.coins, p: r.points });
+    el.classList.toggle('done', !!q.done);
+  }
+
   toggleRatingTip() { this.el.ratingTip.classList.toggle('show'); this.renderRatingTip(); }
   renderRatingTip() {
     const p = this.game.rating.parts;
-    const names = { service: 'Service', clean: 'Cleanliness', dishes: 'Dish levels', decor: 'Decor', repair: 'Upkeep' };
+    const names = { service: 'Service', clean: 'Cleanliness', dishes: 'Menu levels', decor: 'Decor', repair: 'Upkeep' };
     const rows = Object.keys(RATING_WEIGHTS).map((k) => h('div.rrow', h('span', t(names[k])), h('div.pbar.gold', h('i', { style: { width: p[k] * 100 + '%' } })), h('span', Math.round(p[k] * 100) + '%')));
     this.el.ratingTip.replaceChildren(h('b', t('Rating {a} → {b}', { a: this.game.state.rating.toFixed(2), b: this.game.rating.target.toFixed(2) })), ...rows, h('div.muted', t('More stars bring more customers. Tap to close.')));
     this.el.ratingTip.onclick = () => this.el.ratingTip.classList.remove('show');
@@ -412,13 +445,13 @@ export class UI {
         stat('emote_heart', t('Guests served'), sm.served),
         stat('emote_angry', t('Guests lost'), `${sm.lost + sm.noSeat}`),
         stat('icon_coin', t('Coins earned'), '+' + fmt(sm.coins)),
-        stat('icon_points', t('Gourmet points'), '+' + fmt(sm.points)),
+        stat('icon_points', t('Café points'), '+' + fmt(sm.points)),
         stat('icon_star', t('Rating'), `${sm.ratingStart.toFixed(1)} → ${sm.ratingEnd.toFixed(1)}`),
         stat('icon_level', t('Level'), sm.levelEnd > sm.levelStart ? `${sm.levelStart} → ${sm.levelEnd}` : sm.levelEnd)),
       h('div.muted', { style: { marginBottom: '10px' } }, sm.noSeat ? t('{n} guest(s) left because every seat was taken — more tables would help!', { n: sm.noSeat }) : dr >= 0 ? t('Word is spreading about your cozy little place.') : t('Keep things clean and fast to win back the stars.')),
       btn);
   }
-  /** Level-up card: non-blocking (the restaurant keeps running) and auto-dismissing. */
+  /** Level-up card: non-blocking (the café keeps running) and auto-dismissing. */
   celebrate(e) {
     // several level-ups in a row (e.g. a big dish level-up) merge into one card
     if (this.levelAcc && this.el.celebrate.classList.contains('show')) { this.levelAcc.level = e.level; this.levelAcc.unlocks.push(...e.unlocks); }
@@ -429,7 +462,7 @@ export class UI {
       h('div.hero-ico', assets.iconEl('icon_level', 56)),
       h('div.big-title', t('Level {n}!', { n: acc.level })),
       h('div.muted', t('New things unlocked:')),
-      h('div', { style: { margin: '8px 0', fontWeight: 900, lineHeight: 1.5, maxHeight: '40vh', overflow: 'auto' } }, acc.unlocks.length ? acc.unlocks.map((u) => h('div', { style: { display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center' } }, glyph('sparkles', 16), u)) : t('More gourmet glory!')),
+      h('div', { style: { margin: '8px 0', fontWeight: 900, lineHeight: 1.5, maxHeight: '40vh', overflow: 'auto' } }, acc.unlocks.length ? acc.unlocks.map((u) => h('div', { style: { display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center' } }, glyph('sparkles', 16), u)) : t('More café glory!')),
       h('button.btn.primary', { onclick: hide }, t('Yay!'))));
     this.el.celebrate.classList.add('show');
     clearTimeout(this.celebrateTimer);

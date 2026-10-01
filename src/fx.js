@@ -22,6 +22,10 @@ export class FX {
   puff(at, color = '#fff', n = 1) {
     for (let i = 0; i < n; i++) this.push({ type: 'puff', at, dx: (Math.random() - 0.5) * 16, vx: (Math.random() - 0.5) * 20, vy: -18 - Math.random() * 14, r: 5 + Math.random() * 5, color, life: 0.9 + Math.random() * 0.4 });
   }
+  /** A soft curl of steam rising from a hot cup. */
+  steam(at, n = 1) {
+    for (let i = 0; i < n; i++) this.push({ type: 'steam', at, dx: (Math.random() - 0.5) * 8, vx: 0, vy: -15 - Math.random() * 8, r: 4 + Math.random() * 3, ph: Math.random() * 6.28, life: 1.5 + Math.random() * 0.5 });
+  }
   sparkle(at, n = 6, color = '#ffe27a') {
     for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 50; this.push({ type: 'spark', at, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 30, color, life: 0.7 + Math.random() * 0.3 }); }
   }
@@ -80,7 +84,8 @@ export class FX {
         ctx.strokeText(p.text, x0 + iw, 1); ctx.fillStyle = p.color; ctx.fillText(p.text, x0 + iw, 1);
       } else {
         const x = q.x + p.dx * s, y = q.y + p.dy * s;
-        if (p.type === 'puff') { ctx.globalAlpha = 0.55 * (1 - k); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x, y, p.r * (1 + k) * s, 0, Math.PI * 2); ctx.fill(); }
+        if (p.type === 'steam') { ctx.globalAlpha = 0.5 * Math.sin(Math.min(1, k) * Math.PI); ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.arc(x + Math.sin(p.age * 4 + p.ph) * 4 * s, y, p.r * (1 + k * 1.3) * s, 0, Math.PI * 2); ctx.fill(); }
+        else if (p.type === 'puff') { ctx.globalAlpha = 0.55 * (1 - k); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x, y, p.r * (1 + k) * s, 0, Math.PI * 2); ctx.fill(); }
         else if (p.type === 'spark') { ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color; ctx.translate(x, y); ctx.rotate(p.age * 6); ctx.fillRect(-3 * s, -3 * s, 6 * s, 6 * s); }
         else if (p.type === 'heart') { ctx.globalAlpha = 1 - k; assets.drawIcon(ctx, 'emote_heart', x, y, 18 * s); }
         else if (p.type === 'crumb') { ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x, y, 2.2 * s, 0, Math.PI * 2); ctx.fill(); }

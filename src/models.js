@@ -115,6 +115,15 @@ const SHAPES = {
     }
     return g;
   },
+  baristacap() {
+    // a soft newsboy-style barista cap: cream band, cocoa crown, a little brim and button
+    const g = new THREE.Group();
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat('#8a5a3c')); crown.scale.set(1, 0.62, 1); crown.position.y = 0.1; g.add(crown);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.12, 18), mat('#fbf1dc')); band.position.y = 0.06; g.add(band);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.035, 16), mat('#6d4630')); brim.scale.set(1, 1, 0.7); brim.position.set(0, 0.03, 0.42); brim.rotation.x = -0.18; g.add(brim);
+    const button = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat('#fbf1dc')); button.position.y = 0.36; g.add(button);
+    return g;
+  },
   cookie() {
     const g = new THREE.Group();
     const dough = mat('#d9a066'), chip = mat('#5b3a28');

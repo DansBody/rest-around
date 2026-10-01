@@ -1,4 +1,4 @@
-// The restaurant room: square floor grid, walls with the street door, furniture occupancy, seats, trash.
+// The café room: square floor grid, walls with the street door, furniture occupancy, seats, trash.
 import { DIRS } from './iso.js';
 import { furnitureById, floorById, wallById } from './data.js';
 import { models } from './models.js';

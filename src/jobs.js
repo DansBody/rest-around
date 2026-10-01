@@ -4,7 +4,7 @@ import { dishById, furnitureById } from './data.js';
 
 const ROLE_OF = { order: 'waiter', deliver: 'waiter', clear: 'waiter', cook: 'chef', drink: 'bartender', sweep: 'cleaner', repair: 'cleaner' };
 const PRIORITY = { deliver: 3, order: 2, clear: 2, cook: 1, drink: 1, repair: 2, sweep: 1 };
-export const JOB_LABEL = { order: 'Taking an order', deliver: 'Serving food', clear: 'Clearing a table', cook: 'Cooking', drink: 'Mixing a drink', sweep: 'Sweeping up', repair: 'Repairing' };
+export const JOB_LABEL = { order: 'Taking an order', deliver: 'Serving an order', clear: 'Clearing a table', cook: 'Brewing', drink: 'Plating a bake', sweep: 'Tidying up', repair: 'Repairing' };
 
 export class Jobs {
   constructor(game) { this.game = game; this.list = []; }
