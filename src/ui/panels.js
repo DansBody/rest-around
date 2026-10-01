@@ -2,11 +2,11 @@
 import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait, thumb, plotThumb } from '../portrait.js';
-import { ACCESSORIES, roleLook } from '../looks.js';
+import { ACCESSORIES, roleLook, nextCast } from '../looks.js';
 import {
   ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  OUTFIT_COLORS, CHARACTER_MODELS, UNIQUE_MODELS, SKILL, ABILITIES, ABILITY_UNLOCK_LV,
+  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV,
 } from '../data.js';
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
@@ -86,11 +86,13 @@ function renderStaff(ui, body) {
   }
   body.append(h('div.section-title', t('Hire')));
   const full = staff.length >= slots;
+  const nextModel = nextCast(new Set(staff.map((a) => a.look.model)));   // new hires are always an original character
+  body.append(h('div.muted', nextModel ? t('Next to join: {name}', { name: UNIQUE_NAMES[nextModel] }) : t('Every character is already on the team')));
   for (const [role, r] of Object.entries(ROLES)) {
     const count = staff.filter((a) => a.role === role).length;
     const note = t(ROLE_NOTE[role]);
     body.append(h('div.row',
-      portrait(roleLook(role), 48, 48),
+      portrait(roleLook(role, nextModel || undefined), 48, 48),
       h('div.grow', h('h3', r.name, h('span.muted', t(' · you have {n}', { n: count }))), h('div.muted', note)),
       h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => g.eco.hire(role) }, t('Hire') + ' ', coinPill(r.hire))));
   }
@@ -113,7 +115,7 @@ function renderJobChange(ui, body, a) {
       : h('button.btn.primary.small' + (fee && !g.eco.canAfford(fee) ? '.disabled' : ''), { onclick: () => { if (g.eco.changeJob(a, role)) { ui.subview = null; ui.renderPanel(); } } },
         t('Retrain'), fee ? coinPill(fee) : h('span.pill', t('Free')));
     body.append(h('div.row' + (cur ? '.current' : ''),
-      portrait(roleLook(role), 48, 48),
+      portrait(roleLook(role, a.look.model), 48, 48),
       h('div.grow', h('h3', r.name), skillLine(a, role), h('div.muted', t(ROLE_NOTE[role])), abilityLine(role, a.skillLv(role) >= ABILITY_UNLOCK_LV, true),
         role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '4px', display: 'inline-block' } }, t('Needs a Juice Bar to work')) : null),
       action));
@@ -136,30 +138,27 @@ function tickStaff(ui, body) {
 function renderOutfit(ui, body, a) {
   const g = ui.game;
   const look = a.look;
-  const refresh = () => { g.refreshCharacter(a); g.changed('look'); ui.renderPanel(); };
-  const names = { knight: 'Knight', mage: 'Mage', barbarian: 'Barbarian', rogue: 'Rogue', rogue_hooded: 'Hooded Rogue', mochalatte: 'Mocha Latte', bbaekko: 'Bbaekko', heehee: 'Hee Hee' };
+  // a staff member is named after their character, so switching the character renames them
+  const refresh = () => { a.name = UNIQUE_NAMES[look.model] || a.name; g.refreshCharacter(a); g.changed('look'); ui.renderPanel(); };
   const accName = (n) => t(n.split('_').slice(1).join(' ').replace('Hooded', 'Hood'));
   const pc = portrait(look, 150, 190);
   pc.style.margin = '0 auto'; pc.style.display = 'block';
-  // one-of-a-kind characters are only offered while nobody else on the team is wearing them
+  // staff are original characters, offered only while nobody else on the team is wearing them
   const taken = new Set(g.staff.filter((s) => s !== a).map((s) => s.look && s.look.model));
-  const models = [...CHARACTER_MODELS, ...UNIQUE_MODELS.filter((m) => !taken.has(m))];
+  const models = UNIQUE_MODELS.filter((m) => !taken.has(m));
   body.append(
     h('div.btnrow', { style: { marginBottom: '6px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', { style: { alignSelf: 'center' } }, t("{name}'s wardrobe", { name: a.name }))),
     pc,
     h('div.orow', h('span', t('Character')), h('div.stepper',
       h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + models.length - 1) % models.length]; look.hide = []; refresh(); } }, gl('back', null, 14)),
-      h('span', t(names[look.model] || look.model)),
+      h('span', UNIQUE_NAMES[look.model] || look.model),
       h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + 1) % models.length]; look.hide = []; refresh(); } }, gl('forward', null, 14)))),
-    h('div.orow', h('span', t('Wear')), h('div.btnrow', (ACCESSORIES[look.model] || []).map((n) => {
+    ...(ACCESSORIES[look.model] || []).length ? [h('div.orow', h('span', t('Wear')), h('div.btnrow', ACCESSORIES[look.model].map((n) => {
       const on = !(look.hide || []).includes(n);
       return h('button.btn.small' + (on ? '.primary' : ''), { onclick: () => { look.hide = on ? [...(look.hide || []), n] : (look.hide || []).filter((x) => x !== n); refresh(); } }, on ? gl('check', accName(n), 14) : accName(n));
-    }))),
-    h('div.orow', h('span', t('Outfit tint')), h('div.swatches',
-      h('span.sw' + (!look.tint ? '.on' : ''), { style: { background: 'linear-gradient(135deg,#fff 45%,#e9dccb 55%)' }, title: t('Original colours'), onclick: () => { look.tint = null; refresh(); } }),
-      OUTFIT_COLORS.map((c) => h('span.sw' + (look.tint === c ? '.on' : ''), { style: { background: c }, onclick: () => { look.tint = c; refresh(); } })))),
+    })))] : [],
     h('div.orow', h('span', t('Chef hat')), h('button.btn.small' + (look.roleHat ? '.primary' : ''), { onclick: () => { look.roleHat = look.roleHat ? null : 'chef'; refresh(); } }, look.roleHat ? t('On') : t('Off'))),
-    h('div.muted', t('Characters come from the KayKit Adventurers pack (CC0). Drop in other glTF characters via assets/manifest.json.')));
+    h('div.muted', t('Staff are our own characters, and take the name of the one they wear.')));
 }
 
 // ------------------------------------------------------------------ menu

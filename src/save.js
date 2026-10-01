@@ -4,7 +4,7 @@ import { World } from './world.js';
 import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
-import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS } from './data.js';
+import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES } from './data.js';
 import { bumpUid, clamp } from './util.js';
 
 export const SAVE_KEY = 'restAround.save.v1';
@@ -121,9 +121,13 @@ function apply(game, data) {
   game.world = w;
   game.agents = []; game.agentTiles.clear(); game.jobs.clear();
   let maxId = 0;
-  for (const sd of (data.staff || []).slice(0, 12)) {
+  const worn = new Set();   // staff are original characters, one each: older saves with KayKit staff get the next free one
+  for (const sd of (data.staff || [])) {
     if (!sd || !ROLES[sd.role]) continue;
-    const a = new Staff(game, sd.role, typeof sd.name === 'string' ? sd.name.slice(0, 16) : 'Pip', sanitizeLook(sd.look, sd.role));
+    const look = sanitizeLook(sd.look, sd.role, worn);
+    if (!look) continue;
+    worn.add(look.model);
+    const a = new Staff(game, sd.role, UNIQUE_NAMES[look.model], look);
     a.energy = num(sd.energy, 100, 0, 100);
     if (sd.skills && typeof sd.skills === 'object') for (const r of Object.keys(ROLES)) { const xp = num(sd.skills[r], 0, 0, 1e7); if (xp) a.skills[r] = Math.floor(xp); }
     game.addStaff(a, Math.floor(num(sd.x, 1)), Math.floor(num(sd.y, 1)));

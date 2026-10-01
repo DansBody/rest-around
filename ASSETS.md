@@ -18,7 +18,7 @@ plain CSS in `src/ui/style.css`, so it needs no images.
 |---|---|---|
 | [KayKit Restaurant Bits](https://kaylousberg.itch.io/restaurant-bits) by Kay Lousberg | CC0 | tables, chairs, stoves, counters (bar), door, plates, bowls, pan, crates, burgers, stew, dinner plate, all vegetable/meat ingredients |
 | [KayKit Furniture Bits](https://kaylousberg.itch.io/furniture-bits) by Kay Lousberg | CC0 | wooden table & chair, armchair, standing lamp, cacti |
-| [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | all characters + their shared animations |
+| [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | the guests and passers-by (staff are our own characters) + their shared animations |
 | Fredoka, Nunito (Google Fonts) | SIL OFL 1.1 | UI fonts (`assets/fonts`, licences alongside) |
 
 The character files were slimmed for the web: weapons removed, the 15 animations the game uses
@@ -28,19 +28,26 @@ so any character plays any clip), and each character saved as `.gltf` + `.bin` +
 textures embedded in a `.glb`, and the characters then render untextured (white).
 
 **Own characters.** **Mocha Latte** (`mochalatte`, the house hamster), **Bbaekko** (`bbaekko`,
-the little winged white tiger) and **Hee Hee** (`heehee`, the brown bear with a petal collar) are
-original characters made with Meshy. Their source tasks are listed on their `CHARACTERS` entries in
+the little winged white tiger), **Hee Hee** (`heehee`, the brown bear with a petal collar) and
+**Cheetie** (`cheetie`, the spotted cheetah with a yellow bow on its tail) and **Oritokki**
+(`oritokki`, the fluffy white bunny-eared puffball with a red bow and one little hand) are original
+characters made with Meshy. Their source tasks are listed on their `CHARACTERS` entries in
 `tools/build_character.py`. All are multi-image-to-3d models made from smooth-vinyl front/side/back
 views of the plush photos, remeshed to ~12k triangles. Meshy's auto-rigger only takes humanoids and
 rejects their chibi shapes, so `tools/build_character.py` (Python 3 + numpy + Pillow) adds a small
 skeleton, skins the mesh and bakes their own clips (idle, waddle, carry, sit, work, sweep, nap,
-cheer…; Bbaekko's wings flutter). Every head is scaled to one house face width (`FACE_WIDTH`) so the
+cheer…; Bbaekko's wings flutter, Cheetie's tail swings, Oritokki's pompom wiggles). Every head is scaled to one house face width (`FACE_WIDTH`) so the
 cast matches. The build can also correct colours and redraw prints (`recolor`, `decals`) and mend
-geometry/texture flaws (`repairs`) when a Meshy model needs it; the current ones need none. The
+geometry/texture flaws (`repairs`) when a Meshy model needs it. Only Cheetie needs one fix: Meshy
+turned the tail's yellow bow brown (the colour of the spots), so a `recolor` limited to the bow's
+region (`where`) repaints it. Oritokki is a ball with a single hand, so its entry sets `one_arm`
+(only the +x arm is skinned and the game holds props in `hand_l`) and `face_width: 0` (the house
+face-width standard would pinch its round body). The
 manifest's `animations` map on each entry tells the game which clip to play for each action. To
 rebuild after changing a model or a clip: download the remesh GLB and run
-`python tools/build_character.py <id> <remesh.glb>`. They're one-of-a-kind staff members: never
-random guests, and only one staff member can wear each at a time.
+`python tools/build_character.py <id> <remesh.glb>`. They *are* the staff: every staff member is one of
+them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, so the number of staff
+slots tops out at the size of the cast. They're never random guests; the KayKit characters are only guests.
 
 ### Adding another own character
 
@@ -52,7 +59,9 @@ The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in t
    toy, keeping its shape, proportions, colours and details exactly: <list every feature>. Only
    change: smooth matte surface instead of fur. No keychain, chain, clasp or tag, no tail. Plain white
    background, front, side and back views."* (≤ 600 characters.) nano-banana drifts off the design
-   (adds tails and bellies, moves bows, lengthens arms), so don't use it.
+   (adds tails and bellies, moves bows, lengthens arms), so don't use it. Leave "no tail" out when the
+   plush has one (Cheetie's does) and name it instead: *"short spotted tail with a yellow bow"*. Check
+   that the side and back views agree on the tail's size and shape.
 2. **Check the views** with the owner before spending more, and look for transparent holes: enclosed
    alpha < 10, often where a keychain ring was. Fill them with the surrounding colour.
 3. **3D** [30]: multi-image-to-3d from those images (Meshy 7, textured, GLB). A started task can't be
@@ -62,7 +71,7 @@ The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in t
    off the hips/legs, the arm band (where x jumps out), the neck (narrowest point), the cheek band
    below the ears, and the ears.
 6. **Add a `CHARACTERS` entry**: bones, skin bands, `face` band (copy the closest existing character and
-   adjust), then run `python tools/build_character.py <id> <remesh.glb>`.
+   adjust; a tail is one `tail` bone plus the `tail_z/x/y` bands, copy Cheetie), then run `python tools/build_character.py <id> <remesh.glb>`.
 7. **Register it in the game**:
    - a manifest character entry (copy an existing one; `animations` map, `hand`/`handL`/`head`, `trayPos`, `sitForward`)
    - the id in `UNIQUE_MODELS` (`src/data.js`)
@@ -108,7 +117,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (70)
+### 3D models (72)
 
 **Furniture**
 
@@ -214,6 +223,8 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `mochalatte` | `models/characters/MochaLatte.gltf` | own rig + clips |
 | `bbaekko` | `models/characters/Bbaekko.gltf` | own rig + clips |
 | `heehee` | `models/characters/HeeHee.gltf` | own rig + clips |
+| `cheetie` | `models/characters/Cheetie.gltf` | own rig + clips |
+| `oritokki` | `models/characters/Oritokki.gltf` | own rig + clips |
 
 ### 2D images (71)
 

@@ -6,7 +6,6 @@ import { TileClaims } from './agent.js';
 import { Jobs } from './jobs.js';
 import { Customer } from './customer.js';
 import { makeStaff } from './staff.js';
-import { mochaLook } from './looks.js';
 import { DayCycle } from './day.js';
 import { Rating } from './rating.js';
 import { Economy } from './economy.js';
@@ -83,8 +82,8 @@ export class Game {
     w.addFurniture('plant_fern', 7, 7, 1);
     w.addFurniture('lamp_butter', 0, 7, 1);
     for (let x = 4; x < 8; x++) for (let y = 0; y < 2; y++) w.floors[x][y] = 'fl_cream';
-    this.addStaff(makeStaff(this, 'waiter', 'Mocha Latte', mochaLook()), 2, 2);
-    this.addStaff(makeStaff(this, 'chef'), 6, 2);
+    this.addStaff(makeStaff(this, 'waiter', 'mochalatte'), 2, 2);
+    this.addStaff(makeStaff(this, 'chef', 'bbaekko'), 6, 2);
     this.eco.syncGarden();
     this.day.nextSpawn = 3;
     this.rating.recompute();

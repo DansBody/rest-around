@@ -42,6 +42,8 @@ FACE_WIDTH = 0.67
 #           stray from it. arm: repaint as plain arm in the colour sampled at `arm_tip`.
 #   keep    triangles (by mean colour) the clean-up leaves alone and keeps out of local colours.
 #   recolor / decals  see paint_texture.
+#   tail    optional `tail` bone (needs tail_z/x/y skin bands); one_arm: only arm_l is skinned;
+#           face_width: override FACE_WIDTH (0 = leave the head's shape alone).
 CHARACTERS = {
     'mochalatte': {
         'name': 'MochaLatte',
@@ -104,6 +106,58 @@ CHARACTERS = {
         'skin': {'leg': (0.28, 0.42), 'arm_x': (0.47, 0.54), 'arm_y': (0.36, 0.42), 'arm_top': (0.54, 0.6),
                  'head': (0.86, 0.96), 'chest': (0.42, 0.56), 'ear_y': (1.52, 1.62), 'ear_x': (0.25, 0.35)},
         'face': (1.05, 1.4),
+        'repairs': [],
+    },
+    'cheetie': {
+        'name': 'Cheetie',
+        # Meshy gpt-image-2 image-to-image 01a0f74f-2829-70a5-a274-cae8b3edb7b5 (smooth vinyl
+        # front/side/back views of the plush) -> multi-image-to-3d 01a0f751-8381-775f-9a49-faed13e53a5d,
+        # remesh 01a0f755-899c-7312-82df-b9a7466d6500
+        'scale': 1.1,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.3, 0)),
+            ('leg_l', 'hips', (0.23, 0.3, 0)), ('leg_r', 'hips', (-0.23, 0.3, 0)),
+            ('chest', 'hips', (0, 0.5, 0)),
+            ('arm_l', 'chest', (0.5, 0.72, 0)), ('hand_l', 'arm_l', (0.68, 0.76, 0.05)),
+            ('arm_r', 'chest', (-0.5, 0.72, 0)), ('hand_r', 'arm_r', (-0.68, 0.76, 0.05)),
+            ('tail', 'hips', (0, 0.34, -0.3)),
+            ('head', 'chest', (0, 0.98, 0)),
+            ('ear_l', 'head', (0.5, 1.7, 0)), ('ear_r', 'head', (-0.5, 1.7, 0)),
+        ],
+        # the tail (z < -0.3, y 0.15-0.7) is skinned before the legs so its lower curl isn't pulled along
+        'skin': {'leg': (0.14, 0.3), 'arm_x': (0.47, 0.55), 'arm_y': (0.5, 0.6), 'arm_top': (0.88, 0.96),
+                 'head': (0.96, 1.06), 'chest': (0.36, 0.5), 'ear_y': (1.6, 1.7), 'ear_x': (0.4, 0.5),
+                 'tail_z': (-0.3, -0.42), 'tail_x': (0.34, 0.27), 'tail_y': (0.08, 0.15, 0.68, 0.75)},
+        'face': (1.1, 1.45),
+        'repairs': [],
+        # Meshy turned the tail's yellow bow brown (the same brown as the spots), so repaint it by region
+        'recolor': [{'from': (132, 78, 20), 'to': (246, 200, 40), 'tol': 0.07,
+                     'where': lambda x, y, z: ((y > 0.46) & (y < 0.76) & (z > -0.52) & (z < -0.33) & (np.abs(x) < 0.27)).astype(np.float32)}],
+    },
+    'oritokki': {
+        'name': 'Oritokki',
+        # Meshy gpt-image-2 image-to-image 01a0f767-3041-76bf-880a-2e7030aa7c9b (smooth vinyl
+        # front/side/back views of the plush) -> multi-image-to-3d 01a0f768-fa41-75e1-b4f5-9e1c223abdd8,
+        # remesh 01a0f76b-0eca-7369-b0f8-8f3c109418f9
+        'scale': 1.0,       # a 1.5 wide ball: the house 1.1 would crowd the chairs
+        # a fluffy ball with one little hand (on +x): no cheek band to standardise, and only arm_l is skinned
+        # (hand_r still exists so the clips can pose both arms; the game holds props in hand_l)
+        'face_width': 0, 'one_arm': True,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.3, 0)),
+            ('leg_l', 'hips', (0.26, 0.25, 0.05)), ('leg_r', 'hips', (-0.26, 0.25, 0.05)),
+            ('chest', 'hips', (0, 0.55, 0)),
+            ('arm_l', 'chest', (0.6, 0.56, 0)), ('hand_l', 'arm_l', (0.7, 0.54, 0.02)),
+            ('arm_r', 'chest', (-0.6, 0.56, 0)), ('hand_r', 'arm_r', (-0.7, 0.54, 0.02)),
+            ('tail', 'hips', (0, 0.5, -0.3)),
+            ('head', 'chest', (0, 0.8, 0)),
+            ('ear_l', 'head', (0.35, 1.35, 0)), ('ear_r', 'head', (-0.35, 1.35, 0)),
+        ],
+        # the ears (y > 1.2) are two fans that meet at x = 0; the pompom tail sits at the back (y 0.4-0.6)
+        'skin': {'leg': (0.1, 0.28), 'arm_x': (0.6, 0.65), 'arm_y': (0.42, 0.48), 'arm_top': (0.62, 0.7),
+                 'head': (0.7, 1.0), 'chest': (0.4, 0.6), 'ear_y': (1.2, 1.38), 'ear_x': (0.1, 0.3),
+                 'tail_z': (-0.5, -0.54), 'tail_x': (0.16, 0.11), 'tail_y': (0.3, 0.4, 0.6, 0.7)},
+        'face': (0.7, 1.0),
         'repairs': [],
     },
 }
@@ -223,7 +277,8 @@ def bleed_edits(a, changed, used, px=4):
 
 def paint_texture(img, P, UV, IDX):
     """Colour corrections and decals, done on the 3D surface (each texel knows where it sits).
-    recolor: texels close in hue to `from` are shifted to `to`, keeping their light and shade.
+    recolor: texels close in hue to `from` are shifted to `to`, keeping their light and shade
+             (`where` limits it to a region: a function of x, y, z returning a 0/1 mask).
     decals:  a flat front-facing drawing projected onto the body (x, y), e.g. a chest print; the
              model's own (garbled) print inside `erase` is painted over with the cloth colour first."""
     size = img.size[0]
@@ -237,6 +292,7 @@ def paint_texture(img, P, UV, IDX):
         chroma = lambda c: c / (c.sum(-1, keepdims=True) + 1e-6)
         near = np.linalg.norm(chroma(out) - chroma(src), axis=1)
         w = 1 - smooth(r.get('tol', 0.05) * 0.5, r.get('tol', 0.05), near)
+        if 'where' in r: w = w * r['where'](*xyz.T)               # only inside this region of the body
         bright = (out.sum(1) / src.sum())[:, None]                # keep the texel's light/shade
         out = out * (1 - w[:, None]) + (dst * bright) * w[:, None]
     for d in C.get('decals', []):
@@ -343,9 +399,11 @@ def repair_texture(img, P, UV, IDX):
 def standard_face(P, N):
     """Widen or narrow the head to FACE_WIDTH, fading in over the neck. Returns the new positions
     and normals and the warp itself (for the bone rest positions)."""
+    fw = C.get('face_width', FACE_WIDTH)
+    if not fw: return P, N, lambda Q: Q          # a body of its own shape keeps it
     y0, y1 = C['face']
     band = P[(P[:, 1] > y0) & (P[:, 1] < y1)]
-    s = FACE_WIDTH * P[:, 1].max() / (2 * np.abs(band[:, 0]).max())
+    s = fw * P[:, 1].max() / (2 * np.abs(band[:, 0]).max())
     lo, hi = C['skin']['head']
 
     def factors(y):  # sideways s, front-to-back half as much, so the head stays round
@@ -381,7 +439,12 @@ def skin_weights(P):
         W[:, BI[bone + '_r']] = w * (x <= 0)
 
     rem = np.ones(len(P), np.float32)
-    leg = 1 - smooth(*k['leg'], y)
+    if 'tail' in BI:   # behind the body (z), within the narrow tail (x) and its height band (y)
+        y0, y1, y2, y3 = k['tail_y']
+        tail = smooth(*k['tail_z'], z) * smooth(*k['tail_x'], ax) * smooth(y0, y1, y) * (1 - smooth(y2, y3, y))
+        W[:, BI['tail']] = tail
+        rem -= tail
+    leg = rem * (1 - smooth(*k['leg'], y))
     left = smooth(-0.05, 0.05, x)
     W[:, BI['leg_l']] = leg * left
     W[:, BI['leg_r']] = leg * (1 - left)
@@ -392,6 +455,7 @@ def skin_weights(P):
         side(wing, 'wing')
         rem -= wing
     arm = rem * smooth(*k['arm_x'], ax) * smooth(*k['arm_y'], y) * (1 - smooth(*k['arm_top'], y))
+    if C.get('one_arm'): arm = arm * (x > 0)   # only the left (+x) arm has a hand
     side(arm, 'arm')
     rem -= arm
     head = rem * smooth(*k['head'], y)
@@ -436,6 +500,11 @@ def wings(pose, open_, flap=0.0, p=0.0, k=2):
     pose['wing_r'] = (0, -a, 0)
 
 
+def tail(pose, p=0.0, sway=0.0, lift=0.0, k=1, ph=0.0):
+    """Tail swing (rot y: sideways) and lift (rot x > 0 raises a tail that points backwards)."""
+    pose['tail'] = (lift, sway * S(p, k, ph), 0)
+
+
 def breathe(pose, p, k=1, amp=0.025):
     pose['chest@s'] = (1 + amp * S(p, k), 1 - amp * 0.6 * S(p, k), 1 + amp * S(p, k))
 
@@ -446,6 +515,7 @@ def idle(p):
     arms(q, lz=0.06 + 0.05 * S(p), rz=0.06 + 0.05 * S(p, 1, 0.5))
     breathe(q, p)
     wings(q, 0.1, 0.08, p)
+    tail(q, p, 0.3, 0.1)
     return q
 
 
@@ -457,6 +527,7 @@ def walk(p, carry=False):
     if carry: arms(q, lx=-1.25, rx=-1.25, lz=-0.15, rz=-0.15)
     else: arms(q, lx=0.5 * S(p), rx=-0.5 * S(p), lz=0.15, rz=0.15)
     wings(q, 0.2, 0.18, p)
+    tail(q, p, 0.35, 0.2, 1, -0.1)
     return q
 
 
@@ -470,6 +541,7 @@ def sit(p, legswing=0.0):
          'leg_r': (-1.35 - legswing * S(p), 0, -0.05), 'head': (0.02 * S(p), 0, 0.05 * S(p, 1, 0.3))}
     arms(q, lx=-0.35, rx=-0.35, lz=0.2, rz=0.2)
     breathe(q, p)
+    tail(q, p, 0.18, 0.5)
     return q
 
 
@@ -491,6 +563,7 @@ def work(p):  # cooking / arcade: busy alternating paws in front
     q = {'hips@p': (0, 0.02 * abs(S(p, 2)), 0), 'chest': (0.12, 0.08 * S(p), 0), 'head': (0.15, 0, 0.05 * S(p))}
     arms(q, lx=-1.0 - 0.35 * S(p, 2), rx=-1.0 + 0.35 * S(p, 2), lz=-0.1, rz=-0.1)
     breathe(q, p, 2, 0.02)
+    tail(q, p, 0.3, 0.15, 2)
     return q
 
 
@@ -505,6 +578,7 @@ def talk(p):
     arms(q, lx=-0.3, rx=-0.2, lz=1.5 + 0.35 * S(p, 2), rz=0.15)
     breathe(q, p)
     wings(q, 0.12, 0.1, p)
+    tail(q, p, 0.4, 0.2, 2)
     return q
 
 
@@ -543,6 +617,7 @@ def cheer(p):
          'chest@s': (1 + 0.06 * land, 1 - 0.08 * land, 1 + 0.06 * land)}
     arms(q, lz=2.3 + 0.3 * S(p, 2), rz=2.3 + 0.3 * S(p, 2, 0.5))
     wings(q, 0.4, 0.35, p, 4)
+    tail(q, p, 0.5, 0.5 + 0.3 * hop, 4)
     return q
 
 
@@ -553,6 +628,7 @@ def hit(p):
          'chest@s': (1 + 0.05 * e, 1 - 0.07 * e, 1 + 0.05 * e)}
     arms(q, lx=-0.4 * e, rx=-0.4 * e, lz=0.9 * e, rz=0.9 * e)
     wings(q, 0.5 * e)
+    tail(q, p, 0.0, 0.7 * e)
     return q
 
 

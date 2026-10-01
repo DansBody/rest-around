@@ -5,6 +5,7 @@ import {
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
 } from './data.js';
 import { makeStaff } from './staff.js';
+import { nextCast } from './looks.js';
 import { t } from './i18n.js';
 import { bus, choice, randInt, clamp } from './util.js';
 
@@ -170,6 +171,7 @@ export class Economy {
   hire(role) {
     const g = this.game, s = this.s;
     if (g.staff.length >= staffSlots(s.level)) return g.toast(t('All staff slots are full — level up for more'), 'bad');
+    if (!nextCast(new Set(g.staff.map((a) => a.look.model)))) return g.toast(t('Every character is already on the team'), 'bad');
     if (!this.spend(ROLES[role].hire, t('hiring'))) return;
     const st = makeStaff(g, role);
     const e = g.world.entry;

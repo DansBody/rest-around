@@ -2,16 +2,16 @@
 // Energy drains while working; at zero the staff member finishes nothing new and naps until
 // rested (slowly) or fed a snack (instantly).
 import { Agent } from './agent.js';
-import { roleLook } from './looks.js';
+import { staffLook, nextCast } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
-import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY } from './data.js';
-import { choice, rand, randInt, manhattan, uid, bus } from './util.js';
+import { dishById, furnitureById, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY } from './data.js';
+import { rand, randInt, manhattan, uid, bus } from './util.js';
 import { t, titledRole } from './i18n.js';
 
-export function makeStaff(game, role, name, look) {
-  const used = new Set(game.staff.map((s) => s.name));
-  const free = STAFF_NAMES.filter((n) => !used.has(n));
-  return new Staff(game, role, name || choice(free.length ? free : STAFF_NAMES), look || roleLook(role));
+/** A new staff member: `model` (or the next original character nobody wears), named after it. Null when the cast is used up. */
+export function makeStaff(game, role, model) {
+  model = model || nextCast(new Set(game.staff.map((s) => s.look.model)));
+  return model ? new Staff(game, role, UNIQUE_NAMES[model], staffLook(model, role)) : null;
 }
 
 export class Staff extends Agent {

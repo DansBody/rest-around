@@ -48,8 +48,10 @@ export const ZH_TW = {
   'Current job': '目前職業', 'Retrain': '轉職', 'Needs a Juice Bar to work': '需要果汁吧台才能工作',
   "Staff gain experience by finishing jobs in their current role and keep it in every role they've had. Skill makes them walk and work faster (up to +{n}% as a Master). Retraining costs half the hiring fee — going back to a job they're already {title} or better at is free.":
     '員工完成目前職業的工作會累積經驗，而且每個做過的職業經驗都會保留。技能越高，走路和做事越快（大師最多快 {n}%）。轉職費用是雇用費的一半；回到已經達到{title}以上的職業則免費。',
-  "{name}'s wardrobe": '{name} 的衣櫃', 'Character': '角色', 'Wear': '配件', 'Outfit tint': '服裝色調', 'Original colours': '原本的顏色', 'Chef hat': '廚師帽',
-  'Characters come from the KayKit Adventurers pack (CC0). Drop in other glTF characters via assets/manifest.json.': '角色來自 KayKit Adventurers 素材包（CC0）。可以在 assets/manifest.json 加入其他 glTF 角色。',
+  "{name}'s wardrobe": '{name} 的衣櫃', 'Character': '角色', 'Wear': '配件', 'Chef hat': '廚師帽',
+  'Staff are our own characters, and take the name of the one they wear.': '員工都是原創角色，名字會跟著他們穿的角色走。',
+  'Next to join: {name}': '下一位加入：{name}',
+  'Every character is already on the team': '所有角色都已經在團隊裡了',
   'Knight': '騎士', 'Mage': '法師', 'Barbarian': '野蠻人', 'Rogue': '盜賊', 'Hooded Rogue': '兜帽盜賊',
   'Helmet': '頭盔', 'Cape': '披風', 'Hat': '帽子', 'Hood': '兜帽',
 

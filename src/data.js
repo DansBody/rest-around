@@ -121,7 +121,7 @@ export const dishPoints = (d, lv) => Math.round(d.points * (1 + 0.2 * (lv - 1)))
 // ---------------- progression ----------------
 export const LEVEL_POINTS = [0, 0, 90, 260, 560, 1000, 1650, 2500, 3700, 5300, 7500, 10500, 14500, 20000];
 export const MAX_LEVEL = LEVEL_POINTS.length - 1;
-export const staffSlots = (lv) => Math.min(9, 1 + lv);
+export const staffSlots = (lv) => Math.min(UNIQUE_MODELS.length, 1 + lv);   // one slot per original character
 export const gardenPlots = (lv) => Math.min(6, 1 + lv);
 export function menuSlots(lv) {
   const t = [
@@ -142,12 +142,13 @@ export const ROLES = {
   cleaner: { name: 'Cleaner', hire: 70, model: 'knight', look: { top: ['hoodie', '#b5e0c8'], bottom: ['pants', '#7fa7c9'], hat: ['cap', '#f5b3a5'] } },
   bartender: { name: 'Bartender', hire: 100, model: 'mage', look: { top: ['jacket', '#d99aa8'], bottom: ['skirt', '#5c4d6b'], hat: ['bow', '#f7d58b'] } },
 };
-export const STAFF_NAMES = ['Mochi', 'Pip', 'Tansy', 'Juniper', 'Bo', 'Clover', 'Wren', 'Suki', 'Olive', 'Fennel', 'Poppy', 'Taro', 'Miso', 'Hazel', 'Basil', 'Kiki', 'Nori', 'Sprout', 'Maple', 'Dot'];
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 
 export const CHARACTER_MODELS = ['knight', 'mage', 'barbarian', 'rogue', 'rogue_hooded'];
-// one-of-a-kind staff characters: never random customers/passers-by, at most one staff member each
-export const UNIQUE_MODELS = ['mochalatte', 'bbaekko', 'heehee'];
+// Staff are always one of our own characters (one staff member each, named after the character);
+// the KayKit CHARACTER_MODELS are only for guests and passers-by.
+export const UNIQUE_MODELS = ['mochalatte', 'bbaekko', 'heehee', 'cheetie', 'oritokki'];
+export const UNIQUE_NAMES = { mochalatte: 'Mocha Latte', bbaekko: 'Bbaekko', heehee: 'Hee Hee', cheetie: 'Cheetie', oritokki: 'Oritokki' };
 export const SKIN_TONES = ['#fde3cf', '#f6cfae', '#e8b48f', '#c98c68', '#9c6a4f', '#f9dcc0'];
 export const HAIR_COLORS = ['#4a3328', '#7a4e33', '#c98b4f', '#f0cf7a', '#e59aa8', '#8fb4e0', '#3b3a4a', '#b8a4d8', '#f2efe9'];
 export const OUTFIT_COLORS = ['#f6b8c4', '#a9dcc6', '#9cc3e6', '#f9dd96', '#c9b6e3', '#f5b58d', '#fbfaf5', '#6d6a8a', '#d99aa8', '#b5e0c8', '#7fa7c9', '#e88a7a'];
