@@ -29,18 +29,48 @@ textures embedded in a `.glb`, and the characters then render untextured (white)
 
 **Own characters.** **Mocha Latte** (`mochalatte`, the house hamster), **Bbaekko** (`bbaekko`,
 the little winged white tiger) and **Hee Hee** (`heehee`, the brown bear with a petal collar) are
-original characters made with Meshy. Their source tasks are listed
-on their `CHARACTERS` entries in `tools/build_character.py`. All are multi-image-to-3d models made
-from smooth-vinyl front/side/back views of the plush photos.
-Both were remeshed to ~12k triangles. Meshy's auto-rigger only takes humanoids and rejects their chibi
-shapes, so `tools/build_character.py` (Python 3 + numpy + Pillow) adds a small skeleton, skins the
-mesh and bakes their own clips (idle, waddle, carry, sit, work, sweep, nap, cheer…; Bbaekko's wings
-flutter). Every head is scaled to one house face width (`FACE_WIDTH`) so the cast matches. The
-build can also correct colours and redraw prints (`recolor`, `decals`) and mend geometry/texture
-flaws (`repairs`) when a Meshy model needs it; the current ones need none. The manifest's `animations` map on each entry tells the game which clip to play for each
-action. To rebuild after changing a model or a clip: download the remesh GLB and run
+original characters made with Meshy. Their source tasks are listed on their `CHARACTERS` entries in
+`tools/build_character.py`. All are multi-image-to-3d models made from smooth-vinyl front/side/back
+views of the plush photos, remeshed to ~12k triangles. Meshy's auto-rigger only takes humanoids and
+rejects their chibi shapes, so `tools/build_character.py` (Python 3 + numpy + Pillow) adds a small
+skeleton, skins the mesh and bakes their own clips (idle, waddle, carry, sit, work, sweep, nap,
+cheer…; Bbaekko's wings flutter). Every head is scaled to one house face width (`FACE_WIDTH`) so the
+cast matches. The build can also correct colours and redraw prints (`recolor`, `decals`) and mend
+geometry/texture flaws (`repairs`) when a Meshy model needs it; the current ones need none. The
+manifest's `animations` map on each entry tells the game which clip to play for each action. To
+rebuild after changing a model or a clip: download the remesh GLB and run
 `python tools/build_character.py <id> <remesh.glb>`. They're one-of-a-kind staff members: never
 random guests, and only one staff member can wear each at a time.
+
+### Adding another own character
+
+The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in the source (×1.1 ≈
+2.1 in game), face width 0.67 × height (applied automatically). Each step's Meshy cost is in brackets.
+
+1. **Three views** [12]: Meshy image-to-image with **gpt-image-2** and `generate_multi_view`, using the
+   plush photo as the reference. Prompt pattern: *"Recreate this exact plush … as a smooth soft-vinyl
+   toy, keeping its shape, proportions, colours and details exactly: <list every feature>. Only
+   change: smooth matte surface instead of fur. No keychain, chain, clasp or tag, no tail. Plain white
+   background, front, side and back views."* (≤ 600 characters.) nano-banana drifts off the design
+   (adds tails and bellies, moves bows, lengthens arms), so don't use it.
+2. **Check the views** with the owner before spending more, and look for transparent holes: enclosed
+   alpha < 10, often where a keychain ring was. Fill them with the surrounding colour.
+3. **3D** [30]: multi-image-to-3d from those images (Meshy 7, textured, GLB). A started task can't be
+   cancelled.
+4. **Remesh** [5] to 12 000 triangles, origin at the bottom, and download the GLB.
+5. **Measure** the remesh: centre it, then print the x/z extent per 0.05 of height. From that read
+   off the hips/legs, the arm band (where x jumps out), the neck (narrowest point), the cheek band
+   below the ears, and the ears.
+6. **Add a `CHARACTERS` entry**: bones, skin bands, `face` band (copy the closest existing character and
+   adjust), then run `python tools/build_character.py <id> <remesh.glb>`.
+7. **Register it in the game**:
+   - a manifest character entry (copy an existing one; `animations` map, `hand`/`handL`/`head`, `trayPos`, `sitForward`)
+   - the id in `UNIQUE_MODELS` (`src/data.js`)
+   - the display name in the wardrobe `names` map (`src/ui/panels.js`)
+   - this section, then `node tools/assets-table.mjs`
+8. **Verify** in the running game. Hard-reload changed files (browsers cache the modules and models).
+   Render the new character next to the others, front and back, plus a few clips (Walk, Cheer, Sit,
+   Nap, Talk, Carry). Check that nothing pokes out or tears (collars, wings, bows).
 
 ## Conventions for models
 
