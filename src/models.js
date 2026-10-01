@@ -231,7 +231,8 @@ class ModelStore {
         const g = d.file ? await fetchGltf(d.file) : null;
         if (g) {
           g.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.frustumCulled = false; } });
-          this.characters.set(d.id, { scene: g.scene, clips: [...this.clips, ...g.animations] });
+          // characters with their own rig bring their own clips; the rest share the KayKit library
+          this.characters.set(d.id, { scene: g.scene, clips: d.animations ? g.animations : [...this.clips, ...g.animations] });
         } else this.placeholder.add(d.id);
       } else {
         this.templates.set(d.id, await this.build(d, fetchGltf));

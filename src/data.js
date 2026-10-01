@@ -146,6 +146,8 @@ export const STAFF_NAMES = ['Mochi', 'Pip', 'Tansy', 'Juniper', 'Bo', 'Clover', 
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 
 export const CHARACTER_MODELS = ['knight', 'mage', 'barbarian', 'rogue', 'rogue_hooded'];
+// one-of-a-kind staff characters: never random customers/passers-by, at most one staff member each
+export const UNIQUE_MODELS = ['mochalatte', 'bbaekko', 'heehee'];
 export const SKIN_TONES = ['#fde3cf', '#f6cfae', '#e8b48f', '#c98c68', '#9c6a4f', '#f9dcc0'];
 export const HAIR_COLORS = ['#4a3328', '#7a4e33', '#c98b4f', '#f0cf7a', '#e59aa8', '#8fb4e0', '#3b3a4a', '#b8a4d8', '#f2efe9'];
 export const OUTFIT_COLORS = ['#f6b8c4', '#a9dcc6', '#9cc3e6', '#f9dd96', '#c9b6e3', '#f5b58d', '#fbfaf5', '#6d6a8a', '#d99aa8', '#b5e0c8', '#7fa7c9', '#e88a7a'];

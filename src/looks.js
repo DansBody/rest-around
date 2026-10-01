@@ -1,7 +1,7 @@
 // Character looks for the 3D characters: which model, which optional accessories are hidden,
 // a light outfit tint and a small size variation. Staff roles get a recognisable default.
 import { choice, chance, rand } from './util.js';
-import { OUTFIT_COLORS, ROLES, CHARACTER_MODELS } from './data.js';
+import { OUTFIT_COLORS, ROLES, CHARACTER_MODELS, UNIQUE_MODELS } from './data.js';
 
 export const ACCESSORIES = {
   knight: ['Knight_Helmet', 'Knight_Cape'],
@@ -10,6 +10,11 @@ export const ACCESSORIES = {
   rogue: ['Rogue_Cape'],
   rogue_hooded: ['Rogue_Cape'],
 };
+
+/** Mocha Latte, the house hamster: her own look whatever job she does. */
+export function mochaLook() {
+  return { model: 'mochalatte', hide: [], tint: null, scale: 1, roleHat: null };
+}
 
 export function randomLook() {
   const model = choice(CHARACTER_MODELS);
@@ -30,7 +35,8 @@ export function roleLook(role) {
 }
 
 export function sanitizeLook(l, role) {
-  if (!l || typeof l !== 'object' || !CHARACTER_MODELS.includes(l.model)) return role ? roleLook(role) : randomLook();
+  const known = CHARACTER_MODELS.includes(l && l.model) || (role && UNIQUE_MODELS.includes(l && l.model));
+  if (!l || typeof l !== 'object' || !known) return role ? roleLook(role) : randomLook();
   const acc = ACCESSORIES[l.model] || [];
   return {
     model: l.model,

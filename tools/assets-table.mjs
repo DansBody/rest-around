@@ -23,7 +23,8 @@ function modelNotes(m) {
   if (m.rotY) out.push(`rotY ${m.rotY}°`);
   if (m.scale) out.push(`scale ${m.scale}`);
   if (m.tintable) out.push('tintable');
-  if (m.accessories) out.push('accessories: ' + m.accessories.join(', '));
+  if (m.accessories && m.accessories.length) out.push('accessories: ' + m.accessories.join(', '));
+  if (m.animations) out.push('own rig + clips');
   return out.join('; ');
 }
 

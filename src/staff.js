@@ -8,10 +8,10 @@ import { dishById, furnitureById, ROLES, STAFF_NAMES, SPEED, ENERGY, SKILL, skil
 import { choice, rand, randInt, manhattan, uid, bus } from './util.js';
 import { t, titledRole } from './i18n.js';
 
-export function makeStaff(game, role, name) {
+export function makeStaff(game, role, name, look) {
   const used = new Set(game.staff.map((s) => s.name));
   const free = STAFF_NAMES.filter((n) => !used.has(n));
-  return new Staff(game, role, name || choice(free.length ? free : STAFF_NAMES), roleLook(role));
+  return new Staff(game, role, name || choice(free.length ? free : STAFF_NAMES), look || roleLook(role));
 }
 
 export class Staff extends Agent {

@@ -6,7 +6,7 @@ import { ACCESSORIES, roleLook } from '../looks.js';
 import {
   ROLES, SNACKS, DISHES, DISH_CATS, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  OUTFIT_COLORS, CHARACTER_MODELS, SKILL, ABILITIES, ABILITY_UNLOCK_LV,
+  OUTFIT_COLORS, CHARACTER_MODELS, UNIQUE_MODELS, SKILL, ABILITIES, ABILITY_UNLOCK_LV,
 } from '../data.js';
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
@@ -137,11 +137,13 @@ function renderOutfit(ui, body, a) {
   const g = ui.game;
   const look = a.look;
   const refresh = () => { g.refreshCharacter(a); g.changed('look'); ui.renderPanel(); };
-  const names = { knight: 'Knight', mage: 'Mage', barbarian: 'Barbarian', rogue: 'Rogue', rogue_hooded: 'Hooded Rogue' };
+  const names = { knight: 'Knight', mage: 'Mage', barbarian: 'Barbarian', rogue: 'Rogue', rogue_hooded: 'Hooded Rogue', mochalatte: 'Mocha Latte', bbaekko: 'Bbaekko', heehee: 'Hee Hee' };
   const accName = (n) => t(n.split('_').slice(1).join(' ').replace('Hooded', 'Hood'));
   const pc = portrait(look, 150, 190);
   pc.style.margin = '0 auto'; pc.style.display = 'block';
-  const models = CHARACTER_MODELS;
+  // one-of-a-kind characters are only offered while nobody else on the team is wearing them
+  const taken = new Set(g.staff.filter((s) => s !== a).map((s) => s.look && s.look.model));
+  const models = [...CHARACTER_MODELS, ...UNIQUE_MODELS.filter((m) => !taken.has(m))];
   body.append(
     h('div.btnrow', { style: { marginBottom: '6px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', { style: { alignSelf: 'center' } }, t("{name}'s wardrobe", { name: a.name }))),
     pc,

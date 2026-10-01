@@ -9,9 +9,10 @@ const SIT_FORWARD = 0.68;
 export class CharacterView {
   constructor(scene, agent, manifest) {
     this.agent = agent;
-    this.anims = manifest.characterAnimations || {};
     const look = agent.look || {};
     this.modelId = look.model || 'knight';
+    this.def = models.def(this.modelId) || {};
+    this.anims = this.def.animations || manifest.characterAnimations || {};
     const inst = models.character(this.modelId);
     this.inst = inst;
     this.root = new THREE.Group();
@@ -84,7 +85,7 @@ export class CharacterView {
           const dishModel = held.dish === 'dirty_plate' ? 'm_plate_dirty' : held.dish;
           const dish = models.instance(dishModel); dish.scale.setScalar(0.55); dish.position.y = 0.04; o.add(dish);
         }
-        o.position.set(0, 1.05, 0.55);
+        o.position.set(...(this.def.trayPos || [0, 1.05, 0.55]));
         this.root.add(o);
       } else {
         const id = { held_broom: 'm_broom', held_wrench: 'm_wrench', held_shaker: 'm_mug' }[held.id] || 'm_mug';
@@ -109,8 +110,9 @@ export class CharacterView {
       const ch = a.onTile;
       x = (ch.x + 0.5) * TILE; z = (ch.y + 0.5) * TILE;
       target = DIR_YAW[ch.dir];
-      // the sit clip shifts the hips back by ~0.7 units; step forward so they land on the seat
-      x += Math.sin(target) * SIT_FORWARD; z += Math.cos(target) * SIT_FORWARD;
+      // the KayKit sit clip shifts the hips back by ~0.7 units; step forward so they land on the seat
+      const fwd = this.def.sitForward ?? SIT_FORWARD;
+      x += Math.sin(target) * fwd; z += Math.cos(target) * fwd;
       anim = 'sit';
     } else if (p.moving) anim = p.held && p.held.id === 'held_tray' ? 'carry' : 'walk';
     else if (p.mode && p.mode !== 'idle' && p.mode !== 'carry') anim = p.mode;

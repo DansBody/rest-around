@@ -27,6 +27,21 @@ so any character plays any clip), and each character saved as `.gltf` + `.bin` +
 `*_texture.png`. Keep textures external: some hosts block the `blob:` URLs three.js uses for
 textures embedded in a `.glb`, and the characters then render untextured (white).
 
+**Own characters.** **Mocha Latte** (`mochalatte`, the house hamster), **Bbaekko** (`bbaekko`,
+the little winged white tiger) and **Hee Hee** (`heehee`, the brown bear with a petal collar) are
+original characters made with Meshy. Their source tasks are listed
+on their `CHARACTERS` entries in `tools/build_character.py`. All are multi-image-to-3d models made
+from smooth-vinyl front/side/back views of the plush photos.
+Both were remeshed to ~12k triangles. Meshy's auto-rigger only takes humanoids and rejects their chibi
+shapes, so `tools/build_character.py` (Python 3 + numpy + Pillow) adds a small skeleton, skins the
+mesh and bakes their own clips (idle, waddle, carry, sit, work, sweep, nap, cheer…; Bbaekko's wings
+flutter). Every head is scaled to one house face width (`FACE_WIDTH`) so the cast matches. The
+build can also correct colours and redraw prints (`recolor`, `decals`) and mend geometry/texture
+flaws (`repairs`) when a Meshy model needs it; the current ones need none. The manifest's `animations` map on each entry tells the game which clip to play for each
+action. To rebuild after changing a model or a clip: download the remesh GLB and run
+`python tools/build_character.py <id> <remesh.glb>`. They're one-of-a-kind staff members: never
+random guests, and only one staff member can wear each at a time.
+
 ## Conventions for models
 
 | Rule | Value |
@@ -63,7 +78,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (67)
+### 3D models (70)
 
 **Furniture**
 
@@ -166,6 +181,9 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `barbarian` | `models/characters/Barbarian.gltf` | accessories: Barbarian_Hat, Barbarian_Cape |
 | `rogue` | `models/characters/Rogue.gltf` | accessories: Rogue_Cape |
 | `rogue_hooded` | `models/characters/Rogue_Hooded.gltf` | accessories: Rogue_Cape |
+| `mochalatte` | `models/characters/MochaLatte.gltf` | own rig + clips |
+| `bbaekko` | `models/characters/Bbaekko.gltf` | own rig + clips |
+| `heehee` | `models/characters/HeeHee.gltf` | own rig + clips |
 
 ### 2D images (71)
 
