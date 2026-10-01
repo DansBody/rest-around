@@ -6,7 +6,7 @@ import { ACCESSORIES, roleLook, nextCast } from '../looks.js';
 import {
   ROLES, SNACKS, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV,
+  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, staffWage, servingCost, SERVINGS_PER_UNIT, OFFLINE,
 } from '../data.js';
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
@@ -32,6 +32,17 @@ function abilityLine(role, unlocked, long = false) {
   const ab = ABILITIES[role];
   return h('div.abil', { style: { '--c': ab.color }, title: ab.desc }, glyph(unlocked ? ab.glyph : 'lock', 15),
     h('b', ab.name), long ? h('span', '— ' + ab.desc) : h('span', unlocked ? t('· charges while working, fires by itself') : t('· unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] })));
+}
+/** A character's own kit: the perks (and drawbacks) that are always on, then the skill you cast from the dock. */
+export function kitLines(model, unlocked = true, long = false) {
+  const kit = KITS[model];
+  if (!kit) return [];
+  const rows = kit.perks.map((p) => h('div.abil' + (p.bad ? '.bad' : ''), { style: { '--c': p.bad ? '#e0783d' : '#2f9bff' }, title: p.desc },
+    glyph(p.glyph, 15), h('b', p.name), long ? h('span', '— ' + p.desc) : null));
+  const k = kit.active;
+  if (k) rows.push(h('div.abil', { style: { '--c': k.color }, title: k.desc }, glyph(unlocked ? k.glyph : 'lock', 15), h('b', k.name),
+    h('span', long ? '— ' + k.desc + (unlocked ? '' : ' ' + t('(unlocks at skill Lv{n})', { n: ABILITY_UNLOCK_LV })) : unlocked ? t('· cast it from the dock') : t('· unlocks at skill Lv{n}', { n: ABILITY_UNLOCK_LV }))));
+  return rows;
 }
 /** Five small stars for a staff skill level. */
 export function skillStars(lv, size = 13) {
@@ -67,15 +78,17 @@ function renderStaff(ui, body) {
   const staff = g.staff;
   const slots = staffSlots(s.level);
   body.append(h('div.muted', t('{n} / {m} staff slots · staff tire while working. Feed them snacks to perk them up!', { n: staff.length, m: slots })));
+  body.append(h('div.muted', t('Payroll {n} coins a day, plus {m} coins rent. Paid when the café closes; if the till runs short the team starts the next day tired.', { n: g.eco.dailyWages(), m: g.eco.dailyRent() })));
   body.append(h('div.section-title', t('Your team')));
   for (const a of staff) {
     const bar = h('i', { style: { width: a.energy + '%' } });
     body.append(h('div.row', { 'data-staff': a.id },
       portrait(a.look, 64, 80),
       h('div.grow',
-        h('h3', a.name, ' ', h('span.muted', '· ' + ROLES[a.role].name)),
+        h('h3', a.name, ' ', h('span.muted', '· ' + ROLES[a.role].name), ' ', h('span.pill', { title: t('Daily wage') }, I('icon_coin', 14), staffWage(a.role, a.skillLv()) + t('/day'))),
         skillLine(a),
         abilityLine(a.role, a.abilityUnlocked()),
+        ...kitLines(a.look.model, a.kitUnlocked(), true),
         h('div.muted.task', a.napping ? t('😴 Napping') : tt(a.task)),
         h('div', { style: { display: 'flex', alignItems: 'center', gap: '4px', margin: '4px 0' } }, I('icon_energy', 18), h('div.pbar' + (a.energy < 25 ? '.orange' : ''), { style: { flex: 1 } }, bar)),
         h('div.btnrow',
@@ -89,12 +102,13 @@ function renderStaff(ui, body) {
   const full = staff.length >= slots;
   const nextModel = nextCast(new Set(staff.map((a) => a.look.model)));   // new hires are always an original character
   body.append(h('div.muted', nextModel ? t('Next to join: {name}', { name: UNIQUE_NAMES[nextModel] }) : t('Every character is already on the team')));
+  if (nextModel) body.append(...kitLines(nextModel, true, true));
   for (const [role, r] of Object.entries(ROLES)) {
     const count = staff.filter((a) => a.role === role).length;
     const note = t(ROLE_NOTE[role]);
     body.append(h('div.row',
       portrait(roleLook(role, nextModel || undefined), 48, 48),
-      h('div.grow', h('h3', r.name, h('span.muted', t(' · you have {n}', { n: count }))), h('div.muted', note)),
+      h('div.grow', h('h3', r.name, h('span.muted', t(' · you have {n}', { n: count }))), h('div.muted', note + ' ' + t('Wage {n}/day.', { n: staffWage(role, 1) }))),
       h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => g.eco.hire(role) }, t('Hire') + ' ', coinPill(r.hire))));
   }
   if (full) body.append(h('div.muted', t('All slots are full — reach the next level for more.')));
@@ -189,11 +203,19 @@ function renderMenu(ui, body) {
         h('h3', d.name, ' ', h('span.pill', t('Lv{n}', { n: st.lv }))),
         h('div', { style: { display: 'flex', gap: '6px', margin: '2px 0' } }, coinPill(dishPrice(d, st.lv)), h('span.pill', I('icon_points', 18), dishPoints(d, st.lv)), h('span.pill', '⏱ ' + d.cook + 's')),
         unlocked ? h('div.ings', ings) : h('div.muted', I('icon_lock', 16), ' ' + t('Unlocks at level {n}', { n: d.level })),
+        unlocked ? stockLine(g, d, st) : null,
         unlocked ? h('div.btnrow',
           h('button.btn.small' + (st.on ? '.primary' : ''), { onclick: () => g.eco.toggleMenu(d.id) }, st.on ? gl('check', t('On menu'), 14) : t('Add to menu')),
           maxed ? null : h('button.btn.small' + (canAdd ? '' : '.disabled'), { onclick: () => g.eco.contribute(d.id), title: t('Put pantry ingredients toward the next dish level') }, gl('bowl', t('Add ingredients'), 15))) : null)));
   }
+  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Every cup uses up its ingredients — one pack makes about {n} servings of each recipe. Keep the pantry stocked, or let the market top it up for you (Market tab).', { n: SERVINGS_PER_UNIT })));
   body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Collect every ingredient in a recipe to level a drink or bake (Lv1→10): higher price and more café points. Get ingredients from the Garden, the Market and the daily gift.')));
+}
+
+/** What a serving costs in ingredients, the margin on it, and how many the pantry can still make. */
+function stockLine(g, d, st) {
+  const cost = servingCost(d), profit = dishPrice(d, st.lv) - cost, n = g.eco.canMakeCount(d.id);
+  return h('div.muted.stock' + (n === 0 ? '.out' : n < 6 ? '.low' : ''), t('Costs {c} a cup · profit {p} · {n} left in the pantry', { c: cost.toFixed(1), p: profit.toFixed(1), n }));
 }
 
 // ------------------------------------------------------------------ decor
@@ -266,6 +288,10 @@ function renderMarket(ui, body) {
   const g = ui.game, s = g.state;
   if (g.eco.giftAvailable()) body.append(h('div.row', I('icon_gift', 44), h('div.grow', h('h3', t('Daily gift')), h('div.muted', t('Free ingredients and coins, once per day.'))), h('button.btn.primary.small', { onclick: () => ui.claimGift() }, t('Open!'))));
   body.append(h('div.section-title', t('Ingredients')));
+  body.append(h('div.toggle', h('span', t('Auto-restock')), h('button.switch' + (s.settings.autoRestock ? '.on' : ''), { role: 'switch', 'aria-checked': String(!!s.settings.autoRestock), title: t('Auto-restock'), onclick: () => { s.settings.autoRestock = !s.settings.autoRestock; if (s.settings.autoRestock) g.eco.autoRestock(); ui.renderPanel(); } })));
+  body.append(h('div.muted', { style: { marginBottom: '6px' } }, s.settings.autoRestock
+    ? t('Packs for the dishes on your menu are bought automatically when they run low: up to {n} coins a day (spent {m} today). A pack makes about {k} servings.', { n: g.eco.restockBudget(), m: s.stats ? s.stats.restocked || 0 : 0, k: SERVINGS_PER_UNIT })
+    : t('Restocking is up to you. A pack makes about {k} servings — guests leave if a drink is sold out.', { k: SERVINGS_PER_UNIT })));
   const grid = h('div.grid2');
   for (const i of INGREDIENTS) {
     const ok = g.eco.ingredientAvailable(i.id);
@@ -300,11 +326,12 @@ function renderSettings(ui, body) {
     h('div.orow', h('span', t('Volume')), vol),
     h('div.section-title', t('Game')),
     toggle(t('Auto-open next day'), 'autoNextDay'),
+    toggle(t('Auto-restock ingredients'), 'autoRestock', () => { if (s.settings.autoRestock) g.eco.autoRestock(); }),
     glassFx.supported ? toggle(t('Liquid glass refraction'), 'glass', () => glassFx.setEnabled(s.settings.glass)) : null,
     h('div.btnrow',
       h('button.btn.small', { onclick: () => { ui.toast(save(g) ? t('Saved!') : t('Could not save (storage blocked?)'), 'good'); } }, gl('save', t('Save now'), 15)),
       confirmBtn('button.btn.small.danger', t('Reset game'), t('Tap again to erase everything'), () => { g.resetting = true; clearSave(); location.reload(); })),
-    h('div.muted', { style: { marginTop: '6px' } }, t('Progress autosaves every 10 seconds and when you close the tab.')),
+    h('div.muted', { style: { marginTop: '6px' } }, t('Progress autosaves every 10 seconds and when you close the tab. The café keeps trading while you are away (up to {n} hours) and tells you how it went when you come back.', { n: OFFLINE.capHours })),
     h('div.section-title', t('Controls')),
     h('div.muted', { style: { lineHeight: 1.8 } },
       t('Drag to pan · Wheel or pinch to zoom · Right-drag, two-finger twist or '), h('kbd', 'Q'), '/', h('kbd', 'E'), t(' to turn the camera · Click a character for details'), h('br'),

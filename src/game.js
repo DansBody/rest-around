@@ -25,7 +25,9 @@ export function defaultState() {
     rating: 2.6, service: [],
     day: 1, clock: 0,
     dishes,
-    inv: { beans: 4, sugar: 2, milk: 2 },
+    inv: { beans: 6, sugar: 3, milk: 2 },
+    opened: {},          // servings left in each ingredient's opened pack (see Economy.consume)
+    unpaid: false,       // yesterday's wages could not be paid
     wallDeco: [...START_WALL_DECOR],
     quest: null,
     snacks: { cookie: 1 },
@@ -33,7 +35,7 @@ export function defaultState() {
     giftDay: 0,
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, days: 0 },
-    settings: { sound: true, music: true, volume: 0.7, autoNextDay: true, glass: true },
+    settings: { sound: true, music: true, volume: 0.7, autoNextDay: true, glass: true, autoRestock: true },
     tutorialSeen: false,
   };
 }
@@ -60,6 +62,8 @@ export class Game {
     this.selected = null;
     this.doorOpen = 0;
     this.doorHold = 0;
+    this.timeStopT = 0; this.timeStopDur = 0;   // Time Pause: every guest's patience is frozen
+    this.spotlight = null;                       // Spotlight: { x, y, r, t, dur } over the busiest table
     this.state = defaultState();
     this.renderer = null;
   }
@@ -73,6 +77,7 @@ export class Game {
     this.state.stats = this.day.freshStats();
     this.world = new World(8);
     this.agents = []; this.agentTiles.clear(); this.jobs.clear();
+    this.timeStopT = 0; this.spotlight = null;
     const w = this.world;
     w.addFurniture('stove_basic', 6, 0, 1);
     w.addFurniture('table_oak', 3, 4, 1);
@@ -157,6 +162,8 @@ export class Game {
     this.simTime += dt;
     if (this.doorHold > 0) this.doorHold -= dt;
     this.day.update(dt);
+    if (this.timeStopT > 0) this.timeStopT = Math.max(0, this.timeStopT - dt);
+    if (this.spotlight && (this.spotlight.t -= dt) <= 0) this.spotlight = null;
     for (const a of [...this.agents]) a.update(dt);
     this.agents = this.agents.filter((a) => !a.gone);
     this.street.update(dt);
@@ -182,6 +189,10 @@ export class Game {
   openDoor(t = 1.2) { this.doorHold = Math.max(this.doorHold, t); }
 
   // ---------------- helpers used by agents ----------------
+  /** The perk `id` of a staff member who is on their feet (e.g. Hee Hee's Blooming Tips), or null. */
+  perk(id) { for (const a of this.staff) { if (a.napping) continue; const p = a.perk(id); if (p) return p; } return null; }
+  /** Is the point (tile units) under Hee Hee's Spotlight? */
+  inSpotlight(x, y) { const s = this.spotlight; return !!s && Math.hypot(x - s.x, y - s.y) <= s.r; }
   sfx(name) { audio.play(name); }
   /** Rebuild a character's 3D model after its look changed (outfit editor). */
   refreshCharacter(a) { if (this.renderer) this.renderer.refreshCharacter(a); }

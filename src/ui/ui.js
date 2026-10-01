@@ -3,10 +3,11 @@
 import { h, bus, fmt, fmtTime, clamp } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
-import { PANELS, buildTray, skillLine } from './panels.js';
+import { PANELS, buildTray, skillLine, kitLines } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { SNACKS, SKILL, ABILITY_UNLOCK_LV, questById } from '../data.js';
+import { SNACKS, SKILL, ABILITY_UNLOCK_LV, questById, dishById, furnitureById, ingById, OFFLINE } from '../data.js';
 import { audio } from '../audio.js';
+import { unlocksFor } from '../economy.js';
 import { glyph } from './icons.js';
 import { glassFx } from './glass.js';
 import { t, tt, titledRole, setLang, getLang } from '../i18n.js';
@@ -44,6 +45,7 @@ export class UI {
     bus.on('dayEnd', (s) => this.queueModal(() => this.summaryCard(s)));
     bus.on('levelUp', (e) => this.celebrate(e));
     bus.on('ability', (a) => this.cutIn(a));
+    bus.on('kitCast', (a) => this.cutIn(a, a.kit.active));
     bus.on('dayStart', (d) => this.toast(t('☀️ Day {d} — doors open!', { d }), 'good'));
     this.renderBuild();
     this.update(1);
@@ -168,11 +170,11 @@ export class UI {
     glassFx.attach(this.el.info, { blur: 12, strength: 44, bezel: 24 });
   }
 
-  // ---------------- staff abilities (display only: they charge and fire by themselves) ----------------
+  // ---------------- staff abilities: the job's ability charges and fires by itself; the character's skill is cast from the dock ----------------
   /** Skill cut-in: a glass card slides in with the staff portrait and the ability name. */
-  cutIn(a) {
+  cutIn(a, ab = a.ability) {
     if (this.game.fastForwarding) return;
-    const ab = a.ability, el = this.el.cutin;
+    const el = this.el.cutin;
     el.style.setProperty('--c', ab.color);
     el.replaceChildren(
       h('div.ci-face', portrait(a.look, 52, 52, 'ci-portrait'), h('span.ab-glyph', glyph(ab.glyph, 14))),
@@ -183,7 +185,7 @@ export class UI {
   }
   renderAbilities() {
     const g = this.game, dock = this.el.abilities;
-    const key = g.build.active + '|' + g.staff.map((a) => `${a.id}:${a.role}:${a.abilityUnlocked()}`).join(',');
+    const key = g.build.active + '|' + g.staff.map((a) => `${a.id}:${a.role}:${a.abilityUnlocked()}:${a.look.model}:${a.kitUnlocked()}`).join(',');
     if (key !== this.abilityKey) {
       this.abilityKey = key;
       this.abilityBtns = g.staff.map((a) => {
@@ -193,18 +195,45 @@ export class UI {
           h('span.ab-cd'),
           h('span.ab-glyph', glyph(a.abilityUnlocked() ? ab.glyph : 'lock', 14)));
         b.title = `${a.name} · ${ab.name}\n${ab.desc}\n` + (a.abilityUnlocked() ? t('Charges while working and fires by itself.') : t('Unlocks when {name} is {title}', { name: a.name, title: titledRole(SKILL.titles[ABILITY_UNLOCK_LV - 1], a.roleName) }));
-        return { a, b };
+        // the character's own skill: cast by tapping it (a cooldown ring fills while it recharges)
+        const k = a.kit.active;
+        let kb = null;
+        if (k) {
+          kb = h('button.ability.kit' + (a.kitUnlocked() ? '' : '.locked'), { onclick: () => this.castKit(a), style: { '--c': k.color } },
+            h('span.ab-cd'), h('span.kit-glyph', glyph(a.kitUnlocked() ? k.glyph : 'lock', 22)));
+          kb.title = `${a.name} · ${k.name}
+${k.desc}
+` + (a.kitUnlocked() ? t('Tap to cast · recharges in {n} s', { n: k.cooldown }) : t('Unlocks when {name} reaches skill Lv{n}', { name: a.name, n: ABILITY_UNLOCK_LV }));
+        }
+        return { a, b, kb, row: h('div.ab-row', b, kb) };
       });
-      dock.replaceChildren(...this.abilityBtns.map((x) => x.b));
+      dock.replaceChildren(...this.abilityBtns.map((x) => x.row));
       dock.style.display = g.build.active || !g.staff.length ? 'none' : '';
     }
-    for (const { a, b } of this.abilityBtns) {
+    for (const { a, b, kb } of this.abilityBtns) {
+      if (kb) {
+        const k = a.kit.active;
+        kb.style.setProperty('--p', (a.kitCd > 0 ? (1 - a.kitCd / k.cooldown) * 100 : 100).toFixed(1) + '%');
+        kb.classList.toggle('ready', a.kitReady());
+        kb.classList.toggle('active', a.kitT > 0);
+        kb.classList.toggle('tired', a.napping);
+      }
       b.style.setProperty('--p', (a.boosted() ? 100 : a.charge * 100).toFixed(1) + '%');
       b.classList.toggle('ready', a.abilityUnlocked() && a.charge >= 1);
       b.classList.toggle('active', a.boosted());
       b.classList.toggle('tired', a.napping);
       b.classList.toggle('windup', a.windup > 0);
     }
+  }
+
+  castKit(a) {
+    const g = this.game, k = a.kit.active;
+    audio.unlock();
+    if (!k || g.paused || g.build.active) return;
+    if (!a.kitUnlocked()) return this.toast(t('Unlocks when {name} reaches skill Lv{n}', { name: a.name, n: ABILITY_UNLOCK_LV }), 'bad');
+    if (a.napping) return this.toast(t('{name} is napping', { name: a.name }), 'bad');
+    if (a.kitCd > 0) return this.toast(t('{ability} is recharging ({n} s)', { ability: k.name, n: Math.ceil(a.kitCd) }), 'bad');
+    a.castKit();
   }
 
   // ---------------- toolbar & panels ----------------
@@ -270,7 +299,7 @@ export class UI {
     const a = this.game.selected;
     const el = this.el.info;
     if (!a || a.gone || !this.game.agents.includes(a)) { el.classList.remove('show'); this.game.selected = null; this.infoFor = null; return; }
-    const key = a.kind === 'staff' ? a.role + a.skillLv() : '';
+    const key = a.kind === 'staff' ? a.role + a.skillLv() + a.look.model + a.kitUnlocked() : '';
     if (full || this.infoFor !== a || this.infoKey !== key) {
       this.infoFor = a; this.infoKey = key;
       this.infoPortrait = portrait(a.look, 64, 80);
@@ -293,6 +322,7 @@ export class UI {
         this.infoCharge = h('i');
         body.push(h('div.abil', { style: { '--c': ab.color, marginTop: '8px' }, title: ab.desc }, glyph(a.abilityUnlocked() ? ab.glyph : 'lock', 16), h('b', ab.name),
           a.abilityUnlocked() ? h('div.pbar.grow', { style: { flex: 1 } }, this.infoCharge) : h('span', t('unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] }))));
+        body.push(...kitLines(a.look.model, a.kitUnlocked()));
         body.push(h('div.btnrow',
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { outfit: a }; this.renderPanel(); } }, t('Change outfit')),
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { job: a }; this.renderPanel(); } }, t('Change job'))));
@@ -438,6 +468,11 @@ export class UI {
       }, 1000);
     }
     const stat = (icon, label, v) => h('div.stat', assets.iconEl(icon, 26), h('b', v), h('span.muted', label));
+    const costs = (sm.wages || 0) + (sm.rent || 0), stock = sm.restocked || 0, profit = sm.coins - costs - stock;
+    const note = sm.owed ? t('The till ran short, so some wages went unpaid — the team will start tired.')
+      : sm.soldOut ? t('{n} guest(s) left because a drink was sold out — keep the pantry stocked!', { n: sm.soldOut })
+        : sm.noSeat ? t('{n} guest(s) left because every seat was taken — more tables would help!', { n: sm.noSeat })
+          : dr >= 0 ? t('Word is spreading about your cozy little place.') : t('Keep things clean and fast to win back the stars.');
     return h('div.card',
       h('div.big-title', t('Day {n} complete!', { n: sm.day })),
       h('div.muted', t('The chairs are up and the lights are low. Here’s how it went:')),
@@ -445,11 +480,53 @@ export class UI {
         stat('emote_heart', t('Guests served'), sm.served),
         stat('emote_angry', t('Guests lost'), `${sm.lost + sm.noSeat}`),
         stat('icon_coin', t('Coins earned'), '+' + fmt(sm.coins)),
+        stat('icon_coin', t('Wages & rent'), '−' + fmt(costs)),
+        stat('ing_beans', t('Ingredients'), '−' + fmt(stock)),
+        stat('icon_coin', t('Profit'), (profit >= 0 ? '+' : '−') + fmt(Math.abs(profit))),
         stat('icon_points', t('Café points'), '+' + fmt(sm.points)),
         stat('icon_star', t('Rating'), `${sm.ratingStart.toFixed(1)} → ${sm.ratingEnd.toFixed(1)}`),
         stat('icon_level', t('Level'), sm.levelEnd > sm.levelStart ? `${sm.levelStart} → ${sm.levelEnd}` : sm.levelEnd)),
-      h('div.muted', { style: { marginBottom: '10px' } }, sm.noSeat ? t('{n} guest(s) left because every seat was taken — more tables would help!', { n: sm.noSeat }) : dr >= 0 ? t('Word is spreading about your cozy little place.') : t('Keep things clean and fast to win back the stars.')),
+      h('div.muted', { style: { marginBottom: '10px' } }, note),
       btn);
+  }
+
+  /** "While you were away": what the café did with the time since the game was last open. */
+  awayCard(r) {
+    const g = this.game;
+    const mins = Math.round(r.elapsedSec / 60), dur = mins >= 60 ? t('{h} h {m} min', { h: Math.floor(mins / 60), m: mins % 60 }) : t('{m} min', { m: mins });
+    const stat = (icon, label, v) => h('div.stat', assets.iconEl(icon, 26), h('b', v), h('span.muted', label));
+    const sign = (n) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
+    const top = Object.entries(r.dishes).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const warn = (...kids) => h('div.away-note.warn', ...kids);
+    const notes = [];
+    if (r.noStaff) notes.push(warn(t('Without both a Server and a Barista nobody could serve guests — hire them so the café earns while you are away.')));
+    if (r.rescued) notes.push(h('div.away-note', t('The supplier dropped off a starter pack to get you going.')));
+    if (r.ranOut.length) notes.push(warn(t('Ran out of:'), ' ', ...r.ranOut.map((i) => h('span.ing', assets.iconEl('ing_' + i, 18), ingById[i].name)), ' ', t('— {n} guest(s) left empty-handed.', { n: r.soldOut })));
+    if (r.broke.length) notes.push(warn(t('Out of order:'), ' ' + [...new Set(r.broke)].map((x) => furnitureById[x].name).join(', ') + '. ' + t('A Cleaner can fix it.')));
+    if (r.unpaid) notes.push(warn(t('The till ran short, so some wages went unpaid — the team is tired.')));
+    if (r.levelTo > r.levelFrom) {
+      const ups = []; for (let lv = r.levelFrom + 1; lv <= r.levelTo; lv++) ups.push(...unlocksFor(lv));
+      if (ups.length) notes.push(h('div.away-note', h('b', t('New things unlocked:')), ' ' + ups.join(' · ')));
+    }
+    if (r.readyCrops) notes.push(h('div.away-note', t('{n} garden plot(s) are ready to harvest.', { n: r.readyCrops })));
+    if (r.snacksUsed) notes.push(h('div.away-note', t('The team shared {n} snack(s) from the pantry to keep going.', { n: r.snacksUsed })));
+    if (r.capped) notes.push(h('div.away-note.muted', t('Trading is counted for up to {n} hours while you are away.', { n: OFFLINE.capHours })));
+    const card = h('div.card.away',
+      h('div.hero-ico', assets.iconEl('icon_gift', 56)),
+      h('div.big-title', t('Welcome back!')),
+      h('div.muted', t('{name} kept serving while you were away ({time}).', { name: g.state.name, time: dur })),
+      h('div.stat-grid',
+        stat('emote_heart', t('Guests served'), r.served),
+        stat('icon_coin', t('Coins earned'), sign(r.net)),
+        stat('icon_points', t('Café points'), '+' + fmt(r.points)),
+        stat('icon_star', t('Rating'), `${r.ratingFrom.toFixed(1)} → ${r.ratingTo.toFixed(1)}`),
+        stat('icon_level', t('Level'), r.levelTo > r.levelFrom ? `${r.levelFrom} → ${r.levelTo}` : r.levelTo),
+        stat('emote_angry', t('Guests lost'), String(r.lost))),
+      h('div.muted', { style: { marginBottom: '6px' } }, t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) })),
+      top.length ? h('div', h('div.muted', t('Best sellers')), h('div.ings', { style: { justifyContent: 'center', margin: '4px 0 8px' } }, top.map(([id, n]) => h('span.ing', assets.iconEl(dishById[id].asset, 24), '×' + n)))) : null,
+      ...notes,
+      h('button.btn.primary', { onclick: () => { g.paused = false; this.closeModal(); } }, t('Open the café')));
+    return card;
   }
   /** Level-up card: non-blocking (the café keeps running) and auto-dismissing. */
   celebrate(e) {

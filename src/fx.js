@@ -32,6 +32,14 @@ export class FX {
   hearts(at, n = 3) {
     for (let i = 0; i < n; i++) this.push({ type: 'heart', at, dx: (Math.random() - 0.5) * 30, vx: (Math.random() - 0.5) * 12, vy: -30 - Math.random() * 20, age: -i * 0.12, life: 1.2 });
   }
+  /** A shower of petals (Blooming Tips). */
+  petals(at, n = 8, colors = ['#ffb3c7', '#ffd6e2', '#fff1a8', '#ffffff']) {
+    for (let i = 0; i < n; i++) this.push({ type: 'petal', at, dx: (Math.random() - 0.5) * 40, vx: (Math.random() - 0.5) * 26, vy: -28 - Math.random() * 22, rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 8, color: colors[i % colors.length], age: -i * 0.05, life: 1.5 + Math.random() * 0.5 });
+  }
+  /** A balloon that floats up and away (Wild Magic gone wrong). */
+  balloon(at, color) {
+    this.push({ type: 'balloon', at, dx: (Math.random() - 0.5) * 14, vx: (Math.random() - 0.5) * 8, vy: -26 - Math.random() * 10, ph: Math.random() * 6.28, color, life: 3.4 });
+  }
   crumbs(at, color = '#d9a066') {
     for (let i = 0; i < 3; i++) this.push({ type: 'crumb', at, vx: (Math.random() - 0.5) * 40, vy: -40 - Math.random() * 20, color, life: 0.5 });
   }
@@ -41,6 +49,7 @@ export class FX {
       p.age += dt;
       if (p.age < 0 || p.type === 'text') continue;
       if (p.type === 'crumb' || p.type === 'spark') p.vy += 160 * dt;
+      else if (p.type === 'petal') p.vy += 55 * dt;
       p.dx += (p.vx || 0) * dt; p.dy += (p.vy || 0) * dt;
     }
     this.items = this.items.filter((p) => p.age < p.life);
@@ -88,6 +97,15 @@ export class FX {
         else if (p.type === 'puff') { ctx.globalAlpha = 0.55 * (1 - k); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x, y, p.r * (1 + k) * s, 0, Math.PI * 2); ctx.fill(); }
         else if (p.type === 'spark') { ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color; ctx.translate(x, y); ctx.rotate(p.age * 6); ctx.fillRect(-3 * s, -3 * s, 6 * s, 6 * s); }
         else if (p.type === 'heart') { ctx.globalAlpha = 1 - k; assets.drawIcon(ctx, 'emote_heart', x, y, 18 * s); }
+        else if (p.type === 'petal') { ctx.globalAlpha = 1 - k * k; ctx.translate(x + Math.sin(p.age * 5 + p.rot) * 5 * s, y); ctx.rotate(p.rot + p.age * p.spin); ctx.fillStyle = p.color; ctx.beginPath(); ctx.ellipse(0, 0, 5.5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill(); }
+        else if (p.type === 'balloon') {
+          ctx.globalAlpha = k > 0.8 ? 1 - (k - 0.8) / 0.2 : 1;
+          const bx = x + Math.sin(p.age * 2.2 + p.ph) * 6 * s;
+          ctx.strokeStyle = 'rgba(90,70,60,0.55)'; ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.moveTo(bx, y + 17 * s); ctx.quadraticCurveTo(bx + Math.sin(p.age * 3 + p.ph) * 5 * s, y + 30 * s, bx, y + 42 * s); ctx.stroke();
+          ctx.fillStyle = p.color; ctx.beginPath(); ctx.ellipse(bx, y, 14 * s, 17 * s, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(bx - 3 * s, y + 20 * s); ctx.lineTo(bx + 3 * s, y + 20 * s); ctx.lineTo(bx, y + 15 * s); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(bx - 5 * s, y - 6 * s, 3.5 * s, 6 * s, -0.5, 0, Math.PI * 2); ctx.fill();
+        }
         else if (p.type === 'crumb') { ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x, y, 2.2 * s, 0, Math.PI * 2); ctx.fill(); }
       }
       ctx.restore();

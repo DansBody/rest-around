@@ -4,8 +4,9 @@ import { World } from './world.js';
 import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
-import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, wallDecorById, START_WALL_DECOR } from './data.js';
+import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT } from './data.js';
 import { bumpUid, clamp } from './util.js';
+import { settleOffline } from './offline.js';
 
 // Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
 export const SAVE_KEY = 'restAround.save.v1';
@@ -25,6 +26,7 @@ export function serialize(game) {
       trash: w.trash.map((t) => ({ x: t.x, y: t.y })),
       dirty: w.seats.filter((st) => st.dirty).map((st) => [st.chair.x, st.chair.y]),
     },
+    meta: { seats: w.seats.filter((st) => w.accessFor(st.chair).length).length },   // what the offline settlement needs but cannot derive without the 3D footprints
     staff: game.staff.map((a) => ({ name: a.name, role: a.role, look: a.look, energy: Math.round(a.energy), skills: a.skills, x: a.tx, y: a.ty })),
   };
 }
@@ -50,7 +52,12 @@ export function load(game) {
   if (!raw) return 'none';
   try {
     const data = JSON.parse(raw);
-    apply(game, data);
+    // the café traded while the game was closed: settle that time first (a failure just skips it)
+    let away = null;
+    try { away = settleOffline(data, (Date.now() - (data.savedAt || Date.now())) / 1000); } catch (e) { console.warn('Offline settlement failed', e); }
+    apply(game, away ? away.data : data);
+    game.awayReport = away ? away.report : null;
+    if (away) save(game);   // stamp the new time right away so the same stretch is never paid twice
     return 'loaded';
   } catch (e) {
     console.warn('Corrupted save, starting fresh', e);
@@ -88,6 +95,9 @@ function apply(game, data) {
   }
   st.inv = {};
   for (const i of INGREDIENTS) { const n = Math.floor(num(s.inv && s.inv[i.id], 0, 0, 1e6)); if (n) st.inv[i.id] = n; }
+  st.opened = {};
+  for (const i of INGREDIENTS) { const n = num(s.opened && s.opened[i.id], 0, 0, SERVINGS_PER_UNIT); if (n) st.opened[i.id] = n; }
+  st.unpaid = !!s.unpaid;
   st.snacks = {};
   for (const sn of SNACKS) { const n = Math.floor(num(s.snacks && s.snacks[sn.id], 0, 0, 1e6)); if (n) st.snacks[sn.id] = n; }
   st.garden = Array.isArray(s.garden) ? s.garden.slice(0, 6).map((p) => ({ crop: p && SEEDS.some((x) => x.crop === p.crop) ? p.crop : null, prog: num(p && p.prog, 0, 0, 1), water: num(p && p.water, 0, 0, 1) })) : [];
@@ -120,6 +130,8 @@ function apply(game, data) {
     }
   }
   for (const t of wd.trash || []) if (t) w.addTrash(Math.floor(num(t.x, -1)), Math.floor(num(t.y, -1)));
+  // litter that piled up while the café was unattended
+  for (let n = Math.min(12, Math.floor(num(wd.extraTrash, 0, 0, 99))), tries = 0; n > 0 && tries < 80; tries++) if (w.addTrash(Math.floor(Math.random() * size), Math.floor(Math.random() * size))) n--;
   for (const [x, y] of Array.isArray(wd.dirty) ? wd.dirty : []) { const ch = w.furnitureAt(x, y); if (ch && ch.seat) ch.seat.dirty = true; }
 
   game.state = st;

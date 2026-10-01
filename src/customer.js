@@ -3,6 +3,7 @@
 import { Agent } from './agent.js';
 import { randomLook } from './looks.js';
 import { models } from './models.js';
+import { t } from './i18n.js';
 import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, dishPrice, dishPoints, EXTRA_CAT } from './data.js';
 import { DOOR_Y } from './world.js';
 import { choice, chance, rand, manhattan, uid } from './util.js';
@@ -31,8 +32,9 @@ export class Customer extends Agent {
   update(dt) {
     super.update(dt);
     if (this.gliding) this.moving = true;
-    if (this.showPatience && this.pRate > 0) {
-      this.patience -= this.pRate * dt;
+    const g = this.game;
+    if (this.showPatience && this.pRate > 0 && g.timeStopT <= 0) {   // Time Pause freezes the countdown
+      this.patience -= this.pRate * dt * (g.inSpotlight(this.x, this.y) ? 0.4 : 1);
       if (this.patience <= 0) { this.patience = 0; this.fedUp(); }
     }
   }
@@ -124,15 +126,24 @@ export class Customer extends Agent {
   takeOrder() {
     const g = this.game;
     const st = g.state;
+    const eco = g.eco;
     const menu = Object.keys(st.dishes).filter((id) => st.dishes[id].on && dishById[id].level <= st.level);
-    const foods = menu.filter((id) => dishById[id].cat !== EXTRA_CAT);
-    const drinks = menu.filter((id) => dishById[id].cat === EXTRA_CAT);   // a bake on the side
+    const foods = menu.filter((id) => dishById[id].cat !== EXTRA_CAT && eco.canMake(id));
+    const drinks = menu.filter((id) => dishById[id].cat === EXTRA_CAT && eco.canMake(id));   // a bake on the side
     this.sat.push(this.patience);
     this.orderJob = null;
-    if (!foods.length) { this.mood = 'Nothing on the menu!'; return this.leaveUnhappy('lost'); }
+    if (!foods.length) {
+      this.mood = 'Sold out!';
+      if (!st.stats.soldOut) g.toast(t('Sold out! A guest left empty-handed — restock in the Market.'), 'bad');
+      st.stats.soldOut = (st.stats.soldOut || 0) + 1;
+      eco.autoRestock();
+      return this.leaveUnhappy('lost');
+    }
     const food = choice(foods);
+    eco.consume(food);
     const canDrink = drinks.length && g.world.byKind('bar').length && g.staff.some((s) => s.role === 'bartender');
     const drink = canDrink && chance(0.55) ? choice(drinks) : null;
+    if (drink) eco.consume(drink);
     this.tickets = [];
     const mk = (dish, kind) => ({ id: uid(), dish, kind, customer: this, seat: this.seat, state: 'queued' });
     const tf = mk(food, 'food');
@@ -172,9 +183,13 @@ export class Customer extends Agent {
       coins += dishPrice(d, lv); points += dishPoints(d, lv);
     }
     const s = this.sat.length ? this.sat.reduce((a, b) => a + b, 0) / this.sat.length : 0.7;
-    const tip = Math.round(coins * 0.3 * s);
+    let tip = Math.round(coins * 0.3 * s);
+    const bloom = g.perk('bloom'), spot = g.inSpotlight(this.x, this.y);
+    if (bloom && s >= bloom.min) { tip = Math.round(tip * (1 + bloom.tip)); g.fx.petals(g.at(this.x, this.y, 90), 9); }
+    if (spot) { tip *= 2; g.fx.sparkle(g.at(this.x, this.y, 90), 8, '#ffe27a'); }
     g.eco.earn(coins + tip, points, this.x, this.y - 0.2, this.lift + 110);
     g.rating.addService(0.55 + 0.45 * s);
+    if (spot) g.rating.addService(0.55 + 0.45 * s);   // Spotlight: this table counts double
     g.state.stats.served++;
     const bakes = this.tickets.filter((t) => dishById[t.dish].cat === EXTRA_CAT).length;
     g.eco.questProgress('guests', 1); g.eco.questProgress('cups', this.tickets.length - bakes); g.eco.questProgress('bakes', bakes);

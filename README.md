@@ -85,11 +85,46 @@ a cut-in card slides in from the left. While it lasts the ring stays lit.
 A charged ability that finds no good moment for 20 s settles for a smaller one. Expert and Master
 staff charge faster. Tuning lives in `ABILITIES` in `src/data.js`.
 
+**Character skills.** Staff are our own characters, and each one brings a signature kit on top of
+their job's ability: always-on perks (and a drawback or two that go with the personality) plus one
+skill you cast yourself by tapping the round button beside their portrait (bottom left), with a
+cooldown instead of charging. It unlocks at skill Lv2 in any job and works in any job.
+
+| Character | Perks | Cast |
+|---|---|---|
+| Cheetie | Cheetah Sprint (+25% walking) · Matcha Aversion (carries matcha 45% slower) | **Mind Reader**: every guest waiting to order is read at once, orders placed, guests delighted |
+| Mocha Latte | Caffeine Boost (colleagues within 3 tiles +12% speed) | **Time Pause**: every guest's patience freezes for 7 s |
+| Hee Hee | Blooming Tips (delighted guests tip +40%, with petals) | **Spotlight**: the busiest table for 14 s: guests wait longer, tip ×2, count ×2 for the rating |
+| Bbaekko | Shy Heart (−35% as a Server/Cleaner) · Afraid of the Dark (−20% after 7 pm) | **Wild Magic**: a random spell: flash brew, calming charm, gust of haste, coin shower… or balloons / confetti mess |
+| Oritokki | – (signature skills come later) | – |
+
+Kits live in `KITS` in `src/data.js` (numbers and text), the cast effects in `src/kits.js`, the perk
+multipliers in `Staff.kitMul()`; Spotlight, Time Pause and the balloons are drawn procedurally in
+`abilityfx.js` / `fx.js`, so they need no art.
+
 **Progression.** Coins buy furniture, staff, seeds, ingredients and room expansions. Café points
 level you up, which unlocks bigger floor plans, more staff slots, more menu slots, new furniture,
 wall decor and new drinks. Put ingredients from the garden (mint, strawberries, lemons, blueberries), the
 market (coffee beans, milk, sugar, flour, butter, eggs, chocolate, cream, matcha) and the daily gift
 into a drink or bake to level it from Lv1 to Lv10 (higher price, more points).
+
+**Running the café.** Nothing is free. Every cup uses up its ingredients: a pack from the Market makes
+about 2.5 servings of every recipe it belongs to, so the pantry drains as you serve (the Menu panel shows
+each drink's cost, profit and how many are left). **Auto-restock** (Market panel / Settings, on by default)
+buys the packs your menu needs when they run low, within a daily budget; if a drink is sold out the guest
+leaves unhappy, and if you run completely dry *and* broke the supplier leaves a starter pack (once a day) so
+you can never get stuck. Staff draw a **daily wage** (more as they gain skill) and the room costs **rent** by
+floor area, both paid when the café closes; if the till is short the team simply starts the next day tired
+(no debt). Garden produce costs ~1.8× at the market, so growing your own berries pays.
+
+**While you're away.** The café keeps trading when the game is closed. On the next launch (or when a hidden
+tab is brought back after 10+ minutes) the time away is settled in one go — up to 12 hours, at 60% of what
+playing live would earn, one game day per 4 real hours — and a *Welcome back* card lists guests served, coins,
+points, rating and level changes, best sellers, anything that ran out or broke, and crops ready to harvest.
+It needs a Server and a Barista to open at all. The model is `src/offline.js` (an expected-value calculation on
+the plain save JSON, no simulation, deterministic); `node tools/balance.mjs [hours]` prints what four stages
+of café earn away, and `tools/calibrate.js` (paste in the browser console) checks the model against the live
+simulation. Knobs: `OFFLINE`, `COSTS`, `RESTOCK`, `SERVINGS_PER_UNIT` in `src/data.js`, `MODEL` in `src/offline.js`.
 
 **Rating (0–5 ★)** blends service speed, cleanliness, average menu level, decor and broken
 facilities (tap the stars for the breakdown). More stars → more guests.
@@ -200,6 +235,8 @@ ASSETS.md               asset guide + generated tables
 tools/assets-table.mjs  optional: regenerate the ASSETS.md tables from the manifest
 tools/build_prop.py     Meshy GLB → slim static prop glTF (see ASSETS.md); build_character.py does the characters
 tools/devserver.py      no-cache static dev server
+tools/balance.mjs       balance sheet for the away-from-keyboard economy (node tools/balance.mjs 8)
+tools/calibrate.js      browser-console check of the offline model against the live simulation
 src/
   main.js               boot: load images → models → icons, restore save, start loop, autosave
   assets.js             2D image loader, PNG probing, placeholders, tint cache
@@ -209,6 +246,7 @@ src/
                         food, trash, lighting, build preview, debug overlays, 2D overlay layer
   charview.js           animated character per agent: clip selection, props, hats, facing
   abilityfx.js          staff ability visuals: charge ring, build-up, beam/shockwave, juggling
+  kits.js               what each character's castable skill does (Mind Reader, Time Pause, Spotlight, Wild Magic)
   plots.js              garden plot meshes (3D garden + Garden panel thumbnails)
   i18n.js lang/         t() translation helper; lang/zh-TW.js Traditional Chinese strings
   portrait.js           3D-rendered portraits, shop thumbnails and food icons
@@ -220,7 +258,9 @@ src/
   ambient.js            passers-by on the street
   jobs.js               job board, priorities, dish salvage
   day.js rating.js      day cycle + arrivals, star rating
-  economy.js            coins, points, levels, dishes, market, garden, gift, hiring, facilities
+  economy.js            coins, points, levels, dishes, market, garden, gift, hiring, facilities, daily wages & rent
+  pantry.js             ingredient use, auto-restock and the starter-pack safety net (shared with offline.js)
+  offline.js            settles the time away: guests, sales, pantry, wear, rating and the report
   build.js              build mode: validation, place/move/rotate/sell, paint, wallpaper, expand
   save.js audio.js      localStorage save/load, synthesized sound effects
   fx.js input.js        floating numbers & particles, mouse/touch/keyboard
@@ -235,6 +275,8 @@ Gameplay numbers (prices, cook times, patience, energy, arrival rates, level cur
 
 ## Known issues & limitations
 
+* **Time away is settled from the device clock** (the save's timestamp), so changing the system clock changes
+  it; it is capped at 12 hours and will move server-side when the café is synced online.
 * **Guests in the room are not saved.** Staff, furniture, trash, dirty tables, broken
   facilities, stock, garden, dish levels, money and the clock are; after a reload the dining room
   starts empty (new guests arrive within seconds).

@@ -678,7 +678,7 @@ export class Renderer {
       if (a.kind === 'staff' && a.x >= 0) { this.nameTag(q.x, y, a.name, z); y -= 16 * z; }
       if (a.showPatience && a.patience != null) {
         const v = clamp(a.patience, 0, 1);
-        this.bar(q.x, y - 2, 40 * z, v, v > 0.5 ? '#34c759' : v > 0.25 ? '#ffb31f' : '#ff4d4f', 6 * z);
+        this.bar(q.x, y - 2, 40 * z, v, game.timeStopT > 0 ? '#7fb5ff' : v > 0.5 ? '#34c759' : v > 0.25 ? '#ffb31f' : '#ff4d4f', 6 * z);
         y -= 10 * z;
       }
       if (a.kind === 'staff' && a.energy != null && (a.energy < 25 || game.selected === a)) {

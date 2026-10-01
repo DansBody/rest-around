@@ -4,15 +4,31 @@ import {
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS, SEEDS, WATER_DURATION,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots,
+  staffWage, rentFor, ingPrice,
 } from './data.js';
+import * as pantry from './pantry.js';
 import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
 import { nextCast } from './looks.js';
 import { t } from './i18n.js';
 import { bus, choice, randInt, clamp } from './util.js';
 
+/** What reaching `level` opens up, as readable lines (also used by the welcome-back report). */
+export function unlocksFor(level) {
+  const unlocks = [], prev = level - 1;
+  if (staffSlots(level) > staffSlots(prev)) unlocks.push(t('{n} staff slots', { n: staffSlots(level) }));
+  const m = menuSlots(level), before = menuSlots(prev);
+  for (const k of Object.keys(m)) if (m[k] > before[k]) unlocks.push(t('+1 {cat} menu slot', { cat: DISH_CATS.find((c) => c.id === k).name }));
+  if (gardenPlots(level) > gardenPlots(prev)) unlocks.push(t('a new garden plot'));
+  for (const d of DISHES) if (d.level === level) unlocks.push(t('dish: {name}', { name: d.name }));
+  for (const f of Object.values(furnitureById)) if (f.level === level) unlocks.push(f.name);
+  for (const w of WALL_DECOR) if (w.level === level) unlocks.push(w.name);
+  for (const e of EXPANSIONS) if (e.level === level) unlocks.push(t('{n}×{n} floor plan', { n: e.size }));
+  return unlocks;
+}
+
 export class Economy {
-  constructor(game) { this.game = game; }
+  constructor(game) { this.game = game; this.restockT = 0; }
   get s() { return this.game.state; }
 
   // ---------------- money & points ----------------
@@ -45,19 +61,9 @@ export class Economy {
   }
   levelUp() {
     const s = this.s, g = this.game;
-    const before = { staff: staffSlots(s.level), menu: menuSlots(s.level), plots: gardenPlots(s.level) };
     s.level++;
-    const unlocks = [];
-    if (staffSlots(s.level) > before.staff) unlocks.push(t('{n} staff slots', { n: staffSlots(s.level) }));
-    const m = menuSlots(s.level);
-    for (const k of Object.keys(m)) if (m[k] > before.menu[k]) unlocks.push(t('+1 {cat} menu slot', { cat: DISH_CATS.find((c) => c.id === k).name }));
-    if (gardenPlots(s.level) > before.plots) unlocks.push(t('a new garden plot'));
-    for (const d of DISHES) if (d.level === s.level) unlocks.push(t('dish: {name}', { name: d.name }));
-    for (const f of Object.values(furnitureById)) if (f.level === s.level) unlocks.push(f.name);
-    for (const w of WALL_DECOR) if (w.level === s.level) unlocks.push(w.name);
-    for (const e of EXPANSIONS) if (e.level === s.level) unlocks.push(t('{n}×{n} floor plan', { n: e.size }));
     this.syncGarden();
-    bus.emit('levelUp', { level: s.level, unlocks });
+    bus.emit('levelUp', { level: s.level, unlocks: unlocksFor(s.level) });
     g.sfx('levelup');
     g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 30, '#ffd86b');
   }
@@ -153,8 +159,43 @@ export class Economy {
     g.changed('menu');
   }
 
+  // ---------------- pantry: ingredients are used up as drinks are made (rules live in pantry.js) ----------------
+  servings(ing) { return pantry.servings(this.s, ing); }
+  canMake(id) { return pantry.canMake(this.s, id); }
+  canMakeCount(id) { return pantry.canMakeCount(this.s, id); }
+  /** Use one serving of every ingredient in the recipe. False (and nothing used) when something is missing. */
+  consume(id) {
+    if (!pantry.consume(this.s, id)) return false;
+    this.game.changed('inv');
+    return true;
+  }
+  restockBudget() { return pantry.restockBudget(this.s.level); }
+  /** Top up the ingredients on the menu from the market, within today's budget. Returns the coins spent. */
+  autoRestock() {
+    const s = this.s;
+    if (!s.settings.autoRestock || !s.stats) return 0;
+    const spent = pantry.restock(s, s.stats);
+    if (spent) { this.game.changed('inv'); this.game.changed('coins'); }
+    return spent;
+  }
+
+  // ---------------- daily costs ----------------
+  dailyWages() { return this.game.staff.reduce((a, st) => a + staffWage(st.role, st.skillLv()), 0); }
+  dailyRent() { return rentFor(this.game.world.size); }
+  /** Close the books for the day: pay the team and the landlord as far as the till allows. */
+  payDay() {
+    const s = this.s, wages = this.dailyWages(), rent = this.dailyRent();
+    const w = Math.min(s.coins, wages);
+    const r = Math.min(s.coins - w, rent);
+    s.coins -= w + r;
+    s.stats.wages = w; s.stats.rent = r; s.stats.spent += w + r;
+    s.unpaid = w < wages;
+    this.game.changed('coins');
+    return { wages: w, rent: r, owed: wages + rent - w - r };
+  }
+
   // ---------------- market ----------------
-  ingredientPrice(id) { const i = ingById[id]; return i.source === 'garden' ? Math.ceil(i.price * 1.8) : i.price; }
+  ingredientPrice(id) { return ingPrice(ingById[id]); }
   ingredientAvailable(id) { const i = ingById[id]; return !i.level || i.level <= this.s.level; }
   buyIngredient(id, qty = 1) {
     if (!this.ingredientAvailable(id)) return;
@@ -290,6 +331,12 @@ export class Economy {
   }
 
   update(dt) {
+    this.restockT -= dt;
+    if (this.restockT <= 0) {
+      this.restockT = 2;
+      this.autoRestock();
+      if (this.s.stats && pantry.rescue(this.s, this.s.stats)) { this.game.toast(t('The supplier dropped off a starter pack to get you going.'), 'good'); this.game.changed('inv'); }
+    }
     // garden growth (sim time; pauses in build mode)
     for (const p of this.s.garden) {
       if (!p.crop || p.prog >= 1) continue;

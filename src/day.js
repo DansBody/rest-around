@@ -1,7 +1,8 @@
 // Day cycle: compressed day (8 real minutes at 1x) with opening, lunch rush, afternoon, dinner rush
 // and closing; customer arrivals scale with rating, phase and seating; end-of-day summary.
-import { DAY, ENERGY } from './data.js';
+import { DAY, ENERGY, COSTS } from './data.js';
 import { bus, clamp } from './util.js';
+import { t } from './i18n.js';
 
 export class DayCycle {
   constructor(game) {
@@ -13,7 +14,7 @@ export class DayCycle {
 
   freshStats() {
     const s = this.game.state;
-    return { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: s.rating, levelStart: s.level, spent: 0 };
+    return { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: s.rating, levelStart: s.level, spent: 0, restocked: 0, wages: 0, rent: 0, soldOut: 0 };
   }
 
   get hour() { return DAY.startHour + (this.game.state.clock / DAY.length) * (DAY.endHour - DAY.startHour); }
@@ -60,7 +61,8 @@ export class DayCycle {
     const g = this.game, s = g.state;
     for (const c of g.customers) { c.cancelOrders(); c.gone = true; c.releaseAll(); }
     g.agents = g.agents.filter((a) => !a.gone);
-    const summary = { day: s.day, ...s.stats, ratingEnd: s.rating, levelEnd: s.level };
+    g.eco.payDay();
+    const summary = { day: s.day, ...s.stats, ratingEnd: s.rating, levelEnd: s.level, owed: s.unpaid };
     s.totals.days++;
     g.paused = true;
     this.lingerT = 0;
@@ -74,7 +76,14 @@ export class DayCycle {
     s.clock = 0;
     s.stats = this.freshStats();
     g.eco.rollQuest();
-    for (const st of g.staff) { st.energy = Math.min(100, st.energy + ENERGY.overnight); if (st.napping && st.energy >= ENERGY.wakeAt) { st.clearQueue(); st.wake(); } }
+    if (s.unpaid) {   // payday came up short: the team is grumpy and starts the day tired
+      for (const st of g.staff) st.energy = Math.max(10, st.energy - COSTS.unpaidEnergy);
+      s.unpaid = false;
+      g.toast(t('Wages went unpaid yesterday — the team starts the day tired.'), 'bad');
+    }
+    g.eco.autoRestock();
+    g.timeStopT = 0; g.spotlight = null;
+    for (const st of g.staff) { st.resetKit(); st.energy = Math.min(100, st.energy + ENERGY.overnight); if (st.napping && st.energy >= ENERGY.wakeAt) { st.clearQueue(); st.wake(); } }
     g.jobs.list = g.jobs.list.filter((j) => j.type === 'sweep' || j.type === 'repair' || j.type === 'clear');
     this.nextSpawn = 4;
     g.paused = false;

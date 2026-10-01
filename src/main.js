@@ -10,6 +10,7 @@ import { setupInput } from './input.js';
 import { load, save } from './save.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
+import { OFFLINE } from './data.js';
 
 const loading = document.getElementById('loading');
 const bar = loading.querySelector('.load-bar i');
@@ -55,14 +56,23 @@ async function boot() {
   game.camera.fit(game.world.size);
 
   if (status === 'corrupt') ui.toast(t('Your save was damaged, so a fresh café was opened. (A backup was kept.)'), 'bad');
-  else if (status === 'loaded') ui.toast(t('Welcome back to {name}!', { name: game.state.name }), 'good');
+  else if (status === 'loaded' && !game.awayReport) ui.toast(t('Welcome back to {name}!', { name: game.state.name }), 'good');
   else ui.toast(t('Welcome to your new café! Guests are on their way ☕'), 'good');
 
-  // autosave
-  setInterval(() => { if (!game.resetting) save(game); }, 10000);
-  const onLeave = () => { if (!game.resetting) save(game); };
-  window.addEventListener('beforeunload', onLeave);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') onLeave(); });
+  // The café keeps trading while the game is closed, counted from the moment of the last save. So the save
+  // must keep that moment: a hidden tab does not run the game, hence no autosave while hidden, and the one
+  // save made as the tab was hidden is the one that counts.
+  const persist = (force) => { if (!game.resetting && (force || !document.hidden)) save(game); };
+  setInterval(() => persist(false), 10000);
+  window.addEventListener('beforeunload', () => persist(false));
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { persist(true); hiddenAt = Date.now(); return; }
+    // back after a long while: reload so the time away is settled the same way as after closing the game
+    if (hiddenAt && (Date.now() - hiddenAt) / 1000 >= OFFLINE.minSeconds && !game.resetting) location.reload();
+    hiddenAt = 0;
+  });
+  if (game.awayReport) { game.paused = true; ui.queueModal(() => ui.awayCard(game.awayReport)); }
 
   let last = performance.now();
   let fpsAcc = 0, frames = 0;

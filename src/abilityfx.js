@@ -2,7 +2,7 @@
 // when full), a gathering build-up right before release, a light beam + shockwave on release, an
 // aura while the effect lasts, and juggling balls for the bartender. All meshes are pooled and use
 // additive blending, so no lights are added (adding lights would recompile every shader).
-import { THREE } from './models.js';
+import { THREE, TILE } from './models.js';
 import { bus } from './util.js';
 
 function canvasTex(w, h, paint) {
@@ -44,13 +44,17 @@ export class AbilityFx {
       plane: new THREE.PlaneGeometry(1, 1),
       beam: new THREE.CylinderGeometry(0.5, 0.5, 1, 24, 1, true).translate(0, 0.5, 0),
       ball: new THREE.SphereGeometry(0.11, 12, 8),
+      cone: new THREE.CylinderGeometry(0.2, 0.5, 1, 32, 1, true).translate(0, 0.5, 0),   // Spotlight: narrow at the top
     };
+    this.spot = null;
     this.auras = new Map(); // staff -> { ring, disc, balls }
     this.bursts = [];
     this.free = [];
     this.pending = [];
     this.v = new THREE.Vector3();
-    bus.on('ability', (a) => { if (!a.game.fastForwarding && this.pending.length < 12) this.pending.push(a); });
+    const burst = (a, ab) => { if (!a.game.fastForwarding && this.pending.length < 12) this.pending.push({ a, ab }); };
+    bus.on('ability', (a) => burst(a, a.ability));
+    bus.on('kitCast', (a) => burst(a, a.kit.active));
   }
 
   mat(tex, color) {
@@ -70,7 +74,7 @@ export class AbilityFx {
       o = { ring: this.flat(this.tex.ring, '#ffffff'), disc: this.flat(this.tex.disc, '#ffffff'), balls: null, color: null, spin: 0 };
       this.auras.set(a, o);
     }
-    const col = a.ability.color;
+    const col = a.kitT > 0 ? a.kit.active.color : a.ability.color;
     if (o.color !== col) { o.color = col; o.ring.material.color.set(col); o.disc.material.color.set(col); }
     return o;
   }
@@ -86,13 +90,13 @@ export class AbilityFx {
     for (const a of game.staff) {
       const cv = chars.get(a);
       const o = this.aura(a);
-      const show = cv && cv.root.visible && a.abilityUnlocked() && !a.napping;
+      const show = cv && cv.root.visible && (a.abilityUnlocked() || a.kitT > 0) && !a.napping;
       let ringOp = 0, ringS = 2.2, discOp = 0, discS = 2;
       if (show) {
         const p = cv.root.position;
         o.ring.position.set(p.x, p.y + 0.06, p.z);
         o.disc.position.set(p.x, p.y + 0.05, p.z);
-        if (a.boosted()) {
+        if (a.boosted() || a.kitT > 0) {
           ringOp = 0.75; ringS = 2.5 + Math.sin(time * 10) * 0.12; discOp = 0.35; discS = 2.6;
         } else if (a.windup > 0) {
           const k = 1 - a.windup / WINDUP; // 0 -> 1 as it gathers
@@ -124,11 +128,11 @@ export class AbilityFx {
         }
       }
     }
+    this.updateSpotlight(game, time, dt);
     // new bursts
-    for (const a of this.pending) {
+    for (const { a, ab } of this.pending) {
       const cv = chars.get(a);
       if (!cv) continue;
-      const ab = a.ability;
       const b = this.free.pop() || { beam: this.addBeam(), wave: this.flat(this.tex.ring, '#ffffff'), flash: this.flat(this.tex.disc, '#ffffff') };
       for (const m of [b.beam, b.wave, b.flash]) { m.visible = true; m.material.color.set(ab.color); }
       const p = cv.root.position;
@@ -136,7 +140,7 @@ export class AbilityFx {
       b.wave.position.set(p.x, p.y + 0.08, p.z);
       b.flash.position.set(p.x, p.y + 0.07, p.z);
       b.age = 0;
-      b.radius = ab.radius ? (ab.radius + 0.5) * 2 * 2 : 5; // whirlwind: shows its sweep area (tiles -> world units, diameter)
+      b.radius = ab.burst || (ab.radius ? (ab.radius + 0.5) * 2 * 2 : 5); // whirlwind: shows its sweep area (tiles -> world units, diameter); Time Pause: the whole café
       this.bursts.push(b);
     }
     this.pending.length = 0;
@@ -156,8 +160,35 @@ export class AbilityFx {
     this.bursts = this.bursts.filter((b) => b.age < BURST_LIFE);
   }
 
-  addBeam() {
-    const m = new THREE.Mesh(this.geo.beam, this.mat(this.tex.beam, '#ffffff'));
+  /** Hee Hee's Spotlight: a warm cone of light over the chosen table, a glowing disc and ring on the floor. */
+  updateSpotlight(game, time, dt) {
+    const sp = game.spotlight;
+    if (!sp && !this.spot) return;
+    if (!this.spot) {
+      this.spot = { cone: this.addBeam(this.geo.cone), disc: this.flat(this.tex.disc, '#ffd45e'), ring: this.flat(this.tex.ring, '#fff2b0') };
+      this.spot.cone.material.color.set('#ffe9a0');
+    }
+    const o = this.spot;
+    const k = sp ? Math.min(1, (sp.dur - sp.t) / 0.5, sp.t / 0.8) : 0;   // light up, then fade out
+    const on = k > 0.01;
+    o.cone.visible = o.disc.visible = o.ring.visible = on;
+    if (!on) return;
+    const px = sp.x * TILE, pz = sp.y * TILE, d = sp.r * TILE * 2, pulse = 0.5 + 0.5 * Math.sin(time * 4);
+    o.cone.position.set(px, 0, pz);
+    o.cone.scale.set(d * 0.95, 6.5, d * 0.95);
+    o.cone.material.opacity = 0.34 * k * (0.85 + 0.15 * pulse);
+    o.disc.position.set(px, 0.06, pz);
+    o.disc.scale.set(d, d, 1);
+    o.disc.material.opacity = 0.5 * k * (0.8 + 0.2 * pulse);
+    o.ring.position.set(px, 0.07, pz);
+    o.ring.rotation.set(-Math.PI / 2, 0, time * 0.6);
+    o.ring.scale.set(d * (1.02 + 0.03 * pulse), d * (1.02 + 0.03 * pulse), 1);
+    o.ring.material.opacity = 0.65 * k;
+    if (!game.fastForwarding && Math.random() < dt * 9) game.fx.sparkle(game.at(sp.x + (Math.random() - 0.5) * sp.r * 1.6, sp.y + (Math.random() - 0.5) * sp.r * 1.6, 18), 1, '#fff3b0');
+  }
+
+  addBeam(geo = this.geo.beam) {
+    const m = new THREE.Mesh(geo, this.mat(this.tex.beam, '#ffffff'));
     m.renderOrder = 3;
     this.group.add(m);
     return m;
@@ -165,7 +196,33 @@ export class AbilityFx {
 
   /** 2D layer: a filling charge ring with "!" above the head while gathering power. */
   drawOverlay(ctx, game, chars, projectV, z) {
+    // Time Pause: a cool wash over the whole café, and a clock hand sweeping over the caster's head
+    if (game.timeStopT > 0) {
+      const dpr = ctx.getTransform().a, W = ctx.canvas.width / dpr, H = ctx.canvas.height / dpr;
+      const k = Math.min(1, (game.timeStopDur - game.timeStopT) / 0.4, game.timeStopT / 0.6);
+      ctx.save();
+      ctx.fillStyle = `rgba(140,185,255,${0.16 * k})`; ctx.fillRect(0, 0, W, H);
+      const gr = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+      gr.addColorStop(0, 'rgba(90,140,255,0)'); gr.addColorStop(1, `rgba(70,120,255,${0.48 * k})`);
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
     for (const a of game.staff) {
+      if (a.kitT > 0 && a.kit.active.id === 'timestop') {
+        const cv = chars.get(a), q = cv && cv.root.visible ? projectV(cv.headTop(this.v)) : null;
+        if (q) {
+          const k = 1 - a.kitT / a.kit.active.dur, r = 14 * z, y = q.y - 30 * z;
+          ctx.save();
+          ctx.shadowColor = a.kit.active.color; ctx.shadowBlur = 12;
+          ctx.beginPath(); ctx.arc(q.x, y, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+          ctx.shadowBlur = 0; ctx.strokeStyle = a.kit.active.color; ctx.lineWidth = 3 * z; ctx.stroke();
+          ctx.lineCap = 'round'; ctx.lineWidth = 2.4 * z;
+          const ang = -Math.PI / 2 + k * Math.PI * 2;
+          ctx.beginPath(); ctx.moveTo(q.x, y); ctx.lineTo(q.x + Math.cos(ang) * r * 0.72, y + Math.sin(ang) * r * 0.72); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(q.x, y); ctx.lineTo(q.x, y - r * 0.5); ctx.stroke();
+          ctx.restore();
+        }
+      }
       if (!(a.windup > 0)) continue;
       const cv = chars.get(a);
       if (!cv || !cv.root.visible) continue;

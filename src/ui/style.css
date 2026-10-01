@@ -135,6 +135,13 @@ button { font-family: inherit; color: inherit; }
 @keyframes abspin { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
 .ability.locked .ab-face, .ability.tired .ab-face { filter: grayscale(.85) opacity(.65); }
 .ability.locked .ab-glyph { background: rgba(120,120,135,.8); }
+/* the character's own skill sits beside its portrait button */
+.ab-row { display: flex; align-items: center; gap: 6px; }
+.ability.kit { width: 42px; height: 42px; }
+.ability.kit .kit-glyph { position: absolute; inset: 0; display: grid; place-items: center; }
+.ability.kit .kit-glyph .glyph { color: var(--c); filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.ability.kit.locked .kit-glyph .glyph, .ability.kit.tired .kit-glyph .glyph { color: rgba(120,120,135,.9); }
+.ability.kit.active .ab-face, .ability.kit.active { animation: none; }
 
 /* windup: the ring flashes fast right before release */
 .ability.windup { animation: abwind .18s ease-in-out infinite alternate; }
@@ -210,7 +217,9 @@ button { font-family: inherit; color: inherit; }
 .skill-stars { display: inline-flex; gap: 0; }
 .abil { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; margin: 3px 0; color: var(--ink-soft); }
 .abil .glyph { color: var(--c); }
-.abil b { color: var(--ink); }
+.abil b { color: var(--ink); white-space: nowrap; }
+.abil .glyph { flex: none; }
+.abil span { line-height: 1.3; }
 .row.current { box-shadow: inset 0 0 0 2px rgba(255,138,61,.55), inset 0 1px 0 rgba(255,255,255,.8); }
 .portrait { width: 64px; height: 64px; flex: none; border-radius: 20px; background: radial-gradient(circle at 50% 35%, rgba(255,255,255,.95), rgba(255,236,214,.7)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.9), 0 2px 8px rgba(16,24,40,.1); }
 .swatches { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -316,6 +325,7 @@ kbd { background: rgba(255,255,255,.8); border-radius: 6px; padding: 1px 6px; bo
   #abilities { bottom: 84px; left: 10px; flex-direction: row; flex-wrap: wrap; max-width: calc(100vw - 20px); gap: 6px; }
   .ability { width: 46px; height: 46px; }
   .ability .ab-face { inset: 4px; width: 38px !important; height: 38px !important; }
+  .ability.kit { width: 38px; height: 38px; }
   #panel { top: auto; bottom: 86px; height: 62vh; right: 8px; width: calc(100vw - 16px); }
   #info { top: 110px; bottom: auto; left: 8px; width: 230px; }
 }
@@ -408,3 +418,12 @@ kbd { background: rgba(255,255,255,.8); border-radius: 6px; padding: 1px 6px; bo
 .chip, .chip.lg-on, #quest, #quest.lg-on { background: linear-gradient(180deg, rgba(255,251,242,.88), rgba(255,238,212,.74)), var(--glass-tint-strong); }
 #toolbar, #toolbar.lg-on { background: linear-gradient(180deg, rgba(255,250,240,.84), rgba(255,236,208,.7)), var(--glass-tint-strong); }
 .tool.active { background: linear-gradient(180deg, #fff, rgba(255,244,226,.85)); }
+
+/* ---- running costs & the away report ---- */
+.stock { font-size: 12px; margin: 2px 0; }
+.stock.low { color: #c9792a; font-weight: 800; }
+.stock.out { color: #d0453a; font-weight: 800; }
+.card.away { max-width: 440px; }
+.away-note { margin: 4px 0; padding: 6px 10px; border-radius: 12px; background: rgba(120, 90, 60, .08); font-weight: 700; font-size: 13px; line-height: 1.5; text-align: left; }
+.away-note.warn { background: rgba(224, 120, 61, .16); color: #8a4a1d; }
+.away-note .ing { margin: 0 3px; }

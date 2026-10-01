@@ -4,7 +4,8 @@
 import { Agent } from './agent.js';
 import { staffLook, nextCast } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
-import { dishById, furnitureById, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY } from './data.js';
+import { dishById, furnitureById, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS } from './data.js';
+import { CASTS } from './kits.js';
 import { rand, randInt, manhattan, uid, bus } from './util.js';
 import { t, titledRole } from './i18n.js';
 
@@ -30,6 +31,66 @@ export class Staff extends Agent {
     this.spinT = 0;      // whirlwind spin (visual)
     this.boostT = 0;     // seconds left on a timed ability (dash / showtime / juggle)
     this.boostRole = null;
+    this.kitCd = 0;      // seconds until the character's active skill can be cast again
+    this.kitT = 0;       // seconds left of a timed active skill (time pause, spotlight): shows the aura
+    this.auraT = 0; this.auraMul = 1;   // a colleague's Caffeine Boost, lapses when they walk away
+    this.buffT = 0; this.buffMul = 1;   // Wild Magic's gust of haste
+  }
+
+  // ---------------- character kit (perks + a castable skill, see KITS) ----------------
+  get kit() { return KITS[this.look.model] || { perks: [], active: null }; }
+  perk(id) { return this.kit.perks.find((p) => p.id === id) || null; }
+  /** Best skill level across every job they have worked in. */
+  bestLv() { return Math.max(...Object.keys(ROLES).map((r) => this.skillLv(r))); }
+  kitUnlocked() { return !!this.kit.active && this.bestLv() >= ABILITY_UNLOCK_LV; }
+  kitReady() { return this.kitUnlocked() && this.kitCd <= 0 && !this.napping && !this.game.paused; }
+  /** Speed multiplier from perks and drawbacks: applies to walking and to work. */
+  kitMul() {
+    let m = this.auraMul * this.buffMul;
+    const night = this.perk('night'), shy = this.perk('shy');
+    if (night && this.game.day.hour >= night.from) m *= night.mul;
+    if (shy && shy.roles.includes(this.role)) m *= shy.mul;
+    return m;
+  }
+  /** …plus what only changes how fast they walk. */
+  kitWalkMul() {
+    let m = this.kitMul();
+    const sprint = this.perk('sprint'), dis = this.perk('dislike');
+    if (sprint) m *= sprint.speed;
+    if (dis && this.held && this.held.dish === dishById[dis.dish].asset) m *= dis.mul;
+    return m;
+  }
+  /** Cast the active skill (the dock button). False when it isn't ready or has nothing to aim at. */
+  castKit() {
+    const k = this.kit.active, g = this.game;
+    if (!k || !this.kitReady() || !CASTS[k.id](this, g)) return false;
+    this.kitCd = k.cooldown; this.kitT = k.dur || 0;
+    g.fx.title(g.at(this.x, this.y, 95), t('{ability}!', { ability: k.name }), k.color);
+    g.fx.sparkle(g.at(this.x, this.y, 60), 22, k.color);
+    g.fx.sparkle(g.at(this.x, this.y, 60), 10, '#ffffff');
+    this.emote('emote_sparkle', 1.5);
+    this.hop();
+    g.sfx('ability');
+    bus.emit('kitCast', this);
+    return true;
+  }
+  resetKit() { this.kitCd = 0; this.kitT = 0; this.auraT = 0; this.auraMul = 1; this.buffT = 0; this.buffMul = 1; }
+  updateKit(dt) {
+    const g = this.game;
+    if (this.kitCd > 0) this.kitCd = Math.max(0, this.kitCd - dt);
+    if (this.kitT > 0) this.kitT = Math.max(0, this.kitT - dt);
+    if (this.auraT > 0 && (this.auraT -= dt) <= 0) this.auraMul = 1;
+    if (this.buffT > 0 && (this.buffT -= dt) <= 0) this.buffMul = 1;
+    const aura = this.perk('aura');
+    if (aura && !this.napping) {
+      for (const o of g.staff) {
+        if (o === this || o.napping || manhattan(o.tx, o.ty, this.tx, this.ty) > aura.radius) continue;
+        o.auraT = 0.5; o.auraMul = aura.mul;
+        if (Math.random() < dt * 1.2) g.fx.steam(g.at(o.x, o.y, 75));
+      }
+    }
+    const night = this.perk('night'), dark = !!night && g.day.hour >= night.from;
+    if (dark !== this.dark) { this.dark = dark; if (dark) this.emote('emote_sad', 2.4); }
   }
 
   // ---------------- ability (charges while working, fires by itself) ----------------
@@ -41,7 +102,7 @@ export class Staff extends Agent {
   /** Multiplier on how fast timed work (cooking, mixing, talking…) progresses. */
   workMul() {
     const ab = this.ability;
-    return this.skillMul * (this.boosted() ? (ab.work || ab.speed || 1) : 1);
+    return this.skillMul * (this.boosted() ? (ab.work || ab.speed || 1) : 1) * this.kitMul();
   }
   updateAbility(dt) {
     const g = this.game;
@@ -159,12 +220,13 @@ export class Staff extends Agent {
   update(dt) {
     if (this.job && this.job.canceled) this.abortJob();
     this.updateAbility(dt);
+    this.updateKit(dt);
     if (this.boostT > 0) {
       this.boostT = Math.max(0, this.boostT - dt);
       const g = this.game;
       if (this.boosted() && Math.random() < dt * 8) g.fx.puff(g.at(this.x, this.y, this.role === 'waiter' ? 4 : 50), this.ability.color, 1);
     }
-    this.speedMul = this.skillMul * (this.boosted() && this.ability.speed ? this.ability.speed : 1);
+    this.speedMul = this.skillMul * (this.boosted() && this.ability.speed ? this.ability.speed : 1) * this.kitWalkMul();
     super.update(dt);
     if (this.job) this.energy = Math.max(0, this.energy - ENERGY.drainPerSec * dt);
   }
@@ -240,7 +302,7 @@ export class Staff extends Agent {
         });
         this.wait(0, isDrink ? 'shake' : 'cook', {
           until: () => st.cookT >= st.cookTotal,
-          every: (dt) => { st.cookT += dt * (this.boosted() ? this.ability.work || 1 : 1); if (!isDrink && Math.random() < dt * 3) g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), '#ffffff'); },
+          every: (dt) => { st.cookT += dt * (this.boosted() ? this.ability.work || 1 : 1) * this.kitMul(); if (!isDrink && Math.random() < dt * 3) g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), '#ffffff'); },
         });
         this.do(() => {
           const t = j.ticket;
@@ -260,6 +322,7 @@ export class Staff extends Agent {
           if (st.ready !== t) return fail();
           st.ready = null; t.state = 'carrying';
           this.held = { id: 'held_tray', dish: dishById[t.dish].asset };
+          if (this.perk('dislike') && t.dish === this.perk('dislike').dish) this.emote('emote_sad', 1.6);
         });
         this.walk(0, 0, { goals: seatGoals(t.seat), onFail: fail });
         this.face({ x: t.seat.chair.x, y: t.seat.chair.y });

@@ -150,6 +150,28 @@ export const ROLES = {
   cleaner: { name: 'Cleaner', hire: 70, model: 'knight', look: { top: ['hoodie', '#b5e0c8'], bottom: ['pants', '#7fa7c9'], hat: ['cap', '#f5b3a5'] } },
   bartender: { name: 'Baker', hire: 100, model: 'mage', look: { top: ['jacket', '#d99aa8'], bottom: ['skirt', '#5c4d6b'], hat: ['bow', '#f7d58b'] } },
 };
+// ---------------- running costs ----------------
+// Ingredients are used up as drinks are made: one pack (the unit sold at the market) makes
+// SERVINGS_PER_UNIT servings of every recipe it is part of. Staff draw a daily wage (more as they gain
+// skill) and the room costs rent by floor area; unpaid wages only leave the team grumpy, never in debt.
+export const SERVINGS_PER_UNIT = 2.5;
+export const GARDEN_MARKUP = 1.8;                  // garden produce costs this much more at the market than it is worth to grow
+export const COSTS = { wage: 0.18, wageSkill: 0.2, rentPerTile: 0.5, unpaidEnergy: 20 };
+export const staffWage = (role, skillLv = 1) => Math.round(ROLES[role].hire * COSTS.wage * (1 + COSTS.wageSkill * (skillLv - 1)));
+export const rentFor = (size) => Math.round(size * size * COSTS.rentPerTile);
+/** Auto-restock: when a menu ingredient falls below `minUnits` packs, buy back up to `targetUnits`, within a daily budget. */
+export const RESTOCK = { base: 90, perLevel: 70, minUnits: 2, targetUnits: 5 };
+/** Market price of an ingredient pack. */
+export const ingPrice = (i) => (i.source === 'garden' ? Math.ceil(i.price * GARDEN_MARKUP) : i.price);
+/** What one serving of a dish costs in ingredients (at market price). */
+export const servingCost = (d) => d.ings.reduce((a, id) => a + ingPrice(ingById[id]), 0) / SERVINGS_PER_UNIT;
+
+// ---------------- while you are away ----------------
+// The café keeps trading while the game is closed: on return the time away is settled in one go
+// (see offline.js). One game day of trading takes `hoursPerDay` real hours, at `efficiency` of what
+// playing it live would earn, and only the first `capHours` away are counted.
+export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSeconds: 600 };
+
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 
 export const CHARACTER_MODELS = ['knight', 'mage', 'barbarian', 'rogue', 'rogue_hooded'];
@@ -206,6 +228,54 @@ export const ABILITIES = {
 };
 export const ABILITY_UNLOCK_LV = 2;
 export const ABILITY = { chargePerLv: 0.15, idleCharge: 0.35, impatientAfter: 20, windup: 0.9 };
+
+// Character kits: staff are our own characters, and each brings a signature kit on top of their job's
+// ability (above). `perks` are always on while the character is on shift (`bad: true` = a drawback that
+// comes with the personality); `active` is cast by the player from the dock (a cooldown, no charging),
+// unlocked once the character reaches skill Lv2 in any job. The kit follows the character they wear.
+// Perk numbers: `speed`/`mul` multiply walking (and, for `mul`, working) speed; see Staff.kitMul().
+export const NIGHT_FROM = 19;   // "Evening Glow" starts
+export const KITS = {
+  cheetie: {
+    perks: [
+      { id: 'sprint', glyph: 'dash', name: 'Cheetah Sprint', speed: 1.25,
+        desc: 'The fastest on the team: walks 25% faster.' },
+      { id: 'dislike', glyph: 'sad', bad: true, name: 'Matcha Aversion', dish: 'matcha', mul: 0.55,
+        desc: 'Wrinkles its nose at anything green: carries matcha 45% slower.' },
+    ],
+    active: { id: 'mindread', glyph: 'eye', color: '#ffb84a', name: 'Mind Reader', cooldown: 45,
+      desc: "Reads the mind of every guest waiting to order: all those orders are placed at once, and the guests are delighted." },
+  },
+  mochalatte: {
+    perks: [
+      { id: 'aura', glyph: 'energy', name: 'Caffeine Boost', radius: 3, mul: 1.12,
+        desc: 'Colleagues within 3 tiles walk and work 12% faster.' },
+    ],
+    active: { id: 'timestop', glyph: 'clock', color: '#6fa8ff', name: 'Time Pause', cooldown: 70, dur: 7, burst: 15,
+      desc: "Stops time: every guest's patience freezes for 7 s. The rush-hour lifesaver." },
+  },
+  heehee: {
+    perks: [
+      { id: 'bloom', glyph: 'heart', name: 'Blooming Tips', tip: 0.4, min: 0.7,
+        desc: 'Delighted guests tip 40% more, in a shower of petals.' },
+    ],
+    active: { id: 'spotlight', glyph: 'sparkles', color: '#ffc93c', name: 'Spotlight', cooldown: 60, dur: 14, reach: 2.4,
+      desc: 'Lights up the busiest table for 14 s: guests there wait longer, tip double and count double for the rating.' },
+  },
+  bbaekko: {
+    perks: [
+      { id: 'shy', glyph: 'sad', bad: true, name: 'Shy Heart', roles: ['waiter', 'cleaner'], mul: 0.65,
+        desc: 'Out on the floor (Server, Cleaner) it works 35% slower. It is happiest in the kitchen.' },
+      { id: 'night', glyph: 'zzz', bad: true, name: 'Afraid of the Dark', from: NIGHT_FROM, mul: 0.8,
+        desc: 'After 7 pm it works 20% slower.' },
+    ],
+    active: { id: 'magic', glyph: 'sparkles', color: '#c37bff', name: 'Wild Magic', cooldown: 55,
+      desc: 'Casts a random spell: a flash brew, a calming charm, a gust of haste or a coin shower… or the chant goes wrong.' },
+  },
+  oritokki: { perks: [], active: null },   // signature skills come with a later update
+};
+/** Every perk and active skill (for the translator). */
+export const KIT_TEXT = Object.values(KITS).flatMap((k) => [...k.perks, k.active].filter(Boolean));
 
 export function skillLevel(xp) {
   let lv = 1;

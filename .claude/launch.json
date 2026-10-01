@@ -21,6 +21,15 @@
         "8123"
       ],
       "port": 8123
+    },
+    {
+      "name": "refillit-economy",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8124"
+      ],
+      "port": 8124
     }
   ]
 }
