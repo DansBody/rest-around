@@ -1,9 +1,10 @@
-// Build mode: buy/place/move/rotate/sell furniture, paint floors, apply wallpaper, expand the room.
+// Build mode: buy/place/move/rotate/sell furniture, hang/move/sell wall decorations, paint floors,
+// apply wallpaper, expand the room.
 // The simulation is paused while building. Layouts that cut any floor off from the door, or block
 // the working side of a stove/bar/restroom/arcade or every side of a chair, are refused with a reason.
-import { World } from './world.js';
+import { World, DOOR_Y } from './world.js';
 import { DIRS } from './iso.js';
-import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE } from './data.js';
+import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE, wallDecorById, wallLayout, wallDoorSpan, WALL_GAP } from './data.js';
 import { tileKey, bus } from './util.js';
 import { t } from './i18n.js';
 
@@ -11,7 +12,7 @@ export class Build {
   constructor(game) {
     this.game = game;
     this.active = false;
-    this.tool = null;      // {mode:'place', type} | {mode:'floor', id}
+    this.tool = null;      // {mode:'place', type} | {mode:'floor', id} | {mode:'wall', id} (a wall decoration)
     this.ghost = null;
     this.selected = null;
     this.moving = null;    // furniture lifted for moving: {f, x, y, dir}
@@ -20,25 +21,33 @@ export class Build {
     this.hoverTile = null;
     this.message = null;
     this.painting = false;
+    this.locked = false;   // the ghost is pinned to a spot and waits for ✓ (the pointer no longer drags it)
+    this.hoverWall = null; // { side, a } the pointer is at while hanging a wall piece
+    this.movingWall = null;   // id of the wall piece lifted for moving
+    this.selectedWall = null; // id of the hung wall piece that is selected
   }
 
   enter() {
     const g = this.game;
     if (g.paused) return false;
-    this.active = true; this.tool = null; this.ghost = null; this.selected = null; this.message = null;
+    this.active = true; this.tool = null; this.ghost = null; this.selected = null; this.message = null; this.locked = false;
+    this.hoverWall = null; this.movingWall = null; this.selectedWall = null;
     g.selected = null;
     bus.emit('build', true);
     return true;
   }
   exit() {
     if (this.moving) this.cancelMove();
-    this.active = false; this.tool = null; this.ghost = null; this.selected = null; this.message = null;
+    this.active = false; this.tool = null; this.ghost = null; this.selected = null; this.message = null; this.locked = false;
+    this.hoverWall = null; this.movingWall = null; this.selectedWall = null;
     bus.emit('build', false);
   }
 
   setTool(tool) {
     if (this.moving) this.cancelMove();
-    this.tool = tool; this.selected = null; this.autoFace = true;
+    this.tool = tool; this.selected = null; this.autoFace = true; this.locked = false;
+    this.movingWall = null; this.selectedWall = null;
+    if (this.game.touchMode) { this.hoverTile = null; this.hoverWall = null; }   // a finger hasn't pointed anywhere yet
     if (tool && tool.mode === 'place') this.dir = 1;
     this.message = null;
     this.refresh();
@@ -98,6 +107,22 @@ export class Build {
     return res;
   }
 
+  /** Can wall piece `id` hang at `a` along `side`? (`ignore`: the piece being moved) */
+  validateWall(id, side, a, ignore = id) {
+    const g = this.game, s = g.state, W = g.world.size * 2;
+    const res = { kind: 'wall', id, side, a, valid: false, reason: '' };
+    if (a < 1.0 || a > W - 1.0) { res.reason = t('Too close to the corner'); return res; }
+    if (side === 'west') { const [lo, hi] = wallDoorSpan(DOOR_Y); if (a > lo && a < hi) { res.reason = t('Keep the doorway clear'); return res; } }
+    const layout = wallLayout(g.world.size, DOOR_Y, s.wallDeco.filter((x) => x !== ignore), s.wallPos);
+    for (const [oid, p] of Object.entries(layout)) {
+      if (p.side === side && Math.abs(p.a - a) < WALL_GAP) { res.reason = t('Too close to the {name}', { name: wallDecorById[oid].name }); return res; }
+    }
+    res.valid = true;
+    return res;
+  }
+  /** Hanging a wall piece (a new one, or one being moved). */
+  wallMode() { return !!(this.movingWall || (this.tool && this.tool.mode === 'wall')); }
+
   bestChairDir(x, y) {
     const w = this.game.world;
     const ok = (d) => { const v = DIRS[d]; const t = w.furnitureAt(x + v.dx, y + v.dy); return t && t.kind === 'table'; };
@@ -107,13 +132,108 @@ export class Build {
   }
 
   // ---------------- pointer ----------------
+  /** Placing a new item or carrying one that's being moved (the ghost follows the pointer). */
+  placing() { return !!(this.moving || this.wallMode() || (this.tool && this.tool.mode === 'place')); }
+  /** Pointer over a wall while hanging a piece: the ghost follows (unless it's pinned). */
+  hoverWallAt(hit) {
+    if (this.locked) return;
+    this.hoverWall = hit ? { side: hit.side, a: hit.a } : null;
+    this.refresh();
+  }
+  /** Click / tap a wall while hanging a piece: pin it there; tapping the same spot again hangs it. */
+  tapWall(hit) {
+    if (!hit) return;
+    const h = this.hoverWall;
+    if (this.locked && h && h.side === hit.side && Math.abs(h.a - hit.a) < 0.6 && this.ghost) return this.confirm();
+    this.message = null;
+    this.locked = false;
+    this.hoverWallAt(hit);
+    this.locked = true;
+    this.game.sfx('tap');
+    bus.emit('buildChanged');
+  }
+  /** A hung wall piece was tapped (no tool in hand): select it. */
+  selectWall(id) {
+    this.selected = null; this.selectedWall = id; this.message = null;
+    this.game.sfx('click');
+    bus.emit('buildChanged');
+  }
+  startMoveWall() {
+    const id = this.selectedWall;
+    if (!id) return;
+    const spot = wallLayout(this.game.world.size, DOOR_Y, this.game.state.wallDeco, this.game.state.wallPos)[id];
+    this.movingWall = id; this.selectedWall = null;
+    this.hoverWall = spot ? { ...spot } : null; this.locked = !!spot;
+    this.refresh();
+    bus.emit('buildChanged');
+  }
+  sellSelectedWall() {
+    const id = this.selectedWall;
+    if (!id) return;
+    this.selectedWall = null;
+    this.game.eco.sellWallDecor(id);
+    this.say(t('Sold {name} (+{n})', { name: wallDecorById[id].name, n: Math.floor(wallDecorById[id].price * 0.5) }), 'good');
+  }
+  /** Click / tap while placing: pin the ghost there (rotate · ✕ · ✓ float around it); tapping it again places it. */
+  tapPreview(tx, ty) {
+    const h = this.hoverTile;
+    if (this.locked && h && h.x === tx && h.y === ty && this.ghost) return this.confirm();
+    this.message = null;
+    this.locked = false;
+    this.hover(tx, ty);
+    this.locked = true;
+    this.game.sfx('tap');
+    bus.emit('buildChanged');
+  }
+  /** Place / drop at the pinned ghost (the ✓ button). */
+  confirm() {
+    if (this.wallMode()) return this.confirmWall();
+    const h = this.hoverTile;
+    if (!h || !this.placing()) return;
+    // a refused spot keeps the ghost where it is, so the player can rotate or pick another spot
+    if (this.ghost && !this.ghost.valid) { this.game.sfx('error'); return this.say(this.ghost.reason, 'bad'); }
+    this.click(h.x, h.y);
+    this.locked = false;
+    if (this.game.touchMode) { this.hoverTile = null; this.ghost = null; }
+    bus.emit('buildChanged');
+  }
+  confirmWall() {
+    const gh = this.ghost;
+    if (!gh || gh.kind !== 'wall') return;
+    if (!gh.valid) { this.game.sfx('error'); return this.say(gh.reason, 'bad'); }
+    const pos = { side: gh.side, a: gh.a }, w = wallDecorById[gh.id];
+    if (this.movingWall) {
+      this.game.eco.moveWallDecor(gh.id, pos);
+      this.say(t('Moved'), 'good');
+    } else {
+      if (!this.game.eco.buyWallDecor(gh.id, pos)) return this.say(t('Not enough coins'), 'bad');
+      this.say(t('Hung the {name} (−{n})', { name: w.name, n: w.price }), 'good');
+    }
+    // each wall piece is one of a kind: once it's up, it's selected so it can be nudged right away
+    this.tool = null; this.movingWall = null; this.locked = false; this.ghost = null; this.hoverWall = null;
+    this.selectedWall = gh.id;
+    bus.emit('buildChanged');
+  }
+  /** ✕ next to the ghost: stop placing this item (a moved one goes back where it was). */
+  cancelPlacing() {
+    this.locked = false;
+    if (this.movingWall) { this.selectedWall = this.movingWall; this.movingWall = null; this.ghost = null; this.hoverWall = null; bus.emit('buildChanged'); }
+    else if (this.moving) this.cancelMove(); else this.setTool(null);
+    this.game.sfx('close');
+  }
   hover(tx, ty) {
+    if (this.locked) return;
     this.hoverTile = { x: tx, y: ty };
     this.refresh();
   }
   refresh() {
     const t = this.hoverTile, tool = this.tool;
     this.ghost = null;
+    if (this.wallMode()) {
+      const hw = this.hoverWall, id = this.movingWall || tool.id;
+      if (hw) this.ghost = this.validateWall(id, hw.side, hw.a);
+      return;
+    }
     if (!t) return;
     if (this.moving) {
       const f = this.moving.f;
@@ -138,18 +258,20 @@ export class Build {
     if (tool && tool.mode === 'place') return this.place(tool.type, tx, ty);
     if (tool && tool.mode === 'floor') return this.paint(tx, ty);
     const f = w.inBounds(tx, ty) ? w.furnitureAt(tx, ty) : null;
-    this.selected = f;
+    this.selected = f; this.selectedWall = null;
     if (f) g.sfx('click');
     this.message = null;
     bus.emit('buildChanged');
   }
 
   rotate() {
+    if (this.wallMode()) return;   // wall pieces always face the room
     if (this.selected && !this.moving) return this.rotateSelected();
     this.dir = (this.dir + 1) % 4;
     this.autoFace = false;
     this.refresh();
     this.game.sfx('click');
+    bus.emit('buildChanged');
   }
 
   // ---------------- actions ----------------
@@ -254,9 +376,11 @@ export class Build {
     this.detach(f);
     this.moving = { f, x: f.x, y: f.y, dir: f.dir };
     this.dir = f.dir; this.autoFace = false;
+    this.hoverTile = { x: f.x, y: f.y }; this.locked = true;   // it starts pinned where it stood
     this.game.world.removeFurniture(f);
-    this.say(t('Click a new spot · R rotates · Esc cancels'));
+    this.message = null;
     this.refresh();
+    bus.emit('buildChanged');
   }
   dropMove(x, y) {
     const g = this.game, m = this.moving, f = m.f;
@@ -276,12 +400,15 @@ export class Build {
     const f = m.f;
     f.x = m.x; f.y = m.y; f.dir = m.dir; f.fp = World.footprint(f.type, m.dir);
     this.game.world.furniture.push(f); this.game.world.changed();
-    this.moving = null;
+    this.moving = null; this.locked = false;
     this.selected = f;
     bus.emit('buildChanged');
   }
 
   escape() {
+    if (this.movingWall) { this.cancelPlacing(); return true; }
+    if (this.selectedWall) { this.selectedWall = null; bus.emit('buildChanged'); return true; }
+    if (this.locked) { this.locked = false; if (this.game.touchMode) { this.hoverTile = null; this.ghost = null; } bus.emit('buildChanged'); return true; }
     if (this.moving) { this.cancelMove(); return true; }
     if (this.tool || this.selected) { this.tool = null; this.selected = null; this.ghost = null; this.message = null; bus.emit('buildChanged'); return true; }
     return false;

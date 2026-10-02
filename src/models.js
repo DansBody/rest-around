@@ -208,6 +208,70 @@ function greyTexture(tex) {
   return t;
 }
 
+// Region recolour for the guest bodies: the texture is plain cream fur, a mid-grey shirt and white
+// muzzle/belly, so each region is found by its colour (fur: warm and saturated; shirt: neutral mid
+// grey) and takes the new colour with the texel's own light and shade. Masks are made once per
+// texture, the recoloured textures are cached per colour pair.
+const regionCache = new Map();
+const recolorCache = new Map();
+const smoothstep = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+
+function regionMasks(tex) {
+  let r = regionCache.get(tex.uuid);
+  if (r) return r;
+  const img = tex.image;
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+  const n = p.length / 4;
+  const fur = new Float32Array(n), shirt = new Float32Array(n), lum = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const R = p[i * 4], G = p[i * 4 + 1], B = p[i * 4 + 2];
+    const mx = Math.max(R, G, B), mn = Math.min(R, G, B), sat = (mx - mn) / (mx + 1);
+    const l = 0.3 * R + 0.59 * G + 0.11 * B;
+    lum[i] = l;
+    fur[i] = smoothstep(0.08, 0.14, sat) * smoothstep(110, 150, l);
+    shirt[i] = (1 - smoothstep(0.05, 0.09, sat)) * smoothstep(80, 100, l) * (1 - smoothstep(200, 220, l));
+  }
+  r = { w: c.width, h: c.height, base: d, fur, shirt, lum };
+  regionCache.set(tex.uuid, r);
+  return r;
+}
+
+function recolorTexture(tex, ref, colors) {
+  const key = tex.uuid + '|' + Object.keys(colors).map((k) => k + colors[k]).join('|');
+  let t = recolorCache.get(key);
+  if (t) return t;
+  const m = regionMasks(tex);
+  const c = document.createElement('canvas');
+  c.width = m.w; c.height = m.h;
+  const g = c.getContext('2d');
+  const d = new ImageData(new Uint8ClampedArray(m.base.data), m.w, m.h), p = d.data;
+  for (const region of Object.keys(colors)) {
+    const mask = m[region], src = ref[region];
+    if (!mask || !src || !colors[region]) continue;
+    const hex = parseInt(String(colors[region]).replace('#', ''), 16);   // sRGB, like the texture bytes
+    const tr = (hex >> 16) & 255, tg = (hex >> 8) & 255, tb = hex & 255;
+    const refLum = 0.3 * src[0] + 0.59 * src[1] + 0.11 * src[2];
+    for (let i = 0; i < mask.length; i++) {
+      const w = mask[i];
+      if (w <= 0) continue;
+      const k = m.lum[i] / refLum, o = i * 4;
+      p[o] = p[o] * (1 - w) + tr * k * w;
+      p[o + 1] = p[o + 1] * (1 - w) + tg * k * w;
+      p[o + 2] = p[o + 2] * (1 - w) + tb * k * w;
+    }
+  }
+  g.putImageData(d, 0, 0);
+  t = new THREE.CanvasTexture(c);
+  t.flipY = tex.flipY; t.colorSpace = tex.colorSpace; t.wrapS = tex.wrapS; t.wrapT = tex.wrapT;
+  t.magFilter = tex.magFilter; t.minFilter = tex.minFilter;
+  recolorCache.set(key, t);
+  return t;
+}
+
 class ModelStore {
   constructor() {
     this.defs = new Map();
@@ -295,6 +359,19 @@ class ModelStore {
   }
 
   def(id) { return this.defs.get(id); }
+
+  /** Recolour a character instance's regions (manifest `recolor`: region -> its colour in the texture). */
+  recolorCharacter(root, id, colors) {
+    const ref = (this.defs.get(id) || {}).recolor;
+    if (!ref) return;
+    root.traverse((o) => {
+      if (!o.isMesh || !o.material || !o.material.map || !o.material.map.image) return;
+      const t = recolorTexture(o.material.map, ref, colors);
+      o.material = o.material.clone();
+      o.material.map = t;
+      if (o.material.emissiveMap) o.material.emissiveMap = t;
+    });
+  }
   isPlaceholder(id) { return this.placeholder.has(id); }
 
   /** A fresh instance of a static model; tint multiplies material colours (strength from manifest). */

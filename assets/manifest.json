@@ -27,16 +27,12 @@
   },
   "fonts": {
     "ui": {
-      "family": "RA Body",
-      "file": "fonts/ui.woff2",
-      "weight": "200 1000",
-      "fallback": "'Nunito','Varela Round','Trebuchet MS','Segoe UI',system-ui,sans-serif"
+      "family": "Inter",
+      "fallback": "'Inter',-apple-system,'Segoe UI','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif"
     },
     "display": {
-      "family": "RA Display",
-      "file": "fonts/display.woff2",
-      "weight": "600",
-      "fallback": "'Fredoka','Baloo 2','Nunito','Trebuchet MS',system-ui,sans-serif"
+      "family": "Inter",
+      "fallback": "'Inter',-apple-system,'Segoe UI','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif"
     }
   },
   "characterAnimationFile": "models/characters/animations.glb",
@@ -79,6 +75,7 @@
     {"id":"barbarian","category":"character","file":"models/characters/Barbarian.gltf","name":"Barbarian","hand":"handslot.r","handL":"handslot.l","head":"head","accessories":["Barbarian_Hat","Barbarian_Cape"],"desc":"Barbarian character (KayKit Character Pack: Adventurers)."},
     {"id":"rogue","category":"character","file":"models/characters/Rogue.gltf","name":"Rogue","hand":"handslot.r","handL":"handslot.l","head":"head","accessories":["Rogue_Cape"],"desc":"Rogue character (KayKit Character Pack: Adventurers)."},
     {"id":"rogue_hooded","category":"character","file":"models/characters/Rogue_Hooded.gltf","name":"Hooded Rogue","hand":"handslot.r","handL":"handslot.l","head":"head","accessories":["Rogue_Cape"],"desc":"Hooded Rogue character (KayKit Character Pack: Adventurers)."},
+    {"id":"guest_b","category":"character","file":"models/characters/GuestB.gltf","name":"Guest","hand":"hand_r","handL":"hand_l","head":"head","accessories":[],"trayPos":[0,0.78,0.85],"sitForward":0.15,"recolor":{"fur":[253,235,203],"shirt":[151,151,152]},"animations":{"idle":"Idle","walk":"Walk","carry":"Carry","sit":"Sit","eat":"Eat","wait":"Wait","cook":"Work","talk":"Talk","sweep":"Sweep","shake":"Shake","repair":"Repair","play":"Work","nap":"Nap","cheer":"Cheer","hit":"Hit","pickup":"Pickup"},"desc":"The guests' standard chibi body: an earless cream animal in a grey tee, recoloured per guest (own design, gpt-image-2 views + Meshy multi-image-to-3d; rig + clips from tools/build_character.py)."},
     {"id":"mochalatte","category":"character","file":"models/characters/MochaLatte.gltf","name":"Mocha Latte","hand":"hand_r","handL":"hand_l","head":"head","accessories":[],"trayPos":[0,0.78,0.85],"sitForward":0.15,"animations":{"idle":"Idle","walk":"Walk","carry":"Carry","sit":"Sit","eat":"Eat","wait":"Wait","cook":"Work","talk":"Talk","sweep":"Sweep","shake":"Shake","repair":"Repair","play":"Work","nap":"Nap","cheer":"Cheer","hit":"Hit","pickup":"Pickup"},"desc":"Mocha Latte, the house hamster (own design, Meshy multi-image-to-3d; rig + clips from tools/build_character.py)."},
     {"id":"bbaekko","category":"character","file":"models/characters/Bbaekko.gltf","name":"Bbaekko","hand":"hand_r","handL":"hand_l","head":"head","accessories":[],"trayPos":[0,0.78,0.85],"sitForward":0.15,"animations":{"idle":"Idle","walk":"Walk","carry":"Carry","sit":"Sit","eat":"Eat","wait":"Wait","cook":"Work","talk":"Talk","sweep":"Sweep","shake":"Shake","repair":"Repair","play":"Work","nap":"Nap","cheer":"Cheer","hit":"Hit","pickup":"Pickup"},"desc":"Bbaekko, the little winged white tiger (own design, Meshy multi-image-to-3d; rig + clips from tools/build_character.py)."},
     {"id":"heehee","category":"character","file":"models/characters/HeeHee.gltf","name":"Hee Hee","hand":"hand_r","handL":"hand_l","head":"head","accessories":[],"trayPos":[0,0.78,0.85],"sitForward":0.15,"animations":{"idle":"Idle","walk":"Walk","carry":"Carry","sit":"Sit","eat":"Eat","wait":"Wait","cook":"Work","talk":"Talk","sweep":"Sweep","shake":"Shake","repair":"Repair","play":"Work","nap":"Nap","cheer":"Cheer","hit":"Hit","pickup":"Pickup"},"desc":"Hee Hee, the little brown bear with a petal collar (own design, Meshy multi-image-to-3d; rig + clips from tools/build_character.py)."},

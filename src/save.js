@@ -103,6 +103,11 @@ function apply(game, data) {
   st.garden = Array.isArray(s.garden) ? s.garden.slice(0, 6).map((p) => ({ crop: p && SEEDS.some((x) => x.crop === p.crop) ? p.crop : null, prog: num(p && p.prog, 0, 0, 1), water: num(p && p.water, 0, 0, 1) })) : [];
   // wall decorations & the daily goal (saves from before the café opened start with the starter set)
   st.wallDeco = Array.isArray(s.wallDeco) ? s.wallDeco.filter((id, i, a) => wallDecorById[id] && a.indexOf(id) === i) : [...START_WALL_DECOR];
+  st.wallPos = {};
+  for (const id of st.wallDeco) {
+    const p = s.wallPos && s.wallPos[id];
+    if (p && ['north', 'west', 'east', 'south'].includes(p.side) && typeof p.a === 'number' && isFinite(p.a)) st.wallPos[id] = { side: p.side, a: clamp(p.a, 0, 100) };
+  }
   const q = s.quest;
   st.quest = q && QUESTS.some((x) => x.id === q.id) ? { id: q.id, target: Math.max(1, Math.floor(num(q.target, 5, 1, 1e6))), prog: Math.floor(num(q.prog, 0, 0, 1e6)), done: !!q.done } : null;
   const stats = s.stats && typeof s.stats === 'object' ? s.stats : null;

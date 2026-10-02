@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- Side-by-side preview of built characters: tools/charpreview.html?m=GuestB,MochaLatte&clip=Idle&yaw=0
+     guest ears (src/ears.js): &ears=cat,bear&fur=%23fdebcb,%23c08a5c -->
+<meta charset="utf-8">
+<title>Character preview</title>
+<style>html,body{margin:0;height:100%;background:#f4efe8}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
+import { addEars } from '../src/ears.js';
+const q = new URLSearchParams(location.search);
+const names = (q.get('m') || 'GuestB').split(',');
+const clipName = q.get('clip') || 'Idle';
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(innerWidth, innerHeight); r.setPixelRatio(devicePixelRatio);
+r.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf4efe8);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8a890, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(3, 6, 5); scene.add(sun);
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 100);
+const w = names.length * 1.8;
+cam.position.set(0, 1.4, Math.max(6, w * 1.4)); cam.lookAt(0, 1.0, 0);
+const mixers = [];
+const loader = new GLTFLoader();
+const yaw = +(q.get('yaw') || 0) * Math.PI / 180;
+await Promise.all(names.map((n, i) => loader.loadAsync(`../assets/models/characters/${n}.gltf`).then((g) => {
+  g.scene.position.x = (i - (names.length - 1) / 2) * 1.8;
+  g.scene.rotation.y = yaw;
+  const ears = (q.get('ears') || '').split(',')[i];
+  if (ears) addEars(g.scene, ears, (q.get('fur') || '#fdebcb').split(',')[i] || '#fdebcb');
+  const tex = (q.get('tex') || '').split(',')[i];   // try a texture variant: &tex=_preview/v0.jpg,...
+  if (tex) new THREE.TextureLoader().load(`../assets/models/characters/${tex}`, (t) => {
+    t.flipY = false; t.colorSpace = THREE.SRGBColorSpace;
+    g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.material.map = t; o.material.emissiveMap = t; o.material.needsUpdate = true; } });
+  });
+  scene.add(g.scene);
+  const clip = g.animations.find((a) => a.name === clipName);
+  if (clip) { const m = new THREE.AnimationMixer(g.scene); m.clipAction(clip).play(); mixers.push(m); }
+})));
+const t0 = +(q.get('t') || -1);
+const clock = new THREE.Clock();
+function frame() {
+  const dt = clock.getDelta();
+  if (r.domElement.width !== Math.round(innerWidth * devicePixelRatio)) {  // the pane may open at 0×0
+    r.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+  }
+  for (const m of mixers) t0 >= 0 ? m.setTime(t0) : m.update(dt);
+  r.render(scene, cam);
+  requestAnimationFrame(frame);
+}
+frame();
+window.ready = true;
+</script>

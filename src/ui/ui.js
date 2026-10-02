@@ -3,23 +3,24 @@
 import { h, bus, fmt, fmtTime, clamp } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
-import { PANELS, buildTray, skillLine, kitLines } from './panels.js';
+import { PANELS, buildTray, skillLine, kitLines, confirmBtn } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { SNACKS, SKILL, ABILITY_UNLOCK_LV, questById, dishById, furnitureById, ingById, OFFLINE } from '../data.js';
+import { SNACKS, SKILL, ABILITY_UNLOCK_LV, questById, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
+import { DOOR_Y } from '../world.js';
 import { audio } from '../audio.js';
 import { unlocksFor } from '../economy.js';
 import { glyph } from './icons.js';
 import { glassFx } from './glass.js';
 import { t, tt, titledRole, setLang, getLang } from '../i18n.js';
 
+// the tab bar uses monochrome line glyphs so it reads as one clean black capsule
 const TOOLS = [
-  { id: 'build', label: 'Build', icon: 'tool_build' },
-  { id: 'staff', label: 'Staff', icon: 'tool_staff' },
-  { id: 'menu', label: 'Menu', icon: 'tool_menu' },
-  { id: 'decor', label: 'Decor', icon: 'tool_decor' },
-  { id: 'garden', label: 'Garden', icon: 'tool_garden' },
-  { id: 'market', label: 'Market', icon: 'tool_market' },
-  { id: 'settings', label: 'Settings', icon: 'tool_settings' },
+  { id: 'build', label: 'Build', glyph: 'build' },
+  { id: 'staff', label: 'Staff', glyph: 'staff' },
+  { id: 'menu', label: 'Menu', glyph: 'menu' },
+  { id: 'garden', label: 'Garden', glyph: 'garden' },
+  { id: 'market', label: 'Market', glyph: 'market' },
+  { id: 'settings', label: 'Settings', glyph: 'settings' },
 ];
 
 export { portrait, thumb } from '../portrait.js';
@@ -41,7 +42,7 @@ export class UI {
     bus.on('toast', ({ msg, kind }) => this.toast(msg, kind));
     bus.on('changed', () => { this.dirty = true; });
     bus.on('build', (on) => this.onBuild(on));
-    bus.on('buildChanged', () => this.renderBuild());
+    bus.on('buildChanged', () => { this.renderBuild(); this.renderGhostCtl(); });
     bus.on('dayEnd', (s) => this.queueModal(() => this.summaryCard(s)));
     bus.on('levelUp', (e) => this.celebrate(e));
     bus.on('ability', (a) => this.cutIn(a));
@@ -105,13 +106,16 @@ export class UI {
     this.el.ratingTip = h('div.card.rating-tip');
     r.append(this.el.hud, this.el.ratingTip);
 
-    // daily goal (top-left, under the HUD)
+    // daily goal: folded into a checklist button (top-left); tapping it opens the goal card
+    this.el.questBadge = h('span.qb-badge');
+    this.el.questBtn = h('button.chip#questbtn', { title: t('Daily goal'), onclick: () => this.toggleQuest() }, glyph('checklist', 22), this.el.questBadge);
+    r.appendChild(this.el.questBtn);
     this.el.questIcon = h('div.q-ico');
     this.el.questText = h('div.q-text');
     this.el.questBar = h('i');
     this.el.questN = h('span.q-n');
     this.el.questReward = h('span.q-reward');
-    this.el.quest = h('div#quest.glass', this.el.questIcon, h('div.q-body', this.el.questText, h('div.q-row', h('div.pbar.green', this.el.questBar), this.el.questN), this.el.questReward));
+    this.el.quest = h('div#quest.glass', { onclick: () => this.toggleQuest(false) }, this.el.questIcon, h('div.q-body', this.el.questText, h('div.q-row', h('div.pbar.green', this.el.questBar), this.el.questN), this.el.questReward));
     r.appendChild(this.el.quest);
 
     // ----- toolbar -----
@@ -131,22 +135,28 @@ export class UI {
     this.el.cutin = h('div#cutin');
     r.appendChild(this.el.cutin);
 
-    this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label) }, ic(tool.icon, 38), h('span', t(tool.label))))));
+    this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label), 'aria-label': t(tool.label) }, glyph(tool.glyph, 24)))));
     r.appendChild(this.el.toolbar);
 
     // ----- side panel -----
     this.el.panelTitle = h('h2', '');
     this.el.panelIcon = h('span');
     this.el.panelBody = h('div.panel-body');
-    this.el.panel = h('div.card#panel',
+    this.el.panel = h('div.card#panel', h('div.grabber'),
       h('div.panel-head', this.el.panelIcon, this.el.panelTitle, h('button.btn.small.xbtn', { onclick: () => this.closePanel(), title: t('Close') }, glyph('close', 16))),
       this.el.panelBody);
     this.el.panel.addEventListener('pointerdown', () => { this.pointerInPanel = true; });
     window.addEventListener('pointerup', () => { setTimeout(() => { this.pointerInPanel = false; }, 0); });
+    // phones: panels and the info card are bottom sheets; tapping the dimmed scene above closes them
+    this.el.scrim = h('div#scrim', { onclick: () => this.closeSheets() });
+    r.insertBefore(this.el.scrim, this.el.toolbar);
     r.appendChild(this.el.panel);
 
     // ----- build tray -----
     this.el.buildbar = h('div#buildbar');
+    // rotate / cancel / place (or rotate / move / sell) floating right next to the item in the scene
+    this.el.ghostctl = h('div#ghostctl');
+    r.appendChild(this.el.ghostctl);
     this.el.buildBanner = h('div#buildbanner', glyph('build', 16), t('Build mode — the café is paused'));
     r.append(this.el.buildbar, this.el.buildBanner);
 
@@ -161,13 +171,22 @@ export class UI {
 
   /** Lens-rim refraction on the floating chrome (Chromium only; elsewhere the CSS frost stays). */
   initGlass() {
-    glassFx.enabled = this.game.state.settings.glass !== false;
-    for (const c of this.el.hud.children) glassFx.attach(c, { blur: 3, strength: 22, bezel: 12 });
-    glassFx.attach(this.el.quest, { blur: 3, strength: 24, bezel: 14 });
-    glassFx.attach(this.el.toolbar, { blur: 2.5, strength: 32, bezel: 18 });
-    for (const b of this.el.camctl.children) glassFx.attach(b, { blur: 2, strength: 22, bezel: 14 });
-    glassFx.attach(this.el.panel, { blur: 14, strength: 60, bezel: 28 });
-    glassFx.attach(this.el.info, { blur: 12, strength: 44, bezel: 24 });
+    // the mono theme uses solid white surfaces: no lens refraction (it was also costly on phones)
+    glassFx.setEnabled(false);
+  }
+
+  /** Phones have room for one sheet at a time; this flags it so the HUD around it steps aside. */
+  syncSheets() {
+    const info = this.el.info.classList.contains('show');
+    this.root.classList.toggle('has-panel', !!this.panel);
+    this.root.classList.toggle('has-info', info);
+    this.root.classList.toggle('has-sheet', !!this.panel || info);
+  }
+  closeSheets() {
+    this.toggleQuest(false);
+    this.closePanel();
+    if (this.game.selected) { this.game.selected = null; this.renderInfo(); }
+    this.el.ratingTip.classList.remove('show');
   }
 
   // ---------------- staff abilities: the job's ability charges and fires by itself; the character's skill is cast from the dock ----------------
@@ -249,6 +268,10 @@ ${k.desc}
     this.openPanel(id);
   }
   openPanel(id) {
+    // one window at a time: a panel replaces the character card and the popovers
+    if (this.game.selected) { this.game.selected = null; this.renderInfo(); }
+    this.el.ratingTip.classList.remove('show');
+    this.toggleQuest(false);
     this.panel = id;
     this.subview = null;
     const p = PANELS[id];
@@ -258,11 +281,13 @@ ${k.desc}
     for (const [k, b] of Object.entries(this.toolBtns)) b.classList.toggle('active', k === id);
     this.el.panelBody.scrollTop = 0;
     this.renderPanel();
+    this.syncSheets();
   }
   closePanel() {
     this.panel = null;
     this.el.panel.classList.remove('open');
     for (const b of Object.values(this.toolBtns)) b.classList.remove('active');
+    this.syncSheets();
   }
   renderPanel() {
     if (!this.panel) return;
@@ -278,27 +303,113 @@ ${k.desc}
   // ---------------- build ----------------
   onBuild(on) {
     this.el.toolbar.style.display = on ? 'none' : '';
-    this.el.camctl.style.bottom = on ? '260px' : '';
+    this.root.classList.toggle('building', on);
+    this.toggleQuest(false);
     this.el.buildbar.classList.toggle('open', on);
     this.el.buildBanner.classList.toggle('show', on);
     if (on) { this.closePanel(); this.game.selected = null; this.buildCat = this.buildCat || 'dining'; }
     this.game.sfx(on ? 'open' : 'close');
     this.renderBuild();
+    this.renderGhostCtl();
   }
   renderBuild() {
     if (!this.el || !this.el.buildbar) return;
     buildTray(this, this.el.buildbar);
   }
 
+  // ---------------- floating build controls ----------------
+  /** Buttons that float beside the pinned ghost (rotate · place · cancel) or the selected furniture (rotate · move · sell). */
+  renderGhostCtl() {
+    const b = this.game.build, el = this.el.ghostctl;
+    const gh = b.ghost, sel = b.selected;
+    let kids = null;
+    if (b.active && b.wallMode() && b.locked && gh && gh.kind === 'wall') {
+      const name = wallDecorById[gh.id].name;
+      kids = [
+        h('div.gc-label' + (gh.valid ? '' : '.bad'), gh.valid ? name : gh.reason),
+        h('div.gc-row',
+          h('button.gc-btn.ok' + (gh.valid ? '' : '.off'), { onclick: () => b.confirm(), title: b.movingWall ? t('Drop here') : t('Place here') }, glyph('check', 26)),
+          h('button.gc-btn', { onclick: () => b.cancelPlacing(), title: t('Cancel (Esc)') }, glyph('close', 20))),
+      ];
+    } else if (b.active && b.selectedWall && !b.placing()) {
+      const w = wallDecorById[b.selectedWall];
+      kids = [
+        h('div.gc-label', w.name),
+        h('div.gc-row',
+          h('button.gc-btn', { onclick: () => b.startMoveWall(), title: t('Move') }, glyph('move', 22)),
+          confirmBtn('button.gc-btn.sell', t('Sell +{n}', { n: Math.floor(w.price * 0.5) }), t('Sell?'), () => b.sellSelectedWall()),
+          h('button.gc-btn', { onclick: () => { b.selectedWall = null; this.renderBuild(); this.renderGhostCtl(); }, title: t('Close') }, glyph('close', 20))),
+      ];
+    } else if (b.active && b.placing() && b.locked && gh && gh.type) {
+      const name = furnitureById[gh.type].name;
+      kids = [
+        h('div.gc-label' + (gh.valid ? '' : '.bad'), gh.valid ? name : gh.reason),
+        h('div.gc-row',
+          h('button.gc-btn', { onclick: () => b.rotate(), title: t('Rotate (R)') }, glyph('rotate_r', 22)),
+          h('button.gc-btn.ok' + (gh.valid ? '' : '.off'), { onclick: () => b.confirm(), title: b.moving ? t('Drop here') : t('Place here') }, glyph('check', 26)),
+          h('button.gc-btn', { onclick: () => b.cancelPlacing(), title: t('Cancel (Esc)') }, glyph('close', 20))),
+      ];
+    } else if (b.active && sel && !b.moving) {
+      const cat = furnitureById[sel.type];
+      kids = [
+        h('div.gc-label', cat.name + (sel.broken ? t(' (broken)') : '')),
+        h('div.gc-row',
+          h('button.gc-btn', { onclick: () => b.rotateSelected(), title: t('Rotate') }, glyph('rotate_r', 22)),
+          h('button.gc-btn', { onclick: () => b.startMove(), title: t('Move') }, glyph('move', 22)),
+          confirmBtn('button.gc-btn.sell', t('Sell +{n}', { n: Math.floor(cat.price * SELL_RATE) }), t('Sell?'), () => b.sellSelected()),
+          h('button.gc-btn', { onclick: () => { b.selected = null; this.renderBuild(); this.renderGhostCtl(); }, title: t('Close') }, glyph('close', 20))),
+      ];
+    }
+    el.replaceChildren(...(kids || []));
+    el.classList.toggle('show', !!kids);
+    this.placeGhostCtl();
+  }
+  /** Every frame: keep the floating controls under the item as the camera pans, zooms and turns. */
+  placeGhostCtl() {
+    const el = this.el.ghostctl;
+    if (!el.classList.contains('show')) return;
+    const b = this.game.build, R = this.game.renderer;
+    if (!R) return;
+    const pos = (q) => {
+      const vw = window.innerWidth, vh = window.innerHeight, w = el.offsetWidth, hh = el.offsetHeight;
+      const x = Math.max(8, Math.min(vw - w - 8, q.x - w / 2));
+      const y = Math.max(60, Math.min(vh - hh - 96, q.y + 22));
+      el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    };
+    // wall pieces: the buttons hang just under the piece, on the wall
+    const wallSpot = b.wallMode() && b.ghost && b.ghost.kind === 'wall' ? b.ghost
+      : b.selectedWall && !b.placing() ? wallLayout(this.game.world.size, DOOR_Y, this.game.state.wallDeco, this.game.state.wallPos)[b.selectedWall] : null;
+    if (wallSpot) { const q = R.wallScreen(wallSpot.side, wallSpot.a, 0.9); if (q) pos(q); return; }
+    const f = b.placing() ? b.ghost : b.selected;
+    if (!f) return;
+    let cx = f.x + 0.5, cy = f.y + 0.5;
+    if (f.fp) { cx = f.x + f.fp[0] / 2; cy = f.y + f.fp[1] / 2; }
+    else if (f.tiles && f.tiles.length) { cx = f.tiles.reduce((a, q) => a + q.x, 0) / f.tiles.length + 0.5; cy = f.tiles.reduce((a, q) => a + q.y, 0) / f.tiles.length + 0.5; }
+    const q = R.project(cx, cy, 0);
+    if (q) pos(q);
+  }
+
+  // ---------------- daily goal ----------------
+  toggleQuest(show = !this.el.quest.classList.contains('show')) {
+    if (show) { this.closePanel(); this.el.ratingTip.classList.remove('show'); if (this.game.selected) { this.game.selected = null; this.renderInfo(); } }
+    this.el.quest.classList.toggle('show', show);
+    this.el.questBtn.classList.toggle('on', show);
+  }
+
   // ---------------- info card ----------------
   select(a) {
+    // one window at a time: the character card replaces an open panel (and the rating popover)
+    if (a) { this.closePanel(); this.el.ratingTip.classList.remove('show'); this.toggleQuest(false); }
     this.game.selected = a;
     this.renderInfo(true);
   }
   renderInfo(full) {
     const a = this.game.selected;
     const el = this.el.info;
-    if (!a || a.gone || !this.game.agents.includes(a)) { el.classList.remove('show'); this.game.selected = null; this.infoFor = null; return; }
+    if (!a || a.gone || !this.game.agents.includes(a)) {
+      if (el.classList.contains('show')) { el.classList.remove('show'); this.syncSheets(); }
+      this.game.selected = null; this.infoFor = null; return;
+    }
     const key = a.kind === 'staff' ? a.role + a.skillLv() + a.look.model + a.kitUnlocked() : '';
     if (full || this.infoFor !== a || this.infoKey !== key) {
       this.infoFor = a; this.infoKey = key;
@@ -328,8 +439,9 @@ ${k.desc}
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { job: a }; this.renderPanel(); } }, t('Change job'))));
       }
       body.push(h('div.btnrow', h('button.btn.small', { onclick: () => { this.game.selected = null; this.renderInfo(); } }, t('Close'))));
-      el.replaceChildren(...body);
+      el.replaceChildren(h('div.grabber'), ...body);
       el.classList.add('show');
+      this.syncSheets();
     }
     if (a.kind === 'staff') {
       this.infoMood.textContent = a.napping ? t('😴 Napping') : a.energy < 25 ? t('🥱 Tired') : t('😊 Cheerful');
@@ -350,6 +462,7 @@ ${k.desc}
 
   // ---------------- per-frame ----------------
   update(dt) {
+    this.placeGhostCtl();
     this.acc += dt;
     if (this.acc < 0.1) return;
     this.acc = 0;
@@ -394,8 +507,13 @@ ${k.desc}
   /** Daily goal card: icon, text, progress and the reward. */
   updateQuest() {
     const g = this.game, q = g.state.quest, el = this.el.quest;
-    if (!q || !questById[q.id] || g.build.active) { el.style.display = 'none'; return; }
+    const hide = !q || !questById[q.id] || g.build.active;
+    this.el.questBtn.style.display = hide ? 'none' : '';
+    if (hide) { el.style.display = 'none'; return; }
     el.style.display = '';
+    this.el.questBadge.textContent = q.done ? '✓' : `${q.prog}/${q.target}`;
+    this.el.questBtn.classList.toggle('done', !!q.done);
+    this.el.questBtn.style.setProperty('--p', Math.round(Math.min(1, q.prog / q.target) * 100) + '%');
     const def = questById[q.id];
     if (this.questIconId !== q.id) {
       this.questIconId = q.id;
@@ -409,7 +527,12 @@ ${k.desc}
     el.classList.toggle('done', !!q.done);
   }
 
-  toggleRatingTip() { this.el.ratingTip.classList.toggle('show'); this.renderRatingTip(); }
+  toggleRatingTip() {
+    const show = !this.el.ratingTip.classList.contains('show');
+    if (show) { this.closePanel(); this.toggleQuest(false); if (this.game.selected) { this.game.selected = null; this.renderInfo(); } }
+    this.el.ratingTip.classList.toggle('show', show);
+    this.renderRatingTip();
+  }
   renderRatingTip() {
     const p = this.game.rating.parts;
     const names = { service: 'Service', clean: 'Cleanliness', dishes: 'Menu levels', decor: 'Decor', repair: 'Upkeep' };

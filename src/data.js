@@ -174,14 +174,18 @@ export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSecon
 
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 
-export const CHARACTER_MODELS = ['knight', 'mage', 'barbarian', 'rogue', 'rogue_hooded'];
-// Staff are always one of our own characters (one staff member each, named after the character);
-// the KayKit CHARACTER_MODELS are only for guests and passers-by.
+// Guests and passers-by: our own plain chibi bodies, recoloured per guest (fur + shirt, see GUEST_FUR).
+export const CHARACTER_MODELS = ['guest_b'];
+// Staff are always one of our own characters (one staff member each, named after the character).
 export const UNIQUE_MODELS = ['mochalatte', 'bbaekko', 'heehee', 'cheetie', 'oritokki'];
 export const UNIQUE_NAMES = { mochalatte: 'Mocha Latte', bbaekko: 'Bbaekko', heehee: 'Hee Hee', cheetie: 'Cheetie', oritokki: 'Oritokki' };
 export const SKIN_TONES = ['#fde3cf', '#f6cfae', '#e8b48f', '#c98c68', '#9c6a4f', '#f9dcc0'];
 export const HAIR_COLORS = ['#4a3328', '#7a4e33', '#c98b4f', '#f0cf7a', '#e59aa8', '#8fb4e0', '#3b3a4a', '#b8a4d8', '#f2efe9'];
 export const OUTFIT_COLORS = ['#f6b8c4', '#a9dcc6', '#9cc3e6', '#f9dd96', '#c9b6e3', '#f5b58d', '#fbfaf5', '#6d6a8a', '#d99aa8', '#b5e0c8', '#7fa7c9', '#e88a7a'];
+// guest fur colours: soft animal tones, none so dark that the dark eyes get lost
+export const GUEST_FUR = ['#fdebcb', '#e9c27a', '#c08a5c', '#96623e', '#b2b2b8', '#f6aa5a', '#fac4d2', '#b9d4ee', '#bfe3cf', '#d4c2ea', '#f8f6f0'];
+// guest ear styles (made in code by src/ears.js); 'none' is the earless seal-like head
+export const EAR_STYLES = ['cat', 'bear', 'bunny', 'dog', 'round', 'none'];
 export const HAIR_STYLES = ['bob', 'spiky', 'bun', 'long'];
 export const TOP_STYLES = ['tee', 'jacket', 'hoodie'];
 export const BOTTOM_STYLES = ['pants', 'skirt'];
@@ -294,8 +298,8 @@ export const QUESTS = [
 export const questById = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
 
 // ---------------- wall decorations ----------------
-// Bought in the Decor panel and hung on the walls automatically, in purchase order. `y` is where the
-// piece's centre hangs above the floor.
+// Bought in Build → Wall decor and hung wherever the player taps a wall (state.wallPos); pieces from older
+// saves without a position fill the default slots. `y` is where the piece's centre hangs above the floor.
 export const WALL_DECOR = [
   { id: 'wd_menu', name: 'Chalk Menu Board', asset: 'm_menu_board', price: 50, level: 1, decor: 4, y: 1.55 },
   { id: 'wd_frame_tulip', name: 'Tulip Print', asset: 'm_wall_frame', price: 30, level: 1, decor: 2, y: 1.7 },
@@ -312,6 +316,22 @@ export function wallSlots(size, doorY) {
   const W = size * 2, lo = doorY * 2 - 1.0, hi = (doorY + 1) * 2 + 1.0, out = [];
   for (const side of ['north', 'west', 'east', 'south']) {
     for (let a = 2.5; a < W - 1.5; a += 2.7) { if (side === 'west' && a > lo && a < hi) continue; out.push({ side, a }); }
+  }
+  return out;
+}
+/** Centre-to-centre spacing two pieces on one wall need, and the stretch of the west wall around the door. */
+export const WALL_GAP = 1.8;
+export function wallDoorSpan(doorY) { return [doorY * 2 - 0.9, (doorY + 1) * 2 + 0.9]; }
+/** Where every owned piece hangs: its saved spot, else the first default slot that has room. */
+export function wallLayout(size, doorY, owned, pos = {}) {
+  const out = {}, taken = [];
+  const free = (side, a) => !taken.some((p) => p.side === side && Math.abs(p.a - a) < WALL_GAP);
+  for (const id of owned) { const p = pos && pos[id]; if (p) { out[id] = { side: p.side, a: p.a }; taken.push(out[id]); } }
+  const slots = wallSlots(size, doorY);
+  for (const id of owned) {
+    if (out[id]) continue;
+    const q = slots.find((sl) => free(sl.side, sl.a));
+    if (q) { out[id] = { side: q.side, a: q.a }; taken.push(out[id]); }
   }
   return out;
 }

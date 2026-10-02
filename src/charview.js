@@ -2,6 +2,7 @@
 // from the agent's procedural pose (walk, sit, eat, cook, sweep, nap...), attaches held props
 // (tray + dish, broom, wrench, mug) and role hats, and smooths facing.
 import { THREE, models, TILE } from './models.js';
+import { addEars } from './ears.js';
 
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
 const SIT_FORWARD = 0.68;
@@ -41,6 +42,9 @@ export class CharacterView {
       const col = new THREE.Color('#ffffff').lerp(new THREE.Color(look.tint), 0.35);
       this.inst.root.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.multiply(col); } });
     }
+    // guest bodies: their own fur and shirt colours
+    if (look.fur || look.shirt) models.recolorCharacter(this.inst.root, this.modelId, { fur: look.fur, shirt: look.shirt });
+    if (look.ears) addEars(this.inst.root, look.ears, look.fur);
     if (look.scale) this.inst.root.scale.setScalar(look.scale);
   }
 

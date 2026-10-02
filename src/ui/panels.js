@@ -11,12 +11,11 @@ import {
 import { clearSave, save } from '../save.js';
 import { audio } from '../audio.js';
 import { gl, glyph } from './icons.js';
-import { glassFx } from './glass.js';
 import { t, tt, titledRole, LANGS, getLang } from '../i18n.js';
 
 const I = (id, s = 22) => assets.iconEl(id, s);
 /** Danger button that asks for a second tap instead of a browser confirm() dialog. */
-function confirmBtn(sel, label, ask, action) {
+export function confirmBtn(sel, label, ask, action) {
   let armed = false, timer = null;
   const b = h(sel, { onclick: (e) => {
     e.stopPropagation();
@@ -64,7 +63,6 @@ export function skillLine(a, role = a.role) {
 export const PANELS = {
   staff: { title: 'Staff', icon: 'tool_staff', render: renderStaff, tick: tickStaff },
   menu: { title: 'Menu', icon: 'tool_menu', render: renderMenu },
-  decor: { title: 'Decor', icon: 'tool_decor', render: renderDecor },
   garden: { title: 'Garden', icon: 'tool_garden', live: true, render: renderGarden },
   market: { title: 'Market', icon: 'tool_market', render: renderMarket },
   settings: { title: 'Settings', icon: 'tool_settings', render: renderSettings },
@@ -218,28 +216,6 @@ function stockLine(g, d, st) {
   return h('div.muted.stock' + (n === 0 ? '.out' : n < 6 ? '.low' : ''), t('Costs {c} a cup · profit {p} · {n} left in the pantry', { c: cost.toFixed(1), p: profit.toFixed(1), n }));
 }
 
-// ------------------------------------------------------------------ decor
-/** Wall decorations: buy them here and they hang on the walls by themselves. */
-function renderDecor(ui, body) {
-  const g = ui.game, s = g.state;
-  const spots = g.eco.wallSlotCount();
-  const parts = g.rating.parts;
-  body.append(h('div.decor-score', I('icon_star', 26), h('div.grow', h('div', t('Café charm')), h('div.pbar.gold', { style: { marginTop: '4px' } }, h('i', { style: { width: Math.round(parts.decor * 100) + '%' } }))), h('span', Math.round(parts.decor * 100) + '%')));
-  body.append(h('div.muted', t('Wall decorations hang up on their own. {n} / {m} wall spots used. Furniture and plants live in Build → Decor.', { n: s.wallDeco.length, m: spots })));
-  body.append(h('div.section-title', t('Wall decorations')));
-  for (const w of WALL_DECOR) {
-    const owned = s.wallDeco.includes(w.id), locked = w.level > s.level;
-    const th = thumb(w.asset, w.tint);
-    body.append(h('div.row' + (locked ? '.locked' : ''),
-      h('div.thumb-slot', th),
-      h('div.grow', h('h3', w.name), h('div.muted', t('Charm +{n}', { n: w.decor })), locked ? h('div.muted', I('icon_lock', 14), ' ' + t('Unlocks at level {n}', { n: w.level })) : null),
-      owned
-        ? h('button.btn.small', { onclick: () => g.eco.sellWallDecor(w.id), title: t('Take it down and get half back') }, I('icon_sell', 18), '+' + Math.floor(w.price * 0.5))
-        : locked ? I('icon_lock', 24)
-          : h('button.btn.small.primary' + (g.eco.canAfford(w.price) ? '' : '.disabled'), { onclick: () => g.eco.buyWallDecor(w.id) }, coinPill(w.price))));
-  }
-}
-
 // ------------------------------------------------------------------ garden
 function renderGarden(ui, body) {
   const g = ui.game, s = g.state;
@@ -327,7 +303,6 @@ function renderSettings(ui, body) {
     h('div.section-title', t('Game')),
     toggle(t('Auto-open next day'), 'autoNextDay'),
     toggle(t('Auto-restock ingredients'), 'autoRestock', () => { if (s.settings.autoRestock) g.eco.autoRestock(); }),
-    glassFx.supported ? toggle(t('Liquid glass refraction'), 'glass', () => glassFx.setEnabled(s.settings.glass)) : null,
     h('div.btnrow',
       h('button.btn.small', { onclick: () => { ui.toast(save(g) ? t('Saved!') : t('Could not save (storage blocked?)'), 'good'); } }, gl('save', t('Save now'), 15)),
       confirmBtn('button.btn.small.danger', t('Reset game'), t('Tap again to erase everything'), () => { g.resetting = true; clearSave(); location.reload(); })),
@@ -346,7 +321,7 @@ function langPicker(ui) {
 
 // ------------------------------------------------------------------ build tray
 const BUILD_CATS = [
-  { id: 'dining', name: 'Tables & Chairs' }, { id: 'kitchen', name: 'Coffee Bar' }, { id: 'fun', name: 'Nooks' }, { id: 'decor', name: 'Decor' },
+  { id: 'dining', name: 'Tables & Chairs' }, { id: 'kitchen', name: 'Coffee Bar' }, { id: 'fun', name: 'Nooks' }, { id: 'decor', name: 'Decor' }, { id: 'walldeco', name: 'Wall decor' },
   { id: 'floor', name: 'Floors' }, { id: 'wall', name: 'Walls' }, { id: 'room', name: 'Room' },
 ];
 const thumbCache = new Map();
@@ -372,6 +347,16 @@ export function buildTray(ui, bar) {
       const sel = b.tool && b.tool.mode === 'place' && b.tool.type === f.id;
       items.append(card('f:' + f.id, f.name, f.price, f.level, sel, () => b.setTool(sel ? null : { mode: 'place', type: f.id }), () => thumb(f.asset, f.tint)));
     }
+  } else if (cat === 'walldeco') {
+    // wall pieces are one of a kind: pick one, then tap a wall to hang it; ones already up just get selected
+    items.append(h('div.bitem.charm', { title: t('Café charm') }, I('icon_star', 34), h('span', t('Café charm')), h('span.pill', Math.round(g.rating.parts.decor * 100) + '%')));
+    for (const w of WALL_DECOR) {
+      const owned = s.wallDeco.includes(w.id);
+      const sel = owned ? b.selectedWall === w.id : b.tool && b.tool.mode === 'wall' && b.tool.id === w.id;
+      const c = card('wd:' + w.id, w.name, w.price, owned ? 0 : w.level, sel, () => (owned ? b.selectWall(w.id) : b.setTool({ mode: 'wall', id: w.id })), () => thumb(w.asset, w.tint));
+      if (owned) { c.classList.add('owned'); c.lastChild.replaceWith(h('span.pill.hung', gl('check', t('On the wall'), 12))); }
+      items.append(c);
+    }
   } else if (cat === 'floor') {
     for (const f of FLOORS) {
       const sel = b.tool && b.tool.mode === 'floor' && b.tool.id === f.id;
@@ -390,19 +375,26 @@ export function buildTray(ui, bar) {
         h('button.btn.primary' + (e.level > s.level ? '.disabled' : ''), { onclick: () => b.expand() }, coinPill(e.price)))
       : h('div.row', { style: { flex: 1 } }, h('div.grow', h('h3', t('Your café is as big as it gets!')))));
   }
-  const msgText = b.message ? b.message.text : t(b.moving ? 'Moving — click a new spot' : b.tool ? (b.tool.mode === 'floor' ? 'Click or drag over tiles to paint' : 'Click the floor to place · R rotates · right-click / Esc to stop') : 'Pick an item to buy, or click furniture to rotate / move / sell it');
-  const msg = h('div.bmsg' + (b.message ? '.' + b.message.kind : ''), msgText);
-  // selected furniture: rotate / move / sell
-  const f = b.selected;
-  let sel = null;
-  if (f && !b.moving) {
-    const cat2 = furnitureById[f.type];
-    sel = h('div.bb-sel',
-      h('b', cat2.name + (f.broken ? t(' (broken)') : '')),
-      h('button.btn.small', { onclick: () => b.rotateSelected() }, I('icon_rotate', 20), t('Rotate')),
-      h('button.btn.small', { onclick: () => b.startMove() }, I('icon_move', 20), t('Move')),
-      h('button.btn.small.danger', { onclick: () => b.sellSelected() }, I('icon_sell', 20), t('Sell +{n}', { n: Math.floor(cat2.price * SELL_RATE) })),
-      h('button.btn.small', { onclick: () => { b.selected = null; ui.renderBuild(); } }, gl('close', null, 14)));
+  const touch = g.touchMode;
+  // an item is picked: the tray folds down to one line so the café is in full view, and the rotate /
+  // cancel / place buttons float next to the item itself (ui.js #ghostctl)
+  if (b.placing()) {
+    const wid = b.wallMode() ? b.movingWall || b.tool.id : null;
+    const type = wid || (b.moving ? b.moving.f.type : b.tool.type), cat2 = wid ? wallDecorById[wid] : furnitureById[type];
+    const moving = !!(b.moving || b.movingWall);
+    const tip = b.message ? b.message.text : t(b.locked ? (touch ? 'Tap ✓ to place, or tap another spot' : 'Click ✓ to place, or click another spot')
+      : wid ? (touch ? 'Tap a wall where it should hang' : 'Click a wall where it should hang') : touch ? 'Tap the floor where it should go' : 'Click the floor where it should go');
+    bar.replaceChildren(h('div.card.bb-mini',
+      h('div.thumb-slot', cachedThumb((wid ? 'wd:' : 'f:') + type, () => thumb(cat2.asset, cat2.tint))),
+      h('div.grow', h('b', cat2.name, moving ? '' : ' ', moving ? null : coinPill(cat2.price)), h('div.muted' + (b.message && b.message.kind === 'bad' ? '.bad' : ''), tip)),
+      h('button.btn.small', { onclick: () => b.cancelPlacing() }, moving ? t('Cancel') : t('Back to items'))));
+    return;
   }
-  bar.replaceChildren(h('div.card', sel, tabs, items, h('div', { style: { marginTop: '4px' } }, msg)));
+  const hint = b.tool ? (b.tool.mode === 'floor' ? (touch ? 'Tap or drag over tiles to paint' : 'Click or drag over tiles to paint') : '')
+    : touch ? 'Pick an item to buy, or tap furniture to rotate / move / sell it' : 'Pick an item to buy, or click furniture to rotate / move / sell it';
+  const msg = h('div.bmsg' + (b.message ? '.' + b.message.kind : ''), b.message ? b.message.text : t(hint));
+  bar.replaceChildren(h('div.card', tabs, items, h('div.bb-msg', msg)));
+  // keep the chosen category tab in view (the row scrolls sideways on phones)
+  const on = tabs.querySelector('.tab.on'), row = on && on.parentElement;
+  if (on && row.scrollWidth > row.clientWidth) row.scrollLeft = on.offsetLeft - row.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
 }

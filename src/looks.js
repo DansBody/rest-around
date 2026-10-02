@@ -1,8 +1,9 @@
 // Character looks for the 3D characters: which model, which optional accessories are hidden,
-// a light outfit tint and a small size variation. Guests wear the KayKit cast; staff are always one
-// of our own characters (UNIQUE_MODELS), one staff member each.
+// a fur and shirt colour (guests) and a small size variation. Guests wear our plain guest bodies
+// (CHARACTER_MODELS) in random colours; staff are always one of our own characters (UNIQUE_MODELS),
+// one staff member each.
 import { choice, chance, rand } from './util.js';
-import { OUTFIT_COLORS, CHARACTER_MODELS, UNIQUE_MODELS } from './data.js';
+import { OUTFIT_COLORS, GUEST_FUR, EAR_STYLES, CHARACTER_MODELS, UNIQUE_MODELS } from './data.js';
 
 export const ACCESSORIES = {
   knight: ['Knight_Helmet', 'Knight_Cape'],
@@ -25,7 +26,7 @@ export function nextCast(taken) {
 export function randomLook() {
   const model = choice(CHARACTER_MODELS);
   const hide = (ACCESSORIES[model] || []).filter(() => chance(0.55));
-  return { model, hide, tint: chance(0.55) ? choice(OUTFIT_COLORS) : null, scale: +rand(0.92, 1.05).toFixed(2), roleHat: null };
+  return { model, hide, tint: null, fur: choice(GUEST_FUR), shirt: choice(OUTFIT_COLORS), ears: choice(EAR_STYLES), scale: +rand(0.92, 1.05).toFixed(2), roleHat: null };
 }
 
 /** What a `role` hire looks like on `model` (used for the portraits in the hire and retrain lists). */

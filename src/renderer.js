@@ -7,7 +7,7 @@ import { CharacterView } from './charview.js';
 import { AbilityFx } from './abilityfx.js';
 import { buildPlot, buildCrops, cropScale, SPROUT_UNTIL } from './plots.js';
 import { DOOR_Y, World } from './world.js';
-import { furnitureById, dishById, wallDecorById, wallSlots } from './data.js';
+import { furnitureById, dishById, wallDecorById, wallLayout } from './data.js';
 import { clamp, easeOutBack, lerp } from './util.js';
 import { FONT, DISPLAY_FONT } from './placeholder.js';
 
@@ -34,9 +34,11 @@ export class Renderer {
     this.ctx = overlay.getContext('2d');
     this.time = 0;
     this.dpr = 1;
-    this.gl = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true });
+    // phones and tablets: fewer pixels and a cheaper, smaller shadow map keep them cool and smooth
+    this.lowPower = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+    this.gl = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: this.lowPower ? 'low-power' : 'high-performance' });
     this.gl.shadowMap.enabled = true;
-    this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.gl.shadowMap.type = this.lowPower ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
     this.cam = new THREE.PerspectiveCamera(game.camera.fov, 1, 0.5, 500);
@@ -79,7 +81,7 @@ export class Renderer {
     s.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xfff1dc, 2.1);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.mapSize.set(this.lowPower ? 1024 : 2048, this.lowPower ? 1024 : 2048);
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.03;
     this.sun.shadow.radius = 3;
@@ -254,32 +256,38 @@ export class Renderer {
     outside('m_planter', W * 0.5, -1.2, 0, 1);
   }
 
-  /** Hang the owned wall decorations in slot order: north wall first, then west, east, south. */
+  /** Put a wall piece's holder flat against `side`, `a` world units along it. */
+  hangOn(holder, side, a, w, sz) {
+    const W = this.game.world.size * TILE, d = sz.z / 2 + 0.04, y = w.y - sz.y / 2;
+    holder.rotation.y = 0;
+    if (side === 'north') holder.position.set(a, y, d);
+    else if (side === 'west') { holder.position.set(d, y, a); holder.rotation.y = Math.PI / 2; }
+    else if (side === 'east') { holder.position.set(W - d, y, a); holder.rotation.y = -Math.PI / 2; }
+    else { holder.position.set(a, y, W - d); holder.rotation.y = Math.PI; }
+  }
+  /** Hang the owned wall decorations where the player put them (older saves fill the default slots). */
   syncWallDecor() {
-    const g = this.game, W = g.world.size * TILE;
-    const owned = (g.state.wallDeco || []).filter((id) => wallDecorById[id]);
-    const key = g.world.size + '|' + owned.join(',');
+    const g = this.game, b = g.build;
+    const lifted = b.active && b.movingWall;   // the piece being moved is drawn as the ghost instead
+    const owned = (g.state.wallDeco || []).filter((id) => wallDecorById[id] && id !== lifted);
+    const layout = wallLayout(g.world.size, DOOR_Y, owned, g.state.wallPos);
+    const key = g.world.size + '|' + owned.map((id) => layout[id] ? `${id}@${layout[id].side}${layout[id].a}` : id).join(',');
     if (key !== this.wallKey) {
       this.wallKey = key;
       for (const dg of Object.values(this.decoSides)) dg.clear();
       this.decoLights = [];
-      const slots = wallSlots(g.world.size, DOOR_Y);
-      owned.forEach((id, i) => {
-        const w = wallDecorById[id], slot = slots[i];
-        if (!slot) return;
+      for (const id of owned) {
+        const w = wallDecorById[id], spot = layout[id];
+        if (!spot) continue;
         const o = models.instance(w.asset, w.tint);
         o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
         const sz = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
-        const d = sz.z / 2 + 0.04, y = w.y - sz.y / 2;
         const holder = new THREE.Group();
         holder.add(o);
         if (w.light) { const L = new THREE.PointLight(0xffc98a, 0, 7, 1.5); L.position.set(0, sz.y * 0.6, 0.55); holder.add(L); this.decoLights.push(L); }
-        if (slot.side === 'north') { holder.position.set(slot.a, y, d); }
-        else if (slot.side === 'west') { holder.position.set(d, y, slot.a); holder.rotation.y = Math.PI / 2; }
-        else if (slot.side === 'east') { holder.position.set(W - d, y, slot.a); holder.rotation.y = -Math.PI / 2; }
-        else { holder.position.set(slot.a, y, W - d); holder.rotation.y = Math.PI; }
-        this.decoSides[slot.side].add(holder);
-      });
+        this.hangOn(holder, spot.side, spot.a, w, sz);
+        this.decoSides[spot.side].add(holder);
+      }
     }
     const glow = 0.5 + this.lampOn * 3;
     for (const L of this.decoLights) L.intensity = glow;
@@ -288,7 +296,7 @@ export class Renderer {
   // ------------------------------------------------------------------ per frame
   resize() {
     const r = this.canvas.getBoundingClientRect();
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.dpr = Math.min(this.lowPower ? 1.5 : 2, window.devicePixelRatio || 1);
     this.gl.setPixelRatio(this.dpr);
     this.gl.setSize(r.width, r.height, false);
     this.overlay.width = Math.round(r.width * this.dpr);
@@ -573,6 +581,7 @@ export class Renderer {
     const b = this.game.build, grp = this.buildGroup;
     this.beginMarkers(grp);
     if (this.ghostObj) this.ghostObj.visible = false;
+    if (this.wallGhost) this.wallGhost.visible = false;
     if (this.gridLines) this.gridLines.visible = false;
     if (!b.active) return;
     const n = this.game.world.size;
@@ -591,6 +600,7 @@ export class Renderer {
       for (let i = 0; i < f.fp[0]; i++) for (let j = 0; j < f.fp[1]; j++) this.marker(grp, 'tile', f.x + i, f.y + j, '#ffffff', pulse, 0.04, TILE - 0.12);
     }
     const gh = b.ghost;
+    if (gh && gh.kind === 'wall') return this.syncWallGhost(grp, gh);
     if (!gh) return;
     const col = gh.valid ? '#78d282' : '#eb6464';
     for (const t of gh.tiles || []) this.marker(grp, 'tile', t.x, t.y, col, 0.45, 0.04, TILE - 0.12);
@@ -608,6 +618,69 @@ export class Renderer {
       this.ghostObj.visible = true;
       this.placeFurniture(this.ghostObj, { x: gh.x, y: gh.y, dir: gh.dir, fp: World.footprint(gh.type, gh.dir) });
     }
+  }
+
+  /** A see-through copy of the wall piece where it would hang, green when it fits and red when it doesn't. */
+  syncWallGhost(grp, gh) {
+    const w = wallDecorById[gh.id], col = gh.valid ? '#78d282' : '#eb6464';
+    const key = gh.id + '|' + gh.valid;
+    if (this.wallGhostKey !== key) {
+      if (this.wallGhost) grp.remove(this.wallGhost);
+      this.wallGhostKey = key;
+      const o = models.instance(w.asset, w.tint);
+      o.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.75; m.material.color.lerp(new THREE.Color(col), 0.4); m.castShadow = false; } });
+      this.wallGhostSize = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+      this.wallGhost = new THREE.Group(); this.wallGhost.add(o);
+      grp.add(this.wallGhost);
+    }
+    this.wallGhost.visible = true;
+    this.hangOn(this.wallGhost, gh.side, gh.a, w, this.wallGhostSize);
+  }
+
+  /** Where the pointer meets the inside of a standing (not cut-away) wall: { side, a, y } or null. */
+  pickWall(vx, vy) {
+    const r = this.canvas.getBoundingClientRect();
+    this.raycaster.setFromCamera(new THREE.Vector2((vx / r.width) * 2 - 1, -(vy / r.height) * 2 + 1), this.cam);
+    const { origin: o, direction: d } = this.raycaster.ray;
+    const W = this.game.world.size * TILE, H = assets.grid.wallHeight || 3;
+    let best = null;
+    for (const s of this.sides || []) {
+      if (s.userData.h < 0.92) continue;
+      const n = s.userData.name;
+      const alongX = n === 'north' || n === 'south', plane = n === 'north' || n === 'west' ? 0 : W;
+      const dc = alongX ? d.z : d.x, oc = alongX ? o.z : o.x;
+      if (Math.abs(dc) < 1e-6) continue;
+      if ((plane === 0 && dc > 0) || (plane === W && dc < 0)) continue;   // only the inner face
+      const t = (plane - oc) / dc;
+      if (t <= 0 || (best && t >= best.t)) continue;
+      const y = o.y + d.y * t, a = alongX ? o.x + d.x * t : o.z + d.z * t;
+      if (y < 0.2 || y > H + 0.1 || a < 0 || a > W) continue;
+      best = { t, side: n, a: Math.round(a * 4) / 4, y };
+    }
+    if (!best) return null;
+    // a wall behind the floor point you're aiming at doesn't count
+    const g = this.groundAt(vx, vy);
+    if (g && g.x > 0.05 && g.x < W - 0.05 && g.z > 0.05 && g.z < W - 0.05) {
+      const tg = Math.hypot(g.x - o.x, -o.y, g.z - o.z);
+      if (tg < best.t) return null;
+    }
+    return { side: best.side, a: best.a, y: best.y };
+  }
+  /** The hung wall piece under the pointer (id), if any. */
+  pickWallDecor(vx, vy) {
+    const hit = this.pickWall(vx, vy);
+    if (!hit || hit.y < 0.8) return null;
+    const g = this.game, layout = wallLayout(g.world.size, DOOR_Y, g.state.wallDeco || [], g.state.wallPos);
+    let best = null, bd = 1.0;
+    for (const [id, p] of Object.entries(layout)) if (p.side === hit.side && Math.abs(p.a - hit.a) < bd) { bd = Math.abs(p.a - hit.a); best = id; }
+    return best;
+  }
+  /** Screen position of a spot on a wall (for the floating build buttons). */
+  wallScreen(side, a, y) {
+    const W = this.game.world.size * TILE, v = new THREE.Vector3();
+    if (side === 'north') v.set(a, y, 0.1); else if (side === 'south') v.set(a, y, W - 0.1);
+    else if (side === 'west') v.set(0.1, y, a); else v.set(W - 0.1, y, a);
+    return this.projectV(v);
   }
 
   syncDebug() {

@@ -160,6 +160,28 @@ CHARACTERS = {
         'face': (0.7, 1.0),
         'repairs': [],
     },
+    'guest_b': {
+        'name': 'GuestB',
+        # the guests' standard chibi body: a plain earless cream animal in a grey tee, recoloured per
+        # guest in the game (ears and hats come as accessories on the ear/head bones).
+        # gpt-image-2 front/side/back views (made outside Meshy) -> multi-image-to-3d
+        # 01a0fa74-7f42-7103-85de-52a46c30f563, remesh 01a0fa76-6525-70c1-9a69-7371c20488ce
+        'scale': 1.1,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.3, 0)),
+            ('leg_l', 'hips', (0.18, 0.3, 0)), ('leg_r', 'hips', (-0.18, 0.3, 0)),
+            ('chest', 'hips', (0, 0.55, 0)),
+            ('arm_l', 'chest', (0.42, 0.78, 0)), ('hand_l', 'arm_l', (0.54, 0.55, 0.05)),
+            ('arm_r', 'chest', (-0.42, 0.78, 0)), ('hand_r', 'arm_r', (-0.54, 0.55, 0.05)),
+            ('head', 'chest', (0, 0.88, 0)),
+            # no ears on the mesh: the bones are where ear accessories hang (ear_y is above the head)
+            ('ear_l', 'head', (0.38, 1.72, 0)), ('ear_r', 'head', (-0.38, 1.72, 0)),
+        ],
+        'skin': {'leg': (0.18, 0.32), 'arm_x': (0.4, 0.46), 'arm_y': (0.44, 0.5), 'arm_top': (0.78, 0.86),
+                 'head': (0.84, 0.94), 'chest': (0.4, 0.55), 'ear_y': (2.0, 2.1), 'ear_x': (0.3, 0.4)},
+        'face': (1.0, 1.35),
+        'repairs': [],
+    },
 }
 C = None   # the character being built (set by build)
 BONES, BI = [], {}

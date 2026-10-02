@@ -29,6 +29,7 @@ export function defaultState() {
     opened: {},          // servings left in each ingredient's opened pack (see Economy.consume)
     unpaid: false,       // yesterday's wages could not be paid
     wallDeco: [...START_WALL_DECOR],
+    wallPos: {},          // wall decoration id -> { side, a } (where along that wall it hangs)
     quest: null,
     snacks: { cookie: 1 },
     garden: [],
@@ -59,6 +60,7 @@ export class Game {
     this.simTime = 0;
     this.renderTime = 0;
     this.paused = false;
+    this.touchMode = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;   // updated by the last pointer used
     this.selected = null;
     this.doorOpen = 0;
     this.doorHold = 0;

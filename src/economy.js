@@ -3,7 +3,7 @@
 import {
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS, SEEDS, WATER_DURATION,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
-  EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots,
+  EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
   staffWage, rentFor, ingPrice,
 } from './data.js';
 import * as pantry from './pantry.js';
@@ -98,21 +98,40 @@ export class Economy {
 
   // ---------------- wall decorations ----------------
   wallSlotCount() { return wallSlots(this.game.world.size, DOOR_Y).length; }
-  buyWallDecor(id) {
+  /** Pin every hung piece to where it shows now, so placing one never shuffles the others. */
+  freezeWallLayout() {
+    const s = this.s;
+    s.wallPos = { ...wallLayout(this.game.world.size, DOOR_Y, s.wallDeco, s.wallPos) };
+  }
+  /** Buy a wall piece and hang it at `pos` ({ side, a }); without a spot it takes the next free slot. */
+  buyWallDecor(id, pos = null) {
     const s = this.s, w = wallDecorById[id], g = this.game;
-    if (!w || s.wallDeco.includes(id)) return;
-    if (w.level > s.level) return g.toast(t('{name} unlocks at level {n}', { name: w.name, n: w.level }), 'bad');
-    if (s.wallDeco.length >= this.wallSlotCount()) return g.toast(t('The walls are full — expand the café for more room!'), 'bad');
-    if (!this.spend(w.price, w.name)) return;
+    if (!w || s.wallDeco.includes(id)) return false;
+    if (w.level > s.level) { g.toast(t('{name} unlocks at level {n}', { name: w.name, n: w.level }), 'bad'); return false; }
+    if (!pos && s.wallDeco.length >= this.wallSlotCount()) { g.toast(t('The walls are full — expand the café for more room!'), 'bad'); return false; }
+    if (!this.spend(w.price, w.name)) return false;
+    this.freezeWallLayout();
     s.wallDeco.push(id);
-    g.sfx('coin');
+    if (pos) s.wallPos[id] = { side: pos.side, a: pos.a };
+    g.sfx('place');
     g.rating.recompute();
     g.changed('wall');
+    return true;
+  }
+  moveWallDecor(id, pos) {
+    const s = this.s;
+    if (!s.wallDeco.includes(id)) return;
+    this.freezeWallLayout();
+    s.wallPos[id] = { side: pos.side, a: pos.a };
+    this.game.sfx('place');
+    this.game.changed('wall');
   }
   sellWallDecor(id) {
     const s = this.s, w = wallDecorById[id], g = this.game;
     if (!w || !s.wallDeco.includes(id)) return;
+    this.freezeWallLayout();
     s.wallDeco = s.wallDeco.filter((x) => x !== id);
+    delete s.wallPos[id];
     s.coins += Math.floor(w.price * 0.5);
     g.sfx('coin');
     g.toast(t('Sold {name} (+{n})', { name: w.name, n: Math.floor(w.price * 0.5) }));

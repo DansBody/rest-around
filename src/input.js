@@ -14,7 +14,8 @@ export function setupInput(game, canvas, ui, debug) {
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('pointerdown', (e) => {
     audio.unlock();
-    canvas.setPointerCapture(e.pointerId);
+    game.touchMode = e.pointerType !== 'mouse';
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
     const p = local(e);
     pointers.set(e.pointerId, p);
     if (pointers.size === 2) {
@@ -41,7 +42,9 @@ export function setupInput(game, canvas, ui, debug) {
       return;
     }
     const b = game.build;
-    if (b.active) {
+    // a finger has no hover: on touch the ghost only jumps to where you tap, so panning doesn't drag it along
+    if (b.active && e.pointerType === 'mouse' && !down && b.wallMode()) b.hoverWallAt(R().pickWall(p.x, p.y));
+    else if (b.active && ((e.pointerType === 'mouse' && !down) || b.painting)) {
       const t = R().pickTile(p.x, p.y);
       if (!b.hoverTile || b.hoverTile.x !== t.x || b.hoverTile.y !== t.y) {
         b.hover(t.x, t.y);
@@ -66,7 +69,16 @@ export function setupInput(game, canvas, ui, debug) {
     if (down && !down.moved) {
       if (down.button === 2 && b.active) { if (!b.escape()) b.setTool(null); }
       else if (down.button === 0) {
-        if (b.active) { const t = R().pickTile(p.x, p.y); b.click(t.x, t.y); }
+        if (b.active && b.wallMode()) b.tapWall(R().pickWall(p.x, p.y));
+        else if (b.active) {
+          // nothing in hand: a hung wall piece under the pointer wins over the floor behind it
+          const wid = !b.placing() && !b.tool ? R().pickWallDecor(p.x, p.y) : null;
+          if (wid) { b.selectWall(wid); down = null; return; }
+          const t = R().pickTile(p.x, p.y);
+          // placing: the first click/tap pins the item there, a second one on the same spot (or ✓) places it
+          if (b.placing()) b.tapPreview(t.x, t.y);
+          else b.click(t.x, t.y);
+        }
         else {
           const a = R().pickAgent(p.x, p.y);
           ui.select(a);
@@ -101,6 +113,8 @@ export function setupInput(game, canvas, ui, debug) {
     if (b.active) {
       if (e.key === 'r' || e.key === 'R') b.rotate();
       if ((e.key === 'Delete' || e.key === 'Backspace') && b.selected) b.sellSelected();
+      if ((e.key === 'Delete' || e.key === 'Backspace') && b.selectedWall) b.sellSelectedWall();
+      if ((e.key === 'm' || e.key === 'M') && b.selectedWall) b.startMoveWall();
       if ((e.key === 'm' || e.key === 'M') && b.selected) b.startMove();
     }
   });
