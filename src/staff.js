@@ -6,7 +6,7 @@ import { staffLook, nextCast } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
 import { dishById, furnitureById, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS } from './data.js';
 import { CASTS } from './kits.js';
-import { rand, randInt, manhattan, uid, bus } from './util.js';
+import { rand, randInt, manhattan, uid } from './util.js';
 import { t, titledRole } from './i18n.js';
 
 /** A new staff member: `model` (or the next original character nobody wears), named after it. Null when the cast is used up. */
@@ -71,7 +71,7 @@ export class Staff extends Agent {
     this.emote('emote_sparkle', 1.5);
     this.hop();
     g.sfx('ability');
-    bus.emit('kitCast', this);
+    this.game.emit('kitCast', this);
     return true;
   }
   resetKit() { this.kitCd = 0; this.kitT = 0; this.auraT = 0; this.auraMul = 1; this.buffT = 0; this.buffMul = 1; }
@@ -124,7 +124,7 @@ export class Staff extends Agent {
       // gather power for a moment (visible build-up), then release
       this.windup = ABILITY.windup;
       g.sfx('charge');
-      bus.emit('abilityWindup', this);
+      this.game.emit('abilityWindup', this);
     }
   }
   /** Is now worth spending the charge? `eager` lowers the bar after waiting a while. */
@@ -158,7 +158,7 @@ export class Staff extends Agent {
       const st = this.job && this.job.station;
       if (st && st.cooking) { st.cookT = Math.min(st.cookTotal, st.cookT + st.cookTotal * ab.boost); g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), ab.color, 6); }
     }
-    bus.emit('ability', this);
+    this.game.emit('ability', this);
     if (ab.id === 'whirlwind') {
       this.spinT = 0.8;
       const near = this.trashNear();

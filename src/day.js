@@ -1,7 +1,7 @@
 // Day cycle: compressed day (8 real minutes at 1x) with opening, lunch rush, afternoon, dinner rush
 // and closing; customer arrivals scale with rating, phase and seating; end-of-day summary.
 import { DAY, ENERGY, COSTS } from './data.js';
-import { bus, clamp } from './util.js';
+import { clamp } from './util.js';
 import { t } from './i18n.js';
 
 export class DayCycle {
@@ -66,7 +66,7 @@ export class DayCycle {
     s.totals.days++;
     g.paused = true;
     this.lingerT = 0;
-    bus.emit('dayEnd', summary);
+    g.emit('dayEnd', summary);
     g.sfx('fanfare');
   }
 
@@ -87,7 +87,7 @@ export class DayCycle {
     g.jobs.list = g.jobs.list.filter((j) => j.type === 'sweep' || j.type === 'repair' || j.type === 'clear');
     this.nextSpawn = 4;
     g.paused = false;
-    bus.emit('dayStart', s.day);
+    g.emit('dayStart', s.day);
     g.changed('day');
   }
 }

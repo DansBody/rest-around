@@ -1,10 +1,14 @@
 // Mouse, touch and keyboard input for the 3D view.
 // Left-drag pans (the ground follows the cursor), right-drag rotates, wheel/pinch zooms,
-// Q/E rotate in 90deg steps, click picks characters / tiles.
+// Q/E rotate in 90deg steps, click picks characters / tiles. While visiting a friend the camera moves
+// around their café (the one the renderer shows) and nothing in it can be picked.
 import { audio } from './audio.js';
+import { endVisit } from './ui/visit.js';
 
 export function setupInput(game, canvas, ui, debug) {
-  const cam = game.camera;
+  const shown = () => (game.renderer ? game.renderer.game : game);
+  const visiting = () => shown() !== game;
+  const cam = { zoomAt: (k) => shown().camera.zoomAt(k), rotateBy: (a) => shown().camera.rotateBy(a), rotate: (d) => shown().camera.rotate(d) };
   let down = null;
   const pointers = new Map();
   let pinch = null;
@@ -79,7 +83,7 @@ export function setupInput(game, canvas, ui, debug) {
           if (b.placing()) b.tapPreview(t.x, t.y);
           else b.click(t.x, t.y);
         }
-        else {
+        else if (!visiting()) {
           const a = R().pickAgent(p.x, p.y);
           ui.select(a);
           if (a) game.sfx('click');
@@ -101,6 +105,7 @@ export function setupInput(game, canvas, ui, debug) {
     const b = game.build;
     if (e.key === '`' || e.key === '~') { debug.toggle(); debug.rerender(); e.preventDefault(); return; }
     if (e.key === 'Escape') {
+      if (visiting() && !ui.modalOpen) { endVisit(ui); return; }
       if (b.active) { if (!b.escape()) b.exit(); return; }
       if (ui.modalOpen) return;
       if (game.selected) { game.selected = null; return; }
@@ -109,6 +114,7 @@ export function setupInput(game, canvas, ui, debug) {
     }
     if (e.key === 'q' || e.key === 'Q') { cam.rotate(-1); return; }
     if (e.key === 'e' || e.key === 'E') { cam.rotate(1); return; }
+    if (visiting()) return;
     if (e.key === 'b' || e.key === 'B') { ui.onTool('build'); return; }
     if (b.active) {
       if (e.key === 'r' || e.key === 'R') b.rotate();

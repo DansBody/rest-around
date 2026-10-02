@@ -11,7 +11,7 @@ import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
 import { nextCast } from './looks.js';
 import { t } from './i18n.js';
-import { bus, choice, randInt, clamp } from './util.js';
+import { choice, randInt, clamp } from './util.js';
 
 /** What reaching `level` opens up, as readable lines (also used by the welcome-back report). */
 export function unlocksFor(level) {
@@ -63,7 +63,7 @@ export class Economy {
     const s = this.s, g = this.game;
     s.level++;
     this.syncGarden();
-    bus.emit('levelUp', { level: s.level, unlocks: unlocksFor(s.level) });
+    this.game.emit('levelUp', { level: s.level, unlocks: unlocksFor(s.level) });
     g.sfx('levelup');
     g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 30, '#ffd86b');
   }

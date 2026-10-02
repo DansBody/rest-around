@@ -15,6 +15,9 @@ import { audio } from './audio.js';
 import { DISHES, MAX_LEVEL, START_WALL_DECOR } from './data.js';
 import { bus } from './util.js';
 
+/** Events drawn in the 3D scene (and the cut-in for them); the rest are for the HUD, panels and cards. */
+const SCENE_EVENTS = new Set(['ability', 'kitCast', 'abilityWindup']);
+
 export function defaultState() {
   const dishes = {};
   for (const d of DISHES) dishes[d.id] = { lv: 1, prog: {}, on: d.id === 'espresso' || d.id === 'americano' };
@@ -68,6 +71,7 @@ export class Game {
     this.spotlight = null;                       // Spotlight: { x, y, r, t, dur } over the busiest table
     this.state = defaultState();
     this.renderer = null;
+    this.visit = false;   // a friend's café, run only to be looked at (src/visit.js): never saved, never talks to the HUD
   }
 
   get level() { return this.state.level; }
@@ -145,6 +149,7 @@ export class Game {
   // ---------------- tick ----------------
   update(realDt) {
     realDt = Math.min(realDt, 0.1);
+    if (this.visit && this.paused && !this.build.active) this.day.startNextDay();   // a friend's café just rolls on into the next day
     this.renderTime += realDt;
     this.fx.update(realDt);
     const running = !this.build.active && !this.paused;
@@ -195,7 +200,15 @@ export class Game {
   perk(id) { for (const a of this.staff) { if (a.napping) continue; const p = a.perk(id); if (p) return p; } return null; }
   /** Is the point (tile units) under Hee Hee's Spotlight? */
   inSpotlight(x, y) { const s = this.spotlight; return !!s && Math.hypot(x - s.x, y - s.y) <= s.r; }
-  sfx(name) { audio.play(name); }
+  /** Is this café the one on screen? (Yours is not while you visit a friend.) */
+  get shown() { return !this.renderer || this.renderer.game === this; }
+  /** Only the café on screen makes sounds. */
+  sfx(name) { if (this.shown) audio.play(name); }
+  /** Tell the UI and the scene: only the café on screen shows its effects, and only your own café talks to the HUD, panels and cards. */
+  emit(name, data) {
+    if (SCENE_EVENTS.has(name) ? !this.shown : this.visit) return;
+    bus.emit(name, data);
+  }
   /** Rebuild a character's 3D model after its look changed (outfit editor). */
   refreshCharacter(a) { if (this.renderer) this.renderer.refreshCharacter(a); }
   /** World anchor for effects: grid position + height (legacy px, ~40 px per world unit). */
@@ -203,8 +216,8 @@ export class Game {
   floatText(tileX, tileY, text, icon, color, lift = 110) {
     this.fx.text(this.at(tileX, tileY, lift), text, icon, color);
   }
-  toast(msg, kind) { bus.emit('toast', { msg, kind }); }
-  changed(what) { bus.emit('changed', what); }
+  toast(msg, kind) { this.emit('toast', { msg, kind }); }
+  changed(what) { this.emit('changed', what); }
 
   /** A guest appears at one end of the street and walks to the door. */
   spawnCustomer(force = false) {

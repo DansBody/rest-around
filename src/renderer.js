@@ -201,6 +201,7 @@ export class Renderer {
     const trees = [[-17, -8, 1.3], [-17, 8, 1.1], [-16.5, 30, 1.4], [W + 9, -5, 1.2], [W + 12, W * 0.7, 1.4], [W + 7, W + 9, 1.1], [W * 0.3, W + 10, 1.3], [-3, W + 9, 1.0], [W * 0.7, -9, 1.25], [4, -10, 1.1]];
     trees.forEach(([x, z, s], i) => this.treeGroup.add(this.tree(x, z, s, i)));
     this.roomSize = n;
+    for (const p of this.plots) this.scene.remove(p.g);   // the beds sit beside the walls: rebuilt for the new size
     this.plots = [];
   }
 
@@ -291,6 +292,21 @@ export class Renderer {
     }
     const glow = 0.5 + this.lampOn * 3;
     for (const L of this.decoLights) L.intensity = glow;
+  }
+
+  /** Draw another café (a friend's while visiting, then yours again): drop every view of the old one; the next frame builds the new. */
+  show(game) {
+    if (game === this.game) return;
+    for (const v of this.furn.values()) this.scene.remove(v.obj);
+    this.furn.clear();
+    for (const cv of this.chars.values()) cv.dispose(this.scene);
+    this.chars.clear();
+    for (const o of this.trash.values()) this.scene.remove(o);
+    this.trash.clear();
+    this.roomSize = 0;   // rebuilds the room, the walls' decorations, the floor and the garden beds
+    this.game = game;
+    game.renderer = this;
+    this.resize();
   }
 
   // ------------------------------------------------------------------ per frame

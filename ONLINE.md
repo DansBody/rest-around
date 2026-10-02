@@ -13,14 +13,14 @@
 | 綁定帳號（`src/ui/account.js`）：Google / Email 綁定、登入其他帳號、忘記密碼、登出、Lv 3 提示 | 完成；真實的 Google 和 Email 流程待實測 |
 | 好友、拜訪、幫忙與送禮：伺服器（`src/social.js`、`game` 的好友 op、四張資料表） | 完成，`tools/test/friends_smoke.js` 全部通過 |
 | 好友面板（`src/ui/friends.js`）：個人資料（暱稱、頭像）、好友代碼、加好友、邀請、好友列表 | 完成 |
-| 拜訪模式、幫忙的操作畫面、「誰來幫過忙」的通知卡片 | 尚未開始 |
+| 拜訪模式（`src/ui/visit.js`）：另外跑一個 Game 只用來看，畫面切過去，自己的店在背景照常營業和心跳 | 完成；用 Test A 的存檔實測過（含手機版面），真實的 `visit` 回應待用「拉鐵」帳號實測 |
+| 幫忙的操作畫面、「誰來幫過忙」的通知卡片 | 尚未開始 |
 
 ## 下一步（交接）
 
-2026-10-02 的 session 做到好友面板（Step 2）為止。接下來是：
+2026-10-02 的 session 做完 Step 3（拜訪模式）。接下來是：
 
-- **Step 3 拜訪模式**：好友列表的「拜訪」按鈕（`src/ui/friends.js`，目前只顯示「即將推出」）呼叫 `cloud.api('visit', { id })`，拿到對方的存檔快照和 `left`（今天剩下的幫忙次數）。要在畫面上顯示對方的咖啡廳：客人和店員會走動，但純粹是畫面效果，不產生收益、不寫回任何存檔。拜訪期間，自己的店要在背景繼續營業，心跳照常上傳。畫面上要標示「正在拜訪 XX 的咖啡廳」，並有「回到我的店」按鈕。開始前先讀懂 `Game`、`Renderer`、`World` 怎麼綁在一起（`src/game.js`、`src/renderer.js`、`src/main.js`），再決定是另外跑一個 Game，還是暫時把畫面切到另一個世界。
-- **Step 4 幫忙的操作**：在拜訪畫面點垃圾撿起來、選一位店員餵點心、送食材的面板，呼叫 `cloud.api('help', { id, session: cloud.session, rev: cloud.rev, kind, … })`。成功後把回傳的 `rev` 寫回 `cloud.rev`，並把扣掉的點心或食材、加的點數套用到自己正在跑的遊戲上。另外，收到好友幫忙時，目前只有 toast（`src/main.js` 的 `cloud.onIncoming`），要改成「誰來幫過忙」的卡片。
+- **Step 4 幫忙的操作**：拜訪中的狀態在 `visit`（`src/ui/visit.js`：`visit.game`、`visit.friend.id`、`visit.left`）。目前拜訪中點畫面不會選取任何東西（`src/input.js` 的 `visiting()`），要在那裡加上：點垃圾撿起來、選一位店員餵點心、送食材的面板，呼叫 `cloud.api('help', { id, session: cloud.session, rev: cloud.rev, kind, … })`。成功後把回傳的 `rev` 寫回 `cloud.rev`，並把扣掉的點心或食材、加的點數套用到自己正在跑的遊戲上。另外，收到好友幫忙時，目前只有 toast（`src/main.js` 的 `cloud.onIncoming`），要改成「誰來幫過忙」的卡片。
 
 **測試用的好友：** 已經和使用者的 Google 帳號（暱稱「拉鐵」）互為好友，可以直接拿來測拜訪和幫忙。
 
@@ -124,6 +124,12 @@ seed 保持 deterministic，改成 `serverSavedAt ^ sec`。因為結果由伺服
 - 存在 `profiles.nickname` 和 `profiles.avatar`，用 `op: 'profile_set'` 修改。匿名帳號也可以設定，但要綁定帳號後才能加好友。
 
 ### 拜訪
+
+**實作（Step 3）：** 拜訪時另外建一個 `Game`（`game.visit = true`），用 `apply()` 套上對方的存檔，每一幀和自己的 Game 一起 update；`Renderer.show(game)` 把畫面切過去（清掉舊的家具、角色、垃圾，下一幀重建房間）。
+- 只有畫面上的那間店會發出音效和場景特效（`game.shown`）；只有自己的店會通知 HUD、面板和卡片（`Game.emit`）。所以對方的店不會跳 toast、日結卡片或升級動畫，自己的店在背景的日結卡片照常排隊。
+- 對方的店一天結束時直接開下一天。賺到的錢只留在那個暫時的 Game 裡，回家時整個丟掉。
+- 切換時有全螢幕的轉場（`#visitcover`）：「正在前往 安妮 的店…」，回家時是「正在回到 Sunny Café…」。至少停留一小段時間讓字讀得到，等伺服器回應、新的店畫好之後才淡出；拜訪失敗時淡出後跳 toast。
+- 拜訪中隱藏自己的 HUD 和工具列，改顯示拜訪橫幅（對方暱稱、咖啡廳、愛心、今天還能幫的次數、「回到我的店」）。鏡頭操作跟著畫面上的店；Esc 也能回家。
 
 - 從好友名單點進去，伺服器回傳對方最後一次存檔的快照（只限好友）。
 - 你的裝置用那份快照跑模擬，客人和店員都會走動，看起來很熱鬧。但這純粹是畫面效果，不會讓任何人賺到錢，也不會改到對方的存檔。拜訪期間，自己的咖啡廳照常營業。

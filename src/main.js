@@ -10,6 +10,7 @@ import { setupInput } from './input.js';
 import { load, save, serialize } from './save.js';
 import { cloud, HEARTBEAT } from './cloud.js';
 import { initAccount } from './ui/account.js';
+import { updateVisit } from './ui/visit.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
 import { h } from './util.js';
@@ -114,6 +115,7 @@ async function boot() {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     game.update(dt);
+    updateVisit(dt);   // a friend's café, while visiting: drawn instead of yours, which keeps trading
     renderer.render(dt);
     ui.update(dt);
     debug.update();

@@ -11,6 +11,7 @@ import { AVATAR, FRIENDS } from '../social.js';
 import { gl, glyph } from './icons.js';
 import { confirmBtn } from './panels.js';
 import { linkButtons } from './account.js';
+import { startVisit } from './visit.js';
 
 const STALE = 20000;   // ms before the list is fetched again when the panel is drawn
 
@@ -26,12 +27,19 @@ export function heartsEl(n) {
 }
 const fmtCode = (c) => (c || '').replace(/^(.{4})(.{4})$/, '$1-$2');
 
-function errText(e) {
+/** What is left to do for a friend today, as short phrases (empty when nothing is). */
+export function leftText(left) {
+  const l = left || {};
+  return [l.clean && t('litter ×{n}', { n: l.clean }), l.snack && t('snacks ×{n}', { n: l.snack }), l.gift && t('gifts ×{n}', { n: l.gift })].filter(Boolean);
+}
+
+export function errText(e) {
   return ({
     code: t('No café has that friend code.'), self: t('That is your own friend code!'),
     full: t('Your friend list is full ({n} at most).', { n: FRIENDS.max }), their_full: t('Their friend list is full.'),
     link: t('Link an account first to add friends.'), invite: t('That invite is gone.'), friend: t('You are not friends any more.'),
     avatar: t('Pick one of the characters.'), offline: t('Could not reach the server, try again.'),
+    save: t('Their café could not be opened.'),
   })[e] || t('Something went wrong: {msg}', { msg: e });
 }
 
@@ -108,14 +116,14 @@ export function renderFriends(ui, body) {
   body.append(h('div.section-title', t('Friends ({n}/{m})', { n: d.friends.length, m: d.max })));
   if (!d.friends.length) body.append(h('div.muted', t('No friends yet. Share your friend code to invite someone!')));
   for (const f of d.friends.sort((a, b) => b.points - a.points)) {
-    const left = [f.left.clean && t('litter ×{n}', { n: f.left.clean }), f.left.snack && t('snacks ×{n}', { n: f.left.snack }), f.left.gift && t('gifts ×{n}', { n: f.left.gift })].filter(Boolean);
+    const left = leftText(f.left);
     body.append(h('div.row.friend', avatarEl(f.avatar, 48),
       h('div.grow',
         h('h3', f.name || t('A friend'), ' ', heartsEl(f.hearts)),
         h('div.muted', `${f.cafe} · ${t('Lv {n}', { n: f.level })}`),
         h('div.muted.small', left.length ? t('You can still help today: {what}', { what: left.join(' · ') }) : t('You helped as much as you can today 💗'))),
       h('div.friend-actions',
-        h('button.btn.small.primary', { onclick: () => ui.toast(t('Visiting is coming soon!')) }, t('Visit')),
+        h('button.btn.small.primary', { onclick: () => startVisit(ui, f) }, t('Visit')),
         confirmBtn('button.btn.small', '✕', t('Remove?'), () => act(ui, 'friend_remove', { id: f.id })))));
   }
 }

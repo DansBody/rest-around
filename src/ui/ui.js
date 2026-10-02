@@ -122,11 +122,12 @@ export class UI {
     // ----- toolbar -----
     this.toolBtns = {};
     // camera controls (the scene is real 3D: rotate in 90deg steps, recenter)
-    const cam = this.game.camera;
+    // (they turn whichever café is on screen: a friend's while visiting)
+    const shown = () => (this.game.renderer ? this.game.renderer.game : this.game);
     this.el.camctl = h('div#camctl',
-      h('button.btn.small', { title: t('Rotate left (Q)'), onclick: () => { cam.rotate(-1); this.game.sfx('click'); } }, glyph('rotate', 20)),
-      h('button.btn.small', { title: t('Center view'), onclick: () => { cam.fit(this.game.world.size); this.game.sfx('click'); } }, glyph('recenter', 20)),
-      h('button.btn.small', { title: t('Rotate right (E)'), onclick: () => { cam.rotate(1); this.game.sfx('click'); } }, glyph('rotate_r', 20)));
+      h('button.btn.small', { title: t('Rotate left (Q)'), onclick: () => { shown().camera.rotate(-1); shown().sfx('click'); } }, glyph('rotate', 20)),
+      h('button.btn.small', { title: t('Center view'), onclick: () => { shown().camera.fit(shown().world.size); shown().sfx('click'); } }, glyph('recenter', 20)),
+      h('button.btn.small', { title: t('Rotate right (E)'), onclick: () => { shown().camera.rotate(1); shown().sfx('click'); } }, glyph('rotate_r', 20)));
     r.appendChild(this.el.camctl);
 
     // staff ability dock: one button per staff member (keys 1–9)

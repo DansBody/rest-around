@@ -460,3 +460,31 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .avatar-pick { display: flex; gap: 8px; flex-wrap: wrap; }
 .avatar-opt { padding: 3px; border: 0; border-radius: 50%; background: none; cursor: pointer; }
 .avatar-opt.on { box-shadow: 0 0 0 2.5px var(--ink); }
+
+/* ---------------- visiting a friend's café: their banner instead of your HUD and tools ---------------- */
+#ui.visiting #hud, #ui.visiting .rating-tip, #ui.visiting #questbtn, #ui.visiting #quest, #ui.visiting #abilities, #ui.visiting #toolbar,
+#ui.visiting #panel, #ui.visiting #info, #ui.visiting #scrim, #ui.visiting #buildbar, #ui.visiting #ghostctl, #ui.visiting #buildbanner { display: none !important; }
+#visitbar { position: absolute; top: calc(12px + var(--sat)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
+  width: max-content; max-width: calc(100vw - 28px); padding: 10px 12px 10px 10px; border-radius: 22px; }
+#visitbar b { font-family: var(--font-display); font-size: 16px; letter-spacing: -.02em; }
+#visitbar .btn { flex: none; }
+@media (max-width: 600px) {
+  #visitbar { left: 8px; right: 8px; width: auto; max-width: none; transform: none; top: calc(8px + var(--sat)); }
+  #ui.visiting #camctl { top: calc(150px + var(--sat)); }
+}
+/* the cover while switching cafés */
+#visitcover { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #f4f4f5;
+  opacity: 0; transition: opacity .32s ease; pointer-events: auto; }
+#visitcover.show { opacity: 1; }
+#visitcover .vc-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px; text-align: center; transform: translateY(8px); transition: transform .45s cubic-bezier(.2,.9,.3,1); }
+#visitcover.show .vc-card { transform: none; }
+#visitcover .vc-face { margin-bottom: 10px; animation: vc-hop 1.1s ease-in-out infinite; }
+#visitcover .vc-face .avatar { box-shadow: 0 10px 24px rgba(0,0,0,.12); }
+#visitcover .vc-title { font-family: var(--font-display); font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+#visitcover .vc-sub { font-size: 14px; color: var(--ink-soft); }
+#visitcover .vc-dots { display: flex; gap: 6px; margin-top: 14px; }
+#visitcover .vc-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); opacity: .2; animation: vc-dot 1.2s ease-in-out infinite; }
+#visitcover .vc-dots i:nth-child(2) { animation-delay: .2s; } #visitcover .vc-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes vc-hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-10px); } 60% { transform: translateY(0) scale(1.03, .97); } }
+@keyframes vc-dot { 0%, 100% { opacity: .2; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #visitcover .vc-face, #visitcover .vc-dots i { animation: none; } }
