@@ -77,6 +77,11 @@ export const ZH_TW = {
   'Sign in': '登入', 'Open the café saved in your account.': '打開存在你帳號裡的咖啡廳。',
   'The café on this device is not linked and will be left behind.': '這台裝置上的咖啡廳沒有綁定帳號，登入後會被放棄。',
   'Continue with Google': '使用 Google 登入', 'Sign in with email': '用 Email 登入', 'Forgot password?': '忘記密碼？',
+  // the start screen (ui/welcome.js)
+  'Open my café': '開始經營我的咖啡廳', 'Already have a café?': '已經有咖啡廳了？', 'Opening Google…': '正在前往 Google…',
+  'Enter your email first.': '請先輸入 Email。',
+  'Starting as a guest? You can link an account any time in Settings, and keep your progress.': '以訪客身分開始的話，之後隨時可以在設定裡綁定帳號，進度不會不見。',
+  'This device has a café that is not linked to an account. Open my café carries on with it; signing in opens the café in your account instead.': '這台裝置上有一間還沒綁定帳號的咖啡廳。按「開始經營我的咖啡廳」會繼續經營它；登入帳號的話，會改開帳號裡的那一間。',
   'Reset password': '重設密碼', 'We will email you a link to choose a new password.': '我們會寄一封信給你，用信中的連結設定新密碼。',
   'A reset link is on its way to {email}.': '重設密碼的信已寄到 {email}。',
   'Choose a new password': '設定新密碼', 'Email confirmed!': 'Email 已確認！',

@@ -7,11 +7,12 @@ import { Renderer } from './renderer.js';
 import { UI } from './ui/ui.js';
 import { DebugPanel } from './ui/debug.js';
 import { setupInput } from './input.js';
-import { load, save, serialize } from './save.js';
+import { load, save, serialize, readLocal } from './save.js';
 import { cloud, HEARTBEAT } from './cloud.js';
 import { initAccount } from './ui/account.js';
 import { updateVisit } from './ui/visit.js';
 import { helpedCard } from './ui/friends.js';
+import { chooseStart } from './ui/welcome.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
 import { h } from './util.js';
@@ -38,13 +39,20 @@ async function boot() {
     console.error(e);
     return;
   }
+  // no player signed in on this browser yet: sign in to an account, or start as a guest (skipped when offline)
+  const startScreen = navigator.onLine === false ? null : () => {
+    const error = cloud.returned.error;
+    cloud.returned = { ...cloud.returned, error: '', errorCode: '' };   // said on the start screen, not again later
+    const local = readLocal();   // a café from before going online (no owner) goes up with a new guest; another account's does not
+    return chooseStart(loading, { hasLocal: typeof local === 'object' && !local.owner, error });
+  };
   const game = new Game();
   window.game = game; // handy for the console / automated checks
   // online: the server has the café (and settles the time away); without it, this browser's copy
   let status, offline = false;
   msg.textContent = t('Opening the café…');
   try {
-    status = await cloud.login(game, () => { game.newGame(); return serialize(game); });
+    status = await cloud.login(game, () => { game.newGame(); return serialize(game); }, startScreen);
   } catch (e) {
     console.warn('Server unreachable, playing offline', e);
     offline = true;

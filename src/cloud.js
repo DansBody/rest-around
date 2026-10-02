@@ -30,12 +30,19 @@ class Cloud {
     this.returned = {};
   }
 
-  /** Sign in (reusing the session kept in this browser, else as a new anonymous player). */
-  async connect() {
+  /**
+   * Sign in, reusing the session kept in this browser. Without one, `choose` (the start screen) lets the
+   * player sign in to an account they already have, or carry on as a guest: a new anonymous player.
+   */
+  async connect(choose) {
     this.returned = readReturn();
     const { createClient } = await import('@supabase/supabase-js');
     this.sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'refillit.auth' } });
     let { data } = await this.sb.auth.getSession();
+    if (!data.session && choose) {
+      await choose();   // resolves once signed in by email or the guest button was pressed (Google leaves the page)
+      ({ data } = await this.sb.auth.getSession());
+    }
     if (!data.session) {
       const r = await this.sb.auth.signInAnonymously();
       if (r.error) throw r.error;
@@ -64,11 +71,11 @@ class Cloud {
 
   /**
    * Open the café from the server. `fresh` makes a new game's save, used only if this player has never
-   * been online and this browser has no save of its own.
+   * been online and this browser has no save of its own; `choose` is the start screen (see connect).
    * @returns 'loaded' | 'new'; throws when the server cannot be reached (play offline then)
    */
-  async login(game, fresh) {
-    await this.connect();
+  async login(game, fresh, choose) {
+    await this.connect(choose);
     // this browser's save goes up only if it is this player's (or from before going online), never another account's
     const local = readLocal();
     const mine = typeof local === 'object' && (!local.owner || local.owner === this.user.id);
@@ -211,6 +218,15 @@ class Cloud {
     const { error } = await this.sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
     location.reload();
+  }
+  /** From the start screen (nothing to leave behind yet): sign in to an existing account. */
+  async startGoogle() {
+    const { error } = await this.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: here() } });
+    if (error) throw error;
+  }
+  async startEmail(email, password) {
+    const { error } = await this.sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   }
   async sendPasswordReset(email) {
     const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: here() });

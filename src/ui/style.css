@@ -384,6 +384,34 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .load-bar i { display: block; height: 100%; width: 0; background: #111; border-radius: 99px; transition: width .2s; }
 .load-msg { font-weight: 500; font-size: 13.5px; color: var(--ink-soft); }
 
+/* the start screen: sign in to an existing café, or start as a guest (ui/welcome.js), inside the loading card */
+#loading.choosing { overflow-y: auto; align-items: safe center; padding: 16px 0 calc(16px + var(--sab)); }
+#loading.choosing .load-card { padding: 20px 16px; width: min(380px, 100%); }
+.start-pane { display: flex; flex-direction: column; gap: 10px; margin-top: 26px; text-align: left; animation: popin .35s ease-out; }
+.start-pane .btn { width: 100%; min-height: 52px; justify-content: center; gap: 10px; font-size: 15.5px; }
+.start-guest { font-size: 16.5px !important; }
+.start-google, .start-email { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); }
+.start-google:hover, .start-email:hover { background: #fafafa; }
+.start-or { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+.start-or::before, .start-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.start-note { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); text-align: center; margin-top: 4px; }
+.start-err { color: #c0392b; font-size: 13px; font-weight: 600; text-align: center; }
+.start-err:empty { display: none; }
+.start-head { display: flex; align-items: center; gap: 10px; }
+.start-head b { font-family: var(--font-display); font-size: 17px; }
+.start-pane .start-back { width: 38px; min-width: 38px; min-height: 38px; padding: 0; flex: none; border-radius: 50%; }
+.start-form { display: flex; flex-direction: column; gap: 10px; }
+.start-form input { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); min-height: 50px; }
+.start-form input:focus { box-shadow: inset 0 0 0 2px var(--ink); }
+.start-pane .start-back { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); }
+.start-pane .linkish { align-self: center; }
+/* short screens (phones held sideways): the cup steps aside so the choices fit */
+@media (max-height: 560px) {
+  #loading.choosing .load-cup, #loading.choosing .load-tag { display: none; }
+  #loading.choosing .load-title { font-size: 34px; }
+  #loading.choosing .start-pane { margin-top: 14px; }
+}
+
 /* desktop build mode: the camera buttons step up above the build tray */
 @media (min-width: 761px) { #ui.building #camctl { bottom: calc(330px + var(--sab)); } }
 

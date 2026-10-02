@@ -1,8 +1,8 @@
 // The player's account: the Account section in Settings, the link / sign-in cards, and what to say when the
 // player comes back from Google or an email link (see cloud.js and ONLINE.md "帳號與登入").
 //
-// Players start anonymous and are never asked to sign up up front: Settings always offers linking (with a
-// warning while unlinked), and reaching level 3 asks once. Linking keeps the same account, so the café stays
+// Most players start anonymous (the start screen in welcome.js offers signing in first, but never requires
+// it): Settings always offers linking (with a warning while unlinked), and reaching level 3 asks once. Linking keeps the same account, so the café stays
 // put; signing in to an account that already has a café leaves this device's unlinked one behind, which is
 // said plainly before it happens.
 import { h, bus } from '../util.js';
@@ -16,7 +16,7 @@ const MIN_PASSWORD = 8;
 function card(title, text, ...kids) {
   return h('div.card', h('div.big-title', title), text ? h('div.muted', text) : null, ...kids);
 }
-function errText(e) {
+export function errText(e) {
   const m = (e && (e.message || e.error_description)) || String(e);
   if (/invalid login credentials/i.test(m)) return t('Wrong email or password.');
   if (/rate limit|too many/i.test(m)) return t('Too many tries, please wait a minute and try again.');
