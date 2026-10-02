@@ -96,7 +96,7 @@ export const ZH_TW = {
   'Wrong email or password.': 'Email 或密碼錯誤。',
   'Too many tries, please wait a minute and try again.': '嘗試次數太多，請等一分鐘再試。',
   'Something went wrong: {msg}': '發生錯誤：{msg}',
-  'Close': '關閉', 'Back': '返回', 'Cancel': '取消', 'Done': '完成', 'On': '開', 'Off': '關', 'Free': '免費',
+  'Close': '關閉', 'Back': '返回', 'Cancel': '取消', 'Done': '完成', 'Buy': '購買', 'Hide': '收起', 'Tap furniture to rotate / move / sell it': '點家具可以旋轉、移動或賣掉', 'On': '開', 'Off': '關', 'Free': '免費',
 
   // ---------------- HUD
   'Coins': '金幣', 'Café level & points': '咖啡廳等級與點數', 'Day clock': '時鐘', 'Daily gift!': '每日禮物！',

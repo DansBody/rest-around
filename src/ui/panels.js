@@ -372,6 +372,7 @@ const thumbCache = new Map();
 function cachedThumb(key, make) { if (!thumbCache.has(key)) thumbCache.set(key, make()); return cloneCanvas(thumbCache.get(key)); }
 function cloneCanvas(c) { const n = document.createElement('canvas'); n.width = c.width; n.height = c.height; n.style.cssText = c.style.cssText; n.getContext('2d').drawImage(c, 0, 0); return n; }
 
+const TOUCH_SCREEN = matchMedia('(hover: none) and (pointer: coarse)');   // same test as the CSS
 export function buildTray(ui, bar) {
   const g = ui.game, b = g.build, s = g.state;
   if (!b.active) { bar.replaceChildren(); return; }
@@ -436,6 +437,17 @@ export function buildTray(ui, bar) {
   }
   const hint = b.tool ? (b.tool.mode === 'floor' ? (touch ? 'Tap or drag over tiles to paint' : 'Click or drag over tiles to paint') : '')
     : touch ? 'Pick an item to buy, or tap furniture to rotate / move / sell it' : 'Pick an item to buy, or click furniture to rotate / move / sell it';
+  // phones open build mode with the tray folded down to one line, so the whole café is in view for
+  // rotating / moving what's there; Buy unfolds the shop
+  if (TOUCH_SCREEN.matches && !ui.buildOpen) {
+    const tip = b.message ? b.message.text : t('Tap furniture to rotate / move / sell it');
+    bar.replaceChildren(h('div.card.bb-mini.bb-fold',
+      h('button.btn.primary', { onclick: () => { ui.buildOpen = true; ui.renderBuild(); } }, gl('build', t('Buy'), 16)),
+      h('div.grow.muted' + (b.message && b.message.kind === 'bad' ? '.bad' : ''), tip),
+      h('button.btn.small.done', { onclick: () => b.exit() }, gl('check', t('Done'), 16))));
+    return;
+  }
+  if (TOUCH_SCREEN.matches) tabs.prepend(h('button.btn.small.fold', { onclick: () => { ui.buildOpen = false; b.setTool(null); ui.renderBuild(); }, title: t('Hide') }, glyph('back', 16)));
   const msg = h('div.bmsg' + (b.message ? '.' + b.message.kind : ''), b.message ? b.message.text : t(hint));
   bar.replaceChildren(h('div.card', tabs, items, h('div.bb-msg', msg)));
   // keep the chosen category tab in view (the row scrolls sideways on phones)

@@ -28,6 +28,10 @@ export { portrait, thumb } from '../portrait.js';
 const KEEP = '\u2063';   // invisible separator
 const keepTogether = (text, piece) => text.split(KEEP).flatMap((x, i) => (i ? [h('span.seg', piece), x] : [x]));
 /** "a + b − c": each term with its sign stays on one line; lines break between terms. */
+const GC_RING = 70;   // px from an item's centre to the buttons around it in build mode
+// where each button goes round the ring, in degrees clockwise from 3 o'clock (by how many there are):
+// 2 = ✓ right, ✕ left; 3 = top left, bottom, top right; 4 = top left, top right, bottom left, bottom right
+const GC_ANGLES = { 2: [0, 180], 3: [210, 90, -30], 4: [225, -45, 135, 45] };
 const opSegs = (text) => text.split(/\s*(?=[＋－+−])/).map((x) => h('span.seg', x));
 
 export class UI {
@@ -337,7 +341,7 @@ ${k.desc}
     this.toggleQuest(false);
     this.el.buildbar.classList.toggle('open', on);
     this.el.buildBanner.classList.toggle('show', on);
-    if (on) { this.closePanel(); this.game.selected = null; this.buildCat = this.buildCat || 'dining'; }
+    if (on) { this.closePanel(); this.game.selected = null; this.buildCat = this.buildCat || 'dining'; this.buildOpen = false; }
     this.game.sfx(on ? 'open' : 'close');
     this.renderBuild();
     this.renderGhostCtl();
@@ -348,74 +352,72 @@ ${k.desc}
   }
 
   // ---------------- floating build controls ----------------
-  /** Buttons that float beside the pinned ghost (rotate · place · cancel) or the selected furniture (rotate · move · sell). */
+  /** Buttons in a ring around the pinned ghost (rotate · place · cancel) or the selected item (rotate · move · sell · done). */
   renderGhostCtl() {
     const b = this.game.build, el = this.el.ghostctl;
     const gh = b.ghost, sel = b.selected;
-    let kids = null;
+    const done = (clear) => h('button.gc-btn.ok', { onclick: () => { clear(); this.renderBuild(); this.renderGhostCtl(); }, title: t('Done') }, glyph('check', 26));
+    let label = null, btns = null;
     if (b.active && b.wallMode() && b.locked && gh && gh.kind === 'wall') {
-      const name = wallDecorById[gh.id].name;
-      kids = [
-        h('div.gc-label' + (gh.valid ? '' : '.bad'), gh.valid ? name : gh.reason),
-        h('div.gc-row',
-          h('button.gc-btn.ok' + (gh.valid ? '' : '.off'), { onclick: () => b.confirm(), title: b.movingWall ? t('Drop here') : t('Place here') }, glyph('check', 26)),
-          h('button.gc-btn', { onclick: () => b.cancelPlacing(), title: t('Cancel (Esc)') }, glyph('close', 20))),
-      ];
+      label = h('div.gc-label' + (gh.valid ? '' : '.bad'), gh.valid ? wallDecorById[gh.id].name : gh.reason);
+      btns = [
+        h('button.gc-btn.ok' + (gh.valid ? '' : '.off'), { onclick: () => b.confirm(), title: b.movingWall ? t('Drop here') : t('Place here') }, glyph('check', 26)),
+        h('button.gc-btn', { onclick: () => b.cancelPlacing(), title: t('Cancel (Esc)') }, glyph('close', 20))];
     } else if (b.active && b.selectedWall && !b.placing()) {
       const w = wallDecorById[b.selectedWall];
-      kids = [
-        h('div.gc-label', w.name),
-        h('div.gc-row',
-          h('button.gc-btn', { onclick: () => b.startMoveWall(), title: t('Move') }, glyph('move', 22)),
-          confirmBtn('button.gc-btn.sell', t('Sell +{n}', { n: Math.floor(w.price * 0.5) }), t('Sell?'), () => b.sellSelectedWall()),
-          h('button.gc-btn', { onclick: () => { b.selectedWall = null; this.renderBuild(); this.renderGhostCtl(); }, title: t('Close') }, glyph('close', 20))),
-      ];
+      label = h('div.gc-label', w.name);
+      btns = [
+        h('button.gc-btn', { onclick: () => b.startMoveWall(), title: t('Move') }, glyph('move', 22)),
+        done(() => { b.selectedWall = null; }),
+        confirmBtn('button.gc-btn.sell', t('Sell +{n}', { n: Math.floor(w.price * 0.5) }), t('Sell?'), () => b.sellSelectedWall())];
     } else if (b.active && b.placing() && b.locked && gh && gh.type) {
-      const name = furnitureById[gh.type].name;
-      kids = [
-        h('div.gc-label' + (gh.valid ? '' : '.bad'), gh.valid ? name : gh.reason),
-        h('div.gc-row',
-          h('button.gc-btn', { onclick: () => b.rotate(), title: t('Rotate (R)') }, glyph('rotate_r', 22)),
-          h('button.gc-btn.ok' + (gh.valid ? '' : '.off'), { onclick: () => b.confirm(), title: b.moving ? t('Drop here') : t('Place here') }, glyph('check', 26)),
-          h('button.gc-btn', { onclick: () => b.cancelPlacing(), title: t('Cancel (Esc)') }, glyph('close', 20))),
-      ];
+      label = h('div.gc-label' + (gh.valid ? '' : '.bad'), gh.valid ? furnitureById[gh.type].name : gh.reason);
+      btns = [
+        h('button.gc-btn', { onclick: () => b.rotate(), title: t('Rotate (R)') }, glyph('rotate_r', 22)),
+        h('button.gc-btn.ok' + (gh.valid ? '' : '.off'), { onclick: () => b.confirm(), title: b.moving ? t('Drop here') : t('Place here') }, glyph('check', 26)),
+        h('button.gc-btn', { onclick: () => b.cancelPlacing(), title: t('Cancel (Esc)') }, glyph('close', 20))];
     } else if (b.active && sel && !b.moving) {
       const cat = furnitureById[sel.type];
-      kids = [
-        h('div.gc-label', cat.name + (sel.broken ? t(' (broken)') : '')),
-        h('div.gc-row',
-          h('button.gc-btn', { onclick: () => b.rotateSelected(), title: t('Rotate') }, glyph('rotate_r', 22)),
-          h('button.gc-btn', { onclick: () => b.startMove(), title: t('Move') }, glyph('move', 22)),
-          confirmBtn('button.gc-btn.sell', t('Sell +{n}', { n: Math.floor(cat.price * SELL_RATE) }), t('Sell?'), () => b.sellSelected()),
-          h('button.gc-btn', { onclick: () => { b.selected = null; this.renderBuild(); this.renderGhostCtl(); }, title: t('Close') }, glyph('close', 20))),
-      ];
+      label = h('div.gc-label', cat.name + (sel.broken ? t(' (broken)') : ''));
+      btns = [
+        h('button.gc-btn', { onclick: () => b.rotateSelected(), title: t('Rotate') }, glyph('rotate_r', 22)),
+        h('button.gc-btn', { onclick: () => b.startMove(), title: t('Move') }, glyph('move', 22)),
+        confirmBtn('button.gc-btn.sell', t('Sell +{n}', { n: Math.floor(cat.price * SELL_RATE) }), t('Sell?'), () => b.sellSelected()),
+        done(() => { b.selected = null; })];
     }
-    el.replaceChildren(...(kids || []));
-    el.classList.toggle('show', !!kids);
+    // the buttons sit round a circle with the label above it, the ✓ always low down, near the thumb
+    if (btns) btns.forEach((btn, i) => {
+      const a = GC_ANGLES[btns.length][i] * Math.PI / 180;
+      btn.style.left = Math.round(Math.cos(a) * GC_RING) + 'px';
+      btn.style.top = Math.round(Math.sin(a) * GC_RING) + 'px';
+    });
+    el.replaceChildren(...(btns ? [label, ...btns] : []));
+    el.classList.toggle('show', !!btns);
     this.placeGhostCtl();
   }
-  /** Every frame: keep the floating controls under the item as the camera pans, zooms and turns. */
+  /** Every frame: keep the ring centred on the item as the camera pans, zooms and turns. */
   placeGhostCtl() {
     const el = this.el.ghostctl;
     if (!el.classList.contains('show')) return;
     const b = this.game.build, R = this.game.renderer;
     if (!R) return;
     const pos = (q) => {
-      const vw = window.innerWidth, vh = window.innerHeight, w = el.offsetWidth, hh = el.offsetHeight;
-      const x = Math.max(8, Math.min(vw - w - 8, q.x - w / 2));
-      const y = Math.max(60, Math.min(vh - hh - 96, q.y + 22));
+      // keep the whole ring (and the label over it) on screen, clear of the HUD and the folded tray
+      const vw = window.innerWidth, vh = window.innerHeight, m = GC_RING + 40;
+      const x = Math.max(m, Math.min(vw - m, q.x));
+      const y = Math.max(GC_RING + 96, Math.min(vh - m - 90, q.y));
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
     };
-    // wall pieces: the buttons hang just under the piece, on the wall
+    // wall pieces: the ring sits on the piece, on the wall
     const wallSpot = b.wallMode() && b.ghost && b.ghost.kind === 'wall' ? b.ghost
       : b.selectedWall && !b.placing() ? wallLayout(this.game.world.size, DOOR_Y, this.game.state.wallDeco, this.game.state.wallPos)[b.selectedWall] : null;
-    if (wallSpot) { const q = R.wallScreen(wallSpot.side, wallSpot.a, 0.9); if (q) pos(q); return; }
+    if (wallSpot) { const q = R.wallScreen(wallSpot.side, wallSpot.a, 1.6); if (q) pos(q); return; }
     const f = b.placing() ? b.ghost : b.selected;
     if (!f) return;
     let cx = f.x + 0.5, cy = f.y + 0.5;
     if (f.fp) { cx = f.x + f.fp[0] / 2; cy = f.y + f.fp[1] / 2; }
     else if (f.tiles && f.tiles.length) { cx = f.tiles.reduce((a, q) => a + q.x, 0) / f.tiles.length + 0.5; cy = f.tiles.reduce((a, q) => a + q.y, 0) / f.tiles.length + 0.5; }
-    const q = R.project(cx, cy, 0);
+    const q = R.project(cx, cy, 0.6);
     if (q) pos(q);
   }
 

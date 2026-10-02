@@ -209,9 +209,9 @@ export class Build {
       if (!this.game.eco.buyWallDecor(gh.id, pos)) return this.say(t('Not enough coins'), 'bad');
       this.say(t('Hung the {name} (−{n})', { name: w.name, n: w.price }), 'good');
     }
-    // each wall piece is one of a kind: once it's up, it's selected so it can be nudged right away
+    // hung or moved: done with it (tap it again to move or sell it)
     this.tool = null; this.movingWall = null; this.locked = false; this.ghost = null; this.hoverWall = null;
-    this.selectedWall = gh.id;
+    this.selectedWall = null;
     bus.emit('buildChanged');
   }
   /** ✕ next to the ghost: stop placing this item (a moved one goes back where it was). */
@@ -389,7 +389,7 @@ export class Build {
     f.x = x; f.y = y; f.dir = this.dir; f.fp = World.footprint(f.type, this.dir);
     g.world.furniture.push(f); g.world.changed();
     f.bounce = 1;
-    this.moving = null; this.selected = f;
+    this.moving = null; this.selected = null;   // moved: done with it (tap it again for more)
     g.sfx('place');
     this.say(v.hint || t('Moved'), v.hint ? 'warn' : 'good');
     g.changed('build');
