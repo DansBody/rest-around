@@ -7,9 +7,11 @@ import { Renderer } from './renderer.js';
 import { UI } from './ui/ui.js';
 import { DebugPanel } from './ui/debug.js';
 import { setupInput } from './input.js';
-import { load, save } from './save.js';
+import { load, save, serialize } from './save.js';
+import { cloud, HEARTBEAT } from './cloud.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
+import { h } from './util.js';
 import { OFFLINE } from './data.js';
 
 const loading = document.getElementById('loading');
@@ -35,8 +37,17 @@ async function boot() {
   }
   const game = new Game();
   window.game = game; // handy for the console / automated checks
-  const status = load(game);
-  if (status !== 'loaded') game.newGame();
+  // online: the server has the café (and settles the time away); without it, this browser's copy
+  let status, offline = false;
+  msg.textContent = t('Opening the café…');
+  try {
+    status = await cloud.login(game, () => { game.newGame(); return serialize(game); });
+  } catch (e) {
+    console.warn('Server unreachable, playing offline', e);
+    offline = true;
+    status = load(game);
+    if (status !== 'loaded') game.newGame();
+  }
 
   const canvas = document.getElementById('view');
   const renderer = new Renderer(canvas, document.getElementById('overlay'), game);
@@ -57,17 +68,30 @@ async function boot() {
 
   if (status === 'corrupt') ui.toast(t('Your save was damaged, so a fresh café was opened. (A backup was kept.)'), 'bad');
   else if (status === 'loaded' && !game.awayReport) ui.toast(t('Welcome back to {name}!', { name: game.state.name }), 'good');
-  else ui.toast(t('Welcome to your new café! Guests are on their way ☕'), 'good');
+  else if (status !== 'loaded') ui.toast(t('Welcome to your new café! Guests are on their way ☕'), 'good');
+  if (offline) ui.toast(t('Could not reach the server: playing offline. Progress made now stays on this device.'), 'bad');
+
+  // the server turned this game away: it can no longer save, so stop and offer a reload
+  cloud.onStop = (reason) => {
+    game.paused = true;
+    if (reason === 'rev') { location.reload(); return; }
+    const text = reason === 'session' ? t('Your café was opened on another device, so it was closed here.') : t('A new version of Refillit is ready.');
+    ui.queueModal(() => h('div.card', h('div.big-title', t('Café closed')), h('div.muted', text),
+      h('button.btn.primary', { style: { marginTop: '12px' }, onclick: () => location.reload() }, t('Reload'))));
+  };
 
   // The café keeps trading while the game is closed, counted from the moment of the last save. So the save
   // must keep that moment: a hidden tab does not run the game, hence no autosave while hidden, and the one
   // save made as the tab was hidden is the one that counts.
+  // Online, the server counts the time away from the last heartbeat; the browser's copy is only a cache.
   const persist = (force) => { if (!game.resetting && (force || !document.hidden)) save(game); };
   setInterval(() => persist(false), 10000);
+  setInterval(() => { if (!document.hidden) cloud.beat(game); }, HEARTBEAT * 1000);
   window.addEventListener('beforeunload', () => persist(false));
+  window.addEventListener('pagehide', () => cloud.beat(game, true));
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') { persist(true); hiddenAt = Date.now(); return; }
+    if (document.visibilityState === 'hidden') { persist(true); cloud.beat(game, true); hiddenAt = Date.now(); return; }
     // back after a long while: reload so the time away is settled the same way as after closing the game
     if (hiddenAt && (Date.now() - hiddenAt) / 1000 >= OFFLINE.minSeconds && !game.resetting) location.reload();
     hiddenAt = 0;

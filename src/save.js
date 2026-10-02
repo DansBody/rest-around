@@ -1,5 +1,7 @@
-// Save/load to localStorage. Autosaves every 10 s and on unload. All storage access is wrapped in
-// try/catch; corrupted or incompatible saves are backed up and the game starts fresh.
+// Saves as plain JSON (serialize / apply), kept in localStorage. Online the server holds the real save and
+// settles the time away (cloud.js); this browser's copy is then a cache, used to move a game online the first
+// time and to play on when the server cannot be reached. All storage access is wrapped in try/catch;
+// corrupted or incompatible saves are backed up and the game starts fresh.
 import { World } from './world.js';
 import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
@@ -45,13 +47,33 @@ export function clearSave() {
   try { localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
 }
 
-/** @returns 'none' | 'loaded' | 'corrupt' */
-export function load(game) {
+/** The save kept in this browser, unsettled: { data } | 'none' | 'corrupt' (a broken one is backed up and removed). */
+export function readLocal() {
   let raw = null;
   try { raw = localStorage.getItem(SAVE_KEY); } catch { return 'none'; }
   if (!raw) return 'none';
   try {
     const data = JSON.parse(raw);
+    if (!data || data.v !== 1 || !data.state || !data.world) throw new Error('bad save shape');
+    return { data };
+  } catch (e) {
+    console.warn('Corrupted save', e);
+    try { localStorage.setItem(SAVE_KEY + '.corrupt', raw); localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+    return 'corrupt';
+  }
+}
+
+/** Keep a copy of a save (from the server) in this browser. */
+export function writeLocal(data) {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch { /* storage unavailable */ }
+}
+
+/** Playing without the server: load the browser's save and settle the time away here. @returns 'none' | 'loaded' | 'corrupt' */
+export function load(game) {
+  const local = readLocal();
+  if (typeof local === 'string') return local;
+  try {
+    const data = local.data;
     // the café traded while the game was closed: settle that time first (a failure just skips it)
     let away = null;
     try { away = settleOffline(data, (Date.now() - (data.savedAt || Date.now())) / 1000); } catch (e) { console.warn('Offline settlement failed', e); }
@@ -61,12 +83,13 @@ export function load(game) {
     return 'loaded';
   } catch (e) {
     console.warn('Corrupted save, starting fresh', e);
-    try { localStorage.setItem(SAVE_KEY + '.corrupt', raw); localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+    try { localStorage.setItem(SAVE_KEY + '.corrupt', JSON.stringify(local.data)); localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
     return 'corrupt';
   }
 }
 
-function apply(game, data) {
+/** Rebuild the game from a plain save (from this browser or the server). Throws on a broken save. */
+export function apply(game, data) {
   if (!data || data.v !== 1 || !data.state || !data.world) throw new Error('bad save shape');
   const d = defaultState();
   const s = data.state;

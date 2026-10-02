@@ -1,0 +1,20 @@
+// Bundles each Edge Function in supabase/functions/ together with the game rules it imports from src/
+// (offline.js, authority.js, data.js, …) into build/functions/<name>/index.js, one self-contained file.
+// The server must run exactly the game's rules, so they are never copied by hand: rebuild and redeploy.
+//   node tools/build_functions.js
+// Deploy the result with the Supabase MCP (deploy_edge_function, verify_jwt off: the function checks the
+// user itself) or `npx supabase functions deploy` once the CLI is logged in. See ONLINE.md.
+import { execFileSync } from 'node:child_process';
+import { readdirSync, existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const fnDir = join(root, 'supabase', 'functions');
+for (const name of readdirSync(fnDir)) {
+  const entry = join(fnDir, name, 'index.ts');
+  if (name.startsWith('_') || !existsSync(entry)) continue;
+  const out = join(root, 'build', 'functions', name, 'index.js');
+  execFileSync('npx', ['--yes', 'esbuild@0.25', entry, '--bundle', '--format=esm', '--platform=neutral', '--target=es2022',
+    '--external:npm:*', '--external:jsr:*', '--legal-comments=none', '--minify-whitespace', '--minify-syntax', `--outfile=${out}`], { stdio: 'inherit', shell: process.platform === 'win32' });
+  console.log(`${name}: ${out} (${(statSync(out).size / 1024).toFixed(1)} KB)`);
+}

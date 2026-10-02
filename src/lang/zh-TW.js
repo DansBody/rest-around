@@ -9,6 +9,12 @@ export const ZH_TW = {
   'Welcome to your new café! Guests are on their way ☕': '歡迎來到你的新咖啡廳！客人正在路上 ☕',
   '☀️ Day {d} — doors open!': '☀️ 第 {d} 天，開門營業！',
   'Finish the day first!': '請先結束今天的營業！',
+  'Opening the café…': '正在開店…',
+  'Could not reach the server: playing offline. Progress made now stays on this device.': '無法連上伺服器，改為離線遊玩。這段時間的進度只會留在這台裝置上。',
+  'Your café was opened on another device, so it was closed here.': '你的咖啡廳已在其他裝置開啟，這裡先暫停營業。',
+  'A new version of Refillit is ready.': 'Refillit 有新版本了。',
+  'Café closed': '咖啡廳暫停營業', 'Reload': '重新載入',
+  'Could not reach the server, try again.': '無法連上伺服器，請再試一次。',
   'Close': '關閉', 'Back': '返回', 'Cancel': '取消', 'Done': '完成', 'On': '開', 'Off': '關', 'Free': '免費',
 
   // ---------------- HUD

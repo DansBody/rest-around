@@ -34,7 +34,7 @@ export const MODEL = {
 };
 
 const phaseTable = () => DAY.phases.map((p, i) => ({ ...p, to: i + 1 < DAY.phases.length ? DAY.phases[i + 1].from : DAY.lastCallHour }));
-const SIM_SEC_PER_HOUR = DAY.length / (DAY.endHour - DAY.startHour);
+export const SIM_SEC_PER_HOUR = DAY.length / (DAY.endHour - DAY.startHour);
 
 export const levelFor = (points) => { let lv = 1; while (lv < MAX_LEVEL && points >= LEVEL_POINTS[lv + 1]) lv++; return lv; };
 
@@ -110,16 +110,20 @@ function decorScore(data) {
  * @param data   a save, as written by save.js serialize() (not modified)
  * @param elapsedSec  seconds since it was saved
  * @param now    timestamp stamped on the result
+ * @param opts   overrides of OFFLINE (minSeconds, capHours, hoursPerDay, efficiency), plus `seedBase`: the
+ *               timestamp the dice are seeded from (default: the save's own savedAt; the server passes the
+ *               time it last accepted the save, which the player cannot pick)
  * @returns null when the time away is too short to count, otherwise { data, report }
  */
-export function settleOffline(data, elapsedSec, now = Date.now()) {
-  if (!data || !data.state || !data.world || !(elapsedSec >= OFFLINE.minSeconds)) return null;
+export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
+  const O = { ...OFFLINE, ...opts };
+  if (!data || !data.state || !data.world || !(elapsedSec >= O.minSeconds)) return null;
   const out = JSON.parse(JSON.stringify(data));
   const st = out.state, wd = out.world;
-  const capSec = OFFLINE.capHours * 3600;
+  const capSec = O.capHours * 3600;
   const sec = Math.min(elapsedSec, capSec);
-  const days = sec / (OFFLINE.hoursPerDay * 3600);
-  const rng = rngFrom(((data.savedAt || 0) ^ Math.floor(sec)) >>> 0);
+  const days = sec / (O.hoursPerDay * 3600);
+  const rng = rngFrom(((opts.seedBase ?? data.savedAt ?? 0) ^ Math.floor(sec)) >>> 0);
 
   // ----- the working copy of the café -----
   const w = { coins: st.coins, level: levelFor(st.points), points: st.points, rating: st.rating, dishes: st.dishes, inv: st.inv || {}, opened: st.opened || {}, snacks: st.snacks || {} };
@@ -169,7 +173,7 @@ export function settleOffline(data, elapsedSec, now = Date.now()) {
     let snackE = 0;
     const need = phases.some((p) => {
       const c = capacity(team, furn, seats, menu, p, dutyFor(0));
-      const dem = demand(ratingAt(w.rating, target, p, f), seats, p, f);
+      const dem = demand(ratingAt(w.rating, target, p, f), seats, p, f, O.efficiency);
       return dem > 0.9 * Math.min(c.drinks, c.service, c.seats) * (p.to - p.from) * SIM_SEC_PER_HOUR * f;
     });
     if (need && team.length) {
@@ -186,7 +190,7 @@ export function settleOffline(data, elapsedSec, now = Date.now()) {
     const spans = [];   // per phase: guests whose visit counted toward the service rating, and their summed scores
     for (const p of phases) {
       const hours = (p.to - p.from) * f, secs = hours * SIM_SEC_PER_HOUR;
-      const dem = demand(ratingAt(w.rating, target, p, f), seats, p, f);
+      const dem = demand(ratingAt(w.rating, target, p, f), seats, p, f, O.efficiency);
       const cap = capacity(team, furn, seats, menu, p, duty);
       const limit = Math.min(cap.drinks, cap.service, cap.seats) * (p.to - p.from) * SIM_SEC_PER_HOUR * f;
       const served = smoothMin(dem, limit);
@@ -299,10 +303,12 @@ function ratingAt(r0, target, phase, f) {
 }
 
 /** Guests walking in during `phase` for `f` of a day (the live game's arrivalRate, times the away-from-keyboard discount). */
-function demand(rating, seats, phase, f) {
-  const perHour = (0.6 + rating * 0.78) * phase.mult * (0.55 + 0.45 * Math.sqrt(Math.min(Math.max(1, seats), 24) / 4));
-  return perHour * (phase.to - phase.from) * f * OFFLINE.efficiency;
+function demand(rating, seats, phase, f, efficiency) {
+  return arrivalsPerHour(rating, seats, phase.mult) * (phase.to - phase.from) * f * efficiency;
 }
+
+/** Guests per in-game hour walking in (day.js arrivalRate). */
+export const arrivalsPerHour = (rating, seats, mult) => (0.6 + rating * 0.78) * mult * (0.55 + 0.45 * Math.sqrt(Math.min(Math.max(1, seats), 24) / 4));
 
 /** A guest's visit to the restroom or the reading nook after the meal, wearing the facility. */
 function facilities(furn, rng, w, rep, cleaner) {
