@@ -30,6 +30,12 @@
         "8124"
       ],
       "port": 8124
+    },
+    {
+      "name": "dist",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8130", "--bind", "127.0.0.1", "--directory", "dist"],
+      "port": 8130
     }
   ]
 }
