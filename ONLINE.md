@@ -20,14 +20,23 @@
 
 ## 下一步（交接）
 
-2026-10-02 做完好友功能（拜訪、幫忙）和開始畫面，遊戲端的線上功能主線告一段落。剩下的事情依建議順序排列，下次從 A 開始。
+2026-10-02 做完好友功能（拜訪、幫忙）和開始畫面，遊戲端的線上功能主線告一段落。剩下的事情依建議順序排列。
+
+**2026-10-03：A1 部署完成（https://refillit.pages.dev），下次從 A1 的收尾和 A2 開始。**
 
 ### A. 上線一定要做的（大多是後台設定，需要使用者操作；Claude 負責寫操作說明和遊戲端的程式）
 
-1. **部署**：放到正式網址（例如 Cloudflare Pages）。網址要加到 Supabase 的 **URL Configuration**（Site URL、Redirect URLs）和 Google OAuth client 的允許來源，不然 Google 登入和信裡的連結會跳回 localhost。
+1. ✅ **部署**（2026-10-03 上線：https://refillit.pages.dev）：放到正式網址。網址要加到 Supabase 的 **URL Configuration**（Site URL、Redirect URLs）和 Google OAuth client 的允許來源，不然 Google 登入和信裡的連結會跳回 localhost。
    - 2026-10-03 決定用 Cloudflare Pages（免費方案），連 GitHub repo `DansBody/rest-around` 自動部署。Build command `node tools/build_site.js`，output `dist`（只放 `index.html`、`src`、`assets`、`vendor`）。本機可用 launch.json 的 `dist` 預覽。
    - 部署前，`game` 函式要先用同一版 `BALANCE_VERSION` 部署好，不然遊戲會一直收到 426。
-2. **SMTP**：接 Resend，換掉 Supabase 內建的寄信（額度只夠開發用）。確認信和忘記密碼的信都靠它。
+   - push 到 production branch 後約 30 秒上線。確認方式：`curl https://refillit.pages.dev/src/<檔案>` 看有沒有這次改的字。
+   - Git 連線斷掉時：GitHub → Settings → Applications → Installed GitHub Apps → **Cloudflare Workers and Pages** → Configure，確認 repository access 有 `rest-around`；再到 Pages 專案的 Build 設定重新連 repo。
+   - **還沒做（使用者）**：Supabase → Authentication → URL Configuration：Site URL 改成 `https://refillit.pages.dev`，Redirect URLs 加 `https://refillit.pages.dev/**`（localhost 的保留）。Google OAuth client 的 Authorized JavaScript origins 加 `https://refillit.pages.dev`（redirect URI 不變）。做完用手機試一次 Google 登入，確認跳回 refillit.pages.dev。
+2. **SMTP**（下一個）：接 Resend，換掉 Supabase 內建的寄信（額度只夠開發用）。確認信和忘記密碼的信都靠它。
+   - 先決條件：要有自己的網域。Resend 只能從驗證過的網域寄信，`pages.dev` 不能用。網域可以順便當遊戲的正式網址（Cloudflare Pages → Custom domains）。
+   - 步驟：Resend 註冊 → Domains 加網域，把它給的 DNS 記錄（SPF、DKIM，建議加 DMARC）加到網域的 DNS → 建 API key → Supabase → Authentication → SMTP Settings：host `smtp.resend.com`、port `465`、username `resend`、password 填 API key、寄件人例如 `noreply@<網域>`，名稱 `Refillit`。
+   - 之後順便調 Supabase 的 Auth rate limit（內建 SMTP 時每小時只能寄很少封），並把確認信、重設密碼信的範本改成中文。
+   - 測試：用新的 Email 綁定一次（收確認信）、忘記密碼一次，確認信的連結都回到正式網址。
 3. **Turnstile**：匿名登入加 CAPTCHA，防止有人用程式大量建帳號。後台打開 Supabase 的 CAPTCHA 設定；遊戲端要在開始畫面按「開始經營我的咖啡廳」時先過驗證，再把 token 傳給 `signInAnonymously({ options: { captchaToken } })`（Email 登入也要帶）。
 4. **Google OAuth 發布**：同意畫面目前應該還是「測試」狀態，只有名單上的帳號能登入。要準備隱私權政策頁面、應用程式首頁，送 Google 審核後改成正式發布。
 5. **升級 Supabase Pro**：免費方案閒置約一週會暫停（約每月 25 美元）。
