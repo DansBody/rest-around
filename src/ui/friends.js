@@ -6,7 +6,8 @@ import { h } from '../util.js';
 import { cloud } from '../cloud.js';
 import { t } from '../i18n.js';
 import { portrait } from '../portrait.js';
-import { UNIQUE_NAMES } from '../data.js';
+import { assets } from '../assets.js';
+import { UNIQUE_NAMES, snackById } from '../data.js';
 import { AVATAR, FRIENDS } from '../social.js';
 import { gl, glyph } from './icons.js';
 import { confirmBtn } from './panels.js';
@@ -14,6 +15,34 @@ import { linkButtons } from './account.js';
 import { startVisit } from './visit.js';
 
 const STALE = 20000;   // ms before the list is fetched again when the panel is drawn
+
+/** "Friends dropped by": who helped and how, one block per friend. `list` is the help the server just merged into the save. */
+export function helpedCard(ui, list) {
+  const by = new Map();
+  for (const d of list) { const k = d.from || ''; if (!by.has(k)) by.set(k, []); by.get(k).push(d); }
+  const line = (icon, ...kids) => h('div.helped-line', icon, h('span', ...kids));
+  const blocks = [...by].map(([from, ds]) => {
+    const lines = [];
+    const litter = ds.filter((d) => d.kind === 'clean').reduce((a, d) => a + (d.n || 0), 0);
+    if (litter) lines.push(line(glyph('sparkles', 18), t('Picked up {n} pieces of litter', { n: litter })));
+    for (const d of ds.filter((x) => x.kind === 'snack' && snackById[x.snack])) {
+      const sn = snackById[d.snack];
+      lines.push(line(assets.iconEl(sn.asset, 20), d.staff
+        ? t('Gave {staff} a {snack} (+{n} energy)', { staff: UNIQUE_NAMES[d.staff] || d.staff, snack: sn.name, n: d.energy })
+        : t('Left a {snack} in your pantry', { snack: sn.name })));
+    }
+    const items = {};
+    for (const d of ds.filter((x) => x.kind === 'gift')) for (const [id, n] of Object.entries(d.items || {})) items[id] = (items[id] || 0) + n;
+    if (Object.keys(items).length) lines.push(line(glyph('gift', 18), t('Brought'), ' ', ...Object.entries(items).map(([id, n]) => h('span.ing', assets.iconEl('ing_' + id, 18), '×' + n))));
+    return h('div.helped-block', h('b', from || t('A friend')), ...lines);
+  });
+  return h('div.card.helped',
+    h('div.hero-ico', assets.iconEl('emote_heart', 56)),
+    h('div.big-title', t('Friends dropped by')),
+    h('div.muted', t('Your friends lent a hand at {cafe}:', { cafe: ui.game.state.name })),
+    ...blocks,
+    h('button.btn.primary', { onclick: () => ui.closeModal() }, t('Thank you!')));
+}
 
 /** A player's face: one of our characters on a coloured disc. */
 export function avatarEl(avatar, size = 48) {
@@ -40,6 +69,10 @@ export function errText(e) {
     link: t('Link an account first to add friends.'), invite: t('That invite is gone.'), friend: t('You are not friends any more.'),
     avatar: t('Pick one of the characters.'), offline: t('Could not reach the server, try again.'),
     save: t('Their café could not be opened.'),
+    // helping (social.js planHelp)
+    limit: t("That's all of this kind of help for today. Come back tomorrow 💗"), nothing: t('Their café is already spotless!'),
+    have: t('Your pantry does not have that any more.'), staff: t('That staff member is not at their café any more.'),
+    snack: t('Pick one of the snacks.'), items: t('Pick at least one ingredient.'), session: t('Your café was opened on another device, so it was closed here.'),
   })[e] || t('Something went wrong: {msg}', { msg: e });
 }
 

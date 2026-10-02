@@ -85,8 +85,11 @@ class Cloud {
   }
 
   /** Upload the save. `final` is the last one as the tab is hidden or closed (sent even if the page goes away). */
-  async beat(game, final = false) {
-    if (!this.online || game.resetting || (this.busy && !final)) return;
+  beat(game, final = false) {
+    if (!this.online || game.resetting || (this.busy && !final)) return Promise.resolve();
+    return (this.inflight = this.upload(game, final));
+  }
+  async upload(game, final) {
     this.busy = true;
     try {
       const save = serialize(game);
@@ -117,6 +120,27 @@ class Cloud {
       if (sd) a.skills = { ...(sd.skills || {}) };
     }
     game.changed('coins'); game.changed('points');
+  }
+
+  /**
+   * Help a friend (`req`: { kind, snack?, staff?, items? }, see social.js planHelp). The server checks and
+   * charges the last save it accepted and restarts its clock from there, so the café is uploaded first: what
+   * it earned since the last heartbeat is then counted, not clipped by the next ceiling check. A heartbeat
+   * slipping in between makes the revision stale once: upload again and retry.
+   * @returns { status, body } (200: { rev, save, points, hearts, left }); the game applies the cost itself.
+   */
+  async help(game, id, req) {
+    if (!this.online) return { status: 0, body: { error: 'offline' } };
+    for (let attempt = 0; ; attempt++) {
+      while (this.busy) await this.inflight;
+      await this.beat(game);
+      if (!this.online) return { status: 409, body: { error: 'session' } };
+      const r = await this.api('help', { id, session: this.session, rev: this.rev, ...req });
+      if (r.status === 200) { this.rev = r.body.rev; return r; }
+      if (r.status === 409 && r.body.error === 'rev' && attempt === 0) continue;
+      if (r.status === 409) this.stop(r.body.error === 'session' ? 'session' : 'rev');
+      return r;
+    }
   }
 
   /** A friends call (see the `game` function): { status, body }; status 0 when the server cannot be reached. */

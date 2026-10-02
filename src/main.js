@@ -11,6 +11,7 @@ import { load, save, serialize } from './save.js';
 import { cloud, HEARTBEAT } from './cloud.js';
 import { initAccount } from './ui/account.js';
 import { updateVisit } from './ui/visit.js';
+import { helpedCard } from './ui/friends.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
 import { h } from './util.js';
@@ -86,13 +87,8 @@ async function boot() {
   // must keep that moment: a hidden tab does not run the game, hence no autosave while hidden, and the one
   // save made as the tab was hidden is the one that counts.
   initAccount(ui);   // the account section, the level-3 nudge, and news from a trip to Google / an email link
-  // friends helped out (at login, or while playing): a toast per friend for now
-  cloud.onIncoming = (list) => {
-    const by = {};
-    for (const d of list) (by[d.from] = by[d.from] || []).push(d);
-    for (const [from, ds] of Object.entries(by)) ui.toast(t('{name} dropped by and lent a hand ({n}) 💗', { name: from || t('A friend'), n: ds.length }), 'good');
-  };
-  if (cloud.incoming.length) cloud.onIncoming(cloud.incoming);
+  // friends helped out (at login, or while playing): a card saying who did what
+  cloud.onIncoming = (list) => { if (list.length) ui.queueModal(() => helpedCard(ui, list)); };
 
   // Online, the server counts the time away from the last heartbeat; the browser's copy is only a cache.
   const persist = (force) => { if (!game.resetting && (force || !document.hidden)) save(game); };
@@ -108,6 +104,7 @@ async function boot() {
     hiddenAt = 0;
   });
   if (game.awayReport) { game.paused = true; ui.queueModal(() => ui.awayCard(game.awayReport)); }
+  cloud.onIncoming(cloud.incoming);   // after "Welcome back", which says what the café did on its own
 
   let last = performance.now();
   let fpsAcc = 0, frames = 0;

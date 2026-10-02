@@ -1,9 +1,9 @@
 // Mouse, touch and keyboard input for the 3D view.
 // Left-drag pans (the ground follows the cursor), right-drag rotates, wheel/pinch zooms,
 // Q/E rotate in 90deg steps, click picks characters / tiles. While visiting a friend the camera moves
-// around their café (the one the renderer shows) and nothing in it can be picked.
+// around their café (the one the renderer shows) and a tap on their staff or litter offers to help.
 import { audio } from './audio.js';
-import { endVisit } from './ui/visit.js';
+import { endVisit, visitTap } from './ui/visit.js';
 
 export function setupInput(game, canvas, ui, debug) {
   const shown = () => (game.renderer ? game.renderer.game : game);
@@ -83,7 +83,8 @@ export function setupInput(game, canvas, ui, debug) {
           if (b.placing()) b.tapPreview(t.x, t.y);
           else b.click(t.x, t.y);
         }
-        else if (!visiting()) {
+        else if (visiting()) visitTap(ui, R(), p.x, p.y);   // help out: their staff, their litter
+        else {
           const a = R().pickAgent(p.x, p.y);
           ui.select(a);
           if (a) game.sfx('click');

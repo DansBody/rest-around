@@ -482,19 +482,77 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 /* ---------------- visiting a friend's café: their banner instead of your HUD and tools ---------------- */
 #ui.visiting #hud, #ui.visiting .rating-tip, #ui.visiting #questbtn, #ui.visiting #quest, #ui.visiting #abilities, #ui.visiting #toolbar,
 #ui.visiting #panel, #ui.visiting #info, #ui.visiting #friendsbtn, #ui.visiting #scrim, #ui.visiting #buildbar, #ui.visiting #ghostctl, #ui.visiting #buildbanner { display: none !important; }
-#visitbar { position: absolute; top: calc(12px + var(--sat)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
-  width: max-content; max-width: calc(100vw - 28px); padding: 10px 12px 10px 10px; border-radius: 22px; }
+#visitbar { position: absolute; top: calc(12px + var(--sat)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px;
+  width: min(520px, calc(100vw - 28px)); padding: 10px 12px 12px 10px; border-radius: 24px; }
+#visitbar .vb-top { display: flex; align-items: center; gap: 12px; }
+#visitbar .vb-top .grow { min-width: 0; }
 #visitbar b { font-family: var(--font-display); font-size: 16px; letter-spacing: -.02em; }
-#visitbar .btn { flex: none; }
+#visitbar .vb-back { flex: none; }
+/* the three ways to help, each with what is left today */
+#visitbar .vb-help { display: flex; gap: 6px; }
+.help-act { flex: 1 1 0; min-width: 0; justify-content: center; gap: 6px; padding: 0 10px; background: var(--fill); }
+.help-act:hover { background: var(--fill-2); }
+.help-act > span:not(.help-n) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.help-act .help-n { flex: none; min-width: 22px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 99px; background: var(--ink); color: #fff; font-size: 11.5px; font-weight: 700; }
+.help-act.done { color: var(--ink-faint); }
+.help-act.done .help-n { background: var(--green); }
+.help-act.done .help-n .glyph { color: #fff; }
+/* toasts move to the bottom while visiting (the tab bar is hidden there), so they never sit on the banner */
+#ui.visiting #toasts { top: auto; bottom: calc(84px + var(--sab)); flex-direction: column-reverse; }
 /* phones and tablets: the tab bar is hidden while visiting, so the camera buttons move down there, clear of the banner whatever its height */
 @media (max-width: 760px) {
   #ui.visiting #camctl { top: auto; bottom: calc(22px + var(--sab)); flex-direction: row; }
 }
 @media (max-width: 600px) {
-  #visitbar { left: 8px; right: 8px; width: auto; max-width: none; transform: none; top: calc(8px + var(--sat)); flex-wrap: wrap; row-gap: 8px; }
-  #visitbar .grow { flex: 1 1 0; min-width: 0; }
-  #visitbar .btn { flex: 1 1 100%; justify-content: center; }
+  #visitbar { left: 8px; right: 8px; width: auto; transform: none; top: calc(8px + var(--sat)); }
+  #visitbar .vb-top { flex-wrap: wrap; row-gap: 8px; }
+  #visitbar .vb-top .grow { flex: 1 1 0; }
+  #visitbar .vb-back { order: -1; flex: none; margin-left: auto; position: absolute; right: 10px; top: 10px; width: 40px; padding: 0; justify-content: center; }
+  #visitbar .vb-back span { display: none; }
+  #visitbar .vb-top { padding-right: 48px; }
 }
+/* narrow phones: the label goes under the icon and count, so all three still say what they do */
+@media (max-width: 420px) {
+  .help-act { display: grid; grid-template-columns: auto auto; justify-content: center; align-items: center; gap: 2px 6px; padding: 6px 4px; min-height: 52px; border-radius: 16px; }
+  .help-act > span:not(.help-n) { grid-column: 1 / -1; grid-row: 2; justify-self: center; max-width: 100%; font-size: 12.5px; }
+}
+
+/* ---------- help cards (feed a snack, send ingredients) and the card about friends who helped ---------- */
+#modal .help-card { text-align: left; }
+#modal .help-card .big-title, #modal .help-card > .muted { text-align: center; }
+.help-card .section-title { margin: 14px 2px 8px; font-size: 15px; }
+.pick-list { display: flex; flex-direction: column; gap: 6px; }
+.pick-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 16px; background: var(--fill); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.pick-row:hover { background: var(--fill-2); }
+.pick-row.on { box-shadow: inset 0 0 0 2px var(--ink); background: var(--surface); }
+.pick-row .grow { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.pick-row b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-face { width: 44px !important; height: 44px !important; border-radius: 50%; background: var(--surface); flex: none; }
+.pick-staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; }
+.pick-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 8px 6px 10px; border: 0; border-radius: 16px; background: var(--fill); font: inherit; color: inherit; cursor: pointer; }
+.pick-tile:hover { background: var(--fill-2); }
+.pick-tile.on { box-shadow: inset 0 0 0 2px var(--ink); background: var(--surface); }
+.pick-tile b { font-size: 12.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-tile .pbar { width: 80%; height: 5px; }
+.pick-snacks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pick-snack { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 0; border-radius: 16px; background: var(--fill); font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+.pick-snack .ps-name { font-size: 12.5px; font-weight: 650; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-snack.on { box-shadow: inset 0 0 0 2px var(--ink); background: var(--surface); }
+.pick-snack[disabled] { opacity: .4; cursor: not-allowed; }
+.gift-row .stepper { display: flex; align-items: center; gap: 6px; flex: none; }
+.gift-row .stepper .btn { width: 34px; min-width: 34px; padding: 0; justify-content: center; font-size: 18px; }
+.gift-row .stepper b { min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.gift-total { text-align: center; margin: 10px 0 0; }
+/* the buttons stay at the bottom of the card while its list scrolls */
+.help-btns { position: sticky; bottom: -20px; margin: 14px -20px -20px; padding: 10px 20px 20px; display: flex; gap: 8px; background: var(--surface); box-shadow: 0 -8px 16px -12px rgba(0,0,0,.18); }
+.help-btns .btn { flex: 1 1 0; min-width: 0; min-height: 48px; justify-content: center; }
+.help-btns .btn.primary { flex: 2 1 0; }
+.btn.busy { opacity: .6; cursor: progress; }
+.helped-block { margin: 10px 0 0; padding: 10px 12px; border-radius: 16px; background: var(--fill); text-align: left; }
+.helped-block > b { display: block; margin-bottom: 4px; }
+.helped-line { display: flex; align-items: center; gap: 8px; font-size: 13.5px; line-height: 1.4; margin: 3px 0; }
+.helped-line > span { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+#modal .helped > .btn.primary { margin-top: 14px; }
 /* the cover while switching cafés */
 #visitcover { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #f4f4f5;
   opacity: 0; transition: opacity .32s ease; pointer-events: auto; }
