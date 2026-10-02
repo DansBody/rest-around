@@ -123,6 +123,17 @@ button { font-family: inherit; color: inherit; }
 #quest.done .q-text { color: var(--green); }
 #quest.done .q-ico { animation: wiggle 1.8s ease-in-out infinite; }
 
+/* friends: a round button on the right, mirroring the daily goal on the left */
+#friendsbtn { position: absolute; top: calc(76px + var(--sat)); right: 14px; width: 46px; height: 46px; padding: 0; justify-content: center; border-radius: 50%; cursor: pointer; }
+#friendsbtn .glyph { color: var(--ink); }
+#friendsbtn:hover { background: var(--fill); }
+#friendsbtn.active { background: var(--ink); }
+#friendsbtn.active .glyph { color: #fff; }
+#friendsbtn .badge { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 5px; border-radius: 10px;
+  background: var(--red); color: #fff; font: 700 10.5px var(--font); box-shadow: 0 0 0 2px #fff; }
+/* the side panel opens over this corner on wide screens: the button steps aside (the panel has its own ✕) */
+#ui.has-panel #friendsbtn { display: none; }
+
 /* ---------- camera controls ---------- */
 #camctl { position: absolute; right: 14px; bottom: calc(22px + var(--sab)); display: flex; gap: 8px; }
 #camctl .btn { width: 46px; height: 46px; padding: 0; background: var(--surface); box-shadow: var(--shadow-sm); }
@@ -381,7 +392,8 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   #hud { gap: 6px; transform: translateX(-50%) scale(.9); transform-origin: top center; }
   .tool { width: 48px; height: 48px; }
   #toolbar { padding: 5px; }
-  #camctl { bottom: auto; top: calc(150px + var(--sat)); right: 10px; flex-direction: column; }
+  #camctl { bottom: auto; top: calc(140px + var(--sat)); right: 10px; flex-direction: column; }
+  #friendsbtn { right: 10px; }
   #camctl .btn { width: 42px; height: 42px; }
   #abilities { bottom: calc(92px + var(--sab)); left: 10px; flex-direction: row; flex-wrap: wrap; max-width: calc(100vw - 20px); gap: 6px; }
   .ability { width: 48px; height: 48px; }
@@ -398,7 +410,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   .grabber { display: block; width: 40px; height: 5px; border-radius: 9px; background: #d4d4d8; margin: 4px auto 10px; flex: none; }
   .panel-head h2 { font-size: 22px; }
   #ui.has-sheet #scrim { display: block; }
-  #ui.has-sheet #abilities, #ui.has-sheet #quest, #ui.has-sheet #questbtn, #ui.has-sheet #camctl { display: none; }
+  #ui.has-sheet #abilities, #ui.has-sheet #quest, #ui.has-sheet #questbtn, #ui.has-sheet #camctl, #ui.has-sheet #friendsbtn { display: none; }
   /* bigger touch targets inside sheets */
   .btn.small { min-height: 38px; }
   .tab { min-height: 36px; }
@@ -422,7 +434,8 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   #quest .q-ico { width: 34px; height: 34px; border-radius: 12px; }
   #quest .q-ico .ico { width: 24px; height: 24px; }
   #quest .q-text { font-size: 12.5px; }
-  #camctl { top: calc(98px + var(--sat)); }
+  #friendsbtn { top: calc(98px + var(--sat)); width: 42px; height: 42px; }
+  #camctl { top: calc(158px + var(--sat)); }
   #toasts, #buildbanner { top: calc(96px + var(--sat)); }
   #celebrate { top: calc(100px + var(--sat)); }
   #buildbanner { font-size: 12px; white-space: nowrap; }
@@ -435,6 +448,11 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   #buildbar .card { border-radius: 28px 28px 0 0; padding: 10px 12px calc(10px + var(--sab)); }
   .bitem { width: 84px; }
   .bitem canvas { width: 56px; height: 44px; }
+}
+/* narrow phones (≤360px): smaller tabs keep a gutter on both sides of the tab bar */
+@media (max-width: 360px) {
+  .tool { width: 44px; height: 44px; }
+  #toolbar { gap: 2px; }
 }
 @media (prefers-reduced-motion: reduce) {
   #gift, #quest.done .q-ico, .ability.ready { animation: none; }
@@ -463,14 +481,19 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 
 /* ---------------- visiting a friend's café: their banner instead of your HUD and tools ---------------- */
 #ui.visiting #hud, #ui.visiting .rating-tip, #ui.visiting #questbtn, #ui.visiting #quest, #ui.visiting #abilities, #ui.visiting #toolbar,
-#ui.visiting #panel, #ui.visiting #info, #ui.visiting #scrim, #ui.visiting #buildbar, #ui.visiting #ghostctl, #ui.visiting #buildbanner { display: none !important; }
+#ui.visiting #panel, #ui.visiting #info, #ui.visiting #friendsbtn, #ui.visiting #scrim, #ui.visiting #buildbar, #ui.visiting #ghostctl, #ui.visiting #buildbanner { display: none !important; }
 #visitbar { position: absolute; top: calc(12px + var(--sat)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
   width: max-content; max-width: calc(100vw - 28px); padding: 10px 12px 10px 10px; border-radius: 22px; }
 #visitbar b { font-family: var(--font-display); font-size: 16px; letter-spacing: -.02em; }
 #visitbar .btn { flex: none; }
+/* phones and tablets: the tab bar is hidden while visiting, so the camera buttons move down there, clear of the banner whatever its height */
+@media (max-width: 760px) {
+  #ui.visiting #camctl { top: auto; bottom: calc(22px + var(--sab)); flex-direction: row; }
+}
 @media (max-width: 600px) {
-  #visitbar { left: 8px; right: 8px; width: auto; max-width: none; transform: none; top: calc(8px + var(--sat)); }
-  #ui.visiting #camctl { top: calc(150px + var(--sat)); }
+  #visitbar { left: 8px; right: 8px; width: auto; max-width: none; transform: none; top: calc(8px + var(--sat)); flex-wrap: wrap; row-gap: 8px; }
+  #visitbar .grow { flex: 1 1 0; min-width: 0; }
+  #visitbar .btn { flex: 1 1 100%; justify-content: center; }
 }
 /* the cover while switching cafés */
 #visitcover { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #f4f4f5;

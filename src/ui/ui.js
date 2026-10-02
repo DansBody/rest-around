@@ -20,7 +20,6 @@ const TOOLS = [
   { id: 'menu', label: 'Menu', glyph: 'menu' },
   { id: 'garden', label: 'Garden', glyph: 'garden' },
   { id: 'market', label: 'Market', glyph: 'market' },
-  { id: 'friends', label: 'Friends', glyph: 'friends' },
   { id: 'settings', label: 'Settings', glyph: 'settings' },
 ];
 
@@ -139,6 +138,9 @@ export class UI {
 
     this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label), 'aria-label': t(tool.label) }, glyph(tool.glyph, 24)))));
     r.appendChild(this.el.toolbar);
+    // friends: a round button floating on the right, opposite the daily goal (the tab bar is full enough)
+    this.toolBtns.friends = this.el.friendsBtn = h('button.chip#friendsbtn', { onclick: () => this.onTool('friends'), title: t('Friends'), 'aria-label': t('Friends') }, glyph('friends', 22));
+    r.appendChild(this.el.friendsBtn);
 
     // ----- side panel -----
     this.el.panelTitle = h('h2', '');
@@ -504,6 +506,7 @@ ${k.desc}
     badge('staff', g.staff.filter((a) => a.napping).length);
     badge('garden', s.garden.filter((p) => p.crop && (p.prog >= 1 || p.water <= 0)).length);
     badge('market', g.eco.giftAvailable() ? 1 : 0);
+    badge('friends', this.friends && this.friends.data ? this.friends.data.incoming.length : 0);
   }
 
   /** Daily goal card: icon, text, progress and the reward. */
