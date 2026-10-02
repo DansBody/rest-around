@@ -64,6 +64,7 @@ async function boot() {
   const renderer = new Renderer(canvas, document.getElementById('overlay'), game);
   game.renderer = renderer;
   const ui = new UI(game, document.getElementById('ui'));
+  window.ui = ui;     // same, for the UI
   ui.init();
   const debug = new DebugPanel(game, ui, document.getElementById('ui'));
   setupInput(game, canvas, ui, debug);

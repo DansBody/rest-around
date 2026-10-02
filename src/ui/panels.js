@@ -29,22 +29,46 @@ export function confirmBtn(sel, label, ask, action) {
   return b;
 }
 const coinPill = (n) => h('span.pill', I('icon_coin', 18), fmt(n));
-/** The role's active ability: name + what it does (or when it unlocks). */
-function abilityLine(role, unlocked, long = false) {
-  const ab = ABILITIES[role];
-  return h('div.abil', { style: { '--c': ab.color }, title: ab.desc }, glyph(unlocked ? ab.glyph : 'lock', 15),
-    h('b', ab.name), long ? h('span', '— ' + ab.desc) : h('span', unlocked ? t('· charges while working, fires by itself') : t('· unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] })));
+const LOCKED = '#a1a1a6', PERK = '#2f9bff', DRAWBACK = '#e0783d';
+/** One skill: icon, then the name with a tag saying how it fires, and the description under the name
+ *  (every description starts on the same left edge, whatever the name's length). */
+function skillItem(kind, gid, color, name, tag, desc) {
+  return h('div.sk.' + kind, { style: { '--c': color }, title: desc || '' },
+    h('span.sk-ico', glyph(gid, 16)),
+    h('div.sk-name', h('b', name), h('span.sk-tag', tag)),
+    desc ? h('div.sk-desc', glue(desc)) : null);
 }
-/** A character's own kit: the perks (and drawbacks) that are always on, then the skill you cast from the dock. */
+/** Keep a number with the word after it ("10 秒", "3 格") so a line never ends on the bare number. */
+export const glue = (text) => text.replace(/(\d%?) (?=\S)/g, '$1\u00a0');
+/** The job's ability: charges while working and fires by itself. */
+function jobSkill(role, unlocked, long = true) {
+  const ab = ABILITIES[role];
+  return skillItem('auto', unlocked ? ab.glyph : 'lock', unlocked ? ab.color : LOCKED, ab.name,
+    unlocked ? t('Auto') : t('Unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] }), long ? ab.desc : null);
+}
+/** A character's own kit: the skill you cast from the dock, then the perks (and drawbacks) that are always on. */
 export function kitLines(model, unlocked = true, long = false) {
   const kit = KITS[model];
   if (!kit) return [];
-  const rows = kit.perks.map((p) => h('div.abil' + (p.bad ? '.bad' : ''), { style: { '--c': p.bad ? '#e0783d' : '#2f9bff' }, title: p.desc },
-    glyph(p.glyph, 15), h('b', p.name), long ? h('span', '— ' + p.desc) : null));
+  const rows = [];
   const k = kit.active;
-  if (k) rows.push(h('div.abil', { style: { '--c': k.color }, title: k.desc }, glyph(unlocked ? k.glyph : 'lock', 15), h('b', k.name),
-    h('span', long ? '— ' + k.desc + (unlocked ? '' : ' ' + t('(unlocks at skill Lv{n})', { n: ABILITY_UNLOCK_LV })) : unlocked ? t('· cast it from the dock') : t('· unlocks at skill Lv{n}', { n: ABILITY_UNLOCK_LV }))));
+  if (k) rows.push(skillItem('cast', unlocked ? k.glyph : 'lock', unlocked ? k.color : LOCKED, k.name,
+    unlocked ? t('Cast, {n} s cooldown', { n: k.cooldown }) : t('Unlocks at skill Lv{n}', { n: ABILITY_UNLOCK_LV }), long ? k.desc : null));
+  for (const p of kit.perks) rows.push(skillItem(p.bad ? 'bad' : 'perk', p.glyph, p.bad ? DRAWBACK : PERK, p.name, p.bad ? t('Drawback') : t('Always on'), long ? p.desc : null));
   return rows;
+}
+/** A staff member's whole skill set, grouped by how each one fires. */
+function skillList(a, role = a.role, long = true) {
+  return h('div.sklist', jobSkill(role, a.skillLv(role) >= ABILITY_UNLOCK_LV, long), ...kitLines(a.look.model, a.kitUnlocked(), long));
+}
+/** The skills as a row of small coloured icons (the collapsed staff card). */
+function skillDots(a) {
+  const ab = a.ability, kit = KITS[a.look.model] || { perks: [] };
+  const dot = (gid, color, name) => h('span.sk-dot', { style: { '--c': color }, title: name }, glyph(gid, 14));
+  return h('div.sk-dots',
+    dot(a.abilityUnlocked() ? ab.glyph : 'lock', a.abilityUnlocked() ? ab.color : LOCKED, ab.name),
+    kit.active ? dot(a.kitUnlocked() ? kit.active.glyph : 'lock', a.kitUnlocked() ? kit.active.color : LOCKED, kit.active.name) : null,
+    ...kit.perks.map((p) => dot(p.glyph, p.bad ? DRAWBACK : PERK, p.name)));
 }
 /** Five small stars for a staff skill level. */
 export function skillStars(lv, size = 13) {
@@ -79,39 +103,55 @@ function renderStaff(ui, body) {
   if (ui.subview && ui.subview.job) return renderJobChange(ui, body, ui.subview.job);
   const staff = g.staff;
   const slots = staffSlots(s.level);
-  body.append(h('div.muted', t('{n} / {m} staff slots · staff tire while working. Feed them snacks to perk them up!', { n: staff.length, m: slots })));
-  body.append(h('div.muted', t('Payroll {n} coins a day, plus {m} coins rent. Paid when the café closes; if the till runs short the team starts the next day tired.', { n: g.eco.dailyWages(), m: g.eco.dailyRent() })));
+  // the numbers up top; the rules behind them only when asked
+  body.append(h('div.stat-strip',
+    h('span.pill', I('tool_staff', 16), t('Staff {n}/{m}', { n: staff.length, m: slots })),
+    h('span.pill', I('icon_coin', 16), t('Costs {n}/day', { n: g.eco.dailyWages() + g.eco.dailyRent() })),
+    h('button.btn.small.xbtn' + (ui.staffHelp ? '.primary' : ''), { title: t('How staff work'), 'aria-expanded': String(!!ui.staffHelp), onclick: () => { ui.staffHelp = !ui.staffHelp; ui.renderPanel(); } }, h('b', '?'))));
+  if (ui.staffHelp) body.append(h('div.note', t('Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid when the café closes. If the till runs short, the team starts the next day tired.', { w: g.eco.dailyWages(), r: g.eco.dailyRent() })));
   body.append(h('div.section-title', t('Your team')));
+  ui.staffOpen ||= new Set();
   for (const a of staff) {
-    const bar = h('i', { style: { width: a.energy + '%' } });
-    body.append(h('div.row', { 'data-staff': a.id },
-      portrait(a.look, 64, 80),
-      h('div.grow',
-        h('h3', a.name, ' ', h('span.muted', '· ' + ROLES[a.role].name), ' ', h('span.pill', { title: t('Daily wage') }, I('icon_coin', 14), staffWage(a.role, a.skillLv()) + t('/day'))),
-        skillLine(a),
-        abilityLine(a.role, a.abilityUnlocked()),
-        ...kitLines(a.look.model, a.kitUnlocked(), true),
-        h('div.muted.task', a.napping ? t('😴 Napping') : tt(a.task)),
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: '4px', margin: '4px 0' } }, I('icon_energy', 18), h('div.pbar' + (a.energy < 25 ? '.orange' : ''), { style: { flex: 1 } }, bar)),
-        h('div.btnrow',
-          SNACKS.map((sn) => h('button.btn.small', { title: t('{snack}: +{n} energy ({src})', { snack: sn.name, n: sn.energy, src: s.snacks[sn.id] ? t('from pantry') : t('{n} coins', { n: sn.price }) }), onclick: () => g.eco.feed(a, sn.id) }, I(sn.asset, 20), `×${s.snacks[sn.id] || 0}`)),
+    const open = ui.staffOpen.has(a.id);
+    const toggle = () => { open ? ui.staffOpen.delete(a.id) : ui.staffOpen.add(a.id); ui.renderPanel(); };
+    body.append(h('div.scard' + (open ? '.open' : ''), { 'data-staff': a.id },
+      h('button.scard-head', { onclick: toggle, 'aria-expanded': String(open) },
+        portrait(a.look, 56, 56),
+        h('div.grow',
+          h('div.scard-title', h('b', a.name), h('span.pill', { title: t('Daily wage') }, I('icon_coin', 14), staffWage(a.role, a.skillLv()) + t('/day'))),
+          skillLine(a),
+          h('div.scard-status', h('span.task', a.napping ? t('😴 Napping') : tt(a.task)), I('icon_energy', 16),
+            h('div.pbar.energy' + (a.energy < 25 ? '.orange' : ''), h('i', { style: { width: a.energy + '%' } }))),
+          open ? null : skillDots(a)),
+        h('span.scard-chev', glyph('forward', 16))),
+      open ? h('div.scard-body',
+        skillList(a),
+        h('div.scard-acts',
+          h('span.acts-label', t('Snack')),
+          SNACKS.map((sn) => h('button.btn.small', { title: t('{snack}: +{n} energy ({src})', { snack: sn.name, n: sn.energy, src: s.snacks[sn.id] ? t('from pantry') : t('{n} coins', { n: sn.price }) }), onclick: () => g.eco.feed(a, sn.id) }, I(sn.asset, 20), `×${s.snacks[sn.id] || 0}`))),
+        h('div.scard-acts',
           h('button.btn.small', { onclick: () => { ui.subview = { outfit: a }; ui.renderPanel(); } }, t('Outfit')),
           h('button.btn.small', { onclick: () => { ui.subview = { job: a }; ui.renderPanel(); } }, t('Change job')),
-          confirmBtn('button.btn.small.danger', t('Fire'), t('Let {name} go?', { name: a.name }), () => g.eco.fire(a)),
-          h('button.btn.small', { onclick: () => ui.select(a), title: t('Show on the floor') }, gl('eye', null, 16))))));
+          h('button.btn.small.xbtn', { onclick: () => ui.select(a), title: t('Show on the floor') }, gl('eye', null, 16)),
+          confirmBtn('button.btn.small.danger.push', t('Fire'), t('Confirm fire'), () => g.eco.fire(a)))) : null));
   }
   body.append(h('div.section-title', t('Hire')));
   const full = staff.length >= slots;
   const nextModel = nextCast(new Set(staff.map((a) => a.look.model)));   // new hires are always an original character
-  body.append(h('div.muted', nextModel ? t('Next to join: {name}', { name: UNIQUE_NAMES[nextModel] }) : t('Every character is already on the team')));
-  if (nextModel) body.append(...kitLines(nextModel, true, true));
+  if (nextModel) {
+    body.append(h('div.scard.open',
+      h('div.scard-head', portrait(roleLook('waiter', nextModel), 56, 56),
+        h('div.grow', h('div.scard-title', h('b', UNIQUE_NAMES[nextModel])), h('div.muted', t('Joins with your next hire')))),
+      h('div.scard-body', h('div.sklist', ...kitLines(nextModel, true, true)))));
+  } else body.append(h('div.muted', t('Every character is already on the team')));
   for (const [role, r] of Object.entries(ROLES)) {
     const count = staff.filter((a) => a.role === role).length;
     const note = t(ROLE_NOTE[role]);
-    body.append(h('div.row',
+    body.append(h('div.row.split',
       portrait(roleLook(role, nextModel || undefined), 48, 48),
-      h('div.grow', h('h3', r.name, h('span.muted', t(' · you have {n}', { n: count }))), h('div.muted', note + ' ' + t('Wage {n}/day.', { n: staffWage(role, 1) }))),
-      h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => g.eco.hire(role) }, t('Hire') + ' ', coinPill(r.hire))));
+      h('div.grow', h('h3', r.name)),
+      h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => g.eco.hire(role) }, t('Hire') + ' ', coinPill(r.hire)),
+      h('div.row-full', h('div.muted', note), h('div.meta', t('Wage {w}/day, you have {n}', { w: staffWage(role, 1), n: count })))));
   }
   if (full) body.append(h('div.muted', t('All slots are full — reach the next level for more.')));
 }
@@ -120,7 +160,7 @@ function renderJobChange(ui, body, a) {
   const g = ui.game;
   if (!g.staff.includes(a)) { ui.subview = null; return renderStaff(ui, body); }
   body.append(
-    h('div.btnrow', { style: { marginBottom: '8px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', { style: { alignSelf: 'center' } }, t("{name}'s career", { name: a.name }))),
+    h('div.subhead', h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', t("{name}'s career", { name: a.name }))),
     h('div.row', portrait(a.look, 64, 64), h('div.grow', h('h3', a.name), skillLine(a), h('div.muted', t('Works {n}% faster than a novice', { n: Math.round((a.skillMul - 1) * 100) })))),
     h('div.section-title', t('Retrain as')));
   const roles = Object.keys(ROLES);
@@ -131,11 +171,13 @@ function renderJobChange(ui, body, a) {
       ? h('span.pill', t('Current job'))
       : h('button.btn.primary.small' + (fee && !g.eco.canAfford(fee) ? '.disabled' : ''), { onclick: () => { if (g.eco.changeJob(a, role)) { ui.subview = null; ui.renderPanel(); } } },
         t('Retrain'), fee ? coinPill(fee) : h('span.pill', t('Free')));
-    body.append(h('div.row' + (cur ? '.current' : ''),
+    body.append(h('div.row.split' + (cur ? '.current' : ''),
       portrait(roleLook(role, a.look.model), 48, 48),
-      h('div.grow', h('h3', r.name), skillLine(a, role), h('div.muted', t(ROLE_NOTE[role])), abilityLine(role, a.skillLv(role) >= ABILITY_UNLOCK_LV, true),
-        role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '4px', display: 'inline-block' } }, t('Needs a Pastry Case to work')) : null),
-      action));
+      h('div.grow', h('h3', r.name)),
+      action,
+      h('div.row-full', skillLine(a, role), h('div.muted', t(ROLE_NOTE[role])),
+        role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '6px' } }, t('Needs a Pastry Case to work')) : null,
+        h('div.sklist.flush', jobSkill(role, a.skillLv(role) >= ABILITY_UNLOCK_LV)))));
   }
   body.append(h('div.muted', { style: { marginTop: '6px', lineHeight: 1.5 } },
     t("Staff gain experience by finishing jobs in their current role and keep it in every role they've had. Skill makes them walk and work faster (up to +{n}% as a Master). Retraining costs half the hiring fee — going back to a job they're already {title} or better at is free.", { n: Math.round((SKILL.mul[SKILL.mul.length - 1] - 1) * 100), title: SKILL.titles[SKILL.freeReturnLv - 1] })));
@@ -145,7 +187,7 @@ function tickStaff(ui, body) {
   for (const row of body.querySelectorAll('[data-staff]')) {
     const a = ui.game.staff.find((x) => String(x.id) === row.dataset.staff);
     if (!a) continue;
-    const bar = row.querySelector('.pbar i');
+    const bar = row.querySelector('.energy i');
     if (bar) bar.style.width = a.energy + '%';
     const tk = row.querySelector('.task');
     if (tk) tk.textContent = a.napping ? t('😴 Napping') : tt(a.task);
@@ -164,7 +206,7 @@ function renderOutfit(ui, body, a) {
   const taken = new Set(g.staff.filter((s) => s !== a).map((s) => s.look && s.look.model));
   const models = UNIQUE_MODELS.filter((m) => !taken.has(m));
   body.append(
-    h('div.btnrow', { style: { marginBottom: '6px' } }, h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', { style: { alignSelf: 'center' } }, t("{name}'s wardrobe", { name: a.name }))),
+    h('div.subhead', h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', t("{name}'s wardrobe", { name: a.name }))),
     pc,
     h('div.orow', h('span', t('Character')), h('div.stepper',
       h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + models.length - 1) % models.length]; look.hide = []; refresh(); } }, gl('back', null, 14)),
@@ -183,7 +225,7 @@ function renderMenu(ui, body) {
   const g = ui.game, s = g.state;
   const cat = ui.menuCat || 'coffee';
   const slots = menuSlots(s.level);
-  body.append(h('div.tabs', DISH_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.menuCat = c.id; ui.renderPanel(); } }, `${c.name} ${g.eco.menuCount(c.id)}/${slots[c.id]}`))));
+  body.append(h('div.tabs.seg', { style: { '--n': DISH_CATS.length } }, DISH_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.menuCat = c.id; ui.renderPanel(); } }, h('span', c.name), h('small', `${g.eco.menuCount(c.id)}/${slots[c.id]}`)))));
   if (cat === EXTRA_CAT) {
     const ok = g.world.byKind('bar').length && g.staff.some((a) => a.role === 'bartender');
     if (!ok) body.append(h('div.row', I('emote_menu', 32), h('div.grow.muted', t('Bakes need a Pastry Case (Build → Coffee Bar) and a Baker (Staff → Hire).'))));
@@ -199,14 +241,16 @@ function renderMenu(ui, body) {
       return h('span.ing' + (p >= need || maxed ? '.done' : ''), { title: t('{ing}: {p}/{need} added · {n} in pantry', { ing: ingById[i].name, p, need, n: s.inv[i] || 0 }) }, I('ing_' + i, 20), maxed ? '✓' : `${p}/${need}`, h('span.muted', ` (${s.inv[i] || 0})`));
     });
     const canAdd = unlocked && !maxed && d.ings.some((i) => (s.inv[i] || 0) > 0 && (st.prog[i] || 0) < need);
-    body.append(h('div.row' + (unlocked ? '' : '.locked'),
-      I(d.asset, 56),
+    // name and numbers beside the picture; ingredients, stock and buttons get the full width below
+    body.append(h('div.row.split.dish' + (unlocked ? '' : '.locked'),
+      I(d.asset, 48),
       h('div.grow',
         h('h3', d.name, ' ', h('span.pill', t('Lv{n}', { n: st.lv }))),
-        h('div', { style: { display: 'flex', gap: '6px', margin: '2px 0' } }, coinPill(dishPrice(d, st.lv)), h('span.pill', I('icon_points', 18), dishPoints(d, st.lv)), h('span.pill', '⏱ ' + d.cook + 's')),
-        unlocked ? h('div.ings', ings) : h('div.muted', I('icon_lock', 16), ' ' + t('Unlocks at level {n}', { n: d.level })),
+        h('div.chips', coinPill(dishPrice(d, st.lv)), h('span.pill', I('icon_points', 18), dishPoints(d, st.lv)), h('span.pill', '⏱ ' + d.cook + 's'))),
+      h('div.row-full.flat',
+        unlocked ? h('div.chips', ings) : h('div.muted', I('icon_lock', 16), ' ' + t('Unlocks at level {n}', { n: d.level })),
         unlocked ? stockLine(g, d, st) : null,
-        unlocked ? h('div.btnrow',
+        unlocked ? h('div.chips.acts',
           h('button.btn.small' + (st.on ? '.primary' : ''), { onclick: () => g.eco.toggleMenu(d.id) }, st.on ? gl('check', t('On menu'), 14) : t('Add to menu')),
           maxed ? null : h('button.btn.small' + (canAdd ? '' : '.disabled'), { onclick: () => g.eco.contribute(d.id), title: t('Put pantry ingredients toward the next dish level') }, gl('bowl', t('Add ingredients'), 15))) : null)));
   }
@@ -217,7 +261,12 @@ function renderMenu(ui, body) {
 /** What a serving costs in ingredients, the margin on it, and how many the pantry can still make. */
 function stockLine(g, d, st) {
   const cost = servingCost(d), profit = dishPrice(d, st.lv) - cost, n = g.eco.canMakeCount(d.id);
-  return h('div.muted.stock' + (n === 0 ? '.out' : n < 6 ? '.low' : ''), t('Costs {c} a cup · profit {p} · {n} left in the pantry', { c: cost.toFixed(1), p: profit.toFixed(1), n }));
+  return h('div.muted.stock' + (n === 0 ? '.out' : n < 6 ? '.low' : ''), segs(t('Costs {c} a cup · profit {p} · {n} left in the pantry', { c: cost.toFixed(1), p: profit.toFixed(1), n })));
+}
+/** "a · b · c" as unbreakable pieces, so a narrow screen breaks the line between pieces, never inside one. */
+export function segs(text) {
+  const dot = (text.match(/[·・．]/) || ['·'])[0];
+  return text.split(/\s*[·・．]\s*/).flatMap((x, i) => (i ? [h('span.seg-dot', dot), h('span.seg', x)] : [h('span.seg', x)]));
 }
 
 // ------------------------------------------------------------------ garden
@@ -260,7 +309,7 @@ function renderGarden(ui, body) {
 
 function pantry(s) {
   const items = INGREDIENTS.filter((i) => s.inv[i.id]).map((i) => h('span.ing', { title: i.name }, I('ing_' + i.id, 22), '×' + s.inv[i.id]));
-  return h('div.ings', items.length ? items : h('span.muted', t('Empty — grow or buy some ingredients!')));
+  return items.length ? h('div.ings.pantry', items) : h('div.muted', t('Empty — grow or buy some ingredients!'));
 }
 
 // ------------------------------------------------------------------ market
@@ -378,7 +427,7 @@ export function buildTray(ui, bar) {
     const segs = g.world.size * 2 - 1;
     for (const w of WALLS) {
       const on = g.world.wallpaper === w.id;
-      items.append(card('wp:' + w.id + segs, w.name + (on ? ' ✓' : ''), w.price * segs, w.level, on, () => b.applyWallpaper(w.id), () => thumb(w.asset, w.tint)));
+      items.append(card('wp:' + w.id + segs, w.name, w.price * segs, w.level, on, () => b.applyWallpaper(w.id), () => thumb(w.asset, w.tint)));
     }
   } else if (cat === 'room') {
     const e = b.nextExpansion();

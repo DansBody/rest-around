@@ -116,6 +116,13 @@ export const ZH_TW = {
   '😴 Napping': '😴 打瞌睡中', '🥱 Tired': '🥱 很累', '😊 Cheerful': '😊 精神很好',
   'Feed {snack} (+{n} energy)': '餵 {snack}（體力 +{n}）',
   'Change outfit': '換裝', 'Change job': '轉職',
+  // staff cards: skills grouped by how they fire
+  'Auto': '自動', 'Always on': '常駐', 'Drawback': '缺點', 'Cast, {n} s cooldown': '手動，冷卻 {n} 秒',
+  'Unlocks at {title}': '{title}解鎖', 'Unlocks at skill Lv{n}': 'Lv{n} 解鎖',
+  'Staff {n}/{m}': '名額 {n}/{m}', 'Costs {n}/day': '每日支出 {n}', 'How staff work': '員工怎麼運作',
+  'Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid when the café closes. If the till runs short, the team starts the next day tired.':
+    '員工工作會累，餵點心可以恢復精神。薪水（{w}）和房租（{r}）在打烊時結算；錢不夠的話，隔天團隊會精神不濟。',
+  'Confirm fire': '確定解雇', 'Joins with your next hire': '下一位雇用的員工', 'Wage {w}/day, you have {n}': '日薪 {w}，目前 {n} 位',
   'unlocks at {title}': '{title}解鎖',
 
   // ---------------- staff panel

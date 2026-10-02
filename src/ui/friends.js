@@ -169,7 +169,7 @@ function renderProfile(ui, body) {
   nick.addEventListener('input', () => { draft.nickname = nick.value; });
   const back = () => { ui.subview = null; ui.renderPanel(); };
   body.append(
-    h('div.btnrow', { style: { marginBottom: '6px' } }, h('button.btn.small', { onclick: back }, gl('back', t('Back'), 14)), h('b', { style: { alignSelf: 'center' } }, t('Your profile'))),
+    h('div.subhead', h('button.btn.small', { onclick: back }, gl('back', t('Back'), 14)), h('b', t('Your profile'))),
     h('div', { style: { display: 'flex', justifyContent: 'center', margin: '6px 0 10px' } }, avatarEl(draft.avatar, 112)),
     h('div.section-title', t('Nickname')), nick,
     h('div.muted.small', { style: { marginTop: '4px' } }, t('Shown to your friends. Leave it empty to show the café name.')),

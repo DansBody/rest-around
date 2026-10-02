@@ -24,6 +24,11 @@ const TOOLS = [
 ];
 
 export { portrait, thumb } from '../portrait.js';
+/** A sentence with one piece (marked by KEEP) that must not break across lines, e.g. "3 h 25 min". */
+const KEEP = '\u2063';   // invisible separator
+const keepTogether = (text, piece) => text.split(KEEP).flatMap((x, i) => (i ? [h('span.seg', piece), x] : [x]));
+/** "a + b − c": each term with its sign stays on one line; lines break between terms. */
+const opSegs = (text) => text.split(/\s*(?=[＋－+−])/).map((x) => h('span.seg', x));
 
 export class UI {
   constructor(game, root) {
@@ -435,9 +440,12 @@ ${k.desc}
           assets.iconEl(s.asset, 22), `×${this.game.state.snacks[s.id] || 0}`))));
         const ab = a.ability;
         this.infoCharge = h('i');
-        body.push(h('div.abil', { style: { '--c': ab.color, marginTop: '8px' }, title: ab.desc }, glyph(a.abilityUnlocked() ? ab.glyph : 'lock', 16), h('b', ab.name),
-          a.abilityUnlocked() ? h('div.pbar.grow', { style: { flex: 1 } }, this.infoCharge) : h('span', t('unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] }))));
-        body.push(...kitLines(a.look.model, a.kitUnlocked()));
+        // the job's ability shows its charge; the character's own skills show how they fire
+        const on = a.abilityUnlocked();
+        body.push(h('div.sklist', { style: { marginTop: '8px' } },
+          h('div.sk.auto', { style: { '--c': on ? ab.color : '#a1a1a6' }, title: ab.desc }, h('span.sk-ico', glyph(on ? ab.glyph : 'lock', 16)),
+            h('div.sk-name', h('b', ab.name), on ? h('div.pbar', { style: { flex: 1, minWidth: '40px' } }, this.infoCharge) : h('span.sk-tag', t('Unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] })))),
+          ...kitLines(a.look.model, a.kitUnlocked())));
         body.push(h('div.btnrow',
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { outfit: a }; this.renderPanel(); } }, t('Change outfit')),
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { job: a }; this.renderPanel(); } }, t('Change job'))));
@@ -642,7 +650,7 @@ ${k.desc}
     const card = h('div.card.away',
       h('div.hero-ico', assets.iconEl('icon_gift', 56)),
       h('div.big-title', t('Welcome back!')),
-      h('div.muted', t('{name} kept serving while you were away ({time}).', { name: g.state.name, time: dur })),
+      h('div.muted', ...keepTogether(t('{name} kept serving while you were away ({time}).', { name: g.state.name, time: KEEP }), dur)),
       h('div.stat-grid',
         stat('emote_heart', t('Guests served'), r.served),
         stat('icon_coin', t('Coins earned'), sign(r.net)),
@@ -650,7 +658,7 @@ ${k.desc}
         stat('icon_star', t('Rating'), `${r.ratingFrom.toFixed(1)} → ${r.ratingTo.toFixed(1)}`),
         stat('icon_level', t('Level'), r.levelTo > r.levelFrom ? `${r.levelFrom} → ${r.levelTo}` : r.levelTo),
         stat('emote_angry', t('Guests lost'), String(r.lost))),
-      h('div.muted', { style: { marginBottom: '6px' } }, t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) })),
+      h('div.muted', { style: { marginBottom: '6px' } }, ...opSegs(t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) }))),
       top.length ? h('div', h('div.muted', t('Best sellers')), h('div.ings', { style: { justifyContent: 'center', margin: '4px 0 8px' } }, top.map(([id, n]) => h('span.ing', assets.iconEl(dishById[id].asset, 24), '×' + n)))) : null,
       ...notes,
       h('button.btn.primary', { onclick: () => { g.paused = false; this.closeModal(); } }, t('Open the café')));
