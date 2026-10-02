@@ -20,6 +20,11 @@ export function setupInput(game, canvas, ui, debug) {
   const local = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  // the main loop draws every frame while the screen is being touched (phones idle at 30 fps)
+  const touched = () => { game.lastTouch = performance.now(); };
+  window.addEventListener('pointerdown', touched, { capture: true, passive: true });
+  window.addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse' || e.buttons) touched(); }, { capture: true, passive: true });
+  window.addEventListener('wheel', touched, { capture: true, passive: true });
   canvas.addEventListener('pointerdown', (e) => {
     audio.unlock();
     game.touchMode = e.pointerType !== 'mouse';

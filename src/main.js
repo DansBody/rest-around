@@ -117,7 +117,14 @@ async function boot() {
 
   let last = performance.now();
   let fpsAcc = 0, frames = 0;
+  // Phones draw at 30 fps while nobody touches the screen (a café of strolling staff doesn't need more,
+  // and it halves the GPU work that warms the phone); a finger on the glass or a camera still easing
+  // into place gets every frame the screen offers.
+  const IDLE_MS = renderer.lowPower ? 1000 / 30 - 4 : 0;
   const frame = (now) => {
+    requestAnimationFrame(frame);
+    const busy = now - game.lastTouch < 800 || (game.renderer ? game.renderer.game : game).camera.settling();
+    if (!busy && now - last < IDLE_MS) return;
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     game.update(dt);
@@ -127,7 +134,6 @@ async function boot() {
     debug.update();
     fpsAcc += dt; frames++;
     if (fpsAcc > 0.5) { game.fps = frames / fpsAcc; fpsAcc = 0; frames = 0; }
-    requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
   loading.classList.add('hide');

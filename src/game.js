@@ -48,6 +48,7 @@ export function defaultState() {
 export class Game {
   constructor() {
     this.camera = new Camera();
+    this.lastTouch = 0;   // performance.now() of the last touch / drag (main.js draws every frame around it)
     this.fx = new FX();
     this.agentTiles = new TileClaims();
     this.world = new World(8);

@@ -50,6 +50,8 @@ export class Camera {
   zoomNow(factor) { this.dist = this.distTarget = clamp(this.dist / factor, this.minDist, this.maxDist); }
   rotate(steps) { this.yawTarget += (steps * Math.PI) / 2; }
   rotateBy(rad) { this.yawTarget += rad; this.yaw += rad; }
+  /** Still turning or zooming toward where it was sent. */
+  settling() { return Math.abs(this.yawTarget - this.yaw) > 1e-3 || Math.abs(this.distTarget - this.dist) > 1e-2; }
   clamp() {
     const b = this.bounds;
     this.tx = clamp(this.tx, b.x0, b.x1);
