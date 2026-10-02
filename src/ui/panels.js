@@ -10,6 +10,7 @@ import {
 } from '../data.js';
 import { clearSave, save, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
+import { accountSection } from './account.js';
 import { audio } from '../audio.js';
 import { gl, glyph } from './icons.js';
 import { t, tt, titledRole, LANGS, getLang } from '../i18n.js';
@@ -305,7 +306,7 @@ function renderSettings(ui, body) {
     toggle(t('Auto-open next day'), 'autoNextDay'),
     toggle(t('Auto-restock ingredients'), 'autoRestock', () => { if (s.settings.autoRestock) g.eco.autoRestock(); }),
     h('div.btnrow',
-      h('button.btn.small', { onclick: () => { ui.toast(save(g) ? t('Saved!') : t('Could not save (storage blocked?)'), 'good'); } }, gl('save', t('Save now'), 15)),
+      h('button.btn.small', { onclick: () => { cloud.beat(g); ui.toast(save(g) ? t('Saved!') : t('Could not save (storage blocked?)'), 'good'); } }, gl('save', t('Save now'), 15)),
       confirmBtn('button.btn.small.danger', t('Reset game'), t('Tap again to erase everything'), async () => {
         g.resetting = true;
         if (cloud.online) {   // the server keeps the café: swap it for a new one there first
@@ -315,6 +316,7 @@ function renderSettings(ui, body) {
         clearSave(); location.reload();
       })),
     h('div.muted', { style: { marginTop: '6px' } }, t('Progress autosaves every 10 seconds and when you close the tab. The café keeps trading while you are away (up to {n} hours) and tells you how it went when you come back.', { n: OFFLINE.capHours })),
+    ...accountSection(ui),
     h('div.section-title', t('Controls')),
     h('div.muted', { style: { lineHeight: 1.8 } },
       t('Drag to pan · Wheel or pinch to zoom · Right-drag, two-finger twist or '), h('kbd', 'Q'), '/', h('kbd', 'E'), t(' to turn the camera · Click a character for details'), h('br'),

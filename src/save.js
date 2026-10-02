@@ -44,10 +44,11 @@ export function save(game) {
 }
 
 export function clearSave() {
-  try { localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+  try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(SAVE_KEY + '.owner'); } catch { /* storage unavailable */ }
 }
 
-/** The save kept in this browser, unsettled: { data } | 'none' | 'corrupt' (a broken one is backed up and removed). */
+/** The save kept in this browser, unsettled: { data, owner } | 'none' | 'corrupt' (a broken one is backed up and removed).
+ *  `owner` is the player (user id) it was last synced for; a save from before going online has none. */
 export function readLocal() {
   let raw = null;
   try { raw = localStorage.getItem(SAVE_KEY); } catch { return 'none'; }
@@ -55,7 +56,9 @@ export function readLocal() {
   try {
     const data = JSON.parse(raw);
     if (!data || data.v !== 1 || !data.state || !data.world) throw new Error('bad save shape');
-    return { data };
+    let owner = null;
+    try { owner = localStorage.getItem(SAVE_KEY + '.owner'); } catch { /* ignore */ }
+    return { data, owner };
   } catch (e) {
     console.warn('Corrupted save', e);
     try { localStorage.setItem(SAVE_KEY + '.corrupt', raw); localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
@@ -63,9 +66,12 @@ export function readLocal() {
   }
 }
 
-/** Keep a copy of a save (from the server) in this browser. */
-export function writeLocal(data) {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch { /* storage unavailable */ }
+/** Keep a copy of a save (from the server) in this browser, marked as `owner`'s. */
+export function writeLocal(data, owner) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    if (owner) localStorage.setItem(SAVE_KEY + '.owner', owner);
+  } catch { /* storage unavailable */ }
 }
 
 /** Playing without the server: load the browser's save and settle the time away here. @returns 'none' | 'loaded' | 'corrupt' */

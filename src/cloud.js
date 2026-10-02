@@ -6,9 +6,14 @@
 //
 // When the server cannot be reached the game plays on from this browser's copy (save.js load()); that
 // progress stays on this device, the cloud save wins at the next login.
+//
+// Accounts: every player starts anonymous. Linking Google or an email + password to that same account
+// (same user id, so the save stays put) lets them carry on on another device; signing in to an account
+// that already has a café leaves this device's anonymous one behind. Google and email confirmation both
+// leave the page and come back: what happened is read from the URL on the way back (`returned`).
 import { SUPABASE_URL, SUPABASE_KEY, GAME_FN } from './cloud_config.js';
 import { BALANCE_VERSION } from './data.js';
-import { serialize, apply, readLocal, writeLocal } from './save.js';
+import { serialize, apply, readLocal, writeLocal, clearSave } from './save.js';
 
 export const HEARTBEAT = 45;   // seconds between uploads while playing
 
@@ -19,10 +24,13 @@ class Cloud {
     this.session = null; this.rev = 0;
     this.busy = false;
     this.onStop = null;    // (reason: 'session' | 'version' | 'rev') → the game can no longer write; tell the player
+    this.onAccount = null; // the signed-in user changed (linked, email confirmed…): redraw what shows it
+    this.returned = {};
   }
 
   /** Sign in (reusing the session kept in this browser, else as a new anonymous player). */
   async connect() {
+    this.returned = readReturn();
     const { createClient } = await import('@supabase/supabase-js');
     this.sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'refillit.auth' } });
     let { data } = await this.sb.auth.getSession();
@@ -33,7 +41,12 @@ class Cloud {
     }
     this.token = data.session.access_token;
     this.user = data.session.user;
-    this.sb.auth.onAuthStateChange((_e, s) => { if (s) { this.token = s.access_token; this.user = s.user; } });
+    this.sb.auth.onAuthStateChange((e, s) => {
+      if (s) { this.token = s.access_token; this.user = s.user; }
+      if (e === 'PASSWORD_RECOVERY') this.returned = { ...this.returned, type: 'recovery' };
+      if (this.onAccount) this.onAccount();
+    });
+    if (this.returned.type || this.returned.error || this.returned.came) history.replaceState(null, '', location.pathname);   // tidy the URL
   }
 
   async call(body, keepalive = false) {
@@ -54,16 +67,18 @@ class Cloud {
    */
   async login(game, fresh) {
     await this.connect();
+    // this browser's save goes up only if it is this player's (or from before going online), never another account's
     const local = readLocal();
-    const r = await this.call({ op: 'login', local: typeof local === 'object' ? local.data : fresh() });
+    const mine = typeof local === 'object' && (!local.owner || local.owner === this.user.id);
+    const r = await this.call({ op: 'login', local: mine ? local.data : fresh() });
     if (r.status === 426) { this.stop('version'); throw new Error('version'); }
     if (r.status !== 200) throw new Error(`login ${r.status} ${r.body.error || ''}`);
     apply(game, r.body.save);
     game.awayReport = r.body.report || null;
-    writeLocal(r.body.save);
+    writeLocal(r.body.save, this.user.id);
     this.session = r.body.session; this.rev = r.body.rev;
     this.online = true;
-    return r.body.created && typeof local !== 'object' ? 'new' : 'loaded';
+    return r.body.created && !mine ? 'new' : 'loaded';
   }
 
   /** Upload the save. `final` is the last one as the tab is hidden or closed (sent even if the page goes away). */
@@ -77,7 +92,7 @@ class Cloud {
         this.rev = r.body.rev;
         const c = r.body.corrected;
         if (c) this.correct(game, c);
-        writeLocal(c || save);
+        writeLocal(c || save, this.user.id);
       } else if (r.status === 409) this.stop(r.body.error === 'session' ? 'session' : 'rev');
       else if (r.status === 426) this.stop('version');
       else if (r.status === 422) this.stop('rev');   // the upload could not be used: start again from the server's save
@@ -107,11 +122,70 @@ class Cloud {
     this.rev = r.body.rev;
   }
 
+  // ---------------- accounts ----------------
+  get linked() { return !!this.user && !this.user.is_anonymous; }
+  get email() { return (this.user && this.user.email) || ''; }
+  get pendingEmail() { return (this.user && this.user.new_email) || ''; }
+  hasProvider(p) { return !!this.user && (this.user.identities || []).some((i) => i.provider === p); }
+  /** Linked by email but no password chosen yet (the confirmation link comes first, the password after). */
+  get needsPassword() { return this.hasProvider('email') && !(this.user.user_metadata || {}).has_password; }
+
+  /** Link a Google account to this player (leaves the page; `returned` tells how it went). */
+  async linkGoogle(game) {
+    await this.beat(game);
+    const { error } = await this.sb.auth.linkIdentity({ provider: 'google', options: { redirectTo: here() } });
+    if (error) throw error;
+  }
+  /** Link an email: a confirmation link is sent there. @returns 'sent' | 'taken' */
+  async linkEmail(email) {
+    const { error } = await this.sb.auth.updateUser({ email }, { emailRedirectTo: here() });
+    if (error && (error.code === 'email_exists' || /already/i.test(error.message))) return 'taken';
+    if (error) throw error;
+    return 'sent';
+  }
+  async setPassword(password) {
+    const { error } = await this.sb.auth.updateUser({ password, data: { has_password: true } });
+    if (error) throw error;
+  }
+  /** Open the café of another account: this device's anonymous one is left behind. */
+  async signInGoogle(game) {
+    await this.beat(game);
+    const { error } = await this.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: here() } });
+    if (error) throw error;
+  }
+  async signInEmail(game, email, password) {
+    await this.beat(game);
+    const { error } = await this.sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    location.reload();
+  }
+  async sendPasswordReset(email) {
+    const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: here() });
+    if (error) throw error;
+  }
+  /** Sign out of a linked account: this browser forgets the café (it is safe in the account). */
+  async signOut(game) {
+    await this.beat(game);
+    game.resetting = true;
+    await this.sb.auth.signOut();
+    clearSave();
+    location.reload();
+  }
+
   stop(reason) {
     if (!this.online && reason !== 'version') return;
     this.online = false;
     if (this.onStop) this.onStop(reason);
   }
+}
+
+/** Where Google and the confirmation emails send the player back to: this page, without any old query. */
+const here = () => location.origin + location.pathname;
+
+/** What a trip to Google or an email link left in the URL: { type, error, errorCode, came }. */
+function readReturn() {
+  const p = new URLSearchParams(location.hash.slice(1) + '&' + location.search.slice(1));
+  return { type: p.get('type') || '', error: p.get('error_description') || p.get('error') || '', errorCode: p.get('error_code') || '', came: p.has('access_token') || p.has('code') };
 }
 
 export const cloud = new Cloud();

@@ -9,6 +9,7 @@ import { DebugPanel } from './ui/debug.js';
 import { setupInput } from './input.js';
 import { load, save, serialize } from './save.js';
 import { cloud, HEARTBEAT } from './cloud.js';
+import { initAccount } from './ui/account.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
 import { h } from './util.js';
@@ -83,6 +84,8 @@ async function boot() {
   // The café keeps trading while the game is closed, counted from the moment of the last save. So the save
   // must keep that moment: a hidden tab does not run the game, hence no autosave while hidden, and the one
   // save made as the tab was hidden is the one that counts.
+  initAccount(ui);   // the account section, the level-3 nudge, and news from a trip to Google / an email link
+
   // Online, the server counts the time away from the last heartbeat; the browser's copy is only a cache.
   const persist = (force) => { if (!game.resetting && (force || !document.hidden)) save(game); };
   setInterval(() => persist(false), 10000);

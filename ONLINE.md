@@ -10,7 +10,8 @@
 | 資料庫：`saves`、`cap_flags`（`supabase/migrations/`） | 已套用到 Supabase |
 | Edge Function `game`（login / beat / reset） | 已部署 |
 | 遊戲端：`src/cloud.js`（匿名登入、心跳、單一 session） | 完成；連不上伺服器時自動改為離線遊玩 |
-| 綁定帳號 UI、排行榜、拜訪、送禮/交易 | 尚未開始 |
+| 綁定帳號（`src/ui/account.js`）：Google / Email 綁定、登入其他帳號、忘記密碼、登出、Lv 3 提示 | 完成；真實的 Google 和 Email 流程待實測 |
+| 排行榜、拜訪、送禮/交易 | 尚未開始 |
 
 ## 範圍
 
@@ -164,6 +165,15 @@ node tools/test/server_smoke.js       # 對已部署的伺服器跑一次完整�
 5. 整個過程 `user_id` 都不變，存檔不需要搬移。
 
 **email 已被其他帳號使用時：** 綁定會失敗。這時讓玩家選擇「登入那個帳號」，並明確告知這台裝置上的匿名進度會被放棄。兩份進度不做合併。
+
+### 實作備註
+
+- Google 綁定用 `linkIdentity()`，需要在 Supabase 打開 **Allow manual linking**。Google OAuth client 的重新導向 URI 是 `https://aizfyuioebmrhmfzsugh.supabase.co/auth/v1/callback`。
+- Email 綁定：`updateUser({ email })` 寄出確認信。玩家點連結回到遊戲後，會跳出設定密碼的視窗；設定時順便寫入 `user_metadata.has_password`，用來判斷是否還沒設密碼。
+- Google 或 Email 已經被別的帳號使用（`identity_already_exists` / `email_exists`）時，會跳出「已經有人使用」的視窗，讓玩家選擇登入那個帳號，或保留目前這間咖啡廳。
+- 本機存檔會用 `restAround.save.v1.owner` 記錄是哪個帳號的，只有同一個帳號（或上線前的舊存檔）才會被當成遷移資料上傳。避免切換帳號時，把別人的進度帶進新帳號。
+- 登出時會清掉本機存檔，下次打開遊戲會是新的匿名咖啡廳。
+- 上線網址（例如 Cloudflare Pages）要加到 Supabase 的 **URL Configuration**（Site URL 和 Redirect URLs）。
 
 ### 什麼時候提醒玩家綁定
 
