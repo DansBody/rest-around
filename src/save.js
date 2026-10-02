@@ -6,6 +6,7 @@ import { World } from './world.js';
 import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
+import { saveSlots, loadSlots } from './pastry.js';
 import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
@@ -24,7 +25,7 @@ export function serialize(game) {
       size: w.size,
       floors: w.floors,
       wallpaper: w.wallpaper,
-      furniture: w.furniture.map((f) => ({ t: f.type, x: f.x, y: f.y, d: f.dir, u: f.uses || 0, b: !!f.broken, ba: f.breakAt || 0 })),
+      furniture: w.furniture.map((f) => ({ t: f.type, x: f.x, y: f.y, d: f.dir, u: f.uses || 0, b: !!f.broken, ba: f.breakAt || 0, ...(f.slots ? { s: saveSlots(f) } : {}) })),
       trash: w.trash.map((t) => ({ x: t.x, y: t.y })),
       dirty: w.seats.filter((st) => st.dirty).map((st) => [st.chair.x, st.chair.y]),
     },
@@ -157,6 +158,7 @@ export function apply(game, data) {
     if (tiles.some((t) => !w.inBounds(t.x, t.y) || w.furnitureAt(t.x, t.y) || w.isEntry(t.x, t.y))) continue;
     const it = w.addFurniture(f.t, x, y, dir, { uses: Math.floor(num(f.u, 0, 0, 999)), broken: !!f.b });
     if (f.ba > 0) it.breakAt = Math.floor(f.ba);
+    if (it.kind === 'bar') loadSlots(it, f.s);   // bakes left in the case stay for tomorrow
   }
   if (!w.byKind('stove').length) { // a kitchen always needs a stove
     outer: for (let x = w.size - 1; x >= 0; x--) for (let y = 0; y < w.size - 1; y++) {

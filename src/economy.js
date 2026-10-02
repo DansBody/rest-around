@@ -1,12 +1,14 @@
 // Economy & progression: coins, café points, levels, dish leveling via ingredients, market,
 // garden plots, daily gift, staff hiring/snacks, facility breakage & repair.
-import {
+import { SNACKS,
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS, SEEDS, WATER_DURATION,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
   staffWage, rentFor, ingPrice,
 } from './data.js';
 import * as pantry from './pantry.js';
+
+const FEED_SLACK = 15;   // feeding the whole team skips anyone this close to full energy
 import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
 import { nextCast } from './looks.js';
@@ -72,7 +74,7 @@ export class Economy {
   /** A fresh goal for the day (never the same kind twice in a row). */
   rollQuest() {
     const s = this.s, prev = s.quest && s.quest.id;
-    const g = this.game, canBake = g.world.byKind('bar').length && g.staff.some((a) => a.role === 'bartender');
+    const g = this.game, canBake = this.bakeryReady();
     const q = choice(QUESTS.filter((x) => x.id !== prev && (x.id !== 'bakes' || canBake)));
     let target = Math.max(2, Math.round(q.base + q.perLevel * s.level));
     if (q.id === 'coins') target = Math.round(target / 5) * 5;
@@ -181,6 +183,8 @@ export class Economy {
   // ---------------- pantry: ingredients are used up as drinks are made (rules live in pantry.js) ----------------
   servings(ing) { return pantry.servings(this.s, ing); }
   canMake(id) { return pantry.canMake(this.s, id); }
+  /** Bakes need an oven to bake in, a pastry case to set them out on and a baker. */
+  bakeryReady() { const g = this.game, w = g.world; return !!(w.byKind('oven').length && w.byKind('bar').length && g.staff.some((a) => a.role === 'bartender')); }
   canMakeCount(id) { return pantry.canMakeCount(this.s, id); }
   /** Use one serving of every ingredient in the recipe. False (and nothing used) when something is missing. */
   consume(id) {
@@ -188,6 +192,7 @@ export class Economy {
     this.game.changed('inv');
     return true;
   }
+  refund(id) { pantry.refund(this.s, id); this.game.changed('inv'); }
   restockBudget() { return pantry.restockBudget(this.s.level); }
   /** Top up the ingredients on the menu from the market, within today's budget. Returns the coins spent. */
   autoRestock() {
@@ -321,6 +326,46 @@ export class Economy {
     g.toast(t('{name} waved goodbye.', { name: st.name }));
     g.changed('staff');
   }
+  /**
+   * Snacks to top the whole team up: snacks in the pantry first, then the cheapest buy for what's
+   * left. Staff within FEED_SLACK of full are skipped. Returns { list: [{ st, id }], fed, pantry, buy, cost }.
+   */
+  planFeedAll() {
+    const left = { ...this.s.snacks };
+    const pantry = {}, buy = {}, list = [];
+    const bySize = [...SNACKS].sort((a, b) => a.energy - b.energy);
+    const fed = new Set();
+    for (const st of this.game.staff) {
+      let need = 100 - st.energy;
+      while (need >= FEED_SLACK) {
+        const have = bySize.filter((sn) => left[sn.id] > 0);
+        // the smallest snack that fills them up, else the biggest one there is, and go again
+        const pick = (arr) => arr.find((sn) => sn.energy >= need) || arr[arr.length - 1];
+        const sn = have.length ? pick(have) : pick(bySize);
+        if (have.length) { left[sn.id]--; pantry[sn.id] = (pantry[sn.id] || 0) + 1; } else buy[sn.id] = (buy[sn.id] || 0) + 1;
+        list.push({ st, id: sn.id });
+        fed.add(st);
+        need -= sn.energy;
+      }
+    }
+    const cost = Object.entries(buy).reduce((n, [id, k]) => n + snackById[id].price * k, 0);
+    return { list, fed: fed.size, pantry, buy, cost };
+  }
+  /** Carry out planFeedAll(): buy what's missing in one go, then hand the snacks out. */
+  feedAll(plan) {
+    if (!plan.list.length) return false;
+    if (plan.cost && !this.canAfford(plan.cost)) { this.game.toast(t('Not enough coins'), 'bad'); return false; }
+    for (const [id, k] of Object.entries(plan.buy)) if (!this.buySnack(id, k)) return false;
+    for (const { st, id } of plan.list) {
+      if (!this.game.staff.includes(st) || !(this.s.snacks[id] > 0)) continue;
+      this.s.snacks[id]--;
+      st.feed(snackById[id]);
+    }
+    this.game.sfx('eat');
+    this.game.changed('staff');
+    return true;
+  }
+
   feed(st, snackId) {
     const s = this.s, sn = snackById[snackId];
     if (!(s.snacks[snackId] > 0)) { if (!this.buySnack(snackId)) return; }

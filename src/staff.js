@@ -4,7 +4,9 @@
 import { Agent } from './agent.js';
 import { staffLook, nextCast } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
-import { dishById, furnitureById, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS } from './data.js';
+import { servings } from './pantry.js';
+import { freeSlot, slotOfTicket, putBack } from './pastry.js';
+import { dishById, furnitureById, ingById, ingIcon, EXTRA_CAT, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS } from './data.js';
 import { CASTS } from './kits.js';
 import { rand, randInt, manhattan, uid } from './util.js';
 import { t, titledRole } from './i18n.js';
@@ -213,6 +215,51 @@ export class Staff extends Agent {
     this.hop();
   }
 
+  /**
+   * What keeps this staff member from working, phrased as what the player can fix (shown over
+   * their head): a missing station, nothing on the menu, an empty pantry. Null when they're just
+   * waiting for guests.
+   */
+  findBlocker() {
+    const g = this.game, w = g.world, s = g.state;
+    if (this.caseFull) return { icon: 'emote_wait', text: t('Pastry Case is full') };
+    if (this.job || this.napping) return null;
+    const menuOf = (bake) => Object.keys(s.dishes).filter((id) => s.dishes[id].on && dishById[id].level <= s.level && (dishById[id].cat === EXTRA_CAT) === bake);
+    const pantry = (ids) => {
+      if (!ids.length) return { icon: 'emote_menu', text: t('Nothing to make on the menu') };
+      if (ids.some((id) => g.eco.canMake(id))) return null;
+      const ing = dishById[ids[0]].ings.find((i) => servings(s, i) < 1) || dishById[ids[0]].ings[0];
+      return { icon: ingIcon(ing), text: t('Out of {ing}', { ing: ingById[ing].name }) };
+    };
+    const bakeLv = furnitureById.oven_basic.level;
+    switch (this.role) {
+      case 'chef':
+        if (!w.byKind('stove').length) return { icon: 'emote_broken', text: t('Needs an Espresso Station') };
+        return pantry(menuOf(false));
+      case 'bartender': {
+        if (s.level < bakeLv) return { icon: 'emote_zzz', text: t('Bakes unlock at café Lv{n}', { n: bakeLv }) };
+        if (!w.byKind('oven').length) return { icon: 'emote_broken', text: t('Needs a Bread Oven') };
+        if (!w.byKind('bar').length) return { icon: 'emote_broken', text: t('Needs a Pastry Case') };
+        const bakes = menuOf(true);
+        if (!bakes.length) return { icon: 'emote_menu', text: t('No bakes on the menu') };
+        return pantry(bakes);
+      }
+      case 'waiter':
+        if (!w.seats.length) return { icon: 'emote_broken', text: t('Needs tables & chairs') };
+        return null;
+    }
+    return null;
+  }
+  updateBlocker(dt) {
+    this.blockScanT = (this.blockScanT || 0) - dt;
+    if (this.blockScanT > 0) return;
+    this.blockScanT = 0.5;
+    const b = this.findBlocker();
+    // only once it has held for a moment, so it doesn't flicker between jobs
+    this.blockForT = b ? (this.blockForT || 0) + 0.5 : 0;
+    this.blocker = b && (this.blockForT >= 1.5 || this.caseFull) ? b : null;
+  }
+
   canNudge() { return !this.job && !this.napping; }
   stateLabel() { return `${this.task} ⚡${Math.round(this.energy)}`; }
   get roleName() { return ROLES[this.role].name; }
@@ -221,6 +268,7 @@ export class Staff extends Agent {
     if (this.job && this.job.canceled) this.abortJob();
     this.updateAbility(dt);
     this.updateKit(dt);
+    this.updateBlocker(dt);
     if (this.boostT > 0) {
       this.boostT = Math.max(0, this.boostT - dt);
       const g = this.game;
@@ -243,7 +291,7 @@ export class Staff extends Agent {
   // ---------------- idle ----------------
   home() {
     const w = this.game.world;
-    const kinds = { chef: 'stove', bartender: 'bar', cleaner: null, waiter: 'table' };
+    const kinds = { chef: 'stove', bartender: 'oven', cleaner: null, waiter: 'table' };
     const k = kinds[this.role];
     const list = k ? w.byKind(k) : [];
     if (list.length) { const f = list[randInt(0, list.length - 1)]; return { x: f.x, y: f.y }; }
@@ -257,7 +305,7 @@ export class Staff extends Agent {
       const t = g.freeTileNear(h.x, h.y, true, (x, y) => manhattan(x, y, h.x, h.y) <= 3 && Math.random() < 0.6) || g.freeTileNear(this.tx, this.ty);
       if (t && (t.x !== this.tx || t.y !== this.ty)) this.walk(t.x, t.y, { onFail: () => {} });
     }
-    this.wait(rand(1.5, 4), null, { until: () => g.jobs.pending(this.role).some((j) => j.type !== 'cook' && j.type !== 'drink' || g.jobs.freeStation(j.type === 'cook' ? 'stove' : 'bar', this)) });
+    this.wait(rand(1.5, 4), null, { until: () => g.jobs.pending(this.role).some((j) => j.type !== 'cook' && j.type !== 'drink' || g.jobs.freeStation(j.type === 'cook' ? 'stove' : 'oven', this)) });
   }
 
   // ---------------- jobs ----------------
@@ -287,29 +335,38 @@ export class Staff extends Agent {
         break;
       }
       case 'cook':
-      case 'drink': {
-        // chefs cook at a stove, bartenders mix at the bar; the result waits on the counter for a waiter
-        const st = j.station, isDrink = j.type === 'drink';
+      case 'drink':
+      case 'prebake': {
+        // baristas brew at an espresso station, bakers bake in an oven; a drink waits on its counter
+        // for a server, a bake is first carried over to a pastry case (setOut)
+        const st = j.station, isBake = j.type !== 'cook';
         this.walk(0, 0, { goals: w.accessFor(st), onFail: fail });
         this.face({ x: st.x, y: st.y });
         this.do(() => {
           const t = j.ticket;
           if (!alive(st) || t.state !== 'queued') return fail();
+          if (j.type === 'prebake' && !t.paid) {   // baking ahead: nobody ordered it, so the ingredients go now
+            if (!g.eco.consume(t.dish)) { g.jobs.cancel(j); return this.abortJob(); }
+            t.paid = true;
+          }
           st.cooking = t; st.cookT = 0; st.cookTotal = dishById[t.dish].cook / (furnitureById[st.type].speed || 1) / this.skillMul; // abilities speed up cookT instead
           t.state = 'cooking'; t.station = st;
-          if (isDrink) this.held = { id: 'held_shaker' };
-          g.sfx(isDrink ? 'shake' : 'sizzle');
+          g.sfx('sizzle');
         });
-        this.wait(0, isDrink ? 'shake' : 'cook', {
+        this.wait(0, 'cook', {
           until: () => st.cookT >= st.cookTotal,
-          every: (dt) => { st.cookT += dt * (this.boosted() ? this.ability.work || 1 : 1) * this.kitMul(); if (!isDrink && Math.random() < dt * 3) g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, 60), '#ffffff'); },
+          every: (dt) => {
+            st.cookT += dt * (this.boosted() ? this.ability.work || 1 : 1) * this.kitMul();
+            if (Math.random() < dt * 3) g.fx.puff(g.at(st.x + st.fp[0] / 2, st.y + st.fp[1] / 2, isBake ? 90 : 60), isBake ? '#f1e3d0' : '#ffffff');
+          },
         });
         this.do(() => {
           const t = j.ticket;
-          st.cooking = null; st.ready = t; st.reservedBy = null; t.state = 'ready';
-          t.deliverJob = g.jobs.add('deliver', { ticket: t, stove: st, customer: t.customer });
-          this.held = null;
+          st.cooking = null; st.reservedBy = null;
           g.sfx('ding');
+          if (isBake) return this.setOut(j);
+          st.ready = t; t.state = 'ready';
+          t.deliverJob = g.jobs.add('deliver', { ticket: t, stove: st, customer: t.customer });
           this.finishJob();
         });
         break;
@@ -319,8 +376,13 @@ export class Staff extends Agent {
         this.walk(0, 0, { goals: w.accessFor(st), onFail: fail });
         this.face({ x: st.x, y: st.y });
         this.do(() => {
-          if (st.ready !== t) return fail();
-          st.ready = null; t.state = 'carrying';
+          if (st.kind === 'bar') {
+            const i = slotOfTicket(st, t);
+            if (i < 0) return fail();
+            st.slots[i] = null;
+          } else if (st.ready !== t) return fail();
+          else st.ready = null;
+          t.state = 'carrying';
           this.held = { id: 'held_tray', dish: dishById[t.dish].asset };
           if (this.perk('dislike') && t.dish === this.perk('dislike').dish) this.emote('emote_sad', 1.6);
         });
@@ -374,6 +436,45 @@ export class Staff extends Agent {
     }
   }
 
+  /**
+   * Second half of a bake: carry it from the oven to a pastry case with an empty shelf. An ordered
+   * bake is set aside there for a server; one baked ahead (or whose guest left) becomes stock.
+   */
+  setOut(j) {
+    const g = this.game, w = g.world, t = j.ticket;
+    t.state = 'baked'; t.station = null; j.station = null;
+    this.task = JOB_LABEL.place;
+    this.held = { id: 'held_tray', dish: dishById[t.dish].asset };
+    let cs = null;
+    this.wait(0, null, {
+      until: () => !!(cs = g.jobs.freeCase(this)),
+      every: () => { this.caseFull = true; },
+      fail: () => !w.byKind('bar').length,
+      onFail: () => this.abortJob(true),
+    });
+    this.do(() => {
+      this.caseFull = false;
+      const i = freeSlot(cs);
+      cs.slots[i] = { res: this }; j.station = cs; j.slot = i;
+      this.walk(0, 0, { goals: w.accessFor(cs), onFail: () => this.abortJob(true) });
+      this.face({ x: cs.x, y: cs.y });
+      this.wait(0.3, 'carry');
+      this.do(() => {
+        if (!w.furniture.includes(cs) || t.state !== 'baked') return this.abortJob(true);
+        const c = t.customer;
+        cs.slots[i] = { dish: t.dish, ticket: c ? t : null };
+        if (c) {
+          t.station = cs; t.state = 'ready';
+          t.deliverJob = g.jobs.add('deliver', { ticket: t, stove: cs, customer: c });
+        } else t.state = 'stocked';
+        j.slot = null;
+        this.held = null;
+        g.sfx('pop');
+        this.finishJob();
+      });
+    });
+  }
+
   finishJob() {
     const j = this.job;
     if (j) { this.game.jobs.finish(j); j.assignee = null; }
@@ -389,6 +490,7 @@ export class Staff extends Agent {
     const j = this.job;
     this.clearQueue();
     this.waitMode = null;
+    this.caseFull = false;
     if (this.held) {
       g.fx.puff(g.at(this.x, this.y, 50), '#efe6dc', 3);
       this.held = null;
@@ -399,6 +501,8 @@ export class Staff extends Agent {
         st.reservedBy = null;
         if (j.ticket && st.cooking === j.ticket) { st.cooking = null; st.cookT = 0; }
       }
+      if (st && j.slot != null && st.slots && st.slots[j.slot] && st.slots[j.slot].res === this) st.slots[j.slot] = null;
+      j.slot = null;
       if (j.trash && j.trash.claimed === this) j.trash.claimed = null;
       j.assignee = null;
       j.station = null;
@@ -406,8 +510,12 @@ export class Staff extends Agent {
         j.fails = (j.fails || 0) + 1;
         if (j.fails > 4) g.jobs.cancel(j);
         // a ticket that was already picked up can't be retried by someone else
-        if (j.type === 'deliver' && j.ticket.state === 'carrying') { j.ticket.state = 'ready'; if (j.stove && !j.stove.ready) j.stove.ready = j.ticket; }
-        if (j.type === 'drink' && j.ticket.state !== 'queued') j.ticket.state = 'queued';
+        if (j.type === 'deliver' && j.ticket.state === 'carrying') {
+          j.ticket.state = 'ready';
+          if (j.stove && j.stove.kind === 'bar') { if (slotOfTicket(j.stove, j.ticket) < 0) putBack(j.stove, j.ticket.dish, j.ticket); }
+          else if (j.stove && !j.stove.ready) j.stove.ready = j.ticket;
+        }
+        if ((j.type === 'drink' || j.type === 'prebake') && j.ticket.state !== 'queued') j.ticket.state = 'queued';
       }
     }
     this.job = null;

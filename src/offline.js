@@ -11,12 +11,13 @@
 //
 // Pure: depends only on data.js / rating.js / pantry.js and works on the plain save JSON (see save.js), so
 // the same file can run in the browser now and on a server later.
-import {
+import { CASHIER,
   DAY, OFFLINE, ENERGY, SKILL, skillLevel, KITS, ROLES, DISHES, dishById, furnitureById, floorById, wallById, wallDecorById,
   EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS,
 } from './data.js';
 import { RATING_WEIGHTS } from './rating.js';
 import * as pantry from './pantry.js';
+import { STOCK_BAKE_CHANCE } from './pastry.js';
 
 /** How the live café behaves, as numbers (measured against the real simulation, see tools/calibrate). */
 export const MODEL = {
@@ -26,7 +27,7 @@ export const MODEL = {
   seatSec: 31,             // how long a guest holds a seat: ordering, waiting, sipping, clearing
   cleanSecPerTrash: 7,     // cleaner work per piece of litter
   trashPerGuest: 0.3,      // afterMeal(): chance a guest leaves litter
-  bakeChance: 0.55,        // takeOrder(): chance of a bake on the side
+  bakeChance: STOCK_BAKE_CHANCE,   // takeOrder(): chance of a bake on the side (a baker keeps the case stocked, so guests see bakes)
   toiletChance: 0.28, arcadeChance: 0.35,
   tipRate: 0.3,            // finishMeal(): tip = 30% of the bill × satisfaction
   lostWeight: 0.35,        // how much a guest the team could not get to weighs on the service rating (many just see a full house)
@@ -83,7 +84,7 @@ export function capacity(team, furn, seats, menu, phase, duty) {
   const waiters = sum(team.filter((s) => s.role === 'waiter'), (s) => workMul(s, 'waiter', phase, team));
   return {
     drinks: line('chef', 'stove', foods),
-    bakes: line('bartender', 'bar', bakes),
+    bakes: furn.some((f) => furnitureById[f.type].kind === 'bar' && !f.broken) ? line('bartender', 'oven', bakes) : 0,   // baked in the oven, set out in the case
     service: (waiters / MODEL.waiterSecPerGuest) * duty,
     seats: seats / MODEL.seatSec,
   };
@@ -137,6 +138,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   const hasHeeHee = team.some((s) => s.model === 'heehee');
   const restockOn = (st.settings || {}).autoRestock !== false;
   const bloom = hasHeeHee ? KITS.heehee.perks.find((p) => p.id === 'bloom') : null;
+  const till = furn.some((x) => furnitureById[x.type].kind === 'cashier');   // guests pay at the counter and tip extra
 
   const rep = {
     elapsedSec, usedSec: sec, capped: elapsedSec > capSec, days,
@@ -226,7 +228,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
           bill += dishPrice(dishById[id], lv); rep.points += dishPoints(dishById[id], lv); w.points += dishPoints(dishById[id], lv);
           rep.dishes[id] = (rep.dishes[id] || 0) + 1;
         }
-        let tip = Math.round(bill * MODEL.tipRate * sat);
+        let tip = Math.round(bill * MODEL.tipRate * sat) + (till ? Math.round(bill * CASHIER.tip * sat) : 0);
         if (bloom && sat >= bloom.min) tip = Math.round(tip * (1 + bloom.tip));
         w.coins += bill + tip; rep.sales += bill; rep.tips += tip;
         rep.served++; rep.phases[p.id]++; servedDay++;

@@ -60,7 +60,7 @@ export class Build {
   inUse(f) {
     if (f.kind === 'chair' && f.seat && (f.seat.customer || f.seat.reserved)) return t('Someone is sitting there');
     if (f.kind === 'table' && f.seats && f.seats.some((s) => s.customer || s.reserved)) return t('Guests are at this table');
-    if ((f.kind === 'stove' || f.kind === 'bar') && (f.cooking || f.ready || f.reservedBy)) return t('Busy brewing right now');
+    if ((f.kind === 'stove' || f.kind === 'oven' || f.kind === 'bar') && (f.cooking || f.ready || f.reservedBy || (f.slots && f.slots.some((s) => s && (s.ticket || s.res))))) return t('Busy brewing right now');
     if ((f.kind === 'toilet' || f.kind === 'arcade') && f.reservedBy) return t('Someone is using it');
     return null;
   }

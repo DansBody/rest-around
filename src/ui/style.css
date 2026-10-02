@@ -121,8 +121,14 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .lvl-top .bname { min-width: 0; }
 .lvl-top .muted { flex: none; white-space: nowrap; }
 
-/* daily goal: a checklist button with a progress ring; the card pops out below it */
-#questbtn { position: absolute; top: calc(76px + var(--sat)); left: calc(14px + var(--sal)); width: 46px; height: 46px; padding: 0; justify-content: center; border-radius: 50%; cursor: pointer;
+/* ---------- floating round buttons ----------
+   One size and spacing for all of them: the left column (daily goal, friends) and the right column
+   (camera) start at the same height; the skills button sits on the tab bar's centre line. */
+#ui { --hb: 46px; --hg: 10px; --ht: calc(76px + var(--sat)); --hl: calc(14px + var(--sal)); --hr: calc(14px + var(--sar)); --hbot: calc(23px + var(--sab)); }
+#questbtn, #friendsbtn, #abtoggle { position: absolute; width: var(--hb); height: var(--hb); min-width: var(--hb); padding: 0; justify-content: center; border-radius: 50%; cursor: pointer; }
+
+/* daily goal: a checklist button with a progress ring; the card pops out beside it */
+#questbtn { top: var(--ht); left: var(--hl);
   background: radial-gradient(closest-side, #fff 82%, transparent 84%), conic-gradient(var(--ink) var(--p, 0%), var(--fill-2) 0); }
 #questbtn .glyph { color: var(--ink); }
 #questbtn.on { background: var(--ink); }
@@ -133,7 +139,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
   font: 700 10px/18px var(--font); text-align: center; box-shadow: 0 0 0 2px #fff; font-variant-numeric: tabular-nums; }
 #questbtn.done .qb-badge { background: var(--green); }
 #quest:not(.show) { visibility: hidden; opacity: 0; transform: translateY(-6px); pointer-events: none; }
-#quest { position: absolute; top: calc(130px + var(--sat)); left: calc(14px + var(--sal)); width: 236px; display: flex; transition: opacity .18s, transform .18s; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 24px; cursor: default; }
+#quest { position: absolute; top: var(--ht); left: calc(var(--hl) + var(--hb) + var(--hg)); width: 236px; display: flex; transition: opacity .18s, transform .18s; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 24px; cursor: default; }
 #quest .q-ico { width: 42px; height: 42px; flex: none; border-radius: 16px; display: grid; place-items: center; background: var(--fill); }
 #quest .q-ico .ico { width: 30px; height: 30px; }
 #quest .q-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -145,24 +151,32 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 #quest.done .q-text { color: var(--green); }
 #quest.done .q-ico { animation: wiggle 1.8s ease-in-out infinite; }
 
-/* friends: a round button on the right, mirroring the daily goal on the left */
-#friendsbtn { position: absolute; top: calc(76px + var(--sat)); right: calc(14px + var(--sar)); width: 46px; height: 46px; padding: 0; justify-content: center; border-radius: 50%; cursor: pointer; }
+/* friends: under the daily goal */
+#friendsbtn { top: calc(var(--ht) + var(--hb) + var(--hg)); left: var(--hl); }
 #friendsbtn .glyph { color: var(--ink); }
 #friendsbtn:hover { background: var(--fill); }
 #friendsbtn.active { background: var(--ink); }
 #friendsbtn.active .glyph { color: #fff; }
 #friendsbtn .badge { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 5px; border-radius: 10px;
   background: var(--red); color: #fff; font: 700 10.5px var(--font); box-shadow: 0 0 0 2px #fff; }
-/* the side panel opens over this corner on wide screens: the button steps aside (the panel has its own ✕) */
-#ui.has-panel #friendsbtn { display: none; }
-
-/* ---------- camera controls ---------- */
-#camctl { position: absolute; right: calc(14px + var(--sar)); bottom: calc(22px + var(--sab)); display: flex; gap: 8px; }
-#camctl .btn { width: 46px; height: 46px; padding: 0; background: var(--surface); box-shadow: var(--shadow-sm); }
+/* ---------- camera controls: the right column ---------- */
+#camctl { position: absolute; top: var(--ht); right: var(--hr); display: flex; flex-direction: column; gap: var(--hg); }
+#camctl .btn { width: var(--hb); min-width: var(--hb); height: var(--hb); padding: 0; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-sm); }
 #camctl .btn:hover { background: var(--fill); }
+/* the side panel opens over this corner on wide screens: the camera buttons step aside */
+#ui.has-panel #camctl { display: none; }
 
-/* ---------- staff ability dock ---------- */
-#abilities { position: absolute; left: calc(14px + var(--sal)); bottom: calc(22px + var(--sab)); display: flex; flex-direction: column-reverse; gap: 8px; }
+/* ---------- staff skills: a button that folds the dock out above it ---------- */
+#abtoggle { left: var(--hl); bottom: var(--hbot); }
+#abtoggle .glyph { color: var(--ink); }
+#abtoggle:hover { background: var(--fill); }
+#abtoggle.open { background: var(--ink); }
+#abtoggle.open .glyph { color: #fff; }
+/* something is ready to fire: a gold ring round the folded button (a box-shadow, so it stays round) */
+#abtoggle.ready:not(.open) { box-shadow: var(--shadow-sm), 0 0 0 2.5px #f5b51b; animation: abpulse-gold 2.2s ease-in-out infinite; }
+@keyframes abpulse-gold { 50% { box-shadow: var(--shadow-sm), 0 0 0 2.5px #f5b51b, 0 0 14px #f5b51b; } }
+#abilities { position: absolute; left: var(--hl); bottom: calc(var(--hbot) + var(--hb) + var(--hg)); display: flex; flex-direction: column-reverse; gap: 8px; }
+#abilities:not(.open) { display: none; }
 .ability { position: relative; width: 54px; height: 54px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: var(--surface);
   box-shadow: var(--shadow-sm), 0 0 0 2px transparent; transition: transform .2s ease, box-shadow .3s; }
 .ability:hover { transform: scale(1.05); }
@@ -509,20 +523,15 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 }
 
 /* desktop build mode: the camera buttons step up above the build tray */
-@media (min-width: 761px) { #ui.building #camctl { bottom: calc(330px + var(--sab)); } }
 
 /* ---------- tablets & small laptops ---------- */
 @media (max-width: 760px) {
   #hud { gap: 6px; transform: translateX(-50%) scale(.9); transform-origin: top center; }
   .tool { width: 48px; height: 48px; }
   #toolbar { padding: 5px; }
-  #camctl { bottom: auto; top: calc(140px + var(--sat)); right: calc(10px + var(--sar)); flex-direction: column; }
-  #friendsbtn { right: calc(10px + var(--sar)); }
-  #camctl .btn { width: 44px; min-width: 44px; height: 44px; }
-  /* A single horizontal rail cannot grow into the toolbar when the team gets larger. */
-  #abilities { bottom: calc(88px + var(--sab)); left: calc(10px + var(--sal)); right: calc(10px + var(--sar)); flex-direction: row; flex-wrap: nowrap; max-width: none; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 4px 0; scrollbar-width: none; overscroll-behavior-x: contain; }
-  #abilities::-webkit-scrollbar { display: none; }
-  .ab-row { flex: none; }
+  /* phones: the same columns, a little tighter; the skills button sits just above the tab bar */
+  #ui { --hb: 44px; --ht: calc(58px + var(--sat)); --hl: calc(10px + var(--sal)); --hr: calc(10px + var(--sar)); --hbot: calc(88px + var(--sab)); }
+  #ui.has-panel #camctl { display: flex; }
   .ability { width: 50px; min-width: 50px; height: 50px; }
   .ability .ab-face { inset: 4px; width: 42px !important; height: 42px !important; }
   .ability.kit { width: 44px; min-width: 44px; height: 44px; }
@@ -537,7 +546,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   .grabber { display: block; width: 40px; height: 5px; border-radius: 9px; background: #d4d4d8; margin: 4px auto 10px; flex: none; }
   .panel-head h2 { font-size: 22px; }
   #ui.has-sheet #scrim { display: block; }
-  #ui.has-sheet #abilities, #ui.has-sheet #quest, #ui.has-sheet #questbtn, #ui.has-sheet #camctl, #ui.has-sheet #friendsbtn { display: none; }
+  #ui.has-sheet #abilities, #ui.has-sheet #abtoggle, #ui.has-sheet #quest, #ui.has-sheet #questbtn, #ui.has-sheet #camctl, #ui.has-sheet #friendsbtn { display: none; }
   /* bigger touch targets inside sheets */
   .btn.small { min-height: 44px; }
   .tab { min-height: 44px; }
@@ -564,13 +573,10 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   /* rating: one star and the number */
   #hud .stars { display: none; }
   #hud .rating .star-one { display: inline-block; }
-  #questbtn { top: calc(58px + var(--sat)); left: calc(10px + var(--sal)); width: 44px; height: 44px; }
-  #quest { top: calc(110px + var(--sat)); left: calc(8px + var(--sal)); width: min(220px, calc(100vw - var(--sal) - var(--sar) - 16px)); padding: 6px 12px 6px 6px; border-radius: 20px; }
+  #quest { width: min(220px, calc(100vw - var(--sal) - var(--sar) - 16px - var(--hb) - var(--hg))); padding: 6px 12px 6px 6px; border-radius: 20px; }
   #quest .q-ico { width: 34px; height: 34px; border-radius: 12px; }
   #quest .q-ico .ico { width: 24px; height: 24px; }
   #quest .q-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
-  #friendsbtn { top: calc(58px + var(--sat)); right: calc(10px + var(--sar)); width: 44px; height: 44px; }
-  #camctl { top: calc(118px + var(--sat)); right: calc(10px + var(--sar)); }
   #toasts, #buildbanner { top: calc(58px + var(--sat)); }
   #celebrate { top: calc(62px + var(--sat)); }
   #buildbanner { font-size: 12px; white-space: nowrap; }
@@ -603,10 +609,9 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 @media (max-height: 560px) and (orientation: landscape) and (max-width: 960px) {
   #hud { left: 50%; right: auto; top: calc(4px + var(--sat)); width: max-content; max-width: none; display: flex; flex-wrap: nowrap; gap: 5px; transform: translateX(-50%) scale(.78); transform-origin: top center; }
   #hud .brand .lvl-wrap { min-width: 84px; }
-  #questbtn, #friendsbtn { top: calc(58px + var(--sat)); }
-  #quest { top: calc(110px + var(--sat)); }
-  #camctl { top: auto; bottom: calc(68px + var(--sab)); }
-  #abilities { bottom: calc(66px + var(--sab)); right: calc(72px + var(--sar)); }
+  #ui { --hbot: calc(66px + var(--sab)); }
+  /* too short for the skills to fold out upwards: they open sideways from the button */
+  #abilities { bottom: var(--hbot); left: calc(var(--hl) + var(--hb) + var(--hg)); flex-direction: row; }
   #toolbar { bottom: calc(6px + var(--sab)); }
   #panel, #info { bottom: calc(66px + var(--sab)); }
   #panel { height: calc(100dvh - 78px - var(--sat) - var(--sab)); min-height: 0; }
@@ -640,7 +645,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 
 /* ---------------- visiting a friend's café: their banner instead of your HUD and tools ---------------- */
 #ui.visiting #hud, #ui.visiting .rating-tip, #ui.visiting #questbtn, #ui.visiting #quest, #ui.visiting #abilities, #ui.visiting #toolbar,
-#ui.visiting #panel, #ui.visiting #info, #ui.visiting #friendsbtn, #ui.visiting #scrim, #ui.visiting #buildbar, #ui.visiting #ghostctl, #ui.visiting #buildbanner { display: none !important; }
+#ui.visiting #panel, #ui.visiting #info, #ui.visiting #friendsbtn, #ui.visiting #abtoggle, #ui.visiting #scrim, #ui.visiting #buildbar, #ui.visiting #ghostctl, #ui.visiting #buildbanner { display: none !important; }
 #visitbar { position: absolute; top: calc(12px + var(--sat)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px;
   width: min(520px, calc(100vw - 28px)); padding: 10px 12px 12px 10px; border-radius: 24px; }
 #visitbar .vb-top { display: flex; align-items: center; gap: 12px; }
@@ -728,3 +733,15 @@ button.pick-row:hover { background: var(--fill-2); }
 @keyframes vc-hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-10px); } 60% { transform: translateY(0) scale(1.03, .97); } }
 @keyframes vc-dot { 0%, 100% { opacity: .2; } 40% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #visitcover .vc-face, #visitcover .vc-dots i { animation: none; } }
+
+/* ---------- feed the whole team: the confirmation card ---------- */
+.feedall { gap: 4px; }
+.feed-card { text-align: left !important; display: flex; flex-direction: column; gap: 12px; }
+.feed-card .big-title, .feed-card > .muted { text-align: center; }
+.feed-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: var(--fill); }
+.feed-row > b { flex: none; min-width: 64px; font-size: 13px; }
+.feed-row.total { justify-content: space-between; }
+.feed-items { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.feed-items .ing { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 13px; }
+.feed-btns { display: flex; gap: 8px; }
+.feed-btns .btn { flex: 1; min-height: 48px; justify-content: center; }

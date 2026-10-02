@@ -180,7 +180,7 @@ export const ZH_TW = {
 
   // ---------------- menu panel
   'Coffee': '咖啡', 'Cocoa & Tea': '可可與茶', 'Iced Drinks': '冰飲', 'Bakery': '烘焙點心',
-  'Bakes need a Pastry Case (Build → Coffee Bar) and a Baker (Staff → Hire).': '烘焙點心需要甜點櫃（建造 → 咖啡吧台）和烘焙師（員工 → 雇用）。',
+  'Bakes need a Bread Oven and a Pastry Case (Build → Equipment) and a Baker (Staff → Hire).': '烘焙點心需要麵包烤爐和甜點櫃（建造 → 設備），還有烘焙師（員工 → 雇用）。',
   'No {cat} slots yet — they open up as you level.': '還沒有{cat}欄位，升級後會開放。',
   '{ing}: {p}/{need} added · {n} in pantry': '{ing}：已放入 {p}/{need}．庫存 {n}',
   'Unlocks at level {n}': '等級 {n} 解鎖', 'On menu': '已上架', 'Add to menu': '加入菜單', 'Add ingredients': '放入食材',
@@ -215,7 +215,7 @@ export const ZH_TW = {
   'Refillit — a cozy 3D café. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).': 'Refillit：一間溫馨的 3D 咖啡廳。美術素材可以替換：把 glTF 模型或 PNG 放進 assets/（見 ASSETS.md）。',
 
   // ---------------- build
-  'Tables & Chairs': '桌椅', 'Coffee Bar': '咖啡吧台', 'Nooks': '休憩區', 'Floors': '地板', 'Walls': '牆面', 'Room': '房間', '/tile': '／格',
+  'Tables & Chairs': '桌椅', 'Equipment': '設備', 'Nooks': '休憩區', 'Floors': '地板', 'Walls': '牆面', 'Room': '房間', '/tile': '／格',
   'Expand to {n}×{n}': '擴建到 {n}×{n}', 'Reach level {n} to unlock': '達到等級 {n} 解鎖', 'More room for tables, fun and decor!': '更多空間可以擺桌子、娛樂設施和裝飾！',
   'Your café is as big as it gets!': '你的咖啡廳已經擴建到最大了！',
   'Moving — click a new spot': '移動中：點選新位置', 'Click or drag over tiles to paint': '點擊或拖曳地板來鋪設',
@@ -267,7 +267,10 @@ export const ZH_TW = {
   'Cookie': '餅乾', 'Croissant': '可頌', 'Cheesecake Slice': '起司蛋糕切片',
   'Café Table': '咖啡桌', 'Wooden Table': '木桌', 'Mint Table': '薄荷桌', 'Rose Café Table': '玫瑰咖啡桌',
   'Café Chair': '咖啡椅', 'Wooden Chair': '木椅', 'Mint Chair': '薄荷椅', 'Cozy Armchair': '舒適扶手椅', 'Rose Armchair': '玫瑰扶手椅',
-  'Espresso Station': '義式咖啡機台', 'Silver Espresso Station': '銀色咖啡機台', 'Barista Bar': '咖啡師吧台', 'Pastry Case': '甜點櫃', 'Cashier Counter': '收銀台',
+  'Espresso Station': '義式咖啡機台', 'Silver Espresso Station': '銀色咖啡機台', 'Barista Bar': '咖啡師吧台', 'Pastry Case': '甜點櫃', 'Bread Oven': '麵包烤爐',
+  'The baker bakes here.': '烘焙師在這裡烤點心。', 'Holds 3 bakes. Guests who see bakes order one more often.': '可放 3 份點心。客人看到櫃裡有點心，更常加點。',
+  'Guests pay here on the way out and tip extra; with no seat free, more of them wait in line, and longer.': '客人離開前在這裡結帳，會多給小費；客滿時更多客人願意排隊，也等得更久。',
+  'Paying at the counter': '在櫃台結帳', 'Cashier Counter': '收銀台',
   'Restroom': '洗手間', 'Reading Nook': '閱讀角', 'Grand Library': '大書牆',
   'Monstera Pot': '龜背芋盆栽', 'Big Monstera': '大龜背芋', 'Flower Box': '花箱', 'Planter Box': '長型花槽',
   'Floor Lamp': '落地燈', 'Rose Floor Lamp': '玫瑰落地燈', 'Mint Floor Lamp': '薄荷落地燈', 'Teddy Bear': '泰迪熊', 'Welcome Sign': '歡迎立牌',
@@ -289,12 +292,18 @@ export const ZH_TW = {
   'Takes orders, serves drinks, clears tables.': '點單、送飲品、收桌子。',
   'Brews at a free espresso station.': '在空閒的咖啡機台沖煮。',
   'Sweeps up and tidies the restrooms and reading nooks.': '掃地，並整理洗手間和閱讀角。',
-  'Plates bakes at the Pastry Case.': '在甜點櫃擺放烘焙點心。',
-  'Needs a Pastry Case to work': '需要甜點櫃才能工作', 'Barista cap': '咖啡師帽',
+  'Bakes in the Bread Oven and keeps the Pastry Case stocked.': '在麵包烤爐烤點心，把甜點櫃補滿。',
+  'Needs a Bread Oven and a Pastry Case to work': '需要麵包烤爐和甜點櫃才能工作',
+  'Staff skills': '員工技能', 'Cost': '花費', 'Feed all': '全員補充', 'Feed the whole team': '幫全體員工補充體力',
+  'Everyone is full of energy already.': '大家體力都還很充足。', 'Tops up {n} staff (anyone nearly full is skipped).': '幫 {n} 位員工補滿體力（快滿的人會略過）。',
+  'From the pantry': '用庫存', 'To buy': '要購買', 'Free (all from the pantry)': '免費（全用庫存）', 'Feed for': '補充，花費', 'Fed {n} staff': '已幫 {n} 位員工補充體力',
+  'Pastry Case is full': '甜點櫃滿了', 'Nothing to make on the menu': '菜單上沒有能做的', 'Out of {ing}': '缺{ing}',
+  'Needs an Espresso Station': '需要咖啡機台', 'Bakes unlock at café Lv{n}': '咖啡廳 Lv{n} 開放點心', 'Needs a Bread Oven': '需要麵包烤爐',
+  'Needs a Pastry Case': '需要甜點櫃', 'No bakes on the menu': '菜單沒有點心', 'Needs tables & chairs': '需要桌椅', 'Barista cap': '咖啡師帽',
 
   // ---------------- tasks & moods (stored in English, translated for display)
   'Idle': '待命', 'Napping (out of energy)': '打瞌睡（沒體力了）',
-  'Taking an order': '點單中', 'Serving an order': '送餐中', 'Clearing a table': '收桌子', 'Brewing': '沖煮中', 'Plating a bake': '擺放點心中',
+  'Taking an order': '點單中', 'Serving an order': '送餐中', 'Clearing a table': '收桌子', 'Brewing': '沖煮中', 'Baking': '烘烤中', 'Baking for the case': '烤點心備貨', 'Setting out a bake': '擺上甜點櫃',
   'Tidying up': '整理中', 'Repairing': '修理中',
   'Walking over': '走過來', 'Arriving': '進門中', 'Walking to a seat': '走向座位', 'Waiting for a clean table': '等待乾淨的桌子',
   'Waiting to order': '等待點單', 'Waiting for their order': '等待餐點', 'Sipping & nibbling': '品嚐中', 'Visiting the restroom': '去洗手間',

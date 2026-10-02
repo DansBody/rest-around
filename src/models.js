@@ -22,6 +22,19 @@ const SHAPES = {
     m.position.y = h / 2;
     return m;
   },
+  oven(ph) {
+    const g = new THREE.Group();
+    const brick = mat('#c9785a'), cream = mat('#f3e6d3'), dark = mat('#3a2a24'), glow = mat('#ffb45c', { emissive: '#ff8a2a', emissiveIntensity: 0.6 });
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.7, 1.3), cream); base.position.y = 0.35; g.add(base);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.85, 1.15), brick); body.position.set(0, 1.12, -0.05); g.add(body);
+    const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 1.15, 20, 1, false, 0, Math.PI), brick);
+    dome.rotation.set(Math.PI / 2, 0, Math.PI / 2); dome.scale.set(1, 1, 0.45); dome.position.set(0, 1.55, -0.05); g.add(dome);
+    const mouth = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 16, 1, false, 0, Math.PI), dark);
+    mouth.rotation.set(Math.PI / 2, 0, Math.PI / 2); mouth.position.set(0, 0.92, 0.53); g.add(mouth);
+    const fire = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.05), glow); fire.position.set(0, 0.97, 0.55); g.add(fire);
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 10), dark); pipe.position.set(0.45, 1.95, -0.3); g.add(pipe);
+    return g;
+  },
   toilet(ph) {
     const g = new THREE.Group();
     const white = mat('#fbfbff'), blue = mat('#bcd6ec');

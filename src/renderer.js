@@ -447,17 +447,26 @@ export class Renderer {
       const want = new Map();
       if (f.kind === 'table') want.set('plant', { id: 'm_table_plant', off: [0, 0], scale: 0.8 });
       if (f.kind === 'table' && f.seats) {
+        // in tiles from the table's centre: the round table top is only 0.375 tiles across from the
+        // middle, so each guest's things sit between the centre plant and the edge on their side
+        const R = 0.225, SIDE = 0.085;
         for (const s of f.seats) {
           const dx = s.chair.x - f.x, dz = s.chair.y - f.y;
-          if (s.dirty) want.set('d' + s.chair.uid, { id: 'm_plate_dirty', off: [dx * 0.42, dz * 0.42], scale: 0.7 });
-          if (s.food) want.set('f' + s.chair.uid + s.food.dish, { dish: s.food.dish, off: [dx * 0.38 - dz * (s.drink ? 0.2 : 0), dz * 0.38 + dx * (s.drink ? 0.2 : 0)], scale: 0.5 });
-          if (s.drink) want.set('k' + s.chair.uid + s.drink.dish, { dish: s.drink.dish, off: [dx * 0.4 + dz * 0.25, dz * 0.4 - dx * 0.25], scale: 0.5 });
+          if (s.dirty) want.set('d' + s.chair.uid, { id: 'm_plate_dirty', off: [dx * 0.2, dz * 0.2], scale: 0.55 });
+          if (s.food) want.set('f' + s.chair.uid + s.food.dish, { dish: s.food.dish, off: [dx * R - dz * (s.drink ? SIDE : 0), dz * R + dx * (s.drink ? SIDE : 0)], scale: 0.42 });
+          if (s.drink) want.set('k' + s.chair.uid + s.drink.dish, { dish: s.drink.dish, off: [dx * R + dz * SIDE, dz * R - dx * SIDE], scale: 0.42 });
         }
       }
-      if (f.kind === 'stove' || f.kind === 'bar') {
-        const item = f.ready || f.cooking;
-        if (f.cooking && !f.ready && f.kind === 'stove') want.set('pan', { id: def.cookProp || 'm_pan', off: [0, def.cookProp ? 0.3 : 0.1], scale: def.cookScale || 0.9, wob: true });
-        if (f.ready) want.set('r' + item.dish, { dish: item.dish, off: [0, 0.1], scale: 0.55 });
+      if (f.kind === 'stove') {
+        if (f.cooking && !f.ready) want.set('pan', { id: def.cookProp || 'm_pan', off: [0, def.cookProp ? 0.3 : 0.1], scale: def.cookScale || 0.9, wob: true });
+        if (f.ready) want.set('r' + f.ready.dish, { dish: f.ready.dish, off: [0, 0.1], scale: 0.55 });
+      }
+      if (f.kind === 'bar' && f.slots) {   // the pastry case shows what is really on each shelf (manifest `shelves`, model space)
+        // one bake per shelf, shown as a little row of them (`shelfRow`: x offsets) so a shelf looks stocked
+        f.slots.forEach((s, i) => {
+          const at = s && s.dish && def.shelves && def.shelves[i];
+          if (at) for (const [n, dx] of (def.shelfRow || [0]).entries()) want.set(`s${i}${n}${s.dish}`, { dish: s.dish, local: [at[0] + dx, at[1], at[2]], scale: def.shelfScale || 0.4 });
+        });
       }
       for (const [k, it] of v.items) if (!want.has(k)) { o.remove(it); v.items.delete(k); }
       for (const [k, spec] of want) {
@@ -470,6 +479,7 @@ export class Renderer {
           v.items.set(k, it);
         }
         // offsets are in world space; convert into the (rotated) furniture's local frame
+        if (spec.local) { it.position.set(...spec.local); continue; }
         tmpV.set(spec.off[0] * TILE, 0, spec.off[1] * TILE).applyAxisAngle(Y_UP, -o.rotation.y);
         it.position.set(tmpV.x, (def.surfaceHeight || 1) + (spec.wob ? Math.abs(Math.sin(this.time * 10)) * 0.03 : 0), tmpV.z);
       }
@@ -744,7 +754,7 @@ export class Renderer {
       const q = this.project(f.x + f.fp[0] / 2, f.y + f.fp[1] / 2, top);
       if (!q) continue;
       if (f.cooking && f.cookTotal > 0 && !f.ready) this.bar(q.x, q.y, 56 * z, clamp(f.cookT / f.cookTotal, 0, 1), '#8fd18a', 8 * z);
-      if (f.ready) this.bubble(q.x, q.y, 'emote_sparkle', 0.7 * z);
+      if (f.ready || (f.slots && f.slots.some((s) => s && s.ticket))) this.bubble(q.x, q.y, 'emote_sparkle', 0.7 * z);
       if (f.broken) this.bubble(q.x, q.y - 4, 'emote_broken', 0.8 * z);
     }
     // garden hints
@@ -777,7 +787,7 @@ export class Renderer {
       if (a.bubble) {
         const age = this.time - a.bubble.t0;
         this.bubble(q.x, y, a.bubble.icon, easeOutBack(age / 0.28) * z, a.bubble.icon2);
-      }
+      } else if (a.blocker) this.hint(q.x, y - 4 * z, a.blocker.icon, a.blocker.text, z);   // what this staff member is waiting on
       if (game.selected === a) {
         const f = this.project(a.x, a.y, 0);
         if (f) { ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.ellipse(f.x, f.y, 26 * z, 12 * z, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
@@ -795,6 +805,25 @@ export class Renderer {
     this.abilityFx.drawOverlay(ctx, game, this.chars, (v) => this.projectV(v), z);
     game.fx.draw(ctx, (gx, gy, h) => this.project(gx, gy, h));
     if (game.debug.assets) this.drawAssetOverlay();
+  }
+
+  /** Amber pill over a head: an icon and a short "what's missing" line, gently bobbing. */
+  hint(x, y, icon, text, z = 1) {
+    const ctx = this.ctx;
+    const k = clamp(z, 0.85, 1.3), bob = Math.sin(this.time * 3) * 1.5;
+    ctx.save();
+    ctx.font = `700 ${Math.round(12 * k)}px ${DISPLAY_FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const ic = 20 * k, pad = 8 * k, ph = 26 * k, tw = ctx.measureText(text).width, w = pad + ic + 5 * k + tw + pad * 1.2;
+    const x0 = x - w / 2, y0 = y - ph + bob;
+    ctx.shadowColor = 'rgba(16,24,40,0.28)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+    rr(ctx, x0, y0, w, ph, ph / 2); ctx.fillStyle = '#fff4dc'; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 2; ctx.strokeStyle = '#f0a43a'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 5 * k, y0 + ph - 1); ctx.lineTo(x, y0 + ph + 5 * k); ctx.lineTo(x + 5 * k, y0 + ph - 1); ctx.closePath();
+    ctx.fillStyle = '#fff4dc'; ctx.fill();
+    assets.drawIcon(ctx, icon, x0 + pad + ic / 2, y0 + ph / 2, ic);
+    ctx.fillStyle = '#6b3d0c'; ctx.fillText(text, x0 + pad + ic + 5 * k, y0 + ph / 2 + 0.5);
+    ctx.restore();
   }
 
   bar(x, y, w, v, color, h = 8) {

@@ -52,7 +52,7 @@ export const grown = () => base({
   inv: { beans: 30, sugar: 36, milk: 40, flour: 30, butter: 30, chocolate: 20, egg: 20 }, snacks: { cookie: 3, bento: 1 },
   on: ['espresso', 'americano', 'latte', 'croissant'],
   extraFurniture: [
-    furn('stove_steel', 8, 0), furn('bar_counter', 2, 0), furn('toilet', 10, 9, 1, { u: 7, ba: 7 }),
+    furn('stove_steel', 8, 0), furn('bar_counter', 2, 0), furn('oven_basic', 3, 0), furn('toilet', 10, 9, 1, { u: 7, ba: 7 }),
     furn('table_oak', 7, 4), furn('chair_oak', 6, 4, 0), furn('chair_oak', 8, 4, 2),
     furn('table_oak', 7, 7), furn('chair_oak', 6, 7, 0), furn('chair_oak', 8, 7, 2),
   ],

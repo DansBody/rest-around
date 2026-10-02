@@ -2,9 +2,11 @@
 // no pixel sizes or offsets live here.
 
 // ---------------- furniture ----------------
-// kind: table | chair | stove | bar | toilet | arcade | decor
+// kind: table | chair | stove | oven | bar | cashier | toilet | arcade | decor
+// note: one line shown while placing it, for furniture that does something beyond looking nice
 // Internal kinds keep their restaurant-era names: `stove` is the espresso station (a barista brews
-// here), `bar` is the pastry case (a baker plates bakes here), `arcade` is the reading nook.
+// here), `bar` is the pastry case (a baker bakes at an `oven`, then sets the bake out here),
+// `arcade` is the reading nook.
 export const FURNITURE = [
   { id: 'table_oak', name: 'Café Table', kind: 'table', asset: 'm_table_round', price: 40, level: 1, decor: 1, cat: 'dining' },
   { id: 'table_walnut', name: 'Wooden Table', kind: 'table', asset: 'm_table_square', price: 60, level: 2, decor: 2, cat: 'dining' },
@@ -18,8 +20,9 @@ export const FURNITURE = [
   { id: 'stove_basic', name: 'Espresso Station', kind: 'stove', asset: 'm_espresso', price: 120, level: 1, speed: 1.0, decor: 1, cat: 'kitchen' },
   { id: 'stove_steel', name: 'Silver Espresso Station', kind: 'stove', asset: 'm_espresso_silver', price: 320, level: 3, speed: 1.45, decor: 2, cat: 'kitchen' },
   { id: 'stove_deluxe', name: 'Barista Bar', kind: 'stove', asset: 'm_espresso_deluxe', price: 750, level: 6, speed: 2.1, decor: 4, cat: 'kitchen' },
-  { id: 'bar_counter', name: 'Pastry Case', kind: 'bar', asset: 'm_pastry_case', price: 260, level: 2, speed: 1.0, decor: 3, cat: 'kitchen' },
-  { id: 'cashier', name: 'Cashier Counter', kind: 'decor', asset: 'm_counter_cafe', price: 70, level: 1, decor: 3, cat: 'kitchen' },
+  { id: 'oven_basic', name: 'Bread Oven', kind: 'oven', asset: 'm_oven', price: 140, level: 2, speed: 1.0, decor: 2, cat: 'kitchen', note: 'The baker bakes here.' },
+  { id: 'bar_counter', name: 'Pastry Case', kind: 'bar', asset: 'm_pastry_case_empty', price: 200, level: 2, speed: 1.0, decor: 3, cat: 'kitchen', note: 'Holds 3 bakes. Guests who see bakes order one more often.' },
+  { id: 'cashier', name: 'Cashier Counter', kind: 'cashier', asset: 'm_counter_cafe', price: 70, level: 1, decor: 3, cat: 'kitchen', note: 'Guests pay here on the way out and tip extra; with no seat free, more of them wait in line, and longer.' },
   { id: 'toilet', name: 'Restroom', kind: 'toilet', asset: 'm_toilet', price: 160, level: 2, fee: 4, breakAfter: [6, 10], decor: 0, cat: 'fun' },
   { id: 'arcade_pink', name: 'Reading Nook', kind: 'arcade', asset: 'm_bookshelf', price: 380, level: 4, fee: 10, breakAfter: [5, 8], decor: 3, cat: 'fun' },
   { id: 'arcade_sky', name: 'Grand Library', kind: 'arcade', asset: 'm_library', price: 520, level: 6, fee: 16, breakAfter: [5, 8], decor: 5, cat: 'fun' },
@@ -208,6 +211,10 @@ export const DAY = {
   ],
 };
 export const PATIENCE = { seat: 24, order: 38, food: 60 };
+// A cashier counter: guests stop to pay on the way out and add `tip` × the bill (× satisfaction) on top of
+// the usual tip; and when every seat is taken, up to `queue` of them wait in line (not only for a table
+// being cleared), with `queuePatience` × the patience.
+export const CASHIER = { tip: 0.15, queue: 4, queuePatience: 1.6 };
 export const SPEED = { customer: 1.9, staff: 2.8 };
 export const ENERGY = { drainPerSec: 0.3, napRegen: 0.35, wakeAt: 30, overnight: 40 };
 // Staff skill: finishing a job of their current role earns XP in that role. Every role keeps its own

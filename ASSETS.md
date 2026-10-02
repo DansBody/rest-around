@@ -57,8 +57,8 @@ was made with Meshy from text prompts (the concept art only set the mood), then 
 
 | What | Models (`assets/models/cafe/`) |
 |---|---|
-| Counter & bar | `espresso_machine` (on `counter` = `m_espresso`; the stainless `espresso_machine_silver` is a Meshy retexture of it [10]), `grinder` (`m_espresso_deluxe`), `pastry_case`, `counter` (cashier) |
-| Seating, shelves, plants | `sofa`, `bookshelf` (also the reading nook and `m_library`), `monstera`, `planter`, `flower_box`, `floor_lamp`, `teddy`, `welcome_sign`, `table_plant` (sits on every table) |
+| Counter & bar | `espresso_machine` (on `counter_plain` = `m_espresso`, the counter with its till cut off by `tools/strip_till.py`; the stainless `espresso_machine_silver` is a Meshy retexture of it [10]), `grinder` (`m_espresso_deluxe`), `oven` (the baker's bread oven), `pastry_case_empty` (the Pastry Case: empty shelves the game fills from stock, `shelves` in the manifest; the older `pastry_case` has its pastries baked in and is unused), `counter` (cashier) |
+| Seating, shelves, plants | `sofa`, `bookshelf` (a stray shelf corner repaired by `tools/fix_bookshelf.py`; also the reading nook and `m_library`), `monstera`, `planter`, `flower_box`, `floor_lamp`, `teddy`, `welcome_sign`, `table_plant` (sits on every table) |
 | Hung on the walls | `menu_board`, `wall_frame`, `wall_sconce`, `hanging_plant` |
 | Drinks | `cup_espresso`, `cup_americano`, `cup_latte`, `cup_cappuccino`, `cup_mocha`, `mug_cocoa`, `cup_matcha`, `glass_iced` (iced americano and berry lemonade are tinted copies) |
 | Bakes | `croissant`, `cookie`, `muffin`, `cheesecake` |
@@ -160,7 +160,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (66)
+### 3D models (70)
 
 **Furniture**
 
@@ -177,12 +177,15 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | id | source | notes |
 |---|---|---|
 | `m_espresso_machine` | `models/cafe/espresso_machine.gltf` |  |
-| `m_counter_cafe` | `models/cafe/counter.gltf` | surface 1 |
-| `m_espresso` | composite: `m_counter_cafe` + `m_espresso_machine` | surface 1; tintable |
+| `m_counter_cafe` | `models/cafe/counter.gltf` | surface 0.72 |
+| `m_counter_plain` | `models/cafe/counter_plain.gltf` | surface 0.72 |
+| `m_espresso` | composite: `m_counter_plain` + `m_espresso_machine` | surface 0.72; tintable |
 | `m_espresso_machine_silver` | `models/cafe/espresso_machine_silver.gltf` |  |
-| `m_espresso_silver` | composite: `m_counter_cafe` + `m_espresso_machine_silver` | surface 1 |
-| `m_espresso_deluxe` | composite: `m_counter_cafe` + `m_espresso_machine` + `m_grinder` | surface 1 |
+| `m_espresso_silver` | composite: `m_counter_plain` + `m_espresso_machine_silver` | surface 0.72 |
+| `m_espresso_deluxe` | composite: `m_counter_plain` + `m_espresso_machine` + `m_grinder` | surface 0.72 |
+| `m_oven` | `models/cafe/oven.gltf` | surface 1.4 |
 | `m_pastry_case` | `models/cafe/pastry_case.gltf` | surface 1.5 |
+| `m_pastry_case_empty` | `models/cafe/pastry_case_empty.gltf` | surface 1.9 |
 
 **Fun**
 
@@ -253,6 +256,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `barbarian` | `models/characters/Barbarian.gltf` | accessories: Barbarian_Hat, Barbarian_Cape |
 | `rogue` | `models/characters/Rogue.gltf` | accessories: Rogue_Cape |
 | `rogue_hooded` | `models/characters/Rogue_Hooded.gltf` | accessories: Rogue_Cape |
+| `guest_b` | `models/characters/GuestB.gltf` | own rig + clips |
 | `mochalatte` | `models/characters/MochaLatte.gltf` | own rig + clips |
 | `bbaekko` | `models/characters/Bbaekko.gltf` | own rig + clips |
 | `heehee` | `models/characters/HeeHee.gltf` | own rig + clips |

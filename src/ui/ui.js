@@ -135,9 +135,12 @@ export class UI {
       h('button.btn.small', { title: t('Rotate right (E)'), onclick: () => { shown().camera.rotate(1); shown().sfx('click'); } }, glyph('rotate_r', 20)));
     r.appendChild(this.el.camctl);
 
-    // staff ability dock: one button per staff member (keys 1–9)
-    this.el.abilities = h('div#abilities');
-    r.appendChild(this.el.abilities);
+    // staff ability dock: one button per staff member (keys 1–9), folded away behind the skills
+    // button (bottom-left) until opened; the button glows while something is ready to fire
+    try { this.abOpen = localStorage.getItem('refillit.skillsOpen') === '1'; } catch { this.abOpen = false; }
+    this.el.abilities = h('div#abilities' + (this.abOpen ? '.open' : ''));
+    this.el.abToggle = h('button.chip#abtoggle' + (this.abOpen ? '.open' : ''), { onclick: () => this.toggleSkills(), title: t('Staff skills'), 'aria-label': t('Staff skills'), 'aria-expanded': String(this.abOpen) }, glyph('sparkles', 22));
+    r.append(this.el.abilities, this.el.abToggle);
 
     this.el.cutin = h('div#cutin');
     r.appendChild(this.el.cutin);
@@ -237,8 +240,9 @@ ${k.desc}
         return { a, b, kb, row: h('div.ab-row', b, kb) };
       });
       dock.replaceChildren(...this.abilityBtns.map((x) => x.row));
-      dock.style.display = g.build.active || !g.staff.length ? 'none' : '';
+      dock.style.display = this.el.abToggle.style.display = g.build.active || !g.staff.length ? 'none' : '';
     }
+    let ready = false;
     for (const { a, b, kb } of this.abilityBtns) {
       if (kb) {
         const k = a.kit.active;
@@ -252,7 +256,18 @@ ${k.desc}
       b.classList.toggle('active', a.boosted());
       b.classList.toggle('tired', a.napping);
       b.classList.toggle('windup', a.windup > 0);
+      if (a.kitReady()) ready = true;
     }
+    this.el.abToggle.classList.toggle('ready', ready);
+  }
+
+  toggleSkills(open = !this.abOpen) {
+    this.abOpen = open;
+    this.el.abilities.classList.toggle('open', open);
+    this.el.abToggle.classList.toggle('open', open);
+    this.el.abToggle.setAttribute('aria-expanded', String(open));
+    try { localStorage.setItem('refillit.skillsOpen', open ? '1' : '0'); } catch { /* private mode: just this session */ }
+    this.game.sfx('click');
   }
 
   castKit(a) {

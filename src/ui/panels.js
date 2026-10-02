@@ -4,7 +4,7 @@ import { assets } from '../assets.js';
 import { portrait, thumb, plotThumb } from '../portrait.js';
 import { ACCESSORIES, roleLook, nextCast } from '../looks.js';
 import {
-  ROLES, SNACKS, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
+  ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
   UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, staffWage, servingCost, SERVINGS_PER_UNIT, OFFLINE,
 } from '../data.js';
@@ -97,6 +97,25 @@ export const PANELS = {
 };
 
 // ------------------------------------------------------------------ staff
+/** Asks before feeding the whole team: who gets fed, which snacks come from the pantry, what gets bought. */
+function feedAllCard(ui) {
+  const g = ui.game, plan = g.eco.planFeedAll();
+  const close = h('button.btn', { onclick: () => ui.closeModal() }, plan.list.length ? t('Cancel') : t('OK'));
+  if (!plan.list.length) return h('div.card', h('div.big-title', t('Feed all')), h('div.muted', t('Everyone is full of energy already.')), h('div.feed-btns', close));
+  const line = (counts) => Object.entries(counts).map(([id, n]) => h('span.ing', I(snackById[id].asset, 22), `${snackById[id].name} ×${n}`));
+  const short = plan.cost > g.state.coins;
+  const go = h('button.btn.primary' + (short ? '.disabled' : ''), { onclick: () => { if (short) return; ui.closeModal(); if (g.eco.feedAll(plan)) ui.toast(t('Fed {n} staff', { n: plan.fed }), 'good'); ui.renderPanel(); } },
+    plan.cost ? h('span', t('Feed for'), ' ', coinPill(plan.cost)) : t('Feed'));
+  return h('div.card.feed-card',
+    h('div.big-title', t('Feed all')),
+    h('div.muted', t('Tops up {n} staff (anyone nearly full is skipped).', { n: plan.fed })),
+    Object.keys(plan.pantry).length ? h('div.feed-row', h('b', t('From the pantry')), h('div.feed-items', line(plan.pantry))) : null,
+    Object.keys(plan.buy).length ? h('div.feed-row', h('b', t('To buy')), h('div.feed-items', line(plan.buy))) : null,
+    h('div.feed-row.total', h('b', t('Cost')), plan.cost ? coinPill(plan.cost) : h('span', t('Free (all from the pantry)'))),
+    short ? h('div.bmsg.bad', t('Not enough coins')) : null,
+    h('div.feed-btns', close, go));
+}
+
 function renderStaff(ui, body) {
   const g = ui.game, s = g.state;
   if (ui.subview && ui.subview.outfit) return renderOutfit(ui, body, ui.subview.outfit);
@@ -107,6 +126,7 @@ function renderStaff(ui, body) {
   body.append(h('div.stat-strip',
     h('span.pill', I('tool_staff', 16), t('Staff {n}/{m}', { n: staff.length, m: slots })),
     h('span.pill', I('icon_coin', 16), t('Costs {n}/day', { n: g.eco.dailyWages() + g.eco.dailyRent() })),
+    staff.length ? h('button.btn.small.feedall', { title: t('Feed the whole team'), onclick: () => ui.queueModal(() => feedAllCard(ui)) }, I('icon_energy', 18), t('Feed all')) : null,
     h('button.btn.small.xbtn' + (ui.staffHelp ? '.primary' : ''), { title: t('How staff work'), 'aria-expanded': String(!!ui.staffHelp), onclick: () => { ui.staffHelp = !ui.staffHelp; ui.renderPanel(); } }, h('b', '?'))));
   if (ui.staffHelp) body.append(h('div.note', t('Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid when the café closes. If the till runs short, the team starts the next day tired.', { w: g.eco.dailyWages(), r: g.eco.dailyRent() })));
   body.append(h('div.section-title', t('Your team')));
@@ -155,7 +175,7 @@ function renderStaff(ui, body) {
   }
   if (full) body.append(h('div.muted', t('All slots are full — reach the next level for more.')));
 }
-const ROLE_NOTE = { waiter: 'Takes orders, serves drinks, clears tables.', chef: 'Brews at a free espresso station.', cleaner: 'Sweeps up and tidies the restrooms and reading nooks.', bartender: 'Plates bakes at the Pastry Case.' };
+const ROLE_NOTE = { waiter: 'Takes orders, serves drinks, clears tables.', chef: 'Brews at a free espresso station.', cleaner: 'Sweeps up and tidies the restrooms and reading nooks.', bartender: 'Bakes in the Bread Oven and keeps the Pastry Case stocked.' };
 function renderJobChange(ui, body, a) {
   const g = ui.game;
   if (!g.staff.includes(a)) { ui.subview = null; return renderStaff(ui, body); }
@@ -176,7 +196,7 @@ function renderJobChange(ui, body, a) {
       h('div.grow', h('h3', r.name)),
       action,
       h('div.row-full', skillLine(a, role), h('div.muted', t(ROLE_NOTE[role])),
-        role === 'bartender' && !g.world.byKind('bar').length ? h('div.bmsg.warn', { style: { marginTop: '6px' } }, t('Needs a Pastry Case to work')) : null,
+        role === 'bartender' && !(g.world.byKind('oven').length && g.world.byKind('bar').length) ? h('div.bmsg.warn', { style: { marginTop: '6px' } }, t('Needs a Bread Oven and a Pastry Case to work')) : null,
         h('div.sklist.flush', jobSkill(role, a.skillLv(role) >= ABILITY_UNLOCK_LV)))));
   }
   body.append(h('div.muted', { style: { marginTop: '6px', lineHeight: 1.5 } },
@@ -227,8 +247,7 @@ function renderMenu(ui, body) {
   const slots = menuSlots(s.level);
   body.append(h('div.tabs.seg', { style: { '--n': DISH_CATS.length } }, DISH_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.menuCat = c.id; ui.renderPanel(); } }, h('span', c.name), h('small', `${g.eco.menuCount(c.id)}/${slots[c.id]}`)))));
   if (cat === EXTRA_CAT) {
-    const ok = g.world.byKind('bar').length && g.staff.some((a) => a.role === 'bartender');
-    if (!ok) body.append(h('div.row', I('emote_menu', 32), h('div.grow.muted', t('Bakes need a Pastry Case (Build → Coffee Bar) and a Baker (Staff → Hire).'))));
+    if (!g.eco.bakeryReady()) body.append(h('div.row', I('emote_menu', 32), h('div.grow.muted', t('Bakes need a Bread Oven and a Pastry Case (Build → Equipment) and a Baker (Staff → Hire).'))));
   }
   if (slots[cat] === 0) body.append(h('div.muted', { style: { margin: '6px 2px' } }, t('No {cat} slots yet — they open up as you level.', { cat: DISH_CATS.find((c) => c.id === cat).name })));
   for (const d of DISHES.filter((x) => x.cat === cat)) {
@@ -382,7 +401,7 @@ function langPicker(ui) {
 
 // ------------------------------------------------------------------ build tray
 const BUILD_CATS = [
-  { id: 'dining', name: 'Tables & Chairs' }, { id: 'kitchen', name: 'Coffee Bar' }, { id: 'fun', name: 'Nooks' }, { id: 'decor', name: 'Decor' }, { id: 'walldeco', name: 'Wall decor' },
+  { id: 'dining', name: 'Tables & Chairs' }, { id: 'kitchen', name: 'Equipment' }, { id: 'fun', name: 'Nooks' }, { id: 'decor', name: 'Decor' }, { id: 'walldeco', name: 'Wall decor' },
   { id: 'floor', name: 'Floors' }, { id: 'wall', name: 'Walls' }, { id: 'room', name: 'Room' },
 ];
 const thumbCache = new Map();
@@ -447,7 +466,7 @@ export function buildTray(ui, bar) {
       : wid ? (touch ? 'Tap a wall where it should hang' : 'Click a wall where it should hang') : touch ? 'Tap the floor where it should go' : 'Click the floor where it should go');
     bar.replaceChildren(h('div.card.bb-mini',
       h('div.thumb-slot', cachedThumb((wid ? 'wd:' : 'f:') + type, () => thumb(cat2.asset, cat2.tint))),
-      h('div.grow', h('b', cat2.name, moving ? '' : ' ', moving ? null : coinPill(cat2.price)), h('div.muted' + (b.message && b.message.kind === 'bad' ? '.bad' : ''), tip)),
+      h('div.grow', h('b', cat2.name, moving ? '' : ' ', moving ? null : coinPill(cat2.price)), cat2.note && !b.message ? h('div.muted', t(cat2.note)) : null, h('div.muted' + (b.message && b.message.kind === 'bad' ? '.bad' : ''), tip)),
       h('button.btn.small', { onclick: () => b.cancelPlacing() }, moving ? t('Cancel') : t('Back to items'))));
     return;
   }

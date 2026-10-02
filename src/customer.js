@@ -1,10 +1,11 @@
 // Customer brain: arrive → find seat (or queue / leave) → order → wait for food → eat → pay →
 // maybe restroom / arcade → leave. Patience drains while waiting to be seated, to order, and for food.
+import { stockIn, claim, slotOfTicket, BAKE_CHANCE, STOCK_BAKE_CHANCE } from './pastry.js';
 import { Agent } from './agent.js';
 import { randomLook } from './looks.js';
 import { models } from './models.js';
 import { t } from './i18n.js';
-import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, dishPrice, dishPoints, EXTRA_CAT } from './data.js';
+import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, CASHIER, dishPrice, dishPoints, EXTRA_CAT } from './data.js';
 import { DOOR_Y } from './world.js';
 import { choice, chance, rand, manhattan, uid } from './util.js';
 
@@ -63,6 +64,8 @@ export class Customer extends Agent {
     if (clean.length) return this.gotoSeat(this.pickSeat(clean));
     const queued = g.customers.filter((c) => c.state === 'queue').length;
     if (dirty.length > queued && queued < 3) return this.queueForSeat();
+    // with a cashier counter there's a proper line: guests wait for someone to finish, too
+    if (this.hasCashier() && queued < CASHIER.queue && g.world.seats.some((s) => s.customer)) return this.queueForSeat();
     this.mood = 'No free seats';
     this.leaveUnhappy('noSeat');
   }
@@ -93,7 +96,7 @@ export class Customer extends Agent {
   queueForSeat() {
     const g = this.game;
     this.state = 'queue'; this.task = 'Waiting for a clean table'; this.mood = 'Waiting';
-    this.patience = 1; this.pRate = 1 / PATIENCE.seat; this.showPatience = true;
+    this.patience = 1; this.pRate = 1 / (PATIENCE.seat * (this.hasCashier() ? CASHIER.queuePatience : 1)); this.showPatience = true;
     const e = g.world.entry;
     const t = g.freeTileNear(e.x, e.y, true, (x, y) => !(x === e.x && y === e.y) && manhattan(x, y, e.x, e.y) <= 4);
     if (t) this.walk(t.x, t.y, { onFail: () => {} });
@@ -101,6 +104,7 @@ export class Customer extends Agent {
     this.wait(0, null, { until: () => this.findCleanSeat() != null });
     this.do(() => { const s = this.findCleanSeat(); if (s) { this.sat.push(this.patience); this.gotoSeat(s); } else this.queueForSeat(); });
   }
+  hasCashier() { return this.game.world.byKind('cashier').some((f) => this.game.world.accessFor(f).length); }
   findCleanSeat() {
     const g = this.game;
     return g.world.seats.find((s) => !s.customer && !s.reserved && !s.dirty && g.world.accessFor(s.chair).length) || null;
@@ -141,15 +145,24 @@ export class Customer extends Agent {
     }
     const food = choice(foods);
     eco.consume(food);
-    const canDrink = drinks.length && g.world.byKind('bar').length && g.staff.some((s) => s.role === 'bartender');
-    const drink = canDrink && chance(0.55) ? choice(drinks) : null;
-    if (drink) eco.consume(drink);
+    // a bake on the side: what they can see in the pastry case tempts them most (it's served straight
+    // from the shelf, already paid for); otherwise one off the menu, baked to order
+    const stock = stockIn(g.world.byKind('bar'));
+    const fromCase = stock.length && chance(STOCK_BAKE_CHANCE) ? choice(stock) : null;
+    const canDrink = drinks.length && g.eco.bakeryReady();
+    const drink = fromCase ? fromCase.dish : canDrink && chance(BAKE_CHANCE) ? choice(drinks) : null;
+    if (drink && !fromCase) eco.consume(drink);
     this.tickets = [];
     const mk = (dish, kind) => ({ id: uid(), dish, kind, customer: this, seat: this.seat, state: 'queued' });
     const tf = mk(food, 'food');
     tf.job = g.jobs.add('cook', { ticket: tf, customer: this });
     this.tickets.push(tf);
-    if (drink) { const td = mk(drink, 'drink'); td.job = g.jobs.add('drink', { ticket: td, customer: this }); this.tickets.push(td); }
+    if (drink) {
+      const td = mk(drink, 'drink');
+      if (fromCase) { claim(fromCase.f, fromCase.i, td); td.deliverJob = g.jobs.add('deliver', { ticket: td, stove: fromCase.f, customer: this }); }
+      else td.job = g.jobs.add('drink', { ticket: td, customer: this });
+      this.tickets.push(td);
+    }
     this.bubble = { icon: dishById[food].asset, icon2: drink ? dishById[drink].asset : null, t0: g.renderTime, until: g.simTime + 3 };
     this.state = 'waitFood'; this.task = 'Waiting for their order'; this.mood = 'Excited';
     this.patience = 1; this.pRate = 1 / PATIENCE.food; this.showPatience = true;
@@ -188,6 +201,7 @@ export class Customer extends Agent {
     if (bloom && s >= bloom.min) { tip = Math.round(tip * (1 + bloom.tip)); g.fx.petals(g.at(this.x, this.y, 90), 9); }
     if (spot) { tip *= 2; g.fx.sparkle(g.at(this.x, this.y, 90), 8, '#ffe27a'); }
     g.eco.earn(coins + tip, points, this.x, this.y - 0.2, this.lift + 110);
+    this.till = Math.round(coins * CASHIER.tip * s);   // the extra tip, if they pass a cashier on the way out
     g.rating.addService(0.55 + 0.45 * s);
     if (spot) g.rating.addService(0.55 + 0.45 * s);   // Spotlight: this table counts double
     g.state.stats.served++;
@@ -227,6 +241,14 @@ export class Customer extends Agent {
     if (chance(0.3)) this.do(() => { g.world.addTrash(this.tx, this.ty); });
     const w = g.world;
     const usable = (kind) => w.byKind(kind).filter((f) => !f.broken && !f.reservedBy && w.accessFor(f).length);
+    const till = this.till > 0 && choice(usable('cashier'));
+    if (till) {   // stop at the counter to pay, and tip a little extra
+      this.do(() => { this.task = 'Paying at the counter'; });
+      this.walk(0, 0, { goals: w.accessFor(till), onFail: () => {} });
+      this.face({ x: till.x, y: till.y });
+      this.wait(0.6);
+      this.do(() => { if (w.furniture.includes(till)) { g.eco.earn(this.till, 0, till.x + 0.5, till.y + 0.5, 120); g.sfx('ding'); } this.till = 0; });
+    }
     let fac = null;
     if (chance(0.28)) fac = choice(usable('toilet'));
     if (!fac && chance(0.35)) fac = choice(usable('arcade'));
@@ -284,11 +306,21 @@ export class Customer extends Agent {
     if (this.orderJob) { g.jobs.cancel(this.orderJob); this.orderJob = null; }
     for (const t of this.tickets) {
       if (t.state === 'served') continue;
+      const st = t.station;
+      if (st && st.kind === 'bar' && slotOfTicket(st, t) >= 0) {   // a bake waiting in the case goes back on sale
+        st.slots[slotOfTicket(st, t)].ticket = null;
+        g.jobs.cancel(t.deliverJob); t.state = 'canceled';
+        continue;
+      }
+      if (t.kind === 'drink' && t.job && t.job.assignee && ['cooking', 'baked'].includes(t.state) && !g.jobs.salvage(t)) {
+        t.customer = null; t.job.customer = null;   // the baker finishes it anyway and it goes in the case as stock
+        continue;
+      }
+      if (t.kind === 'drink' && t.state === 'queued') g.eco.refund(t.dish);   // never started: the ingredients go back
       const salvaged = g.jobs.salvage(t);
       t.state = 'canceled';
       if (salvaged) continue;
       g.jobs.cancel(t.job); g.jobs.cancel(t.deliverJob);
-      const st = t.station;
       if (st && st.ready === t) { st.ready = null; g.fx.puff(g.at(st.x + 0.5, st.y + 0.5, 50), '#e9e2da', 3); }
     }
     g.jobs.cancelWhere((j) => j.customer === this && !(j.ticket && j.ticket.customer !== this));

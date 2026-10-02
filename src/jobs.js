@@ -1,10 +1,13 @@
 // Job board: customers and the world post jobs; idle staff of the matching role claim them.
-import { uid, manhattan } from './util.js';
-import { dishById, furnitureById } from './data.js';
+import { uid, manhattan, choice } from './util.js';
+import { dishById, furnitureById, EXTRA_CAT } from './data.js';
+import { stockIn, claim, freeSlot, shelvesUsed, PREBAKE_SLOTS } from './pastry.js';
 
-const ROLE_OF = { order: 'waiter', deliver: 'waiter', clear: 'waiter', cook: 'chef', drink: 'bartender', sweep: 'cleaner', repair: 'cleaner' };
-const PRIORITY = { deliver: 3, order: 2, clear: 2, cook: 1, drink: 1, repair: 2, sweep: 1 };
-export const JOB_LABEL = { order: 'Taking an order', deliver: 'Serving an order', clear: 'Clearing a table', cook: 'Brewing', drink: 'Plating a bake', sweep: 'Tidying up', repair: 'Repairing' };
+// drink = a bake a guest ordered; prebake = one the baker makes ahead for the pastry case
+const ROLE_OF = { order: 'waiter', deliver: 'waiter', clear: 'waiter', cook: 'chef', drink: 'bartender', prebake: 'bartender', sweep: 'cleaner', repair: 'cleaner' };
+const PRIORITY = { deliver: 3, order: 2, clear: 2, cook: 1, drink: 1, prebake: 0, repair: 2, sweep: 1 };
+const BAKES = new Set(['drink', 'prebake']);
+export const JOB_LABEL = { order: 'Taking an order', deliver: 'Serving an order', clear: 'Clearing a table', cook: 'Brewing', drink: 'Baking', prebake: 'Baking for the case', place: 'Setting out a bake', sweep: 'Tidying up', repair: 'Repairing' };
 
 export class Jobs {
   constructor(game) { this.game = game; this.list = []; }
@@ -36,12 +39,47 @@ export class Jobs {
       if (j.type === 'sweep' && !w.trash.includes(j.trash)) this.cancel(j);
       if (j.type === 'repair' && (!j.target.broken || !w.furniture.includes(j.target))) this.cancel(j);
       if (j.type === 'clear' && (!j.seat.dirty || !w.seats.includes(j.seat))) this.cancel(j);
+      if (j.type === 'prebake' && !j.assignee && !this.game.eco.bakeryReady()) this.cancel(j);
     }
+    this.serveFromStock();
+    this.planPrebake();
+  }
+
+  /** A guest's bake that nobody has started yet comes out of the case instead, if one is there. */
+  serveFromStock() {
+    const g = this.game, cases = g.world.byKind('bar');
+    if (!cases.length) return;
+    for (const j of this.pending('bartender')) {
+      if (j.type !== 'drink' || j.ticket.state !== 'queued') continue;
+      const st = stockIn(cases).find((x) => x.dish === j.ticket.dish);
+      if (!st) continue;
+      const t = j.ticket;
+      this.cancel(j);
+      g.eco.refund(t.dish);   // its ingredients were set aside when it was ordered
+      claim(st.f, st.i, t);
+      t.deliverJob = this.add('deliver', { ticket: t, stove: st.f, customer: t.customer });
+    }
+  }
+
+  /** Keep the case stocked: an idle baker bakes ahead until PREBAKE_SLOTS shelves per case are used. */
+  planPrebake() {
+    const g = this.game, s = g.state, cases = g.world.byKind('bar');
+    if (!g.eco.bakeryReady() || !g.day.isOpen || this.pending('bartender').some((j) => j.type === 'drink')) return;
+    const coming = this.list.filter((j) => j.type === 'prebake' && !j.done && !j.canceled);
+    const bakers = g.staff.filter((a) => a.role === 'bartender').length;
+    if (coming.length >= bakers || shelvesUsed(cases) + coming.length >= cases.length * PREBAKE_SLOTS || !cases.some((f) => freeSlot(f) >= 0)) return;
+    const menu = Object.keys(s.dishes).filter((id) => s.dishes[id].on && dishById[id].level <= s.level && dishById[id].cat === EXTRA_CAT && g.eco.canMake(id));
+    if (!menu.length) return;
+    // a bit of everything: bake whatever there is least of on the shelves
+    const have = (id) => stockIn(cases).filter((x) => x.dish === id).length + coming.filter((j) => j.ticket.dish === id).length;
+    const least = Math.min(...menu.map(have));
+    const dish = choice(menu.filter((id) => have(id) === least));
+    this.add('prebake', { ticket: { id: uid(), dish, kind: 'stock', state: 'queued' } });
   }
 
   pending(role) { return this.list.filter((j) => j.role === role && !j.assignee && !j.canceled && !j.done); }
 
-  /** Choose the best job for a staff member; reserves stoves/bars as needed. */
+  /** Choose the best job for a staff member; reserves the espresso station or oven it needs. */
   pick(staff) {
     const g = this.game;
     const cands = this.pending(staff.role);
@@ -50,14 +88,15 @@ export class Jobs {
     const scored = [];
     for (const j of cands) {
       let target = null;
-      if (j.type === 'cook' || j.type === 'drink') {
-        target = g.jobs.freeStation(j.type === 'cook' ? 'stove' : 'bar', pos);
+      if (j.type === 'cook' || BAKES.has(j.type)) {
+        target = g.jobs.freeStation(j.type === 'cook' ? 'stove' : 'oven', pos);
         if (!target) continue;
+        if (BAKES.has(j.type) && !g.world.byKind('bar').length) continue;   // a bake goes out on a pastry case
       }
       const at = this.jobPos(j) || pos;
       const age = g.simTime - j.created;
       let score = PRIORITY[j.type] * 100 + age * 2 - manhattan(pos.x, pos.y, at.x, at.y) * 3;
-      if (j.ticket && target) {
+      if (j.ticket && j.ticket.customer && target) {
         // don't sink time into orders whose guest will have left before the dish is ready
         const c = j.ticket.customer;
         const left = c.pRate > 0 ? c.patience / c.pRate : 99;
@@ -80,6 +119,18 @@ export class Jobs {
     if (j.target) return { x: j.target.x, y: j.target.y };
     if (j.stove) return { x: j.stove.x, y: j.stove.y };
     return null;
+  }
+
+  /** Nearest reachable pastry case with an empty shelf. */
+  freeCase(pos) {
+    const w = this.game.world;
+    let best = null, bd = 1e9;
+    for (const f of w.byKind('bar')) {
+      if (freeSlot(f) < 0 || !w.accessFor(f).length) continue;
+      const d = manhattan(pos.x, pos.y, f.x, f.y);
+      if (d < bd) { bd = d; best = f; }
+    }
+    return best;
   }
 
   freeStation(kind, pos) {

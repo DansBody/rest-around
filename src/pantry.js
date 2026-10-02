@@ -9,6 +9,11 @@ export function servings(s, ing) { return (s.opened[ing] || 0) + (s.inv[ing] || 
 
 export function canMake(s, id) { return dishById[id].ings.every((i) => servings(s, i) >= 1); }
 
+/** Give back the serving of each ingredient that consume() took (an order filled from stock after all). */
+export function refund(s, id) {
+  for (const i of dishById[id].ings) s.opened[i] = (s.opened[i] || 0) + 1;
+}
+
 /** How many more of a dish the pantry can make. */
 export function canMakeCount(s, id) { return Math.floor(Math.min(...dishById[id].ings.map((i) => servings(s, i)))); }
 
