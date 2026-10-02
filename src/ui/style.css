@@ -100,13 +100,16 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .pbar.orange > i { background: #f07a2a; }
 .pbar.red > i { background: var(--red); }
 .stars { display: inline-flex; gap: 0; align-items: center; cursor: pointer; }
+.rating { cursor: pointer; }
+.rating .star-one { display: none; }
 .clock { font-size: 15px; display: flex; flex-direction: column; line-height: 1.08; }
 .clock small { white-space: nowrap; font-family: var(--font); font-size: 10px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
 #gift { cursor: pointer; padding: 0 11px; animation: wiggle 1.6s ease-in-out infinite; }
 @keyframes wiggle { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(-7deg) scale(1.06); } 20% { transform: rotate(7deg) scale(1.06); } 30% { transform: rotate(0); } }
 .rating-tip { position: absolute; top: calc(70px + var(--sat)); left: 50%; translate: -50% 0;   /* not transform: the pop-in animation owns that */ width: 290px; font-size: 13px; display: none; z-index: 5; }
 .rating-tip.show { display: block; animation: popin .25s ease-out; }
-.rrow { display: grid; grid-template-columns: 90px 1fr 38px; gap: 8px; align-items: center; margin: 7px 0; font-weight: 600; }
+.rgrid { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 10px 10px; align-items: center; margin: 10px 0 8px; font-weight: 600; }
+.rgrid .rpct { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* brand chip: café badge + name + level */
 .brand { padding: 0 18px 0 5px; gap: 10px; }
@@ -114,7 +117,9 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .brand .badge-c .ico { width: 24px; height: 24px; }
 .brand .badge-c b { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); font: 700 9.5px var(--font-display); color: var(--ink); background: #fff; border-radius: 99px; padding: 1px 6px; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
 .brand .bname { font-family: var(--font-display); font-weight: 700; font-size: 15px; line-height: 1; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.brand .lvl-wrap { min-width: 118px; }
+.brand .lvl-wrap { min-width: 150px; }
+.lvl-top .bname { min-width: 0; }
+.lvl-top .muted { flex: none; white-space: nowrap; }
 
 /* daily goal: a checklist button with a progress ring; the card pops out below it */
 #questbtn { position: absolute; top: calc(76px + var(--sat)); left: calc(14px + var(--sal)); width: 46px; height: 46px; padding: 0; justify-content: center; border-radius: 50%; cursor: pointer;
@@ -542,35 +547,34 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 }
 /* ---------- phones ---------- */
 @media (max-width: 600px) {
-  /* Two deterministic rows: the brand occupies all four cells, then every stat owns one cell. */
-  #hud { left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); top: calc(8px + var(--sat)); width: auto; max-width: none; transform: none; display: grid; grid-template-columns: repeat(4, minmax(0, auto)); grid-auto-flow: dense; justify-content: center; align-items: center; gap: 4px; }
-  #hud .chip { min-width: 0; font-size: 14px; height: 40px; padding: 0 7px 0 5px; gap: 4px; }
-  #hud .brand { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
+  /* One row: coins · café · rating · clock · gift. The café name is what gives way when it is tight. */
+  #hud { left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); top: calc(8px + var(--sat)); width: auto; max-width: none; transform: none; display: flex; flex-wrap: nowrap; justify-content: center; align-items: center; gap: 4px; }
+  #hud > * { flex: none; }
+  #hud .chip { min-width: 0; font-size: 14px; height: 40px; padding: 0 9px 0 6px; gap: 4px; }
   #hud .chip > .ico { width: 20px; height: 20px; }
-  #hud .num { min-width: 26px; }
-  #hud .chip:nth-child(1) { grid-column: 1; grid-row: 2; }
-  #hud .chip:nth-child(3) { grid-column: 2; grid-row: 2; }
-  #hud .chip:nth-child(4) { grid-column: 3; grid-row: 2; }
-  #hud #gift { grid-column: 4; grid-row: 2; min-width: 40px; padding: 0; justify-content: center; }
-  .brand { padding: 0 10px 0 4px !important; }
+  #hud .num { min-width: 0; }
+  #hud #gift { width: 40px; min-width: 40px; padding: 0; justify-content: center; }
+  #hud .brand { flex: 0 1 auto; min-width: 0; padding: 0 10px 0 4px; gap: 7px; }
   .brand .badge-c { width: 30px; height: 30px; }
   .brand .badge-c .ico { width: 20px; height: 20px; }
-  .stars > span { width: 15px !important; height: 15px !important; }
-  .stars .ico { width: 15px; height: 15px; }
-  #hud .clock small, #hud .lvl-top span:last-child, #hud .stars + .num { display: none; }
-  .brand .bname { max-width: 92px; font-size: 13.5px; }
-  .lvl-wrap, .brand .lvl-wrap { min-width: 64px; }
-  #questbtn { top: calc(104px + var(--sat)); left: calc(10px + var(--sal)); width: 44px; height: 44px; }
-  #quest { top: calc(158px + var(--sat)); left: calc(8px + var(--sal)); width: min(220px, calc(100vw - var(--sal) - var(--sar) - 16px)); padding: 6px 12px 6px 6px; border-radius: 20px; }
+  .brand .badge-c b { font-size: 9px; padding: 0 5px; bottom: -5px; }
+  #hud .clock small, #hud .lvl-top span:last-child { display: none; }
+  .brand .bname { max-width: 96px; font-size: 13px; }
+  .lvl-wrap, .brand .lvl-wrap { min-width: 44px; flex: 1 1 auto; gap: 4px; }
+  /* rating: one star and the number */
+  #hud .stars { display: none; }
+  #hud .rating .star-one { display: inline-block; }
+  #questbtn { top: calc(58px + var(--sat)); left: calc(10px + var(--sal)); width: 44px; height: 44px; }
+  #quest { top: calc(110px + var(--sat)); left: calc(8px + var(--sal)); width: min(220px, calc(100vw - var(--sal) - var(--sar) - 16px)); padding: 6px 12px 6px 6px; border-radius: 20px; }
   #quest .q-ico { width: 34px; height: 34px; border-radius: 12px; }
   #quest .q-ico .ico { width: 24px; height: 24px; }
   #quest .q-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
-  #friendsbtn { top: calc(104px + var(--sat)); right: calc(10px + var(--sar)); width: 44px; height: 44px; }
-  #camctl { top: calc(164px + var(--sat)); right: calc(10px + var(--sar)); }
-  #toasts, #buildbanner { top: calc(104px + var(--sat)); }
-  #celebrate { top: calc(108px + var(--sat)); }
+  #friendsbtn { top: calc(58px + var(--sat)); right: calc(10px + var(--sar)); width: 44px; height: 44px; }
+  #camctl { top: calc(118px + var(--sat)); right: calc(10px + var(--sar)); }
+  #toasts, #buildbanner { top: calc(58px + var(--sat)); }
+  #celebrate { top: calc(62px + var(--sat)); }
   #buildbanner { font-size: 12px; white-space: nowrap; }
-  .rating-tip { top: calc(104px + var(--sat)); width: calc(100vw - var(--sal) - var(--sar) - 16px); }
+  .rating-tip { top: calc(56px + var(--sat)); width: calc(100vw - var(--sal) - var(--sar) - 16px); }
   /* The six primary actions fit without wrapping even on a 320px phone. */
   #toolbar { left: 50%; right: auto; max-width: calc(100vw - var(--sal) - var(--sar) - 12px); transform: translateX(-50%); justify-content: space-between; gap: 4px; overflow: hidden; }
   /* build tray hugs the bottom edge on phones */
@@ -579,18 +583,25 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   .bitem { width: 84px; }
   .bitem canvas { width: 56px; height: 44px; }
 }
+/* below ~420px the café name does not fit in the single HUD row: keep the badge and the level bar */
+@media (max-width: 420px) {
+  #hud .brand .bname { display: none; }
+  #hud .brand { flex: none; }
+  #hud .brand .lvl-wrap { min-width: 40px; width: 40px; flex: none; }
+}
 /* narrow phones (≤360px): smaller tabs keep a gutter on both sides of the tab bar */
 @media (max-width: 360px) {
   .tool { width: 44px; height: 44px; }
   #toolbar { gap: 2px; }
   #hud { gap: 3px; }
-  #hud .chip { padding-right: 5px; }
-  .brand .bname { max-width: 76px; }
+  #hud .chip { padding-right: 7px; }
+  /* the café chip shrinks to its level badge */
+  #hud .brand { width: 40px; padding: 0; justify-content: center; }
+  #hud .brand .lvl-wrap { display: none; }
 }
 /* Short landscape phones need one compact HUD row and a shallow sheet. */
 @media (max-height: 560px) and (orientation: landscape) and (max-width: 960px) {
   #hud { left: 50%; right: auto; top: calc(4px + var(--sat)); width: max-content; max-width: none; display: flex; flex-wrap: nowrap; gap: 5px; transform: translateX(-50%) scale(.78); transform-origin: top center; }
-  #hud .brand, #hud .chip:nth-child(1), #hud .chip:nth-child(3), #hud .chip:nth-child(4), #hud #gift { grid-column: auto; grid-row: auto; }
   #hud .brand .lvl-wrap { min-width: 84px; }
   #questbtn, #friendsbtn { top: calc(58px + var(--sat)); }
   #quest { top: calc(110px + var(--sat)); }

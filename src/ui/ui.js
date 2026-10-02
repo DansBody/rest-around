@@ -78,7 +78,7 @@ export class UI {
   buildDom() {
     const r = this.root;
     const before = new Set(r.children);
-    const ic = (id, s) => assets.iconEl(id, s);
+    const ic = (id, s, cls) => assets.iconEl(id, s, cls);
 
     // ----- HUD -----
     this.el = {};
@@ -99,7 +99,8 @@ export class UI {
       this.el.stars.appendChild(wrap);
     }
     this.el.ratingNum = h('span.num', { style: { minWidth: '30px', fontSize: '15px' } }, '0.0');
-    const rating = h('div.chip', { onclick: () => this.toggleRatingTip() }, this.el.stars, this.el.ratingNum);
+    // phones have room for one star and the number instead of the row of five
+    const rating = h('div.chip.rating', { title: t('Rating'), onclick: () => this.toggleRatingTip() }, this.el.stars, ic('icon_star', 22, 'ico star-one'), this.el.ratingNum);
     this.el.time = h('span', '8:00am');
     this.el.phase = h('small', 'Opening');
     this.el.day = h('small', 'Day 1');
@@ -549,8 +550,9 @@ ${k.desc}
   renderRatingTip() {
     const p = this.game.rating.parts;
     const names = { service: 'Service', clean: 'Cleanliness', dishes: 'Menu levels', decor: 'Decor', repair: 'Upkeep' };
-    const rows = Object.keys(RATING_WEIGHTS).map((k) => h('div.rrow', h('span', t(names[k])), h('div.pbar.gold', h('i', { style: { width: p[k] * 100 + '%' } })), h('span', Math.round(p[k] * 100) + '%')));
-    this.el.ratingTip.replaceChildren(h('b', t('Rating {a} → {b}', { a: this.game.state.rating.toFixed(2), b: this.game.rating.target.toFixed(2) })), ...rows, h('div.muted', t('More stars bring more customers. Tap to close.')));
+    // one shared grid, so every bar starts and every percentage ends at the same x
+    const rows = Object.keys(RATING_WEIGHTS).flatMap((k) => [h('span', t(names[k])), h('div.pbar.gold', h('i', { style: { width: p[k] * 100 + '%' } })), h('span.rpct', Math.round(p[k] * 100) + '%')]);
+    this.el.ratingTip.replaceChildren(h('b', t('Rating {a} → {b}', { a: this.game.state.rating.toFixed(2), b: this.game.rating.target.toFixed(2) })), h('div.rgrid', ...rows), h('div.muted', t('More stars bring more customers. Tap to close.')));
     this.el.ratingTip.onclick = () => this.el.ratingTip.classList.remove('show');
   }
 
