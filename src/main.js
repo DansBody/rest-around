@@ -85,6 +85,13 @@ async function boot() {
   // must keep that moment: a hidden tab does not run the game, hence no autosave while hidden, and the one
   // save made as the tab was hidden is the one that counts.
   initAccount(ui);   // the account section, the level-3 nudge, and news from a trip to Google / an email link
+  // friends helped out (at login, or while playing): a toast per friend for now
+  cloud.onIncoming = (list) => {
+    const by = {};
+    for (const d of list) (by[d.from] = by[d.from] || []).push(d);
+    for (const [from, ds] of Object.entries(by)) ui.toast(t('{name} dropped by and lent a hand ({n}) 💗', { name: from || t('A friend'), n: ds.length }), 'good');
+  };
+  if (cloud.incoming.length) cloud.onIncoming(cloud.incoming);
 
   // Online, the server counts the time away from the last heartbeat; the browser's copy is only a cache.
   const persist = (force) => { if (!game.resetting && (force || !document.hidden)) save(game); };

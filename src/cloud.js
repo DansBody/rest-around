@@ -25,6 +25,8 @@ class Cloud {
     this.busy = false;
     this.onStop = null;    // (reason: 'session' | 'version' | 'rev') → the game can no longer write; tell the player
     this.onAccount = null; // the signed-in user changed (linked, email confirmed…): redraw what shows it
+    this.onIncoming = null;   // (help) friends helped out: tell the player
+    this.incoming = [];
     this.returned = {};
   }
 
@@ -76,6 +78,7 @@ class Cloud {
     apply(game, r.body.save);
     game.awayReport = r.body.report || null;
     writeLocal(r.body.save, this.user.id);
+    this.incoming = r.body.incoming || [];   // friends' help, already in the save: the game only tells the player
     this.session = r.body.session; this.rev = r.body.rev;
     this.online = true;
     return r.body.created && !mine ? 'new' : 'loaded';
@@ -92,6 +95,7 @@ class Cloud {
         this.rev = r.body.rev;
         const c = r.body.corrected;
         if (c) this.correct(game, c);
+        if (r.body.incoming && r.body.incoming.length) this.receive(game, r.body.incoming);
         writeLocal(c || save, this.user.id);
       } else if (r.status === 409) this.stop(r.body.error === 'session' ? 'session' : 'rev');
       else if (r.status === 426) this.stop('version');
@@ -113,6 +117,25 @@ class Cloud {
       if (sd) a.skills = { ...(sd.skills || {}) };
     }
     game.changed('coins'); game.changed('points');
+  }
+
+  /** Friends' help the server just merged into the stored save: do the same to the café that is running. */
+  receive(game, incoming) {
+    const w = game.world;
+    for (const d of incoming) {
+      if (d.kind === 'clean') {
+        const loose = w.trash.filter((t) => !t.claimed).concat(w.trash.filter((t) => t.claimed));
+        for (const t of loose.slice(0, d.n || 0)) w.removeTrash(t);
+      } else if (d.kind === 'snack') {
+        const a = game.staff.find((x) => x.look && x.look.model === d.staff);
+        if (a) a.energy = Math.min(100, a.energy + (d.energy || 0));
+        else game.state.snacks[d.snack] = (game.state.snacks[d.snack] || 0) + 1;
+      } else if (d.kind === 'gift') {
+        for (const [id, n] of Object.entries(d.items || {})) game.state.inv[id] = (game.state.inv[id] || 0) + n;
+      }
+    }
+    game.changed('inv');
+    if (this.onIncoming) this.onIncoming(incoming);
   }
 
   /** "Reset game": the server swaps the save for a brand-new café. */

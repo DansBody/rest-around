@@ -15,6 +15,7 @@ export const ZH_TW = {
   'A new version of Refillit is ready.': 'Refillit 有新版本了。',
   'Café closed': '咖啡廳暫停營業', 'Reload': '重新載入',
   'Could not reach the server, try again.': '無法連上伺服器，請再試一次。',
+  '{name} dropped by and lent a hand ({n}) 💗': '{name} 來店裡幫忙了（{n} 件）💗', 'A friend': '一位好友',
   // ---------------- account (ui/account.js)
   'Account': '帳號', 'OK': '好', 'Later': '之後再說', 'Email': 'Email', 'Password': '密碼',
   'Not connected to the server: this café is only on this device for now.': '目前沒有連上伺服器，這間咖啡廳暫時只存在這台裝置上。',
