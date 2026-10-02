@@ -1,9 +1,12 @@
 // Mouse, touch and keyboard input for the 3D view.
-// Left-drag pans (the ground follows the cursor), right-drag rotates, wheel/pinch zooms,
+// Left-drag pans (the ground follows the cursor), right-drag rotates, wheel zooms, two fingers pinch,
+// twist and slide like a map,
 // Q/E rotate in 90deg steps, click picks characters / tiles. While visiting a friend the camera moves
 // around their café (the one the renderer shows) and a tap on their staff or litter offers to help.
 import { audio } from './audio.js';
 import { endVisit, visitTap } from './ui/visit.js';
+
+const PINCH_TURN = 0.17;   // radians (~10°) of twist before a two-finger gesture starts rotating
 
 export function setupInput(game, canvas, ui, debug) {
   const shown = () => (game.renderer ? game.renderer.game : game);
@@ -13,6 +16,7 @@ export function setupInput(game, canvas, ui, debug) {
   const pointers = new Map();
   let pinch = null;
   const R = () => game.renderer;
+  const twoFingers = (a, b) => ({ d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 });
   const local = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -24,7 +28,7 @@ export function setupInput(game, canvas, ui, debug) {
     pointers.set(e.pointerId, p);
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
-      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x) };
+      pinch = { ...twoFingers(a, b), turn: 0, turning: false };
       down = null;
       return;
     }
@@ -39,10 +43,17 @@ export function setupInput(game, canvas, ui, debug) {
     const p = local(e);
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
     if (pinch && pointers.size === 2) {
+      // like a map: the floor between the fingers stays under them while they pinch, twist and slide
       const [a, b] = [...pointers.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y), ang = Math.atan2(b.y - a.y, b.x - a.x);
-      cam.zoomAt(d / pinch.d); pinch.d = d;
-      cam.rotateBy(-(ang - pinch.ang)); pinch.ang = ang;
+      const now = twoFingers(a, b), held = R().groundAt(pinch.mx, pinch.my);
+      let turn = now.ang - pinch.ang;
+      turn -= Math.round(turn / (2 * Math.PI)) * 2 * Math.PI;   // atan2 wraps at ±180°
+      // a pinch is never perfectly straight: only start turning once the fingers clearly twist
+      if (!pinch.turning) { pinch.turn += turn; pinch.turning = Math.abs(pinch.turn) > PINCH_TURN; turn = 0; }
+      shown().camera.zoomNow(now.d / pinch.d);
+      if (turn) cam.rotateBy(turn);   // the room turns the same way as the fingers
+      R().keepUnder(held, now.mx, now.my);
+      Object.assign(pinch, now);
       return;
     }
     const b = game.build;

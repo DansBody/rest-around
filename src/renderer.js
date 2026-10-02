@@ -324,10 +324,7 @@ export class Renderer {
     this.time += realDt;
     const c = g.camera;
     c.update(realDt);
-    const p = c.position();
-    this.cam.position.set(p.x, p.y, p.z);
-    this.cam.lookAt(c.tx, 0.8, c.tz);
-    this.cam.fov = c.fov; this.cam.updateProjectionMatrix();
+    this.syncCamera();
     if (this.roomSize !== g.world.size) { this.buildRoom(g.world.size); g.camera.setRoom(g.world.size); }
     this.updateLighting(realDt);
     this.syncFloors();
@@ -848,6 +845,15 @@ export class Renderer {
     ctx.restore();
   }
 
+  /** Pose the three.js camera from the game camera (every frame, and mid-gesture so picking sees the move). */
+  syncCamera() {
+    const c = this.game.camera, p = c.position();
+    this.cam.position.set(p.x, p.y, p.z);
+    this.cam.lookAt(c.tx, 0.8, c.tz);
+    this.cam.fov = c.fov; this.cam.updateProjectionMatrix();
+    this.cam.updateMatrixWorld();   // picking reads this; three.js only refreshes it when drawing
+  }
+
   // ------------------------------------------------------------------ picking
   groundAt(vx, vy) {
     const r = this.canvas.getBoundingClientRect();
@@ -869,6 +875,15 @@ export class Renderer {
     if (!a || !b) return;
     const c = this.game.camera;
     c.tx -= b.x - a.x; c.tz -= b.z - a.z; c.clamp();
+  }
+  /** Slide the camera so the ground point `g` sits under screen point (vx, vy) again. */
+  keepUnder(g, vx, vy) {
+    this.syncCamera();
+    const b = this.groundAt(vx, vy);
+    if (!g || !b) return;
+    const c = this.game.camera;
+    c.tx -= b.x - g.x; c.tz -= b.z - g.z; c.clamp();
+    this.syncCamera();
   }
   pickAgent(vx, vy) {
     let best = null, bd = 1e9;

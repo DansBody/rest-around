@@ -46,6 +46,8 @@ export class Camera {
   zoomAt(factor) {
     this.distTarget = clamp(this.distTarget / factor, this.minDist, this.maxDist);
   }
+  /** Zoom with no easing (pinch: the room has to stay under the fingers). */
+  zoomNow(factor) { this.dist = this.distTarget = clamp(this.dist / factor, this.minDist, this.maxDist); }
   rotate(steps) { this.yawTarget += (steps * Math.PI) / 2; }
   rotateBy(rad) { this.yawTarget += rad; this.yaw += rad; }
   clamp() {
