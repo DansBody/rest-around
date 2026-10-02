@@ -173,11 +173,13 @@ seed 保持 deterministic，改成 `serverSavedAt ^ sec`。因為結果由伺服
 
 **共用程式碼與部署：** `offline.js`、`authority.js` 和 `data.js`（以及它們 import 的 `rating.js`、`pantry.js`、`util.js`）是純 ES module，伺服器直接打包同一份。這幾個檔案要一直保持不在最外層碰 DOM、`window` 和 localStorage。
 
+部署（CLI 已登入，會自動帶上 `index.ts` import 到的 `src/` 檔案，不需要另外打包）：
+
 ```
-node tools/build_functions.js        # → build/functions/game/index.js（單一檔案）
+npx supabase functions deploy game --project-ref aizfyuioebmrhmfzsugh --use-api --no-verify-jwt
 ```
 
-產生的檔案用 Supabase MCP 的 `deploy_edge_function` 部署（`verify_jwt: false`，函式自己用 `getClaims` 驗證使用者）。CLI 登入（`npx supabase login`）之後，也可以改用 CLI 部署。
+`--no-verify-jwt` 是必要的：函式自己用 `getClaims` 驗證使用者。CLI 不能用的時候，備案是 `node tools/build_functions.js` 打包成單一檔案（`build/functions/game/index.js`），再用 Supabase MCP 的 `deploy_edge_function` 上傳。
 
 **改平衡時：** 先把 `BALANCE_VERSION` 加一並部署伺服器，再更新遊戲。
 
