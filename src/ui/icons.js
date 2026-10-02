@@ -41,6 +41,8 @@ const G = {
   settings: [['path', { d: gearPath(12, 12, 6.9, 9, 8), stroke: 'c', 'stroke-width': 1.6, fill: 'currentColor', 'fill-opacity': 0.12 }], ['circle', { cx: 12, cy: 12, r: 2.9, stroke: 'c', 'stroke-width': 1.6 }]],
   heart: [['path', { d: 'M12 20.2s-7.6-4.6-7.6-10.1A4.2 4.2 0 0 1 12 7.7a4.2 4.2 0 0 1 7.6 2.4c0 5.5-7.6 10.1-7.6 10.1z', fill: 'url(#g-rose)', stroke: '#e8385e', 'stroke-width': 1.1 }]],
   angry: [['circle', { cx: 12, cy: 12, r: 9, fill: 'url(#g-orange)', stroke: '#e0662a', 'stroke-width': 1.1 }], ['path', { d: 'M7.6 9.2l2.6 1.2M16.4 9.2l-2.6 1.2M8.6 16.4c1.9-1.8 4.9-1.8 6.8 0', stroke: '#7a2e0e', 'stroke-width': 1.6 }]],
+  friends: [['circle', { cx: 9.5, cy: 8, r: 3.3, stroke: 'c' }], ['path', { d: 'M3.6 19.5c.6-3.5 2.9-5.4 5.9-5.4 1.4 0 2.6.4 3.6 1.1', stroke: 'c' }], ['path', { d: 'M17.6 20.4s-4-2.4-4-5.3a2.2 2.2 0 0 1 4-1.3 2.2 2.2 0 0 1 4 1.3c0 2.9-4 5.3-4 5.3z', fill: 'url(#g-rose)', stroke: '#e8385e', 'stroke-width': 1 }]],
+  copy: [['rect', { x: 8.5, y: 8.5, width: 11, height: 11, rx: 2.4, stroke: 'c' }], ['path', { d: 'M15.5 5.6V5a1.8 1.8 0 0 0-1.8-1.8H6.3A1.8 1.8 0 0 0 4.5 5v7.4a1.8 1.8 0 0 0 1.8 1.8h.6', stroke: 'c' }]],
   close: [['path', { d: 'M6.5 6.5l11 11M17.5 6.5l-11 11', stroke: 'c', 'stroke-width': 2 }]],
   back: [['path', { d: 'M15 4.5 7.5 12l7.5 7.5', stroke: 'c', 'stroke-width': 2 }]],
   forward: [['path', { d: 'M9 4.5l7.5 7.5L9 19.5', stroke: 'c', 'stroke-width': 2 }]],
@@ -71,7 +73,7 @@ export const ICON_GLYPHS = {
   icon_coin: 'coin', icon_star: 'star', icon_star_empty: 'star_empty', icon_points: 'points', icon_level: 'level',
   icon_clock: 'clock', icon_gift: 'gift', icon_energy: 'energy', icon_patience: 'patience', icon_rotate: 'rotate',
   icon_move: 'move', icon_sell: 'sell', icon_lock: 'lock', icon_water: 'water', icon_seed: 'seed', icon_harvest: 'harvest',
-  tool_build: 'build', tool_staff: 'staff', tool_menu: 'menu', tool_garden: 'garden', tool_market: 'market', tool_settings: 'settings',
+  tool_build: 'build', tool_staff: 'staff', tool_menu: 'menu', tool_garden: 'garden', tool_market: 'market', tool_friends: 'friends', tool_settings: 'settings',
   emote_heart: 'heart', emote_angry: 'angry', emote_sad: 'sad', emote_zzz: 'zzz', emote_wait: 'patience',
   emote_sparkle: 'sparkles', emote_note: 'note', emote_broken: 'broken', emote_menu: 'menucard',
 };

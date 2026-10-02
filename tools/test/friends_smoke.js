@@ -29,7 +29,7 @@ if (process.argv[2] === 'setup') {
     ok(r.status === 200, `${name} signs in and opens a café`, p.id);
     players[name] = p;
   }
-  const code = (await call(players.B, { op: 'friends' })).body.code;
+  const code = (await call(players.B, { op: 'friends' })).body.me.code;
   ok(/^[A-Z2-9]{8}$/.test(code || ''), 'B has a friend code', code);
   const r = await call(players.A, { op: 'friend_add', code });
   ok(r.status === 403 && r.body.error === 'link', 'an unlinked player cannot add friends');
@@ -46,14 +46,19 @@ if (process.argv[2] === 'setup') {
   A.session = la.body.session; A.rev = la.body.rev; B.session = lb.body.session; B.rev = lb.body.rev;
   const bSave = lb.body.save;
 
-  const codeB = (await call(B, { op: 'friends' })).body.code;
+  const codeB = (await call(B, { op: 'friends' })).body.me.code;
   ok((await call(A, { op: 'friend_add', code: 'NOPE2345' })).status === 404, 'an unknown code → 404');
-  ok((await call(A, { op: 'friend_add', code: (await call(A, { op: 'friends' })).body.code })).body.error === 'self', 'cannot befriend yourself');
+  ok((await call(A, { op: 'friend_add', code: (await call(A, { op: 'friends' })).body.me.code })).body.error === 'self', 'cannot befriend yourself');
+  let pr = await call(A, { op: 'profile_set', nickname: '  Annie\u0007 the barista,  with a long name ', avatar: { model: 'heehee', bg: '#c9e8d4' } });
+  ok(pr.status === 200 && pr.body.me.name === 'Annie the barist' && pr.body.me.avatar.model === 'heehee', 'A sets a nickname (cleaned, 16 characters) and an avatar', pr.body.me && JSON.stringify(pr.body.me.name));
+  ok((await call(A, { op: 'profile_set', nickname: 'x', avatar: { model: 'dragon', bg: '#000000' } })).body.error === 'avatar', 'an unknown avatar is refused');
+  pr = await call(A, { op: 'profile_set', nickname: '安妮' });
+  ok(pr.body.me.name === '安妮' && pr.body.me.avatar.model === 'heehee', 'changing only the nickname keeps the avatar');
   let r = await call(A, { op: 'friend_add', code: codeB.toLowerCase().replace(/(....)/, '$1-') });
   ok(r.status === 200 && r.body.status === 'pending', 'A invites B (code typed in lower case with a dash)');
   ok((await call(A, { op: 'visit', id: B.id })).status === 404, 'no visiting before B accepts');
   r = await call(B, { op: 'friends' });
-  ok(r.body.incoming.length === 1 && r.body.incoming[0].name === 'Test A', 'B sees the invite from Test A');
+  ok(r.body.incoming.length === 1 && r.body.incoming[0].name === '安妮' && r.body.incoming[0].cafe === 'Test A' && r.body.incoming[0].avatar.model === 'heehee', 'B sees the invite from 安妮 (Test A), with her avatar');
   ok((await call(B, { op: 'friend_accept', id: A.id })).status === 200, 'B accepts');
   r = await call(A, { op: 'friends' });
   const fr = r.body.friends[0];
@@ -78,7 +83,7 @@ if (process.argv[2] === 'setup') {
   r = await call(B, { op: 'beat', session: B.session, rev: B.rev, save: bSave });
   const inc = r.body.incoming || [];
   ok(r.status === 200 && inc.length === 3, 'B’s next heartbeat brings three helping hands', inc.map((d) => d.kind).join(','));
-  ok(inc.every((d) => d.from === 'Test A'), 'each is signed by Test A');
+  ok(inc.every((d) => d.from === '安妮'), 'each is signed by 安妮');
   B.rev = r.body.rev;
   const lb2 = await call(B, { op: 'login', local: null });
   const s2 = lb2.body.save;

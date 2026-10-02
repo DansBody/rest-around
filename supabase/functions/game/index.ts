@@ -13,7 +13,8 @@
 //        → { rev }
 //
 // Friends (linked accounts only for adding and helping; see social.js):
-//   { op: 'friends' }                          → { code, linked, friends, incoming, outgoing }
+//   { op: 'friends' }                          → { me, linked, friends, incoming, outgoing }
+//   { op: 'profile_set', nickname, avatar? }   → { me }   (anyone signed in; avatar per social.js AVATAR)
 //   { op: 'friend_add', code }                 → { status: 'pending' | 'accepted' | 'already' }
 //   { op: 'friend_accept', id }                → { ok }
 //   { op: 'friend_remove', id }                → { ok }   (decline, cancel or unfriend)
@@ -30,7 +31,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { settleOffline, levelFor } from '../../../src/offline.js';
 import { capCheck, badShape, wealth, isFreshSave } from '../../../src/authority.js';
-import { FRIENDS, heartsFor, leftToday, planHelp, applyDeliveries, HELP_KINDS } from '../../../src/social.js';
+import { FRIENDS, heartsFor, leftToday, planHelp, applyDeliveries, HELP_KINDS, cleanNick, validAvatar } from '../../../src/social.js';
 import { BALANCE_VERSION, OFFLINE } from '../../../src/data.js';
 
 const secret = (() => {
@@ -82,8 +83,8 @@ async function withInbox(user: string, data: any) {
 }
 async function namesOf(ids: string[]) {
   if (!ids.length) return {} as Record<string, string>;
-  const rows = must(await db.from('profiles').select('user_id, cafe_name').in('user_id', [...new Set(ids)])) as any[];
-  return Object.fromEntries(rows.map((r) => [r.user_id, r.cafe_name]));
+  const rows = must(await db.from('profiles').select('user_id, cafe_name, nickname').in('user_id', [...new Set(ids)])) as any[];
+  return Object.fromEntries(rows.map((r) => [r.user_id, r.nickname || r.cafe_name]));
 }
 
 // ---------------------------------------------------------------- the café
@@ -160,11 +161,16 @@ async function reset(user: string, body: any) {
 }
 
 // ---------------------------------------------------------------- friends
-async function myCode(user: string) {
-  let p = must(await db.from('profiles').select('friend_code').eq('user_id', user).maybeSingle()) as any;
-  if (!p) p = must(await db.from('profiles').insert({ user_id: user }).select('friend_code').single());
-  return p.friend_code as string;
+const PROFILE = 'user_id, friend_code, cafe_name, level, nickname, avatar';
+/** This player's profile (made on first use: that is when the friend code is drawn). */
+async function myProfile(user: string) {
+  let p = must(await db.from('profiles').select(PROFILE).eq('user_id', user).maybeSingle()) as any;
+  if (!p) p = must(await db.from('profiles').upsert({ user_id: user }, { onConflict: 'user_id' }).select(PROFILE).single());
+  return p;
 }
+/** How a player looks to others: the nickname (or the café name), the café, the level, the avatar. */
+const face = (p: any) => ({ name: (p && (p.nickname || p.cafe_name)) || '', cafe: (p && p.cafe_name) || '', level: (p && p.level) || 1, avatar: (p && p.avatar) || null });
+const meOf = (p: any) => ({ code: p.friend_code, nickname: p.nickname, ...face(p) });
 async function friendship(me: string, other: string) {
   const { a, b } = pair(me, other);
   return must(await db.from('friendships').select('*').eq('a', a).eq('b', b).maybeSingle()) as any;
@@ -180,21 +186,32 @@ async function usedToday(me: string, targets: string[]) {
 const leftFor = (hearts: number, used: Record<string, number> = {}) => Object.fromEntries(HELP_KINDS.map((k) => [k, leftToday(k, hearts, used[k])]));
 
 async function friends(me: Me) {
-  const code = await myCode(me.id);
+  const mine = await myProfile(me.id);
   const rows = must(await db.from('friendships').select('*').or(`a.eq.${me.id},b.eq.${me.id}`)) as any[];
   const others = rows.map((r) => (r.a === me.id ? r.b : r.a));
-  const profs = others.length ? Object.fromEntries((must(await db.from('profiles').select('user_id, cafe_name, level').in('user_id', others)) as any[]).map((p) => [p.user_id, p])) : {};
+  const profs = others.length ? Object.fromEntries((must(await db.from('profiles').select(PROFILE).in('user_id', others)) as any[]).map((p) => [p.user_id, p])) : {};
   const used = await usedToday(me.id, others);
   const card = (r: any) => {
-    const id = r.a === me.id ? r.b : r.a, p = profs[id] || {}, hearts = heartsFor(r.points);
-    return { id, name: p.cafe_name || '', level: p.level || 1, points: r.points, hearts, left: leftFor(hearts, used[id]) };
+    const id = r.a === me.id ? r.b : r.a, hearts = heartsFor(r.points);
+    return { id, ...face(profs[id]), points: r.points, hearts, left: leftFor(hearts, used[id]) };
   };
   return reply(200, {
-    code, linked: me.linked, max: FRIENDS.max,
+    me: meOf(mine), linked: me.linked, max: FRIENDS.max,
     friends: rows.filter((r) => r.status === 'accepted').map(card),
     incoming: rows.filter((r) => r.status === 'pending' && r.requested_by !== me.id).map(card),
     outgoing: rows.filter((r) => r.status === 'pending' && r.requested_by === me.id).map(card),
   });
+}
+
+async function profileSet(me: Me, body: any) {
+  await myProfile(me.id);
+  const patch: Record<string, unknown> = { nickname: cleanNick(body.nickname) };
+  if (body.avatar !== undefined) {
+    if (!validAvatar(body.avatar)) return reply(400, { error: 'avatar' });
+    patch.avatar = { model: body.avatar.model, bg: body.avatar.bg };
+  }
+  const p = must(await db.from('profiles').update(patch).eq('user_id', me.id).select(PROFILE).single());
+  return reply(200, { me: meOf(p) });
 }
 
 async function friendAdd(me: Me, body: any) {
@@ -238,10 +255,10 @@ async function visit(me: Me, body: any) {
   if (!f || f.status !== 'accepted') return reply(404, { error: 'friend' });
   const row = must(await db.from('saves').select('data').eq('user_id', id).maybeSingle()) as any;
   if (!row) return reply(404, { error: 'save' });
-  const p = must(await db.from('profiles').select('cafe_name, level').eq('user_id', id).maybeSingle()) as any || {};
+  const p = must(await db.from('profiles').select(PROFILE).eq('user_id', id).maybeSingle());
   const hearts = heartsFor(f.points);
   const used = await usedToday(me.id, [id]);
-  return reply(200, { save: row.data, name: p.cafe_name || '', level: p.level || 1, hearts, points: f.points, left: leftFor(hearts, used[id]) });
+  return reply(200, { save: row.data, ...face(p), hearts, points: f.points, left: leftFor(hearts, used[id]) });
 }
 
 async function help(me: Me, body: any) {
@@ -285,6 +302,7 @@ Deno.serve(async (req) => {
       case 'beat': return await beat(me.id, body);
       case 'reset': return await reset(me.id, body);
       case 'friends': return await friends(me);
+      case 'profile_set': return await profileSet(me, body);
       case 'friend_add': return await friendAdd(me, body);
       case 'friend_accept': return await friendAccept(me, body);
       case 'friend_remove': return await friendRemove(me, body);

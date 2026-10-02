@@ -119,6 +119,12 @@ class Cloud {
     game.changed('coins'); game.changed('points');
   }
 
+  /** A friends call (see the `game` function): { status, body }; status 0 when the server cannot be reached. */
+  async api(op, body = {}) {
+    if (!this.user) return { status: 0, body: { error: 'offline' } };
+    try { return await this.call({ op, ...body }); } catch (e) { console.warn(op, e); return { status: 0, body: { error: 'offline' } }; }
+  }
+
   /** Friends' help the server just merged into the stored save: do the same to the café that is running. */
   receive(game, incoming) {
     const w = game.world;

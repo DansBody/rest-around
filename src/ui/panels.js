@@ -11,6 +11,7 @@ import {
 import { clearSave, save, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
 import { accountSection } from './account.js';
+import { renderFriends } from './friends.js';
 import { audio } from '../audio.js';
 import { gl, glyph } from './icons.js';
 import { t, tt, titledRole, LANGS, getLang } from '../i18n.js';
@@ -67,6 +68,7 @@ export const PANELS = {
   menu: { title: 'Menu', icon: 'tool_menu', render: renderMenu },
   garden: { title: 'Garden', icon: 'tool_garden', live: true, render: renderGarden },
   market: { title: 'Market', icon: 'tool_market', render: renderMarket },
+  friends: { title: 'Friends', icon: 'tool_friends', render: renderFriends },
   settings: { title: 'Settings', icon: 'tool_settings', render: renderSettings },
 };
 

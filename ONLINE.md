@@ -12,7 +12,8 @@
 | 遊戲端：`src/cloud.js`（匿名登入、心跳、單一 session） | 完成；連不上伺服器時自動改為離線遊玩 |
 | 綁定帳號（`src/ui/account.js`）：Google / Email 綁定、登入其他帳號、忘記密碼、登出、Lv 3 提示 | 完成；真實的 Google 和 Email 流程待實測 |
 | 好友、拜訪、幫忙與送禮：伺服器（`src/social.js`、`game` 的好友 op、四張資料表） | 完成，`tools/test/friends_smoke.js` 全部通過 |
-| 好友名單 UI、拜訪模式、幫忙的操作畫面 | 尚未開始 |
+| 好友面板（`src/ui/friends.js`）：個人資料（暱稱、頭像）、好友代碼、加好友、邀請、好友列表 | 完成 |
+| 拜訪模式、幫忙的操作畫面、「誰來幫過忙」的通知卡片 | 尚未開始 |
 
 ## 範圍
 
@@ -100,6 +101,12 @@ seed 保持 deterministic，改成 `serverSavedAt ^ sec`。因為結果由伺服
 - 加好友前**必須先綁定帳號**。匿名帳號清掉瀏覽器資料就會消失，好友關係也會跟著不見；這個門檻也能擋掉大量開小帳號互送食材的情況。
 - 好友上限 50 人。
 
+### 個人資料
+
+- 暱稱：最多 16 個字，留空的話好友看到的是咖啡廳名稱。
+- 頭像：從自家角色（`UNIQUE_MODELS`）選一個，再選一個背景色（`social.js` 的 `AVATAR`），由伺服器檢查是否合法。
+- 存在 `profiles.nickname` 和 `profiles.avatar`，用 `op: 'profile_set'` 修改。匿名帳號也可以設定，但要綁定帳號後才能加好友。
+
 ### 拜訪
 
 - 從好友名單點進去，伺服器回傳對方最後一次存檔的快照（只限好友）。
@@ -141,7 +148,7 @@ seed 保持 deterministic，改成 `serverSavedAt ^ sec`。因為結果由伺服
 
 | 資料表 | 內容 |
 |---|---|
-| `profiles` | `user_id`、`friend_code`（唯一）、咖啡廳名稱、等級；給好友名單顯示用，每次心跳時由伺服器更新 |
+| `profiles` | `user_id`、`friend_code`（唯一）、咖啡廳名稱、等級（每次存檔時由伺服器更新）、暱稱、頭像 |
 | `friendships` | 一對玩家（`a < b`）、狀態（pending / accepted）、誰送出邀請、友好度 |
 | `help_log` | 每次幫忙的紀錄（誰、對誰、哪一天、什麼動作），用來計算每日上限 |
 | `deliveries` | 收件人的信箱：寄件人、種類、內容（jsonb）、送達時間 |

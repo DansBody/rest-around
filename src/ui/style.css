@@ -446,3 +446,17 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .account-links { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .account-links .btn { width: 100%; justify-content: center; }
 .linkish { background: none; border: 0; padding: 4px; color: var(--ink-soft); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+
+/* ---------------- friends ---------------- */
+.avatar { flex: none; border-radius: 50%; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+.avatar .avatar-img { width: 100% !important; height: 100% !important; border-radius: 0; background: none; transform: translateY(6%) scale(1.12); }
+.hearts { display: inline-flex; gap: 1px; vertical-align: -2px; }
+.hearts .ico.off { opacity: .22; filter: grayscale(1); }
+.code-row { display: flex; gap: 8px; align-items: center; }
+.code-row input { flex: 1; min-width: 0; letter-spacing: .08em; }
+.friend-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 17px; letter-spacing: .1em; padding: 8px 12px; border-radius: 12px; background: var(--fill); flex: 1; text-align: center; }
+.friend-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.muted.small { font-size: 12px; margin-top: 2px; }
+.avatar-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+.avatar-opt { padding: 3px; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.avatar-opt.on { box-shadow: 0 0 0 2.5px var(--ink); }

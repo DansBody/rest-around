@@ -6,7 +6,7 @@
 // next heartbeat or login (`applyDeliveries`), so a friend who is playing at that very moment loses nothing.
 //
 // Pure, like offline.js: plain JSON in and out, runs in the browser and in the Edge Function.
-import { snackById, ingById } from './data.js';
+import { snackById, ingById, UNIQUE_MODELS } from './data.js';
 
 export const FRIENDS = {
   max: 50,                          // friends (and open invites) per player
@@ -18,6 +18,16 @@ export const FRIENDS = {
   helperPoints: 3,                  // café points the helper earns per action
 };
 export const HELP_KINDS = ['clean', 'snack', 'gift'];
+
+/** What a player shows on friend lists: a nickname and one of our own characters on a coloured disc. */
+export const AVATAR = {
+  models: UNIQUE_MODELS,
+  bgs: ['#f6d7c3', '#f9c6d0', '#fde3a7', '#c9e8d4', '#c6dcf2', '#ddd0f0', '#e8e2d8', '#3a3a44'],
+  nickMax: 16,
+};
+/** A clean nickname: trimmed, no control characters, at most AVATAR.nickMax characters. */
+export const cleanNick = (s) => Array.from(String(s || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()).slice(0, AVATAR.nickMax).join('').trim();
+export const validAvatar = (a) => !!a && AVATAR.models.includes(a.model) && AVATAR.bgs.includes(a.bg);
 
 export const heartsFor = (points) => { let h = 1; while (h < FRIENDS.hearts.length && points >= FRIENDS.hearts[h]) h++; return h; };
 /** What is left today for `kind` toward one friend: `used` is how much was already done today (gift: items). */

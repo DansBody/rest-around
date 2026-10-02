@@ -106,7 +106,7 @@ function linkPromptCard(ui) {
     h('button.linkish', { onclick: () => ui.closeModal() }, t('Later')));
 }
 
-function linkButtons(ui, inModal = false) {
+export function linkButtons(ui, inModal = false) {
   return h('div.account-links',
     h('button.btn.primary', { onclick: () => { if (inModal) ui.closeModal(); cloud.linkGoogle(ui.game).catch((e) => ui.toast(errText(e), 'bad')); } }, t('Link with Google')),
     h('button.btn', { onclick: () => { if (inModal) ui.closeModal(); ui.queueModal(() => linkEmailCard(ui)); } }, t('Link with email')));

@@ -20,6 +20,7 @@ const TOOLS = [
   { id: 'menu', label: 'Menu', glyph: 'menu' },
   { id: 'garden', label: 'Garden', glyph: 'garden' },
   { id: 'market', label: 'Market', glyph: 'market' },
+  { id: 'friends', label: 'Friends', glyph: 'friends' },
   { id: 'settings', label: 'Settings', glyph: 'settings' },
 ];
 
