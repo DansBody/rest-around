@@ -88,10 +88,6 @@ export function setupInput(game, canvas, ui, debug) {
           const a = R().pickAgent(p.x, p.y);
           ui.select(a);
           if (a) game.sfx('click');
-          else {
-            const t = R().pickTile(p.x, p.y);
-            if (R().plotIndexAt(t.x, t.y) >= 0) { game.sfx('click'); ui.openPanel('garden'); }
-          }
         }
       }
     }

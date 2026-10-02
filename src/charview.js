@@ -6,6 +6,20 @@ import { addEars } from './ears.js';
 
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
 const SIT_FORWARD = 0.68;
+const SWING = 0.55;   // seconds of a bat swing (staff.swingT counts down from this)
+
+/** A wooden bat (Baseball Club), made in code: the handle sits at the origin. */
+export function makeBat() {
+  const g = new THREE.Group();
+  const wood = new THREE.MeshLambertMaterial({ color: '#d9a066' });
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.03, 0.95, 10), wood);
+  barrel.position.y = 0.5; barrel.castShadow = true; g.add(barrel);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 6), wood);
+  cap.position.y = 0.975; g.add(cap);
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.16, 8), new THREE.MeshLambertMaterial({ color: '#3a3a44' }));
+  grip.position.y = 0.06; g.add(grip);
+  return g;
+}
 
 export class CharacterView {
   constructor(scene, agent, manifest) {
@@ -73,6 +87,9 @@ export class CharacterView {
     this.current = name;
   }
 
+  /** Where a bat is gripped: the tray-carrying point in front of the chest (manifest `trayPos`), so it never sinks into the body. */
+  batGrip() { return this.def.trayPos || [0, 1.05, 0.55]; }
+
   /** Pick a held prop, cached per kind. */
   setHeld(held) {
     const key = held ? held.id + '|' + (held.dish || '') : null;
@@ -82,7 +99,14 @@ export class CharacterView {
     if (!held) return;
     let o = this.held[key];
     if (!o) {
-      if (held.id === 'held_tray') {
+      if (held.id === 'held_bat') {   // gripped where a tray is carried, out in front, held up ready to swing
+        o = new THREE.Group();
+        const bat = makeBat();
+        bat.position.set(...this.batGrip());
+        bat.rotation.set(-0.2, 0, 0.3);
+        o.add(bat);
+        this.root.add(o);
+      } else if (held.id === 'held_tray') {
         o = new THREE.Group();
         const tray = models.instance('m_tray'); o.add(tray);
         if (held.dish) {
@@ -121,13 +145,18 @@ export class CharacterView {
     } else if (p.moving) anim = p.held && p.held.id === 'held_tray' ? 'carry' : 'walk';
     else if (p.mode && p.mode !== 'idle' && p.mode !== 'carry') anim = p.mode;
     if (p.hop > 0 && p.hop < 1) y += Math.sin(p.hop * Math.PI) * 0.35;
+    if (a.fly) y += a.fly.h;   // knocked out of the café: up and away, head over heels
     if (p.shake) x += Math.sin((p.t || 0) * 45) * 0.05;
     // smooth facing (shortest way round)
     let d = target - this.yaw;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.yaw += d * Math.min(1, dt * 12);
     this.root.position.set(x, y, z);
-    this.root.rotation.y = this.yaw + (a.spinT > 0 ? (1 - a.spinT / 0.8) * Math.PI * 4 : 0);
+    // a bat swing: wind up (turn away), then whip round through the ball
+    let swing = 0;
+    if (a.swingT > 0) { const k = 1 - a.swingT / SWING; swing = k < 0.55 ? -0.9 * (k / 0.55) : -0.9 + 3.6 * Math.min(1, (k - 0.55) / 0.25); }
+    this.root.rotation.y = this.yaw + (a.spinT > 0 ? (1 - a.spinT / 0.8) * Math.PI * 4 : 0) + swing;
+    this.root.rotation.x = a.fly ? a.fly.spin : 0;
     this.play(anim);
     this.setHeld(p.held);
     // animations keep pace with sprinting / skilled staff

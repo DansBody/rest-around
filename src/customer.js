@@ -5,14 +5,15 @@ import { Agent } from './agent.js';
 import { randomLook } from './looks.js';
 import { models } from './models.js';
 import { t } from './i18n.js';
-import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, CASHIER, dishPrice, dishPoints, EXTRA_CAT } from './data.js';
+import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, CASHIER, TROUBLE, dishPrice, dishPoints, EXTRA_CAT } from './data.js';
 import { DOOR_Y } from './world.js';
+import { DIRS } from './iso.js';
 import { choice, chance, rand, manhattan, uid } from './util.js';
 
 export class Customer extends Agent {
   constructor(game) {
     super(game, 'customer', choice(CUSTOMER_NAMES), randomLook());
-    this.speed = SPEED.customer * rand(0.88, 1.1);
+    this.speed = this.baseSpeed = SPEED.customer * rand(0.88, 1.1);
     this.state = 'enter';
     this.patience = 1;
     this.pRate = 0;
@@ -25,12 +26,16 @@ export class Customer extends Agent {
     this.gliding = false;
     this.mood = 'Craving coffee';
     this.orderJob = null;
+    this.rude = false;      // walked in looking for trouble (see rampage)
+    this.trouble = null;    // { kind: 'rude' | 'dash', by: the staff member sent after them, over }
+    this.fly = null;        // knocked out of the café by a home run
   }
 
   canNudge() { return this.state === 'queue' && !this.stepping; }
   stateLabel() { return this.state + (this.showPatience ? ` ${Math.round(this.patience * 100)}%` : ''); }
 
   update(dt) {
+    if (this.fly) return this.flyAway(dt);
     super.update(dt);
     if (this.gliding) this.moving = true;
     const g = this.game;
@@ -56,6 +61,7 @@ export class Customer extends Agent {
 
   decide() {
     const g = this.game;
+    if (this.rude) return this.rampage();
     const { clean, dirty } = g.world.seats.reduce((acc, s) => {
       if (s.customer || s.reserved || !g.world.accessFor(s.chair).length) return acc;
       (s.dirty ? acc.dirty : acc.clean).push(s);
@@ -200,8 +206,10 @@ export class Customer extends Agent {
     const bloom = g.perk('bloom'), spot = g.inSpotlight(this.x, this.y);
     if (bloom && s >= bloom.min) { tip = Math.round(tip * (1 + bloom.tip)); g.fx.petals(g.at(this.x, this.y, 90), 9); }
     if (spot) { tip *= 2; g.fx.sparkle(g.at(this.x, this.y, 90), 8, '#ffe27a'); }
-    g.eco.earn(coins + tip, points, this.x, this.y - 0.2, this.lift + 110);
-    this.till = Math.round(coins * CASHIER.tip * s);   // the extra tip, if they pass a cashier on the way out
+    // now and then a guest eats up and runs off without paying (the bill can still be chased down)
+    this.owed = this.forceDash || g.troubles.rollDash() ? coins : 0;
+    g.eco.earn(this.owed ? 0 : coins + tip, points, this.x, this.y - 0.2, this.lift + 110);
+    this.till = this.owed ? 0 : Math.round(coins * CASHIER.tip * s);   // the extra tip, if they pass a cashier on the way out
     g.rating.addService(0.55 + 0.45 * s);
     if (spot) g.rating.addService(0.55 + 0.45 * s);   // Spotlight: this table counts double
     g.state.stats.served++;
@@ -237,6 +245,7 @@ export class Customer extends Agent {
 
   afterMeal() {
     const g = this.game;
+    if (this.owed) return this.dineAndDash();
     this.standUp();
     if (chance(0.3)) this.do(() => { g.world.addTrash(this.tx, this.ty); });
     const w = g.world;
@@ -344,6 +353,155 @@ export class Customer extends Agent {
     this.do(() => this.releaseAll());
     this.glide(-2.5, DOOR_Y + 0.5);
     this.do(() => { g.street.adopt(this, Math.random() < 0.5 ? -9 : g.world.size + 9); this.gone = true; });
+  }
+
+  // ---------- trouble: a rude guest ----------
+  /** Walks in looking for trouble (rolled in game.spawnCustomer): dark clothes, a scowl. */
+  makeRude() { this.rude = true; this.look.shirt = '#34343c'; this.mood = 'Looking for trouble'; }
+
+  /** Skip the tables: go after the staff, one shove at a time, until someone bats them out or they get bored. */
+  rampage() {
+    const g = this.game;
+    this.state = 'rude'; this.task = 'Making a scene'; this.mood = 'Furious';
+    this.trouble = { kind: 'rude', until: g.simTime + TROUBLE.rude.stay, by: null, over: false };
+    this.expr = 'angry'; this.shakeT = 0.8;
+    this.emote('emote_angry', 2.4);
+    g.troubles.started(this, 'rude');
+    this.do(() => this.bully());
+  }
+  bully() {
+    const g = this.game, w = g.world, T = TROUBLE.rude;
+    if (this.state !== 'rude' || this.trouble.by) return;
+    if (g.simTime >= this.trouble.until || !g.day.isOpen) return this.stormOff();
+    const near = (a) => manhattan(a.tx, a.ty, this.tx, this.ty);
+    const target = g.staff.filter((s) => !s.napping && !s.trouble && !(s.stunT > 0) && s.x >= 0).sort((a, b) => near(a) - near(b))[0];
+    if (!target) {   // nobody to pick on: pace about, glaring
+      const tl = g.freeTileNear(this.tx, this.ty, true, (x, y) => manhattan(x, y, this.tx, this.ty) <= 3 && Math.random() < 0.5);
+      if (tl) this.walk(tl.x, tl.y, { onFail: () => {} });
+      this.wait(1.2, 'idle');
+      this.do(() => this.bully());
+      return;
+    }
+    const goals = DIRS.map((d) => ({ x: target.tx + d.dx, y: target.ty + d.dy })).filter((p) => w.isWalkable(p.x, p.y) && !w.isEntry(p.x, p.y));
+    if (near(target) > 1) this.walk(0, 0, { goals: goals.length ? goals : [{ x: target.tx, y: target.ty }], goalOk: !goals.length, onFail: () => {} });
+    this.do(() => {
+      if (this.state !== 'rude' || this.trouble.by) return;
+      if (Math.hypot(target.x - this.x, target.y - this.y) < 1.7 && !target.trouble && !target.napping && g.staff.includes(target)) {
+        this.face({ x: target.tx, y: target.ty });
+        this.hop(); this.shakeT = 0.4;
+        target.shoved(this);
+        // the guests nearby flinch: a little patience gone
+        for (const c of g.customers) if (c.showPatience && manhattan(c.tx, c.ty, this.tx, this.ty) <= 3) c.patience = Math.max(0.05, c.patience - T.scare);
+        this.wait(T.every, 'talk');
+      } else this.wait(0.3);
+      this.do(() => this.bully());
+    });
+  }
+  /** Someone with a bat is coming: freeze and tremble. */
+  cower() {
+    this.halt();
+    this.task = 'Uh-oh…'; this.mood = 'Scared';
+    this.emote('emote_sad', 99);
+    this.shakeT = 99;
+    this.wait(14);   // in case the batter never makes it over: back to bullying
+    this.do(() => { this.shakeT = 0; this.bubble = null; if (this.trouble) this.trouble.by = null; this.bully(); });
+  }
+  /** Gave up and left on their own: the staff were pushed around, and the guests saw it all. */
+  stormOff() {
+    const g = this.game;
+    this.trouble.over = true;
+    this.halt();
+    this.emote('emote_angry', 2);
+    g.rating.addService(0);
+    g.toast(t('The rude guest stormed off. Your team is shaken.'), 'bad');
+    g.changed('trouble');
+    this.leave();
+  }
+  /** Home run! Sails up and out of the café, spinning, and is gone. */
+  launch(by) {
+    const g = this.game;
+    this.trouble.over = true;
+    this.halt();
+    this.releaseAll();
+    this.state = 'flying'; this.task = 'Flying home'; this.mood = 'Wheee!';
+    this.showPatience = false; this.bubble = null; this.shakeT = 0;
+    let dx = this.x - by.x, dy = this.y - by.y;
+    const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+    this.fly = { t: 0, vx: dx * 6, vy: dy * 6, h: 0, spin: 0, twinkled: false };
+    g.changed('trouble');
+  }
+  flyAway(dt) {
+    const g = this.game, f = this.fly;
+    f.t += dt;
+    this.x += f.vx * dt; this.y += f.vy * dt;
+    f.h = 9 * f.t + 7 * f.t * f.t;
+    f.spin += dt * 15;
+    this.moving = false;
+    if (f.t > 0.85 && !f.twinkled) {   // the little star in the sky as they disappear
+      f.twinkled = true;
+      g.fx.sparkle(g.at(this.x, this.y, f.h * 40), 14, '#fff6a8');
+      g.fx.sparkle(g.at(this.x, this.y, f.h * 40), 6, '#ffffff');
+      g.sfx('ding');
+    }
+    if (f.t > 1.6) this.gone = true;
+  }
+
+  // ---------- trouble: dine and dash ----------
+  /** Up from the table, a shifty look around, a tiptoe to the door… then a sprint down the street. */
+  dineAndDash() {
+    const g = this.game, T = TROUBLE.dash, e = g.world.entry;
+    this.standUp();
+    this.do(() => {
+      this.state = 'dash'; this.task = 'Sneaking out without paying'; this.mood = 'Sneaky';
+      this.trouble = { kind: 'dash', owed: this.owed, by: null, over: false };
+      g.troubles.started(this, 'dash');
+      this.emote('emote_wait', T.sneak);
+    });
+    let look = 0;
+    this.wait(T.sneak, 'idle', { every: (dt) => { if ((look -= dt) <= 0) { look = 0.35; this.dir = (this.dir + 2) % 4; } } });
+    this.do(() => { this.speed = this.baseSpeed * T.tiptoe; });
+    this.walk(e.x, e.y, { onFail: () => this.dashOut() });
+    this.do(() => this.dashOut());
+  }
+  dashOut() {
+    const g = this.game, T = TROUBLE.dash;
+    this.clearQueue();
+    g.openDoor(1.4);
+    this.task = 'Running off with the bill';
+    this.speed = T.run; this.speedMul = T.run / SPEED.customer;   // legs a blur
+    this.glide(-1.1, DOOR_Y + 0.5);
+    this.do(() => this.releaseAll());
+    this.glide(-2.5, DOOR_Y + 0.5);
+    this.glide(-2.5, chance(0.5) ? -T.street + DOOR_Y : g.world.size + T.street - DOOR_Y);
+    this.do(() => this.escaped());
+  }
+  escaped() {
+    const g = this.game;
+    this.trouble.over = true;
+    g.state.stats.dashed = (g.state.stats.dashed || 0) + 1;
+    g.toast(t('{name} got away without paying ({n} coins).', { name: this.name, n: this.owed }), 'bad');
+    g.changed('trouble');
+    this.gone = true;
+  }
+  /** Caught by a sprinter: hands the money over, sheepishly, and slinks off. */
+  caught(by) {
+    const g = this.game;
+    this.trouble.over = true;
+    this.halt();
+    this.speed = this.baseSpeed; this.speedMul = 1;
+    this.state = 'caught'; this.task = 'Paying up'; this.mood = 'Busted!';
+    this.face({ x: Math.floor(by.x), y: Math.floor(by.y) });
+    this.shakeT = 0.7;
+    this.emote('emote_sad', 2);
+    this.wait(0.7);
+    this.do(() => { g.eco.earn(this.owed, 0, this.x, this.y, 110); this.owed = 0; g.sfx('ding'); g.changed('trouble'); });
+    this.wait(0.6);
+    this.do(() => {
+      if (this.x >= 0) return this.leave();
+      this.releaseAll();
+      this.glide(-2.5, this.y);
+      this.do(() => { g.street.adopt(this, chance(0.5) ? -9 : g.world.size + 9); this.gone = true; });
+    });
   }
 
   baseMode() {

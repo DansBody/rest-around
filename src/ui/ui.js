@@ -3,9 +3,9 @@
 import { h, bus, fmt, fmtTime, clamp } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
-import { PANELS, buildTray, skillLine, kitLines, confirmBtn } from './panels.js';
+import { PANELS, buildTray, skillLine, kitLines, clubLines, confirmBtn } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { SNACKS, SKILL, ABILITY_UNLOCK_LV, questById, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
+import { SNACKS, SKILL, ABILITY_UNLOCK_LV, CLUBS, TROUBLE, questById, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
 import { DOOR_Y } from '../world.js';
 import { audio } from '../audio.js';
 import { unlocksFor } from '../economy.js';
@@ -18,7 +18,7 @@ const TOOLS = [
   { id: 'build', label: 'Build', glyph: 'build' },
   { id: 'staff', label: 'Staff', glyph: 'staff' },
   { id: 'menu', label: 'Menu', glyph: 'menu' },
-  { id: 'garden', label: 'Garden', glyph: 'garden' },
+  { id: 'train', label: 'Training', glyph: 'train' },
   { id: 'market', label: 'Market', glyph: 'market' },
   { id: 'settings', label: 'Settings', glyph: 'settings' },
 ];
@@ -144,6 +144,11 @@ export class UI {
 
     this.el.cutin = h('div#cutin');
     r.appendChild(this.el.cutin);
+
+    // trouble in the café: one red button per troublemaker, under the HUD (tap = send a trained staff member)
+    this.el.alerts = h('div#alerts');
+    r.appendChild(this.el.alerts);
+    this.alertKey = null;
 
     this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label), 'aria-label': t(tool.label) }, glyph(tool.glyph, 24)))));
     r.appendChild(this.el.toolbar);
@@ -435,7 +440,7 @@ ${k.desc}
       if (el.classList.contains('show')) { el.classList.remove('show'); this.syncSheets(); }
       this.game.selected = null; this.infoFor = null; return;
     }
-    const key = a.kind === 'staff' ? a.role + a.skillLv() + a.look.model + a.kitUnlocked() : '';
+    const key = a.kind === 'staff' ? a.role + a.skillLv() + a.look.model + a.kitUnlocked() + JSON.stringify(a.clubs) : '';
     if (full || this.infoFor !== a || this.infoKey !== key) {
       this.infoFor = a; this.infoKey = key;
       this.infoPortrait = portrait(a.look, 64, 80);
@@ -461,7 +466,7 @@ ${k.desc}
         body.push(h('div.sklist', { style: { marginTop: '8px' } },
           h('div.sk.auto', { style: { '--c': on ? ab.color : '#a1a1a6' }, title: ab.desc }, h('span.sk-ico', glyph(on ? ab.glyph : 'lock', 16)),
             h('div.sk-name', h('b', ab.name), on ? h('div.pbar', { style: { flex: 1, minWidth: '40px' } }, this.infoCharge) : h('span.sk-tag', t('Unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] })))),
-          ...kitLines(a.look.model, a.kitUnlocked())));
+          ...kitLines(a.look.model, a.kitUnlocked()), ...clubLines(a)));
         body.push(h('div.btnrow',
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { outfit: a }; this.renderPanel(); } }, t('Change outfit')),
           h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { job: a }; this.renderPanel(); } }, t('Change job'))));
@@ -522,15 +527,35 @@ ${k.desc}
     }
     this.renderInfo();
     this.renderAbilities();
+    this.renderAlerts();
     const badge = (id, n) => {
       const b = this.toolBtns[id];
       let el = b.querySelector('.badge');
       if (n > 0) { if (!el) b.appendChild((el = h('span.badge'))); el.textContent = n; } else if (el) el.remove();
     };
     badge('staff', g.staff.filter((a) => a.napping).length);
-    badge('garden', s.garden.filter((p) => p.crop && (p.prog >= 1 || p.water <= 0)).length);
+    // trouble that can happen now, with nobody trained to handle it
+    badge('train', Object.values(CLUBS).filter((c) => s.level >= TROUBLE[c.trouble].level && g.staff.length && !g.staff.some((a) => a.clubLv(c.id) > 0)).length);
     badge('market', g.eco.giftAvailable() ? 1 : 0);
     badge('friends', this.friends && this.friends.data ? this.friends.data.incoming.length : 0);
+  }
+
+  /** The red alerts for troublemakers in the café right now: who is dealing with it (trained staff go by
+   *  themselves), or, with nobody trained, a tap through to the Training tab. */
+  renderAlerts() {
+    const g = this.game, list = g.build.active ? [] : g.troubles.active;
+    const trained = (club) => g.staff.some((a) => a.clubLv(club.id) > 0);
+    const key = list.map((c) => c.id + ':' + c.trouble.kind + ':' + (c.trouble.by ? c.trouble.by.id : '')).join(',') + '|' + Object.values(CLUBS).map(trained).join();
+    if (key === this.alertKey) return;
+    this.alertKey = key;
+    this.el.alerts.replaceChildren(...list.map((c) => {
+      const tr = c.trouble, club = CLUBS[tr.kind === 'rude' ? 'baseball' : 'track'], can = trained(club);
+      const what = tr.kind === 'rude' ? t('Rude guest!') : t('{name} is running off without paying!', { name: c.name });
+      const sub = tr.by ? t('{name} is on it!', { name: tr.by.name }) : can ? t('Sending help…') : t('Nobody can stop them: tap to train someone at the {club}', { club: club.name });
+      return h('button.alert' + (tr.by ? '.sent' : ''), { style: { '--c': club.color }, onclick: () => { if (!can) this.openPanel('train'); } },
+        h('span.al-ico', glyph(tr.by ? club.glyph : 'angry', 18)),
+        h('span.al-text', h('b', what), h('small', sub)));
+    }));
   }
 
   /** Daily goal card: icon, text, progress and the reward. */
@@ -624,6 +649,7 @@ ${k.desc}
     const costs = (sm.wages || 0) + (sm.rent || 0), stock = sm.restocked || 0, profit = sm.coins - costs - stock;
     const note = sm.owed ? t('The till ran short, so some wages went unpaid — the team will start tired.')
       : sm.soldOut ? t('{n} guest(s) left because a drink was sold out — keep the pantry stocked!', { n: sm.soldOut })
+        : sm.dashed ? t('{n} guest(s) ran off without paying — someone from the Track Club could have caught them.', { n: sm.dashed })
         : sm.noSeat ? t('{n} guest(s) left because every seat was taken — more tables would help!', { n: sm.noSeat })
           : dr >= 0 ? t('Word is spreading about your cozy little place.') : t('Keep things clean and fast to win back the stars.');
     return h('div.card',
@@ -661,7 +687,6 @@ ${k.desc}
       const ups = []; for (let lv = r.levelFrom + 1; lv <= r.levelTo; lv++) ups.push(...unlocksFor(lv));
       if (ups.length) notes.push(h('div.away-note', h('b', t('New things unlocked:')), ' ' + ups.join(' · ')));
     }
-    if (r.readyCrops) notes.push(h('div.away-note', t('{n} garden plot(s) are ready to harvest.', { n: r.readyCrops })));
     if (r.snacksUsed) notes.push(h('div.away-note', t('The team shared {n} snack(s) from the pantry to keep going.', { n: r.snacksUsed })));
     if (r.capped) notes.push(h('div.away-note.muted', t('Trading is counted for up to {n} hours while you are away.', { n: OFFLINE.capHours })));
     const card = h('div.card.away',

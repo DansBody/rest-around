@@ -1,7 +1,7 @@
 # Refillit ☕
 
 A cozy 3D café-management sim for the browser (formerly *Rest Around*). Seat chibi guests, take their
-orders, cook, serve, sweep up, fix the arcade, grow tomatoes, level your dishes and turn a tiny 8×8
+orders, cook, serve, sweep up, fix the arcade, bat rude guests out the door, level your dishes and turn a tiny 8×8
 nook into the most talked-about place in town.
 
 Plain HTML + JavaScript ES modules rendered with [three.js](https://threejs.org) (r169, vendored
@@ -102,10 +102,30 @@ Kits live in `KITS` in `src/data.js` (numbers and text), the cast effects in `sr
 multipliers in `Staff.kitMul()`; Spotlight, Time Pause and the balloons are drawn procedurally in
 `abilityfx.js` / `fx.js`, so they need no art.
 
-**Progression.** Coins buy furniture, staff, seeds, ingredients and room expansions. Café points
+**Trouble & training.** Now and then a guest makes trouble. From café Lv2 a guest may eat up and
+**dine and dash**: a shifty look round, a tiptoe to the door, then a sprint down the street with the bill.
+From Lv3 a **rude guest** may storm in and shove your staff around (each shove drops what they were doing,
+stuns them and costs energy; guests nearby lose patience) until they get bored after 40 s. A red tag
+floats over the troublemaker and a red alert appears under the HUD; a second later the nearest free staff
+member trained for it goes **by themselves** (with nobody trained, the alert opens the Training tab). Staff
+train in the **Training** tab, each on their own, by passing a club's mini-game (the fee is paid only when
+they pass; a retry is free):
+
+| Club | Mini-game | Skill |
+|---|---|---|
+| Baseball Club (80) | batting practice in a little 3D ballpark: the staff member at the plate, a guest pitching; swing as the pitch reaches the circle, 3 hits of 5 | **Home Run**: grabs a bat and knocks the rude guest clean out of the café; the room cheers |
+| Track Club (60) | a 3D sprint seen from behind the runner: tap Left/Right in turn, 30 steps in 6.5 s (the faster the taps, the faster the legs) | **Chase Down**: sprints after the runaway (blocks the door if still inside) and gets the bill back |
+
+A free sprinter catches the runaway while they're still sneaking out; if every sprinter is napping or
+busy, whoever frees up first gives chase, and once the runaway is out on the street it's a race. Numbers live in `CLUBS` / `TROUBLE` in `src/data.js`; `src/trouble.js` decides when trouble
+starts and sends who goes, the guests' side is in `customer.js`, the responders' in `staff.js`, the mini-games in
+`src/ui/training.js` (rules and score) and `src/tryout3d.js` (their 3D stages). The debug panel (`` ` ``) has *Rude guest* and *Dine & dash* buttons. Trouble only happens
+while you play: the settlement for time away does not model it.
+
+**Progression.** Coins buy furniture, staff, training, ingredients and room expansions. Café points
 level you up, which unlocks bigger floor plans, more staff slots, more menu slots, new furniture,
-wall decor and new drinks. Put ingredients from the garden (mint, strawberries, lemons, blueberries), the
-market (coffee beans, milk, sugar, flour, butter, eggs, chocolate, cream, matcha) and the daily gift
+wall decor and new drinks. Put ingredients from the market (coffee beans, milk, sugar, flour, butter, eggs,
+chocolate, cream, matcha, mint, strawberries, lemons, blueberries) and the daily gift
 into a drink or bake to level it from Lv1 to Lv10 (higher price, more points).
 
 **Running the café.** Nothing is free. Every cup uses up its ingredients: a pack from the Market makes
@@ -115,12 +135,12 @@ buys the packs your menu needs when they run low, within a daily budget; if a dr
 leaves unhappy, and if you run completely dry *and* broke the supplier leaves a starter pack (once a day) so
 you can never get stuck. Staff draw a **daily wage** (more as they gain skill) and the room costs **rent** by
 floor area, both paid when the café closes; if the till is short the team simply starts the next day tired
-(no debt). Garden produce costs ~1.8× at the market, so growing your own berries pays.
+(no debt). Fresh produce (mint, berries, lemons) costs ~1.8× its base price at the market.
 
 **While you're away.** The café keeps trading when the game is closed. On the next launch (or when a hidden
 tab is brought back after 10+ minutes) the time away is settled in one go — up to 12 hours, at 60% of what
 playing live would earn, one game day per 4 real hours — and a *Welcome back* card lists guests served, coins,
-points, rating and level changes, best sellers, anything that ran out or broke, and crops ready to harvest.
+points, rating and level changes, best sellers, and anything that ran out or broke.
 It needs a Server and a Barista to open at all. The model is `src/offline.js` (an expected-value calculation on
 the plain save JSON, no simulation, deterministic); `node tools/balance.mjs [hours]` prints what four stages
 of café earn away, and `tools/calibrate.js` (paste in the browser console) checks the model against the live
@@ -171,8 +191,8 @@ accessories); UI images, icons and surface textures are PNGs listed under `asset
   activity; props (tray + cup, broom, wrench, mug) attach to the hand bone, baristas wear a cap. The wardrobe (Staff → Outfit) swaps the
   character, toggles helmet/hat/cape and tints the outfit.
 * **Tints:** shop variants (mint table, rose armchair, silver espresso station…) re-colour one model.
-* Outside: lawn, a street with passers-by (guests walk along it to the door), low-poly trees and
-  garden beds that grow whatever you plant (click a bed to open the Garden panel). Lighting follows
+* Outside: lawn, a street with passers-by (guests walk along it to the door, runaways sprint down it)
+  and low-poly trees. Lighting follows
   the clock — golden evening light, and lamps switch on for the dinner rush.
 
 [`ASSETS.md`](ASSETS.md) documents the conventions, the sources/licences and the full generated
@@ -242,23 +262,23 @@ src/
   assets.js             2D image loader, PNG probing, placeholders, tint cache
   placeholder.js        generated placeholder images (textures, icons, emotes)
   models.js             glTF loader, procedural placeholder meshes, tinting, icon rendering
-  renderer.js           three.js scene: lawn/street/garden, room & cut-away walls, furniture,
+  renderer.js           three.js scene: lawn/street, room & cut-away walls, furniture,
                         food, trash, lighting, build preview, debug overlays, 2D overlay layer
   charview.js           animated character per agent: clip selection, props, hats, facing
   abilityfx.js          staff ability visuals: charge ring, build-up, beam/shockwave, juggling
   kits.js               what each character's castable skill does (Mind Reader, Time Pause, Spotlight, Wild Magic)
-  plots.js              garden plot meshes (3D garden + Garden panel thumbnails)
   i18n.js lang/         t() translation helper; lang/zh-TW.js Traditional Chinese strings
   portrait.js           3D-rendered portraits, shop thumbnails and food icons
   iso.js camera.js      grid directions; orbit camera (pan/zoom/rotate)
   world.js              room grid, furniture, seats, access tiles, trash, reachability
   pathfinding.js        A* (4-dir, soft agent-avoidance costs)
   agent.js              movement, tile claims, blocked-step handling, action queue
-  customer.js staff.js  customer and staff brains
+  customer.js staff.js  customer and staff brains (incl. rude guests, dine and dash, the chase and the swing)
+  trouble.js            when trouble starts, the day's count, who gets sent
   ambient.js            passers-by on the street
   jobs.js               job board, priorities, dish salvage
   day.js rating.js      day cycle + arrivals, star rating
-  economy.js            coins, points, levels, dishes, market, garden, gift, hiring, facilities, daily wages & rent
+  economy.js            coins, points, levels, dishes, market, gift, hiring, training, facilities, daily wages & rent
   pantry.js             ingredient use, auto-restock and the starter-pack safety net (shared with offline.js)
   offline.js            settles the time away: guests, sales, pantry, wear, rating and the report
   build.js              build mode: validation, place/move/rotate/sell, paint, wallpaper, expand
@@ -267,6 +287,8 @@ src/
   data.js               all gameplay tuning (prices, unlocks, dishes, timings)
   looks.js              character look generation
   ui/                   HUD, tab bar, panels, build tray, info card, modals, debug panel, CSS;
+                        training.js (Training tab + the batting and sprint mini-games);
+  tryout3d.js           the mini-games' 3D stages: ballpark and running track with the staff member's model
                         icons.js (vector UI glyphs), glass.js (liquid-glass rim refraction)
 ```
 
@@ -278,12 +300,13 @@ Gameplay numbers (prices, cook times, patience, energy, arrival rates, level cur
 * **Time away is settled from the device clock** (the save's timestamp), so changing the system clock changes
   it; it is capped at 12 hours and will move server-side when the café is synced online.
 * **Guests in the room are not saved.** Staff, furniture, trash, dirty tables, broken
-  facilities, stock, garden, dish levels, money and the clock are; after a reload the dining room
+  facilities, stock, dish levels, what staff learned at the clubs, money and the clock are; after a reload the dining room
   starts empty (new guests arrive within seconds).
-* **Guests are KayKit fantasy adventurers** (the staff are our own plush characters). Swap in townsfolk
-  or café regulars by adding another rigged glTF pack to the manifest (see ASSETS.md).
-* **No eating animation** in the KayKit clip set: seated guests use the sitting idle, with food on
-  the table and crumbs/heart effects.
+* **Guests share the GuestB body**, with random fur/shirt colours and procedural ears. The staff cast
+  includes Mocha Latte, Bbaekko, Hee Hee, Cheetie, Oritokki, TATA and RJ. Add another rigged glTF to the
+  manifest to extend the cast (see ASSETS.md).
+* **Legacy KayKit models have no eating animation**; the current GuestB and staff models include an
+  Eat clip, although seated agents currently use Sit with food and effects on the table.
 * The toilet, the barista cap and the held tools (tray, broom, wrench) are procedural placeholder meshes
   until real models are added.
 * Performance: fine on any GPU; in software-rendered browsers (no WebGL acceleration) the

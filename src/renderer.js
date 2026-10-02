@@ -1,15 +1,15 @@
 // Real-time 3D renderer (three.js). The simulation is unchanged: this module mirrors the world,
-// furniture, agents, trash and garden into a scene every frame, and draws speech bubbles, bars,
+// furniture, agents and trash into a scene every frame, and draws speech bubbles, bars,
 // name tags and floating numbers on a 2D overlay canvas projected from 3D positions.
 import { THREE, models, TILE } from './models.js';
 import { assets } from './assets.js';
 import { CharacterView } from './charview.js';
 import { AbilityFx } from './abilityfx.js';
-import { buildPlot, buildCrops, cropScale, SPROUT_UNTIL } from './plots.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById, wallDecorById, wallLayout } from './data.js';
 import { clamp, easeOutBack, lerp } from './util.js';
 import { FONT, DISPLAY_FONT } from './placeholder.js';
+import { t } from './i18n.js';
 
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
 const Y_UP = new THREE.Vector3(0, 1, 0);
@@ -47,7 +47,6 @@ export class Renderer {
     this.furn = new Map();      // uid -> view
     this.chars = new Map();     // agent/walker -> CharacterView
     this.trash = new Map();
-    this.plots = [];
     this.lampLights = [];
     this.decoLights = [];
     this.raycaster = new THREE.Raycaster();
@@ -196,13 +195,11 @@ export class Renderer {
     this.door.position.set(-T / 2, 0, DOOR_Y * TILE + 0.37);
     room.add(this.door);
     this.buildDressing(room, W, T);
-    // trees & garden around this room size
+    // trees around this room size
     this.treeGroup.clear();
     const trees = [[-17, -8, 1.3], [-17, 8, 1.1], [-16.5, 30, 1.4], [W + 9, -5, 1.2], [W + 12, W * 0.7, 1.4], [W + 7, W + 9, 1.1], [W * 0.3, W + 10, 1.3], [-3, W + 9, 1.0], [W * 0.7, -9, 1.25], [4, -10, 1.1]];
     trees.forEach(([x, z, s], i) => this.treeGroup.add(this.tree(x, z, s, i)));
     this.roomSize = n;
-    for (const p of this.plots) this.scene.remove(p.g);   // the beds sit beside the walls: rebuilt for the new size
-    this.plots = [];
   }
 
   /** Café dressing that belongs to the building: OPEN plaque, shop sign, door mat, flower boxes outside. */
@@ -303,7 +300,7 @@ export class Renderer {
     this.chars.clear();
     for (const o of this.trash.values()) this.scene.remove(o);
     this.trash.clear();
-    this.roomSize = 0;   // rebuilds the room, the walls' decorations, the floor and the garden beds
+    this.roomSize = 0;   // rebuilds the room, the walls' decorations and the floor
     this.game = game;
     game.renderer = this;
     this.resize();
@@ -339,7 +336,6 @@ export class Renderer {
     this.syncDoor();
     this.syncFurniture(realDt);
     this.syncTrash();
-    this.syncGarden();
     this.syncCharacters(realDt);
     this.abilityFx.update(g, this.chars, this.time, realDt);
     this.syncBuild();
@@ -524,40 +520,6 @@ export class Renderer {
       }
     }
     for (const [k, o] of this.trash) if (!live.has(k)) { this.scene.remove(o); this.trash.delete(k); }
-  }
-
-  /** Garden beds beside the building mirror the Garden panel. */
-  plotTile(i) { const n = this.game.world.size; return { x: n + 1 + (i % 2), y: 1 + Math.floor(i / 2) }; }
-  plotIndexAt(x, y) {
-    const n = this.game.world.size, cnt = this.game.state.garden.length;
-    const i = x - (n + 1), j = y - 1;
-    if (i < 0 || i > 1 || j < 0) return -1;
-    const k = j * 2 + i;
-    return k < cnt ? k : -1;
-  }
-  syncGarden() {
-    const garden = this.game.state.garden;
-    while (this.plots.length < garden.length) {
-      const i = this.plots.length, t = this.plotTile(i);
-      const { group: g, soilMat } = buildPlot(this.tex('tex_soil', 1));
-      g.position.set((t.x + 0.5) * TILE, 0, (t.y + 0.5) * TILE);
-      this.scene.add(g);
-      this.plots.push({ g, soilMat, crop: null, cropKey: '' });
-    }
-    garden.forEach((p, i) => {
-      const v = this.plots[i];
-      v.soilMat.color.set(p.crop && p.water > 0 ? '#9c7a62' : '#ffffff');
-      const key = p.crop ? p.crop + (p.prog < SPROUT_UNTIL ? ':s' : ':c') : '';
-      if (key !== v.cropKey) {
-        if (v.crop) v.g.remove(v.crop);
-        v.crop = null; v.cropKey = key;
-        if (p.crop) { v.crop = buildCrops(p.crop, p.prog); v.g.add(v.crop); }
-      }
-      if (v.crop) {
-        const s = cropScale(p.prog);
-        v.crop.children.forEach((w, k) => { w.scale.setScalar(s); w.position.y = 0.31 + (p.prog >= 1 ? Math.abs(Math.sin(this.time * 3 + k)) * 0.06 : 0); });
-      }
-    });
   }
 
   refreshCharacter(a) { const cv = this.chars.get(a); if (cv) { cv.dispose(this.scene); this.chars.delete(a); } }
@@ -757,14 +719,6 @@ export class Renderer {
       if (f.ready || (f.slots && f.slots.some((s) => s && s.ticket))) this.bubble(q.x, q.y, 'emote_sparkle', 0.7 * z);
       if (f.broken) this.bubble(q.x, q.y - 4, 'emote_broken', 0.8 * z);
     }
-    // garden hints
-    game.state.garden.forEach((p, i) => {
-      if (!p.crop) return;
-      const t = this.plotTile(i), q = this.project(t.x + 0.5, t.y + 0.5, 1.4);
-      if (!q) return;
-      if (p.prog >= 1) this.bubble(q.x, q.y, 'icon_harvest', 0.55 * z);
-      else if (p.water <= 0) this.bubble(q.x, q.y, 'icon_water', 0.5 * z);
-    });
     // characters
     const head = new THREE.Vector3();
     for (const a of game.agents) {
@@ -784,7 +738,11 @@ export class Renderer {
         this.bar(q.x, y - 2, 40 * z, a.energy / 100, a.energy < 25 ? '#ff8a3d' : '#2f9bff', 6 * z);
         y -= 10 * z;
       }
-      if (a.bubble) {
+      const tr = a.trouble && !a.trouble.over ? a.trouble : null;
+      if (tr) {   // a troublemaker: a red tag, until someone trained is on it
+        const text = tr.by ? t('{name} is on it!', { name: tr.by.name }) : tr.kind === 'rude' ? t('Rude guest!') : t('Not paying!');
+        this.hint(q.x, y - 4 * z, tr.kind === 'rude' ? 'emote_angry' : 'icon_coin', text, z, !tr.by);
+      } else if (a.bubble) {
         const age = this.time - a.bubble.t0;
         this.bubble(q.x, y, a.bubble.icon, easeOutBack(age / 0.28) * z, a.bubble.icon2);
       } else if (a.blocker) this.hint(q.x, y - 4 * z, a.blocker.icon, a.blocker.text, z);   // what this staff member is waiting on
@@ -807,22 +765,23 @@ export class Renderer {
     if (game.debug.assets) this.drawAssetOverlay();
   }
 
-  /** Amber pill over a head: an icon and a short "what's missing" line, gently bobbing. */
-  hint(x, y, icon, text, z = 1) {
+  /** Amber pill over a head: an icon and a short "what's missing" line, gently bobbing (`alert`: red and pulsing). */
+  hint(x, y, icon, text, z = 1, alert = false) {
     const ctx = this.ctx;
-    const k = clamp(z, 0.85, 1.3), bob = Math.sin(this.time * 3) * 1.5;
+    const k = clamp(z, 0.85, 1.3) * (alert ? 1.08 + Math.sin(this.time * 9) * 0.06 : 1), bob = Math.sin(this.time * 3) * 1.5;
+    const [bg, line, ink] = alert ? ['#e5484d', '#ffffff', '#ffffff'] : ['#fff4dc', '#f0a43a', '#6b3d0c'];
     ctx.save();
     ctx.font = `700 ${Math.round(12 * k)}px ${DISPLAY_FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     const ic = 20 * k, pad = 8 * k, ph = 26 * k, tw = ctx.measureText(text).width, w = pad + ic + 5 * k + tw + pad * 1.2;
     const x0 = x - w / 2, y0 = y - ph + bob;
     ctx.shadowColor = 'rgba(16,24,40,0.28)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-    rr(ctx, x0, y0, w, ph, ph / 2); ctx.fillStyle = '#fff4dc'; ctx.fill();
+    rr(ctx, x0, y0, w, ph, ph / 2); ctx.fillStyle = bg; ctx.fill();
     ctx.shadowColor = 'transparent';
-    ctx.lineWidth = 2; ctx.strokeStyle = '#f0a43a'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = line; ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x - 5 * k, y0 + ph - 1); ctx.lineTo(x, y0 + ph + 5 * k); ctx.lineTo(x + 5 * k, y0 + ph - 1); ctx.closePath();
-    ctx.fillStyle = '#fff4dc'; ctx.fill();
+    ctx.fillStyle = bg; ctx.fill();
     assets.drawIcon(ctx, icon, x0 + pad + ic / 2, y0 + ph / 2, ic);
-    ctx.fillStyle = '#6b3d0c'; ctx.fillText(text, x0 + pad + ic + 5 * k, y0 + ph / 2 + 0.5);
+    ctx.fillStyle = ink; ctx.fillText(text, x0 + pad + ic + 5 * k, y0 + ph / 2 + 0.5);
     ctx.restore();
   }
 

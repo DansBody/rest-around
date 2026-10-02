@@ -35,6 +35,9 @@ export class DebugPanel {
         h('button.btn.small', { onclick: () => { if (!g.spawnCustomer(true)) g.toast('Doorway busy'); } }, 'Spawn guest'),
         h('button.btn.small', { onclick: () => this.breakOne() }, 'Break facility')),
       h('div.btnrow',
+        h('button.btn.small', { onclick: () => { const c = g.spawnCustomer(true); if (c) c.makeRude(); else g.toast('Doorway busy'); } }, 'Rude guest'),
+        h('button.btn.small', { onclick: () => this.dash() }, 'Dine & dash')),
+      h('div.btnrow',
         h('button.btn.small', { onclick: () => { g.state.clock = DAY.length - 5; } }, 'Skip to closing'),
         h('button.btn.small', { onclick: () => { for (const a of g.staff) a.energy = 0; } }, 'Drain energy')),
       chk('Pathfinding grid', 'grid'),
@@ -44,6 +47,14 @@ export class DebugPanel {
       this.stats || h('div'));
   }
   rerender() { const s = this.stats; this.render(); if (s) this.el.appendChild(s); }
+
+  /** The next guest to finish eating runs off without paying (or the one eating now). */
+  dash() {
+    const g = this.game, c = g.customers.find((x) => x.state === 'eating') || g.customers.find((x) => ['waitFood', 'waitOrder'].includes(x.state));
+    if (!c) return g.toast('Nobody is seated yet', 'bad');
+    c.forceDash = true;
+    g.toast(`${c.name} will dine and dash`);
+  }
 
   breakOne() {
     const g = this.game;

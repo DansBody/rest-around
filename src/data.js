@@ -83,14 +83,14 @@ export const INGREDIENTS = [
 export const ingById = Object.fromEntries(INGREDIENTS.map((i) => [i.id, i]));
 export const ingIcon = (id) => 'ing_' + id;
 
-// Garden seeds (grow time in sim seconds; the plot must stay watered to grow)
+// Garden seeds (grow time in sim seconds). The garden itself made way for the Training tab; old saves
+// turn their crops into pantry stock (save.js), and the server's ceiling (authority.js) still reads these.
 export const SEEDS = [
   { crop: 'mint', price: 6, grow: 55, yield: 3, level: 1 },
   { crop: 'strawberry', price: 8, grow: 70, yield: 3, level: 1 },
   { crop: 'lemon', price: 7, grow: 80, yield: 3, level: 2 },
   { crop: 'blueberry', price: 8, grow: 90, yield: 4, level: 3 },
 ];
-export const WATER_DURATION = 45; // seconds a full watering lasts
 
 export const SNACKS = [
   { id: 'cookie', name: 'Cookie', price: 12, energy: 30, asset: 'snack_cookie' },
@@ -291,6 +291,30 @@ export const KITS = {
 };
 /** Every perk and active skill (for the translator). */
 export const KIT_TEXT = Object.values(KITS).flatMap((k) => [...k.perks, k.active].filter(Boolean));
+
+// ---------------- trouble & training ----------------
+// Now and then a guest makes trouble: a rude guest storms in and shoves the staff around, or a guest eats
+// and runs off without paying. Staff learn to deal with it at a club (Training tab): each staff member
+// trains on their own, by passing the club's mini-game, keeps what they learned in every job, and from
+// then on deals with that trouble by themselves.
+// With nobody trained the trouble just runs its course: the rude guest leaves after `stay` seconds, the
+// runaway gets away with the bill.
+export const CLUBS = {
+  baseball: { id: 'baseball', name: 'Baseball Club', skill: 'Home Run', glyph: 'bat', color: '#e5484d', fee: 80, trouble: 'rude',
+    desc: 'When a rude guest shows up, this staff member grabs a bat on their own and knocks them clean out of the café.' },
+  track: { id: 'track', name: 'Track Club', skill: 'Chase Down', glyph: 'run', color: '#2f9bff', fee: 60, trouble: 'dash',
+    desc: 'When a guest runs off without paying, this staff member sprints after them on their own and gets the bill back.' },
+};
+export const CLUB_TEXT = Object.values(CLUBS);
+export const TROUBLE = {
+  // dine and dash: rolled when a guest finishes eating. Sneaks to the door, then runs `street` tiles along
+  // the sidewalk before they're gone (long enough that a sprinter sent as they slip out can still catch up)
+  dash: { level: 2, chance: 0.06, perDay: 2, sneak: 1.2, tiptoe: 0.8, run: 2.7, street: 14 },
+  // rude guest: rolled when a guest walks in; shoves a staff member every `every` s (stunned `stun` s)
+  rude: { level: 3, chance: 0.05, perDay: 1, stay: 40, every: 2.4, stun: 2.6, energy: 8, scare: 0.12 },
+  respond: 1.9,        // trained staff on the job move this much faster
+  react: 1,            // seconds before a trained staff member notices and goes (by themselves)
+};
 
 export function skillLevel(xp) {
   let lv = 1;

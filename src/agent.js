@@ -76,6 +76,17 @@ export class Agent {
   wait(t, mode = null, opts = {}) { this.queue.push({ type: 'wait', t, mode, ...opts }); return this; }
   do(fn) { this.queue.push({ type: 'do', fn }); return this; }
   clearQueue() { this.queue.length = 0; this.path = null; }
+  /** Stop right here: finish the step in progress at once (so nobody is left mid-tile) and drop the queue. */
+  halt() {
+    const s = this.stepping;
+    if (s) {
+      this.x = s.tx; this.y = s.ty;
+      if (s.from.x !== this.tx || s.from.y !== this.ty) this.release(s.from.x, s.from.y);
+      this.stepping = null; this.ghost = false;
+    }
+    this.gliding = false;
+    this.clearQueue();
+  }
 
   isIdleStanding() { return !this.stepping && !this.queue.length && !this.onTile && this.canNudge(); }
   canNudge() { return false; }

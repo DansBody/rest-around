@@ -109,7 +109,7 @@ export const ZH_TW = {
   'Build mode — the café is paused': '建造模式：咖啡廳暫停營業中',
 
   // ---------------- toolbar & panels
-  'Build': '建造', 'Staff': '員工', 'Menu': '菜單', 'Garden': '菜園', 'Market': '市場', 'Settings': '設定',
+  'Build': '建造', 'Staff': '員工', 'Menu': '菜單', 'Training': '進修', 'Market': '市場', 'Settings': '設定',
 
   // ---------------- info card
   'Guest': '客人', 'Task: {task}': '工作：{task}',
@@ -185,19 +185,12 @@ export const ZH_TW = {
   '{ing}: {p}/{need} added · {n} in pantry': '{ing}：已放入 {p}/{need}．庫存 {n}',
   'Unlocks at level {n}': '等級 {n} 解鎖', 'On menu': '已上架', 'Add to menu': '加入菜單', 'Add ingredients': '放入食材',
   'Put pantry ingredients toward the next dish level': '把庫存食材投入，提升這道菜的等級',
-  'Collect every ingredient in a recipe to level a drink or bake (Lv1→10): higher price and more café points. Get ingredients from the Garden, the Market and the daily gift.':
-    '集齊食譜中的每種食材就能升級飲品或點心（Lv1→10）：售價更高、咖啡點數更多。食材可以從菜園、市場和每日禮物取得。',
-
-  // ---------------- garden
-  'Plant seeds, keep the soil watered, and harvest fresh herbs and berries. Plots only grow while watered.': '播種、保持土壤濕潤，收成新鮮的香草和莓果。菜圃只有在有水時才會生長。',
-  'Empty plot': '空菜圃', 'Plant': '種植', ' — ready!': '：可以收成了！', 'Growth': '生長進度', 'Water': '澆水', 'Thirsty!': '口渴了！',
-  'Harvest': '收成', 'Harvested {n} {crop}!': '收成了 {n} 個{crop}！', '{n}s left': '還要 {n} 秒',
-  'Choose seeds for plot {n}': '選擇第 {n} 塊菜圃的種子', '{s}s to grow · yields {n}': '生長 {s} 秒．收成 {n} 個',
-  'Pantry': '庫存', 'Empty — grow or buy some ingredients!': '空空的：去種一點或買一點食材吧！',
+  'Collect every ingredient in a recipe to level a drink or bake (Lv1→10): higher price and more café points. Get ingredients from the Market and the daily gift.':
+    '集齊食譜中的每種食材就能升級飲品或點心（Lv1→10）：售價更高、咖啡點數更多。食材可以從市場和每日禮物取得。',
 
   // ---------------- market
   'Daily gift': '每日禮物', 'Free ingredients and coins, once per day.': '每天一次，免費的食材和金幣。', 'Open!': '打開！',
-  'Ingredients': '食材', 'have {n}': '擁有 {n}', ' · grows in garden': '．菜園可種', 'Staff snacks': '員工點心',
+  'Ingredients': '食材', 'have {n}': '擁有 {n}', 'Staff snacks': '員工點心',
   '+{n} energy · you have {m}': '體力 +{n}．擁有 {m}',
   'Daily Gift!': '每日禮物！', 'A friendly farmer dropped by with:': '親切的農夫送來了：', 'Thank you!': '謝謝！',
 
@@ -237,7 +230,7 @@ export const ZH_TW = {
   // ---------------- economy
   'Not enough coins for {what} (need {n})': '金幣不夠{what}（需要 {n}）', 'Not enough coins (need {n})': '金幣不夠（需要 {n}）',
   'hiring': '雇用', 'retraining': '轉職',
-  '{n} staff slots': '員工名額 {n} 位', '+1 {cat} menu slot': '{cat}欄位 +1', 'a new garden plot': '新的菜圃',
+  '{n} staff slots': '員工名額 {n} 位', '+1 {cat} menu slot': '{cat}欄位 +1',
   'dish: {name}': '新菜色：{name}', '{n}×{n} floor plan': '{n}×{n} 格局',
   '{name} unlocks at level {n}': '{name}在等級 {n} 解鎖', 'Keep at least one dish on the menu!': '菜單上至少要留一道菜！',
   'No free {cat} slots — take a dish off first or level up': '{cat}欄位滿了，先撤下一道菜或升級',
@@ -335,7 +328,6 @@ export const ZH_TW = {
   'Ran out of:': '用完了：', '— {n} guest(s) left empty-handed.': '— 有 {n} 位客人空手離開。',
   'Out of order:': '故障中：', 'A Cleaner can fix it.': '清潔員可以修理。',
   'The till ran short, so some wages went unpaid — the team is tired.': '收銀機的錢不夠，部分薪水沒發出去，團隊很疲憊。',
-  '{n} garden plot(s) are ready to harvest.': '有 {n} 塊菜圃可以收成了。',
   'The team shared {n} snack(s) from the pantry to keep going.': '團隊吃了 {n} 份庫存點心來撐住體力。',
   'Trading is counted for up to {n} hours while you are away.': '離線營業最多計算 {n} 小時。',
   // mobile build controls
@@ -354,4 +346,44 @@ export const ZH_TW = {
   'Wall decor': '牆面裝飾', 'On the wall': '已掛上', 'Too close to the corner': '太靠近牆角了',
   'Too close to the {name}': '離{name}太近了', 'Hung the {name} (−{n})': '掛上了{name}（−{n}）',
   'Tap a wall where it should hang': '點一下牆面，選擇要掛的位置', 'Click a wall where it should hang': '點一下牆面，選擇要掛的位置',
+
+  // ---------------- trouble & training (trouble.js, ui/training.js)
+  'Baseball Club': '球棒隊', 'Track Club': '田徑隊', 'Home Run': '全壘打', 'Chase Down': '全力追擊',
+  'When a rude guest shows up, this staff member grabs a bat on their own and knocks them clean out of the café.': '奧客一出現，這位員工就會自己抄起球棒，把奧客直接打飛出咖啡廳。',
+  'When a guest runs off without paying, this staff member sprints after them on their own and gets the bill back.': '有客人吃霸王餐想跑，這位員工就會自己衝出去追，把帳單討回來。',
+  'A rude guest is pushing your staff around!': '奧客上門，正在對員工動手動腳！',
+  '{name} is sneaking off without paying!': '{name} 想吃霸王餐，正偷偷溜走！',
+  'Nobody can stop them yet: train someone at the {club} (Training tab).': '目前沒人能處理：到「進修」讓員工加入{club}。',
+  'Looking for trouble': '來找碴的', 'Making a scene': '在店裡鬧事', 'Furious': '怒氣沖沖', 'Uh-oh…': '糟了…', 'Scared': '嚇壞了',
+  'The rude guest stormed off. Your team is shaken.': '奧客鬧完走了，員工們都嚇壞了。',
+  'Flying home': '飛回家中', 'Wheee!': '咻～！',
+  'Sneaking out without paying': '準備偷偷溜走', 'Sneaky': '鬼鬼祟祟', 'Running off with the bill': '沒付錢就跑',
+  '{name} got away without paying ({n} coins).': '{name} 吃完霸王餐跑掉了（{n} 金幣）。',
+  'Paying up': '乖乖付錢', 'Busted!': '被抓到了！',
+  'Chasing a runaway guest': '追趕吃霸王餐的客人', 'Gotcha!': '抓到你了！', 'Heading back to the café': '走回咖啡廳',
+  'Going to bat': '拿球棒上場', 'Shaken up': '驚魂未定',
+  'trouble: guests who dine and dash': '突發狀況：吃霸王餐的客人', 'trouble: rude guests': '突發狀況：奧客',
+  '{name} learned {skill}!': '{name} 學會了{skill}！',
+  '{name} is on it!': '{name} 出動中！', 'Rude guest!': '奧客！', 'Not paying!': '霸王餐！',
+  '{name} is running off without paying!': '{name} 吃霸王餐想跑！', 'Sending help…': '員工正要出動…',
+  'Nobody can stop them: tap to train someone at the {club}': '沒人能處理：點這裡讓員工加入{club}',
+  'Rude guests': '奧客', 'Dine and dash': '霸王餐',
+  'Now and then a guest makes trouble. Send your staff to a club: each one trains on their own and keeps what they learn in every job.':
+    '偶爾會有客人鬧事。送員工去社團進修：每個人要各自學，學會的技能換工作也會保留。',
+  'Happening now': '已經會發生', 'From café Lv{n}': '咖啡廳 Lv{n} 起',
+  'Nobody on the team can handle this yet.': '目前團隊裡沒人能處理這個狀況。',
+  'When trouble starts, the nearest trained staff member who is free goes by themselves. The club fee is paid only when they pass.':
+    '狀況發生時，最近一位學過、手上有空的員工會自己出動。社團費等通過測驗才收。',
+  '{skill} Lv{n}': '{skill} Lv{n}', 'Train': '進修',
+  'Tap (or press Space) to swing just as the ball reaches the circle. Hit {need} of {n} pitches to pass.': '球飛到圓圈時點一下（或按空白鍵）揮棒。{n} 球中打中 {need} 球就過關。',
+  'Tap Left and Right in turn (or the arrow keys), as fast as you can. Reach the finish within {s} seconds to pass. Same foot twice and you stumble!':
+    '左、右輪流點（或用方向鍵），越快越好。{s} 秒內跑到終點就過關。同一隻腳連按兩次會絆倒喔！',
+  "{name}'s tryout for {skill}": '{name} 的{skill}測驗',
+  'Start': '開始', 'Not this time': '這次沒過', 'Club fee paid: {n} coins': '已付社團費 {n} 金幣', 'Great!': '太棒了！', 'Try again': '再試一次',
+  'Batting practice': '打擊練習', 'Swing!': '揮棒！', 'Home run!': '全壘打！', 'Hit!': '安打！', 'Too early!': '太早了！', 'Too late!': '太晚了！', 'Strike!': '好球！',
+  '{n} of {m} pitches hit': '{m} 球中打中 {n} 球', 'Hits {n}/{m}': '安打 {n}/{m}',
+  'The sprint': '短跑衝刺', 'Left': '左', 'Right': '右', 'GO!': '跑！', 'Stumble!': '絆倒了！', 'Finish!': '抵達終點！', "Time's up!": '時間到！',
+  'Give up': '放棄',
+  '{n} guest(s) ran off without paying — someone from the Track Club could have caught them.': '有 {n} 位客人吃霸王餐跑掉了，田徑隊的員工本來可以追回來！',
+  'Crossed the line with {s} s to spare': '提前 {s} 秒衝過終點', '{n} of {m} steps': '跑了 {n}/{m} 步', '{n} s': '{n} 秒', 'Steps {n}/{m}': '步數 {n}/{m}',
 };

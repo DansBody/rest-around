@@ -147,6 +147,8 @@ class Audio {
       case 'place': T(180, 0.12, { type: 'triangle', vol: 0.3, slide: -60 }); this.noise(0.08, { vol: 0.1, freq: 900 }); break;
       case 'tap': T(700, 0.05, { type: 'triangle', vol: 0.12 }); break;
       case 'click': T(900, 0.04, { type: 'triangle', vol: 0.12 }); break;
+      case 'bat': this.noise(0.09, { vol: 0.32, freq: 2600, q: 0.9 }); T(1250, 0.07, { type: 'square', vol: 0.08 }); T(620, 0.12, { type: 'triangle', vol: 0.12, at: 0.02, slide: -200 }); break;
+      case 'step': T(240, 0.035, { type: 'triangle', vol: 0.1, slide: -60 }); break;
       case 'error': T(200, 0.14, { type: 'square', vol: 0.07 }); T(160, 0.18, { type: 'square', vol: 0.07, at: 0.12 }); break;
       case 'water': this.noise(0.5, { vol: 0.1, freq: 2500, q: 1.5 }); break;
       case 'eat': T(400, 0.06, { vol: 0.15 }); T(460, 0.06, { vol: 0.15, at: 0.1 }); break;

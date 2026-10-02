@@ -7,7 +7,7 @@ import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
 import { saveSlots, loadSlots } from './pastry.js';
-import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT } from './data.js';
+import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 
@@ -30,7 +30,7 @@ export function serialize(game) {
       dirty: w.seats.filter((st) => st.dirty).map((st) => [st.chair.x, st.chair.y]),
     },
     meta: { seats: w.seats.filter((st) => w.accessFor(st.chair).length).length },   // what the offline settlement needs but cannot derive without the 3D footprints
-    staff: game.staff.map((a) => ({ name: a.name, role: a.role, look: a.look, energy: Math.round(a.energy), skills: a.skills, x: a.tx, y: a.ty })),
+    staff: game.staff.map((a) => ({ name: a.name, role: a.role, look: a.look, energy: Math.round(a.energy), skills: a.skills, clubs: a.clubs, x: a.tx, y: a.ty })),
   };
 }
 
@@ -130,7 +130,13 @@ export function apply(game, data) {
   st.unpaid = !!s.unpaid;
   st.snacks = {};
   for (const sn of SNACKS) { const n = Math.floor(num(s.snacks && s.snacks[sn.id], 0, 0, 1e6)); if (n) st.snacks[sn.id] = n; }
-  st.garden = Array.isArray(s.garden) ? s.garden.slice(0, 6).map((p) => ({ crop: p && SEEDS.some((x) => x.crop === p.crop) ? p.crop : null, prog: num(p && p.prog, 0, 0, 1), water: num(p && p.water, 0, 0, 1) })) : [];
+  // the garden made way for the Training tab: whatever was growing goes to the pantry, as far as it had grown
+  for (const p of Array.isArray(s.garden) ? s.garden.slice(0, 6) : []) {
+    const seed = p && SEEDS.find((x) => x.crop === p.crop);
+    const n = seed ? Math.round(seed.yield * num(p.prog, 0, 0, 1)) : 0;
+    if (n) st.inv[seed.crop] = (st.inv[seed.crop] || 0) + n;
+  }
+  st.garden = [];
   // wall decorations & the daily goal (saves from before the café opened start with the starter set)
   st.wallDeco = Array.isArray(s.wallDeco) ? s.wallDeco.filter((id, i, a) => wallDecorById[id] && a.indexOf(id) === i) : [...START_WALL_DECOR];
   st.wallPos = {};
@@ -183,12 +189,13 @@ export function apply(game, data) {
     const a = new Staff(game, sd.role, UNIQUE_NAMES[look.model], look);
     a.energy = num(sd.energy, 100, 0, 100);
     if (sd.skills && typeof sd.skills === 'object') for (const r of Object.keys(ROLES)) { const xp = num(sd.skills[r], 0, 0, 1e7); if (xp) a.skills[r] = Math.floor(xp); }
+    if (sd.clubs && typeof sd.clubs === 'object') for (const c of Object.keys(CLUBS)) { const lv = Math.floor(num(sd.clubs[c], 0, 0, 1)); if (lv) a.clubs[c] = lv; }
     game.addStaff(a, Math.floor(num(sd.x, 1)), Math.floor(num(sd.y, 1)));
     maxId = Math.max(maxId, a.id);
     if (a.energy <= 0) a.energy = Math.min(ENERGY.wakeAt, 5);
   }
   bumpUid(maxId + 1000);
-  game.eco.syncGarden();
+  game.troubles.newDay();
   game.day.nextSpawn = 4;
   if (!game.state.quest) game.eco.rollQuest();
   game.rating.recompute();

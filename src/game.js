@@ -11,6 +11,7 @@ import { Rating } from './rating.js';
 import { Economy } from './economy.js';
 import { Build } from './build.js';
 import { Street } from './ambient.js';
+import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
 import { DISHES, MAX_LEVEL, START_WALL_DECOR } from './data.js';
 import { bus } from './util.js';
@@ -57,12 +58,14 @@ export class Game {
     this.eco = new Economy(this);
     this.build = new Build(this);
     this.street = new Street(this);
+    this.troubles = new Troubles(this);
     this.ambient = [];
     this.debug = { grid: false, labels: false, assets: false };
     this.timeScale = 1;
     this.simTime = 0;
     this.renderTime = 0;
     this.paused = false;
+    this.hold = false;    // a training mini-game is on screen: the café waits
     this.touchMode = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;   // updated by the last pointer used
     this.selected = null;
     this.doorOpen = 0;
@@ -84,6 +87,7 @@ export class Game {
     this.world = new World(8);
     this.agents = []; this.agentTiles.clear(); this.jobs.clear();
     this.timeStopT = 0; this.spotlight = null;
+    this.troubles.newDay();
     const w = this.world;
     w.addFurniture('stove_basic', 6, 0, 1);
     w.addFurniture('table_oak', 3, 4, 1);
@@ -101,7 +105,6 @@ export class Game {
     for (let x = 4; x < 8; x++) for (let y = 0; y < 2; y++) w.floors[x][y] = 'fl_cream';
     this.addStaff(makeStaff(this, 'waiter', 'mochalatte'), 2, 2);
     this.addStaff(makeStaff(this, 'chef', 'bbaekko'), 6, 2);
-    this.eco.syncGarden();
     this.eco.rollQuest();
     this.day.nextSpawn = 3;
     this.rating.recompute();
@@ -110,7 +113,7 @@ export class Game {
   addStaff(s, x, y) {
     const w = this.world;
     let t = { x, y };
-    if (!w.isWalkable(x, y) || this.agentTiles.has(x, y)) t = this.freeTileNear(x, y) || w.entry;
+    if (!w.isWalkable(x, y) || w.isEntry(x, y) || this.agentTiles.has(x, y)) t = this.freeTileNear(x, y) || w.entry;
     s.placeAt(t.x, t.y);
     this.agents.push(s);
     return s;
@@ -152,7 +155,7 @@ export class Game {
     if (this.visit && this.paused && !this.build.active) this.day.startNextDay();   // a friend's café just rolls on into the next day
     this.renderTime += realDt;
     this.fx.update(realDt);
-    const running = !this.build.active && !this.paused;
+    const running = !this.build.active && !this.paused && !this.hold;
     if (running) {
       let dt = realDt * this.timeScale;
       while (dt > 0) { const s = Math.min(dt, 0.05); this.step(s); dt -= s; }
@@ -175,6 +178,7 @@ export class Game {
     this.agents = this.agents.filter((a) => !a.gone);
     this.street.update(dt);
     this.jobs.update(dt);
+    this.troubles.update(dt);
     this.eco.update(dt);
     this.rating.update(dt);
   }
@@ -223,6 +227,7 @@ export class Game {
   spawnCustomer(force = false) {
     if (!force && this.customers.filter((c) => c.state === 'arriving').length >= 4) return null;
     const c = new Customer(this);
+    if (!force && this.troubles.rollRude()) c.makeRude();
     this.agents.push(c);
     c.begin(Math.random() < 0.5 ? -7 : this.world.size + 7);
     return c;

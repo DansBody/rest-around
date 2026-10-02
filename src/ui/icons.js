@@ -37,6 +37,10 @@ const G = {
   staff: [['circle', { cx: 9, cy: 8, r: 3.3, stroke: 'c' }], ['path', { d: 'M3.3 19.5c.6-3.5 2.9-5.4 5.7-5.4s5.1 1.9 5.7 5.4', stroke: 'c' }], ['circle', { cx: 16.6, cy: 9, r: 2.6, stroke: 'c' }], ['path', { d: 'M16 14c2.7-.3 4.6 1.4 5.1 4.5', stroke: 'c' }]],
   menu: [['path', { d: 'M6.5 3v5.2a2 2 0 0 0 2 2V21M10.5 3v5.2a2 2 0 0 1-2 2M8.5 3v4.2', stroke: 'c' }], ['path', { d: 'M17 21V3c-2.2 1.6-3.4 4.3-3.4 7.6H17', stroke: 'c' }]],
   garden: [['path', { d: 'M5 19C5 10.2 10.2 5 19 5c0 8.8-5.2 14-14 14z', fill: 'currentColor', 'fill-opacity': 0.14, stroke: 'c' }], ['path', { d: 'M5 19 13.5 10.5', stroke: 'c' }]],
+  // Training tab: a medal on a ribbon
+  train: [['path', { d: 'M8 3.5h8l-2.6 6.6h-2.8z', fill: 'currentColor', 'fill-opacity': 0.14, stroke: 'c' }], ['circle', { cx: 12, cy: 15, r: 5.4, stroke: 'c' }], ['path', { d: 'M12 12.4l.85 1.75 1.9.27-1.38 1.33.33 1.9L12 16.75l-1.7.9.33-1.9-1.38-1.33 1.9-.27z', fill: 'currentColor' }]],
+  bat: [['path', { d: 'M19.6 3.4c1.1 1.1.9 2.6-.5 4L9.6 15.9l-1.5-1.5 8.5-9.5c1.4-1.4 2-2.6 3-1.5z', fill: '#f2c48d', stroke: '#b9793b', 'stroke-width': 1.3 }], ['path', { d: 'M8.1 14.4l1.5 1.5-3.9 3.9a1.06 1.06 0 0 1-1.5-1.5z', fill: '#3a3a44', stroke: '#3a3a44', 'stroke-width': 1 }], ['circle', { cx: 6.2, cy: 6.6, r: 2.4, fill: '#fff', stroke: '#e5484d', 'stroke-width': 1.2 }]],
+  run: [['circle', { cx: 14.6, cy: 4.6, r: 2, fill: 'currentColor' }], ['path', { d: 'M6.8 9.3l3.6-2 3.4 1.4 1.6 3 2.9.9M12.4 8.6l-2.2 5.2 3.4 2.4-1 4.3M10.2 13.8l-2.6 3.4-3.4-.4', stroke: 'c', 'stroke-width': 1.9 }], ['path', { d: 'M2.5 9.5h2.6M2 12.5h2.8', stroke: 'c', 'stroke-width': 1.4, opacity: 0.6 }]],
   market: [['path', { d: 'M4.6 8.3h14.8l-1.1 11.3a1 1 0 0 1-1 .9H6.7a1 1 0 0 1-1-.9z', fill: 'currentColor', 'fill-opacity': 0.14, stroke: 'c' }], ['path', { d: 'M8.7 10.5V7.3a3.3 3.3 0 0 1 6.6 0v3.2', stroke: 'c' }]],
   settings: [['path', { d: gearPath(12, 12, 6.9, 9, 8), stroke: 'c', 'stroke-width': 1.6, fill: 'currentColor', 'fill-opacity': 0.12 }], ['circle', { cx: 12, cy: 12, r: 2.9, stroke: 'c', 'stroke-width': 1.6 }]],
   heart: [['path', { d: 'M12 20.2s-7.6-4.6-7.6-10.1A4.2 4.2 0 0 1 12 7.7a4.2 4.2 0 0 1 7.6 2.4c0 5.5-7.6 10.1-7.6 10.1z', fill: 'url(#g-rose)', stroke: '#e8385e', 'stroke-width': 1.1 }]],
@@ -74,7 +78,7 @@ export const ICON_GLYPHS = {
   icon_coin: 'coin', icon_star: 'star', icon_star_empty: 'star_empty', icon_points: 'points', icon_level: 'level',
   icon_clock: 'clock', icon_gift: 'gift', icon_energy: 'energy', icon_patience: 'patience', icon_rotate: 'rotate',
   icon_move: 'move', icon_sell: 'sell', icon_lock: 'lock', icon_water: 'water', icon_seed: 'seed', icon_harvest: 'harvest',
-  tool_build: 'build', tool_staff: 'staff', tool_menu: 'menu', tool_garden: 'garden', tool_market: 'market', tool_friends: 'friends', tool_settings: 'settings',
+  tool_build: 'build', tool_staff: 'staff', tool_menu: 'menu', tool_garden: 'garden', tool_train: 'train', tool_market: 'market', tool_friends: 'friends', tool_settings: 'settings',
   emote_heart: 'heart', emote_angry: 'angry', emote_sad: 'sad', emote_zzz: 'zzz', emote_wait: 'patience',
   emote_sparkle: 'sparkles', emote_note: 'note', emote_broken: 'broken', emote_menu: 'menucard',
 };

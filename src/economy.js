@@ -1,8 +1,8 @@
 // Economy & progression: coins, café points, levels, dish leveling via ingredients, market,
-// garden plots, daily gift, staff hiring/snacks, facility breakage & repair.
+// daily gift, staff hiring/snacks/training, facility breakage & repair.
 import { SNACKS,
-  LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS, SEEDS, WATER_DURATION,
-  snackById, ROLES, DISH_CATS, staffSlots, menuSlots, gardenPlots, furnitureById, EXPANSIONS, SKILL,
+  LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS,
+  snackById, ROLES, DISH_CATS, staffSlots, menuSlots, furnitureById, EXPANSIONS, SKILL, CLUBS, TROUBLE,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
   staffWage, rentFor, ingPrice,
 } from './data.js';
@@ -21,7 +21,8 @@ export function unlocksFor(level) {
   if (staffSlots(level) > staffSlots(prev)) unlocks.push(t('{n} staff slots', { n: staffSlots(level) }));
   const m = menuSlots(level), before = menuSlots(prev);
   for (const k of Object.keys(m)) if (m[k] > before[k]) unlocks.push(t('+1 {cat} menu slot', { cat: DISH_CATS.find((c) => c.id === k).name }));
-  if (gardenPlots(level) > gardenPlots(prev)) unlocks.push(t('a new garden plot'));
+  if (TROUBLE.dash.level === level) unlocks.push(t('trouble: guests who dine and dash'));
+  if (TROUBLE.rude.level === level) unlocks.push(t('trouble: rude guests'));
   for (const d of DISHES) if (d.level === level) unlocks.push(t('dish: {name}', { name: d.name }));
   for (const f of Object.values(furnitureById)) if (f.level === level) unlocks.push(f.name);
   for (const w of WALL_DECOR) if (w.level === level) unlocks.push(w.name);
@@ -64,7 +65,6 @@ export class Economy {
   levelUp() {
     const s = this.s, g = this.game;
     s.level++;
-    this.syncGarden();
     this.game.emit('levelUp', { level: s.level, unlocks: unlocksFor(s.level) });
     g.sfx('levelup');
     g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 30, '#ffd86b');
@@ -253,40 +253,6 @@ export class Economy {
     return { got, coins };
   }
 
-  // ---------------- garden ----------------
-  syncGarden() {
-    const s = this.s;
-    const n = gardenPlots(s.level);
-    while (s.garden.length < n) s.garden.push({ crop: null, prog: 0, water: 0 });
-  }
-  seedFor(crop) { return SEEDS.find((x) => x.crop === crop); }
-  plant(i, crop) {
-    const p = this.s.garden[i], seed = this.seedFor(crop);
-    if (!p || p.crop || !seed || seed.level > this.s.level) return;
-    if (!this.spend(seed.price, 'seeds')) return;
-    p.crop = crop; p.prog = 0; p.water = 1;
-    this.game.sfx('pop');
-    this.game.changed('garden');
-  }
-  water(i) {
-    const p = this.s.garden[i];
-    if (!p || !p.crop || p.prog >= 1) return;
-    p.water = 1;
-    this.game.sfx('water');
-    this.game.changed('garden');
-  }
-  harvest(i) {
-    const p = this.s.garden[i];
-    if (!p || !p.crop || p.prog < 1) return null;
-    const seed = this.seedFor(p.crop);
-    this.s.inv[p.crop] = (this.s.inv[p.crop] || 0) + seed.yield;
-    const r = { crop: p.crop, n: seed.yield };
-    p.crop = null; p.prog = 0; p.water = 0;
-    this.game.sfx('coin');
-    this.game.changed('garden');
-    return r;
-  }
-
   // ---------------- staff ----------------
   hire(role) {
     const g = this.game, s = this.s;
@@ -316,6 +282,19 @@ export class Economy {
     st.changeRole(role);
     g.sfx('levelup');
     g.toast(t('{name} retrained: {from} → {to}!', { name: st.name, from, to: st.roleName }), 'good');
+    g.changed('staff');
+    return true;
+  }
+  /** Passed a club's mini-game: pay the fee and learn its skill (Lv1). */
+  learnClub(st, id) {
+    const g = this.game, club = CLUBS[id];
+    if (!club || !g.staff.includes(st) || st.clubLv(id) > 0) return false;
+    if (!this.spend(club.fee, club.name)) return false;
+    st.clubs[id] = 1;
+    st.emote('emote_sparkle', 2); st.hop();
+    g.fx.sparkle(g.at(st.x, st.y, 60), 16, club.color);
+    g.sfx('levelup');
+    g.toast(t('{name} learned {skill}!', { name: st.name, skill: club.skill }), 'good');
     g.changed('staff');
     return true;
   }
@@ -400,14 +379,6 @@ export class Economy {
       this.restockT = 2;
       this.autoRestock();
       if (this.s.stats && pantry.rescue(this.s, this.s.stats)) { this.game.toast(t('The supplier dropped off a starter pack to get you going.'), 'good'); this.game.changed('inv'); }
-    }
-    // garden growth (sim time; pauses in build mode)
-    for (const p of this.s.garden) {
-      if (!p.crop || p.prog >= 1) continue;
-      if (p.water > 0) {
-        p.prog = Math.min(1, p.prog + dt / this.seedFor(p.crop).grow);
-        p.water = Math.max(0, p.water - dt / WATER_DURATION);
-      }
     }
   }
 }

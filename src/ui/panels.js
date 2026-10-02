@@ -1,17 +1,18 @@
 // Panel contents. Each panel re-renders on state changes (and once a second when `live`).
 import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
-import { portrait, thumb, plotThumb } from '../portrait.js';
+import { portrait, thumb } from '../portrait.js';
 import { ACCESSORIES, roleLook, nextCast } from '../looks.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
-  INGREDIENTS, ingById, SEEDS, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, staffWage, servingCost, SERVINGS_PER_UNIT, OFFLINE,
+  INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
+  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, CLUBS, staffWage, servingCost, SERVINGS_PER_UNIT, OFFLINE,
 } from '../data.js';
 import { clearSave, save, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
 import { accountSection } from './account.js';
 import { renderFriends } from './friends.js';
+import { renderTraining } from './training.js';
 import { audio } from '../audio.js';
 import { gl, glyph } from './icons.js';
 import { t, tt, titledRole, LANGS, getLang } from '../i18n.js';
@@ -57,9 +58,14 @@ export function kitLines(model, unlocked = true, long = false) {
   for (const p of kit.perks) rows.push(skillItem(p.bad ? 'bad' : 'perk', p.glyph, p.bad ? DRAWBACK : PERK, p.name, p.bad ? t('Drawback') : t('Always on'), long ? p.desc : null));
   return rows;
 }
+/** What they learned at the clubs (Training tab): used on their own when trouble starts. */
+export function clubLines(a, long = false) {
+  return Object.values(CLUBS).filter((c) => a.clubLv(c.id) > 0)
+    .map((c) => skillItem('club', c.glyph, c.color, c.skill, t('Auto'), long ? c.desc : null));
+}
 /** A staff member's whole skill set, grouped by how each one fires. */
 function skillList(a, role = a.role, long = true) {
-  return h('div.sklist', jobSkill(role, a.skillLv(role) >= ABILITY_UNLOCK_LV, long), ...kitLines(a.look.model, a.kitUnlocked(), long));
+  return h('div.sklist', jobSkill(role, a.skillLv(role) >= ABILITY_UNLOCK_LV, long), ...kitLines(a.look.model, a.kitUnlocked(), long), ...clubLines(a, long));
 }
 /** The skills as a row of small coloured icons (the collapsed staff card). */
 function skillDots(a) {
@@ -68,7 +74,8 @@ function skillDots(a) {
   return h('div.sk-dots',
     dot(a.abilityUnlocked() ? ab.glyph : 'lock', a.abilityUnlocked() ? ab.color : LOCKED, ab.name),
     kit.active ? dot(a.kitUnlocked() ? kit.active.glyph : 'lock', a.kitUnlocked() ? kit.active.color : LOCKED, kit.active.name) : null,
-    ...kit.perks.map((p) => dot(p.glyph, p.bad ? DRAWBACK : PERK, p.name)));
+    ...kit.perks.map((p) => dot(p.glyph, p.bad ? DRAWBACK : PERK, p.name)),
+    ...Object.values(CLUBS).filter((c) => a.clubLv(c.id) > 0).map((c) => dot(c.glyph, c.color, c.skill)));
 }
 /** Five small stars for a staff skill level. */
 export function skillStars(lv, size = 13) {
@@ -90,7 +97,7 @@ export function skillLine(a, role = a.role) {
 export const PANELS = {
   staff: { title: 'Staff', icon: 'tool_staff', render: renderStaff, tick: tickStaff },
   menu: { title: 'Menu', icon: 'tool_menu', render: renderMenu },
-  garden: { title: 'Garden', icon: 'tool_garden', live: true, render: renderGarden },
+  train: { title: 'Training', icon: 'tool_train', render: renderTraining },
   market: { title: 'Market', icon: 'tool_market', render: renderMarket },
   friends: { title: 'Friends', icon: 'tool_friends', render: renderFriends },
   settings: { title: 'Settings', icon: 'tool_settings', render: renderSettings },
@@ -274,7 +281,7 @@ function renderMenu(ui, body) {
           maxed ? null : h('button.btn.small' + (canAdd ? '' : '.disabled'), { onclick: () => g.eco.contribute(d.id), title: t('Put pantry ingredients toward the next dish level') }, gl('bowl', t('Add ingredients'), 15))) : null)));
   }
   body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Every cup uses up its ingredients — one pack makes about {n} servings of each recipe. Keep the pantry stocked, or let the market top it up for you (Market tab).', { n: SERVINGS_PER_UNIT })));
-  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Collect every ingredient in a recipe to level a drink or bake (Lv1→10): higher price and more café points. Get ingredients from the Garden, the Market and the daily gift.')));
+  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Collect every ingredient in a recipe to level a drink or bake (Lv1→10): higher price and more café points. Get ingredients from the Market and the daily gift.')));
 }
 
 /** What a serving costs in ingredients, the margin on it, and how many the pantry can still make. */
@@ -286,49 +293,6 @@ function stockLine(g, d, st) {
 export function segs(text) {
   const dot = (text.match(/[·・．]/) || ['·'])[0];
   return text.split(/\s*[·・．]\s*/).flatMap((x, i) => (i ? [h('span.seg-dot', dot), h('span.seg', x)] : [h('span.seg', x)]));
-}
-
-// ------------------------------------------------------------------ garden
-function renderGarden(ui, body) {
-  const g = ui.game, s = g.state;
-  body.append(h('div.muted', t('Plant seeds, keep the soil watered, and harvest fresh herbs and berries. Plots only grow while watered.')));
-  const pick = ui.seedPick;
-  const grid = h('div.grid2', { style: { marginTop: '8px' } });
-  s.garden.forEach((p, i) => {
-    const seed = p.crop ? g.eco.seedFor(p.crop) : null;
-    const soil = plotThumb(p, 112, 96);
-    if (p.crop && p.prog >= 1) soil.style.animation = 'wiggle 1.4s infinite';
-    const tile = h('div.tile.plot', soil);
-    if (!p.crop) {
-      tile.append(h('b', t('Empty plot')), h('button.btn.small.primary', { onclick: () => { ui.seedPick = i; ui.renderPanel(); } }, I('icon_seed', 18), t('Plant')));
-    } else {
-      tile.append(...[h('b', ingById[p.crop].name + (p.prog >= 1 ? t(' — ready!') : '')),
-        h('div', { style: { width: '100%' }, title: t('Growth') }, h('div.pbar.green', h('i', { style: { width: p.prog * 100 + '%' } }))),
-        p.prog < 1 ? h('div', { style: { width: '100%', display: 'flex', alignItems: 'center', gap: '3px' }, title: t('Water') }, I('icon_water', 16), h('div.pbar' + (p.water <= 0 ? '.red' : ''), { style: { flex: 1 } }, h('i', { style: { width: p.water * 100 + '%' } }))) : null,
-        p.prog >= 1
-          ? h('button.btn.small.primary', { onclick: () => { const r = g.eco.harvest(i); if (r) ui.toast(t('Harvested {n} {crop}!', { n: r.n, crop: ingById[r.crop].name }), 'good'); } }, I('icon_harvest', 18), t('Harvest'))
-          : h('button.btn.small' + (p.water < 0.5 ? '.primary' : ''), { onclick: () => g.eco.water(i) }, I('icon_water', 18), p.water <= 0 ? t('Thirsty!') : t('Water')),
-        h('span.muted', p.prog >= 1 ? `+${seed.yield}` : t('{n}s left', { n: Math.ceil((1 - p.prog) * seed.grow) }))].filter(Boolean));
-    }
-    grid.append(tile);
-  });
-  body.append(grid);
-  if (pick != null && s.garden[pick] && !s.garden[pick].crop) {
-    body.append(h('div.section-title', t('Choose seeds for plot {n}', { n: pick + 1 })));
-    for (const sd of SEEDS) {
-      const locked = sd.level > s.level;
-      body.append(h('div.row' + (locked ? '.locked' : ''), I('ing_' + sd.crop, 36),
-        h('div.grow', h('h3', ingById[sd.crop].name), h('div.muted', locked ? t('Unlocks at level {n}', { n: sd.level }) : t('{s}s to grow · yields {n}', { s: sd.grow, n: sd.yield }))),
-        locked ? I('icon_lock', 24) : h('button.btn.small.primary', { onclick: () => { g.eco.plant(pick, sd.crop); ui.seedPick = null; ui.renderPanel(); } }, coinPill(sd.price))));
-    }
-    body.append(h('button.btn.small', { onclick: () => { ui.seedPick = null; ui.renderPanel(); } }, t('Cancel')));
-  }
-  body.append(h('div.section-title', t('Pantry')), pantry(s));
-}
-
-function pantry(s) {
-  const items = INGREDIENTS.filter((i) => s.inv[i.id]).map((i) => h('span.ing', { title: i.name }, I('ing_' + i.id, 22), '×' + s.inv[i.id]));
-  return items.length ? h('div.ings.pantry', items) : h('div.muted', t('Empty — grow or buy some ingredients!'));
 }
 
 // ------------------------------------------------------------------ market
@@ -344,7 +308,7 @@ function renderMarket(ui, body) {
   for (const i of INGREDIENTS) {
     const ok = g.eco.ingredientAvailable(i.id);
     const price = g.eco.ingredientPrice(i.id);
-    grid.append(h('div.tile' + (ok ? '' : '.locked'), I('ing_' + i.id, 36), h('b', i.name), h('span.muted', t('have {n}', { n: s.inv[i.id] || 0 }) + (i.source === 'garden' ? t(' · grows in garden') : '')),
+    grid.append(h('div.tile' + (ok ? '' : '.locked'), I('ing_' + i.id, 36), h('b', i.name), h('span.muted', t('have {n}', { n: s.inv[i.id] || 0 }) ),
       ok ? h('div.btnrow', h('button.btn.small', { onclick: () => g.eco.buyIngredient(i.id, 1) }, coinPill(price)), h('button.btn.small', { onclick: () => g.eco.buyIngredient(i.id, 5) }, '×5 ', coinPill(price * 5)))
         : h('span.muted', I('icon_lock', 16), ' ' + t('Lv{n}', { n: i.level }))));
   }

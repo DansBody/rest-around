@@ -14,7 +14,7 @@ export class DayCycle {
 
   freshStats() {
     const s = this.game.state;
-    return { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: s.rating, levelStart: s.level, spent: 0, restocked: 0, wages: 0, rent: 0, soldOut: 0 };
+    return { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: s.rating, levelStart: s.level, spent: 0, restocked: 0, wages: 0, rent: 0, soldOut: 0, dashed: 0 };
   }
 
   get hour() { return DAY.startHour + (this.game.state.clock / DAY.length) * (DAY.endHour - DAY.startHour); }
@@ -76,6 +76,7 @@ export class DayCycle {
     s.clock = 0;
     s.stats = this.freshStats();
     g.eco.rollQuest();
+    g.troubles.newDay();
     if (s.unpaid) {   // payday came up short: the team is grumpy and starts the day tired
       for (const st of g.staff) st.energy = Math.max(10, st.energy - COSTS.unpaidEnergy);
       s.unpaid = false;

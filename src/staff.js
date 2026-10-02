@@ -6,8 +6,10 @@ import { staffLook, nextCast } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
 import { servings } from './pantry.js';
 import { freeSlot, slotOfTicket, putBack } from './pastry.js';
-import { dishById, furnitureById, ingById, ingIcon, EXTRA_CAT, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS } from './data.js';
+import { dishById, furnitureById, ingById, ingIcon, EXTRA_CAT, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS, CLUBS, TROUBLE } from './data.js';
 import { CASTS } from './kits.js';
+import { DOOR_Y } from './world.js';
+import { DIRS, dirFromDelta } from './iso.js';
 import { rand, randInt, manhattan, uid } from './util.js';
 import { t, titledRole } from './i18n.js';
 
@@ -37,6 +39,10 @@ export class Staff extends Agent {
     this.kitT = 0;       // seconds left of a timed active skill (time pause, spotlight): shows the aura
     this.auraT = 0; this.auraMul = 1;   // a colleague's Caffeine Boost, lapses when they walk away
     this.buffT = 0; this.buffMul = 1;   // Wild Magic's gust of haste
+    this.clubs = {};     // club id -> level learned at the club (Training tab), 0 = not yet
+    this.trouble = null; // { kind: 'chase' | 'bat', target }: dealing with a troublemaker
+    this.stunT = 0;      // shoved by a rude guest: shaken up for a moment
+    this.swingT = 0;     // the bat swing (visual)
   }
 
   // ---------------- character kit (perks + a castable skill, see KITS) ----------------
@@ -223,7 +229,7 @@ export class Staff extends Agent {
   findBlocker() {
     const g = this.game, w = g.world, s = g.state;
     if (this.caseFull) return { icon: 'emote_wait', text: t('Pastry Case is full') };
-    if (this.job || this.napping) return null;
+    if (this.job || this.napping || this.trouble || this.stunT > 0) return null;
     const menuOf = (bake) => Object.keys(s.dishes).filter((id) => s.dishes[id].on && dishById[id].level <= s.level && (dishById[id].cat === EXTRA_CAT) === bake);
     const pantry = (ids) => {
       if (!ids.length) return { icon: 'emote_menu', text: t('Nothing to make on the menu') };
@@ -260,12 +266,14 @@ export class Staff extends Agent {
     this.blocker = b && (this.blockForT >= 1.5 || this.caseFull) ? b : null;
   }
 
-  canNudge() { return !this.job && !this.napping; }
+  canNudge() { return !this.job && !this.napping && !this.trouble; }
   stateLabel() { return `${this.task} ⚡${Math.round(this.energy)}`; }
   get roleName() { return ROLES[this.role].name; }
 
   update(dt) {
     if (this.job && this.job.canceled) this.abortJob();
+    if (this.swingT > 0) this.swingT = Math.max(0, this.swingT - dt);
+    if (this.trouble) this.watchTrouble();
     this.updateAbility(dt);
     this.updateKit(dt);
     this.updateBlocker(dt);
@@ -274,7 +282,7 @@ export class Staff extends Agent {
       const g = this.game;
       if (this.boosted() && Math.random() < dt * 8) g.fx.puff(g.at(this.x, this.y, this.role === 'waiter' ? 4 : 50), this.ability.color, 1);
     }
-    this.speedMul = this.skillMul * (this.boosted() && this.ability.speed ? this.ability.speed : 1) * this.kitWalkMul();
+    this.speedMul = this.skillMul * (this.boosted() && this.ability.speed ? this.ability.speed : 1) * this.kitWalkMul() * (this.trouble ? TROUBLE.respond : 1);
     super.update(dt);
     if (this.job) this.energy = Math.max(0, this.energy - ENERGY.drainPerSec * dt);
   }
@@ -282,6 +290,7 @@ export class Staff extends Agent {
   think() {
     const g = this.game;
     if (this.napping) return;
+    if (this.trouble) return this.trouble.kind === 'bat' ? this.batStep() : this.chaseStep();
     if (this.energy <= 0) return this.startNap();
     const j = g.jobs.pick(this);
     if (j) return this.startJob(j);
@@ -300,6 +309,10 @@ export class Staff extends Agent {
   idle() {
     const g = this.game;
     this.task = 'Idle';
+    if (g.world.isEntry(this.tx, this.ty)) {   // never loiter in the doorway (back from a chase): guests can't get in
+      const t = g.freeTileNear(this.tx, this.ty);
+      if (t) { this.walk(t.x, t.y, { onFail: () => {} }); return; }
+    }
     if (Math.random() < 0.55) {
       const h = this.home();
       const t = g.freeTileNear(h.x, h.y, true, (x, y) => manhattan(x, y, h.x, h.y) <= 3 && Math.random() < 0.6) || g.freeTileNear(this.tx, this.ty);
@@ -521,6 +534,148 @@ export class Staff extends Agent {
     this.job = null;
     this.task = 'Idle';
     if (retry) this.wait(0.8);
+  }
+
+  // ---------------- trouble: what the clubs teach (see trouble.js) ----------------
+  clubLv(id) { return this.clubs[id] || 0; }
+  /** Drop whatever they were doing (the job goes back on the board) and deal with a troublemaker. */
+  takeTrouble(kind, target) {
+    if (this.job) this.abortJob(true);
+    this.halt();
+    this.waitMode = null; this.held = null; this.caseFull = false; this.stunT = 0; this.bubble = null;
+    this.trouble = { kind, target };
+    this.hop();
+  }
+  endTrouble() {
+    this.trouble = null;
+    this.held = null; this.gliding = false;
+    this.task = 'Idle';
+  }
+  /** Every frame while on trouble duty: close enough to grab the runaway, or to swing? */
+  watchTrouble() {
+    const tr = this.trouble, c = tr.target;
+    if (tr.kind === 'chase' && !tr.done && this.chaseLive() && Math.hypot(c.x - this.x, c.y - this.y) < 0.8) this.nab(c);
+    if (tr.kind === 'bat' && !tr.swing && this.batLive() && Math.hypot(c.x - this.x, c.y - this.y) < 1.45) this.swing(c);
+  }
+
+  // ----- Track Club: chase down a dine-and-dasher -----
+  goChase(c) {
+    const g = this.game;
+    this.takeTrouble('chase', c);
+    this.task = 'Chasing a runaway guest';
+    g.fx.title(g.at(this.x, this.y, 95), t('{ability}!', { ability: CLUBS.track.skill }), CLUBS.track.color);
+    g.sfx('ability');
+    this.chaseStep();
+  }
+  chaseLive() { const c = this.trouble && this.trouble.target; return !!c && !c.gone && c.state === 'dash' && this.game.agents.includes(c); }
+  /** Inside, run for the door (the runaway is headed there too); from the door on, straight after them. */
+  chaseStep() {
+    const g = this.game, e = g.world.entry, c = this.trouble.target;
+    if (this.trouble.done || !this.chaseLive()) return this.comeBack();
+    if (this.x >= 0 && (this.tx !== e.x || this.ty !== e.y)) {
+      this.walk(e.x, e.y, { onFail: () => this.wait(0.3) });
+      this.do(() => this.chaseStep());
+      return;
+    }
+    if (c.x >= 0.6) { this.wait(0.15, 'idle'); this.do(() => this.chaseStep()); return; }   // at the door, they're still inside: block it
+    this.releaseAll();   // off the floor grid, out on the street
+    this.wait(0, null, {
+      every: (dt) => {
+        const dx = c.x - this.x, dy = c.y - this.y, d = Math.hypot(dx, dy);
+        const step = Math.min(d, this.speed * (this.speedMul || 1) * dt);
+        if (d > 1e-4) { this.dir = dirFromDelta(dx, dy, this.dir); this.x += (dx / d) * step; this.y += (dy / d) * step; this.phase += step * Math.PI * 1.6; }
+        this.gliding = true;
+      },
+      until: () => this.trouble.done || !this.chaseLive(),
+    });
+    this.do(() => { this.gliding = false; if (!this.trouble.done) this.comeBack(); });
+  }
+  nab(c) {
+    const g = this.game;
+    this.trouble.done = true;
+    this.halt();
+    c.caught(this);
+    this.face({ x: Math.floor(c.x), y: Math.floor(c.y) });
+    this.emote('emote_angry', 1.4);
+    g.fx.title(g.at(this.x, this.y, 95), t('Gotcha!'), CLUBS.track.color);
+    g.fx.sparkle(g.at(c.x, c.y, 70), 12, '#ffd86b');
+    this.wait(1.3, 'talk');
+    this.do(() => this.comeBack());
+  }
+  /** Back through the door (from the street) and back to work. */
+  comeBack() {
+    const g = this.game, e = g.world.entry;
+    this.halt();
+    if (this.x >= 0) { this.claim(this.tx, this.ty); return this.endTrouble(); }   // never left (claims were let go at the door)
+    this.task = 'Heading back to the café';
+    this.trouble.done = true;
+    if (Math.abs(this.y - (DOOR_Y + 0.5)) > 0.6) this.glide(Math.min(this.x, -2.2), DOOR_Y + 0.5);
+    this.glide(-1.1, DOOR_Y + 0.5);
+    this.wait(0, null, { until: () => !g.agentTiles.has(e.x, e.y) });
+    this.do(() => { this.claim(e.x, e.y); g.openDoor(1.4); });
+    this.glide(e.x + 0.5, e.y + 0.5);
+    this.do(() => this.endTrouble());
+  }
+
+  // ----- Baseball Club: bat a rude guest out of the café -----
+  goBat(c) {
+    this.takeTrouble('bat', c);
+    this.task = 'Going to bat';
+    this.held = { id: 'held_bat' };
+    c.cower();
+    this.batStep();
+  }
+  batLive() { const c = this.trouble && this.trouble.target; return !!c && !c.gone && c.state === 'rude' && this.game.agents.includes(c); }
+  /** Walk up next to them (they're frozen to the spot); watchTrouble() swings once in reach. */
+  batStep() {
+    const g = this.game, w = g.world, c = this.trouble.target;
+    if (!this.batLive()) return this.endTrouble();
+    const goals = DIRS.map((d) => ({ x: c.tx + d.dx, y: c.ty + d.dy })).filter((p) => w.isWalkable(p.x, p.y));
+    this.walk(0, 0, { goals: goals.length ? goals : [{ x: c.tx, y: c.ty }], goalOk: !goals.length, onFail: () => this.wait(0.4) });
+    this.do(() => this.batStep());
+  }
+  swing(c) {
+    const g = this.game;
+    this.trouble.swing = true;
+    this.halt();
+    this.face({ x: c.tx, y: c.ty });
+    this.swingT = 0.55;
+    g.sfx('charge');
+    this.wait(0.55, 'idle', { every: () => { this.dir = dirFromDelta(c.x - this.x, c.y - this.y, this.dir); } });
+    this.do(() => {
+      if (!this.batLive()) return this.endTrouble();
+      c.launch(this);
+      g.fx.title(g.at(this.x, this.y, 95), t('{ability}!', { ability: CLUBS.baseball.skill }), CLUBS.baseball.color);
+      g.fx.sparkle(g.at(c.x, c.y, 60), 22, '#ffe27a');
+      g.fx.sparkle(g.at(c.x, c.y, 60), 10, '#ffffff');
+      g.sfx('bat');
+      // the room cheers: everyone waiting perks up, and it counts as great service
+      for (const o of g.customers) if (o !== c && o.x >= 0 && ['waitOrder', 'waitFood', 'eating', 'queue'].includes(o.state)) {
+        if (o.showPatience) o.patience = Math.min(1, o.patience + 0.25);
+        g.fx.hearts(g.at(o.x, o.y, 100), 1);
+      }
+      g.rating.addService(1);
+      this.emote('emote_sparkle', 1.5);
+      this.hop();
+    });
+    this.wait(0.9, 'idle');
+    this.do(() => this.endTrouble());
+  }
+  /** A rude guest shoves them: whatever they were doing is dropped, and they need a moment. */
+  shoved(by) {
+    const g = this.game, T = TROUBLE.rude;
+    if (this.job) this.abortJob(true);
+    this.halt();
+    this.waitMode = null; this.held = null; this.caseFull = false;
+    this.stunT = T.stun;
+    this.energy = Math.max(0, this.energy - T.energy);
+    this.shakeT = 0.8;
+    this.emote('emote_sad', T.stun);
+    this.task = 'Shaken up';
+    g.fx.puff(g.at(this.x, this.y, 50), '#d8d0c8', 5);
+    g.sfx('angry');
+    this.wait(T.stun, 'idle');
+    this.do(() => { this.stunT = 0; this.task = 'Idle'; });
   }
 
   // ---------------- energy ----------------
