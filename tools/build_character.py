@@ -160,6 +160,59 @@ CHARACTERS = {
         'face': (0.7, 1.0),
         'repairs': [],
     },
+    'tata': {
+        'name': 'TATA',
+        # User-made gpt-image three-view reference -> Meshy 7 multi-image-to-3d
+        # 01a0fd3c-2642-71c5-a909-2f5f2904f24c, remesh 01a0fd40-1b00-77bb-8bb5-f789a3657f64.
+        # Source remesh is 1.9 units tall. Preserve the heart silhouette as one rigid head;
+        # its two lobes are not ears and must not receive the ear animation weights.
+        'scale': 1.1, 'face_width': 0, 'smooth_normals': True,
+        # Meshy's tightly packed UV islands bleed neighbouring colours through mipmaps,
+        # producing pale hairlines on the heart and blue suit. Use bilinear sampling instead.
+        'texture_mipmaps': False,
+        'texture_size': 2048, 'texture_subsampling': 0,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.24, 0)),
+            ('leg_l', 'hips', (0.15, 0.24, 0.03)), ('leg_r', 'hips', (-0.15, 0.24, 0.03)),
+            ('chest', 'hips', (0, 0.45, 0)),
+            ('arm_l', 'chest', (0.31, 0.6, 0)), ('hand_l', 'arm_l', (0.425, 0.29, 0.04)),
+            ('arm_r', 'chest', (-0.31, 0.6, 0)), ('hand_r', 'arm_r', (-0.425, 0.29, 0.04)),
+            ('head', 'chest', (0, 0.73, 0)),
+            ('ear_l', 'head', (0.42, 1.75, 0)), ('ear_r', 'head', (-0.42, 1.75, 0)),
+        ],
+        'skin': {'leg': (0.16, 0.28), 'arm_x': (0.3, 0.37), 'arm_y': (0.2, 0.25),
+                 'arm_top': (0.61, 0.69), 'head': (0.68, 0.75), 'chest': (0.28, 0.45),
+                 'ear_y': (2.0, 2.1), 'ear_x': (0.3, 0.4)},
+        'face': (0.9, 1.5),
+        # Clean Meshy's pale seams on the red head while protecting the eyes and yellow muzzle.
+        'keep': lambda c: (c.max(1) < 100) | ((c[:, 1] > 100) & (c[:, 1] > 1.5 * c[:, 2]) & (c[:, 0] < 1.7 * c[:, 1])),
+        'repairs': [{'box': lambda x, y, z: y > 0.74, 'clean': 6, 'tol': 18}],
+    },
+    'rj': {
+        'name': 'RJ',
+        # User-supplied three views -> Meshy 7 multi-image-to-3d
+        # 01a0fd6f-ced5-70cd-9c87-70012936fc1d, remesh 01a0fd72-6056-7647-81e2-dab44b689952.
+        'scale': 1.1, 'smooth_normals': True,
+        'texture_size': 2048, 'texture_subsampling': 0, 'texture_mipmaps': False,
+        'texture_clamp': True,  # atlas islands touch its borders; never sample the opposite edge
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.29, 0)),
+            ('leg_l', 'hips', (0.13, 0.29, 0.04)), ('leg_r', 'hips', (-0.13, 0.29, 0.04)),
+            ('chest', 'hips', (0, 0.65, 0)),
+            ('arm_l', 'chest', (0.39, 0.84, 0)), ('hand_l', 'arm_l', (0.51, 0.56, 0.07)),
+            ('arm_r', 'chest', (-0.39, 0.84, 0)), ('hand_r', 'arm_r', (-0.51, 0.56, 0.07)),
+            ('head', 'chest', (0, 0.99, 0)),
+            ('ear_l', 'head', (0.39, 1.77, -0.03)), ('ear_r', 'head', (-0.39, 1.77, -0.03)),
+        ],
+        'skin': {'leg': (0.23, 0.31), 'arm_x': (0.38, 0.45), 'arm_y': (0.45, 0.51),
+                 'arm_top': (0.84, 0.92), 'head': (0.96, 1.03), 'chest': (0.31, 0.56),
+                 'ear_y': (1.72, 1.79), 'ear_x': (0.34, 0.39)},
+        'face': (1.15, 1.5),
+        # Remove stray atlas colours on the cream surface, keeping facial features,
+        # cheeks, the scarf and shoes (including a margin around their edges).
+        'keep': lambda c: (c.max(1) < 170) | (np.ptp(c, axis=1) > 55),
+        'repairs': [{'box': lambda x, y, z: y > 0.14, 'clean': 4, 'tol': 20}],
+    },
     'guest_b': {
         'name': 'GuestB',
         # the guests' standard chibi body: a plain earless cream animal in a grey tee, recoloured per
@@ -702,12 +755,15 @@ def build(cid, src):
     P, N, UV, IDX, img = read_glb(src)
     # centre on x/z, feet on the floor
     P = P - np.array([(P[:, 0].min() + P[:, 0].max()) / 2, P[:, 1].min(), (P[:, 2].min() + P[:, 2].max()) / 2], np.float32)
-    img = img.resize((TEX_SIZE, TEX_SIZE), Image.LANCZOS)
+    tex_size = C.get('texture_size', TEX_SIZE)
+    img = img.resize((tex_size, tex_size), Image.LANCZOS)
     if C.get('recolor') or C.get('decals'):
         img = paint_texture(img, P, UV, IDX)
     if C['repairs']:
         img = repair_texture(img, P, UV, IDX)
         P, N = repair_geometry(P, IDX)
+    elif C.get('smooth_normals'):
+        P, N = repair_geometry(P, IDX)  # weld UV seams for shading, without changing the silhouette
     joints, weights = skin_weights(P)
     P, N, warp = standard_face(P, N)
     BONES = [(n, par, tuple(warp(np.array([pos], np.float32))[0])) for n, par, pos in BONES]
@@ -764,7 +820,7 @@ def build(cid, src):
         animations.append({'name': cname, 'samplers': samplers, 'channels': channels})
 
     OUT.mkdir(parents=True, exist_ok=True)
-    img.save(OUT / tex_file, quality=90, optimize=True)
+    img.save(OUT / tex_file, quality=90, optimize=True, subsampling=C.get('texture_subsampling', 2))
     (OUT / f'{model}.bin').write_bytes(bytes(b.data))
     gltf = {
         'asset': {'version': '2.0', 'generator': 'tools/build_character.py'},
@@ -777,7 +833,8 @@ def build(cid, src):
                        'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'metallicFactor': 0, 'roughnessFactor': ROUGHNESS},
                        'emissiveTexture': {'index': 0}, 'emissiveFactor': [GLOW] * 3}],
         'textures': [{'source': 0, 'sampler': 0}],
-        'samplers': [{'magFilter': 9729, 'minFilter': 9987}],
+        'samplers': [{'magFilter': 9729, 'minFilter': 9987 if C.get('texture_mipmaps', True) else 9729,
+                      **({'wrapS': 33071, 'wrapT': 33071} if C.get('texture_clamp') else {})}],
         'images': [{'uri': tex_file}],
         'animations': animations,
         'buffers': [{'uri': f'{model}.bin', 'byteLength': len(b.data)}],

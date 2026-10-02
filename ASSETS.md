@@ -19,7 +19,7 @@ plain CSS in `src/ui/style.css`, so it needs no images.
 | [KayKit Restaurant Bits](https://kaylousberg.itch.io/restaurant-bits) by Kay Lousberg | CC0 | round table, chair, door, plate |
 | [KayKit Furniture Bits](https://kaylousberg.itch.io/furniture-bits) by Kay Lousberg | CC0 | square table, wooden chair, armchair |
 | Refillit's own props, food, drinks and icons | made with Meshy for this game | everything else in the café (see below) |
-| [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | the guests and passers-by (staff are our own characters) + their shared animations |
+| [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | legacy character models and their shared animations; current guests use `GuestB` |
 | Fredoka, Nunito (Google Fonts) | SIL OFL 1.1 | UI fonts (`assets/fonts`, licences alongside) |
 
 The character files were slimmed for the web: weapons removed, the 15 animations the game uses
@@ -37,18 +37,33 @@ characters made with Meshy. Their source tasks are listed on their `CHARACTERS` 
 views of the plush photos, remeshed to ~12k triangles. Meshy's auto-rigger only takes humanoids and
 rejects their chibi shapes, so `tools/build_character.py` (Python 3 + numpy + Pillow) adds a small
 skeleton, skins the mesh and bakes their own clips (idle, waddle, carry, sit, work, sweep, nap,
-cheer…; Bbaekko's wings flutter, Cheetie's tail swings, Oritokki's pompom wiggles). Every head is scaled to one house face width (`FACE_WIDTH`) so the
+cheer…; Bbaekko's wings flutter, Cheetie's tail swings, Oritokki's pompom wiggles). Most heads are scaled to one house face width (`FACE_WIDTH`) so the
 cast matches. The build can also correct colours and redraw prints (`recolor`, `decals`) and mend
-geometry/texture flaws (`repairs`) when a Meshy model needs it. Only Cheetie needs one fix: Meshy
+geometry/texture flaws (`repairs`) when a Meshy model needs it. Cheetie's colour fix handles how Meshy
 turned the tail's yellow bow brown (the colour of the spots), so a `recolor` limited to the bow's
 region (`where`) repaints it. Oritokki is a ball with a single hand, so its entry sets `one_arm`
 (only the +x arm is skinned and the game holds props in `hand_l`) and `face_width: 0` (the house
 face-width standard would pinch its round body). The
-manifest's `animations` map on each entry tells the game which clip to play for each action. To
+manifest's `animations` map on each entry tells the game which clip to play for each action. **TATA**
+(`tata`, red heart-shaped head, blue body with yellow spots) uses user-supplied GPT Image three views,
+Meshy 7 multi-image-to-3d and a 12,332-triangle remesh. Its `face_width: 0` preserves the heart silhouette;
+the heart lobes stay on the head bone, with no ear weights. Its build cleans pale texture seams while
+preserving the eyes and muzzle, and recomputes smooth normals without changing the geometry.
+Its texture retains 2048 px resolution and full JPEG chroma resolution; bilinear minification
+avoids mipmaps mixing neighbouring UV islands into visible hairlines on the head and suit.
+**RJ** (`rj`, cream alpaca with an orange scarf, pink cheeks and brown shoes) uses user-supplied
+three views and a 12,414-triangle remesh. Its local rig includes 15 clips; the arm weights stop below
+the scarf so the knot follows the chest. The build cleans stray colours on the cream surface,
+protects the facial features and scarf, and uses a 2048 px texture with bilinear sampling and clamped
+atlas edges to avoid colour bleeding. Its source GLBs and views are in `build/character-source/rj/`.
+Source task IDs are recorded in `CHARACTERS`; TATA's downloaded GLB and input views are kept locally in
+`build/character-source/heart-character/` (not committed). To
 rebuild after changing a model or a clip: download the remesh GLB and run
 `python tools/build_character.py <id> <remesh.glb>`. They *are* the staff: every staff member is one of
 them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, so the number of staff
-slots tops out at the size of the cast. They're never random guests; the KayKit characters are only guests.
+slots tops out at the size of the cast (currently seven). They're never random guests. Guests and passers-by
+use **GuestB** (`guest_b`), a plain body recoloured per guest with fur/shirt colours and procedural ears.
+KayKit characters remain in the manifest as legacy assets.
 
 **Café props, drinks, bakes and icons (Refillit's own art).** Everything that makes the place a café
 was made with Meshy from text prompts (the concept art only set the mood), then slimmed by
@@ -117,8 +132,10 @@ The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in t
    adjust; a tail is one `tail` bone plus the `tail_z/x/y` bands, copy Cheetie), then run `python tools/build_character.py <id> <remesh.glb>`.
 7. **Register it in the game**:
    - a manifest character entry (copy an existing one; `animations` map, `hand`/`handL`/`head`, `trayPos`, `sitForward`)
-   - the id in `UNIQUE_MODELS` (`src/data.js`)
-   - the display name in the wardrobe `names` map (`src/ui/panels.js`)
+   - the id in `UNIQUE_MODELS` and display name in `UNIQUE_NAMES` (`src/data.js`; the wardrobe reads these)
+   - an empty `KITS` entry when the character has no signature skill yet
+   - bump `BALANCE_VERSION` when the cast grows (the staff-slot limit grows with it), rebuild the server
+     with `node tools/build_functions.js` and deploy the server before publishing the game
    - this section, then `node tools/assets-table.mjs`
 8. **Verify** in the running game. Hard-reload changed files (browsers cache the modules and models).
    Render the new character next to the others, front and back, plus a few clips (Walk, Cheer, Sit,
@@ -152,7 +169,7 @@ clip names differ — point `characterAnimationFile` at its animations and updat
   (`src/ui/icons.js`) instead of a generated placeholder, both in the UI and in the in-world
   speech bubbles. A PNG at the listed path still replaces them.
 * Staff snacks (`snack_*`) are rendered from small procedural 3D models (cookie, sandwich,
-  bento), and the Garden panel renders its plots in 3D, so no 2D art is needed for them.
+  bento), so no 2D art is needed for them. The Baseball Club's bat is made in code too (`charview.js`).
 
 ## Asset tables (generated)
 
@@ -160,7 +177,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (70)
+### 3D models (72)
 
 **Furniture**
 
@@ -262,6 +279,8 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `heehee` | `models/characters/HeeHee.gltf` | own rig + clips |
 | `cheetie` | `models/characters/Cheetie.gltf` | own rig + clips |
 | `oritokki` | `models/characters/Oritokki.gltf` | own rig + clips |
+| `tata` | `models/characters/TATA.gltf` | own rig + clips |
+| `rj` | `models/characters/RJ.gltf` | own rig + clips |
 
 ### 2D images (73)
 

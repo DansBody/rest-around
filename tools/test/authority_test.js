@@ -1,6 +1,7 @@
 // Sanity checks for src/authority.js on the fixtures: honest-looking changes pass, edited saves are caught.
 //   node tools/test/authority_test.js
 import { capCheck, wealth } from '../../src/authority.js';
+import { ROLES } from '../../src/data.js';
 import * as fx from './fixtures.js';
 
 let fail = 0;
@@ -38,5 +39,32 @@ for (const [name, make] of Object.entries(fx)) {
   n = make(); n.staff[0].skills = { waiter: 99999 };
   r = capCheck(prev, n, 45);
   ok(r.flags.includes('xp') && r.data.staff[0].skills.waiter === prev.staff[0].skills.waiter, `${name}: XP edit is reverted`);
+}
+// The expanded cast can be hired at a sufficient level, paying the normal hiring fee.
+{
+  const prev = fx.grown(), next = fx.grown();
+  next.staff.push({ name: 'TATA', role: 'waiter', look: { model: 'tata', hide: [], tint: null, scale: 1, roleHat: null }, energy: 100, skills: {}, x: 1, y: 1 });
+  next.state.coins -= ROLES.waiter.hire;
+  const r = capCheck(prev, next, 45);
+  ok(!r.reject && !r.flags.length, 'grown: paid sixth hire (TATA) passes');
+  const six = structuredClone(next);
+  next.staff.push({ ...next.staff[5], name: 'RJ', look: { ...next.staff[5].look, model: 'rj' } });
+  next.state.coins -= ROLES.waiter.hire;
+  const seventh = capCheck(six, next, 45);
+  ok(!seventh.reject && !seventh.flags.length, 'grown: paid seventh hire (RJ) passes');
+  next.staff.push({ ...next.staff[6], name: 'Extra' });
+  const extra = capCheck(prev, next, 45);
+  ok(extra.reject && extra.flags.includes('staff'), 'grown: eighth staff member is rejected');
+  const low = fx.starter();
+  low.staff = next.staff.slice(0, 6);
+  const tooEarly = capCheck(fx.starter(), low, 45);
+  ok(tooEarly.reject && tooEarly.flags.includes('staff'), 'starter: six staff without the required level are rejected');
+  const levelFive = structuredClone(six);
+  levelFive.state.points = 1200;
+  const earlyRJ = structuredClone(levelFive);
+  earlyRJ.staff = next.staff.slice(0, 7);
+  earlyRJ.state.coins -= ROLES.waiter.hire;
+  const tooEarlyRJ = capCheck(levelFive, earlyRJ, 45);
+  ok(tooEarlyRJ.reject && tooEarlyRJ.flags.includes('staff'), 'level five: seventh hire before level six is rejected');
 }
 process.exit(fail ? 1 : 0);

@@ -7,15 +7,19 @@
 // user itself) or `npx supabase functions deploy` once the CLI is logged in. See ONLINE.md.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, existsSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const root = fileURLToPath(new URL('..', import.meta.url));
+// Run npm's JS entry directly on Windows so spaces in --outfile stay in one argument.
+const npx = process.platform === 'win32' ? process.execPath : 'npx';
+const npxArgs = process.platform === 'win32' ? [join(dirname(process.execPath), 'node_modules/npm/bin/npx-cli.js')] : [];
 const fnDir = join(root, 'supabase', 'functions');
 for (const name of readdirSync(fnDir)) {
   const entry = join(fnDir, name, 'index.ts');
   if (name.startsWith('_') || !existsSync(entry)) continue;
   const out = join(root, 'build', 'functions', name, 'index.js');
-  execFileSync('npx', ['--yes', 'esbuild@0.25', entry, '--bundle', '--format=esm', '--platform=neutral', '--target=es2022',
-    '--external:npm:*', '--external:jsr:*', '--legal-comments=none', '--minify-whitespace', '--minify-syntax', `--outfile=${out}`], { stdio: 'inherit', shell: process.platform === 'win32' });
+  execFileSync(npx, [...npxArgs, '--yes', 'esbuild@0.25', entry, '--bundle', '--format=esm', '--platform=neutral', '--target=es2022',
+    '--external:npm:*', '--external:jsr:*', '--legal-comments=none', '--minify-whitespace', '--minify-syntax', `--outfile=${out}`], { stdio: 'inherit' });
   console.log(`${name}: ${out} (${(statSync(out).size / 1024).toFixed(1)} KB)`);
 }
