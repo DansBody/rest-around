@@ -914,3 +914,39 @@ button.pick-row:hover { background: var(--fill-2); }
 @keyframes foothit { 0% { transform: scale(.93); background: var(--fill-2); } 100% { transform: scale(1); } }
 .tryout-title { position: relative; }
 .tryout-x { position: absolute; right: 0; top: 50%; translate: 0 -50%; width: 32px; height: 32px; min-width: 32px; padding: 0; justify-content: center; border-radius: 50%; background: var(--fill); }
+
+/* ---------- first visit: partner pick & the tour (ui/tutorial.js) ---------- */
+#modal .card.starter { width: min(520px, 100%); text-align: left; }
+#modal .card.starter .big-title, #modal .card.starter > .muted { text-align: center; }
+.starter-grid { grid-template-columns: repeat(5, 1fr); margin: 14px 0 10px; }
+.starter-grid .pick-tile { padding: 6px 4px 8px; }
+.starter-grid .pick-tile .portrait { width: 52px; height: 52px; }
+.starter-pick { display: flex; gap: 12px; align-items: flex-start; padding: 12px; margin-bottom: 14px; border-radius: 20px; background: var(--fill); }
+.starter-pick .portrait { flex: none; border-radius: 16px; background: var(--surface); }
+.starter-pick h3 { margin: 2px 0 6px; font: 750 20px/1.1 var(--font-display); font-stretch: var(--narrow); }
+.starter-role { margin-bottom: 8px; font-size: 12.5px; }
+.pill.partner { background: #fff4d1; gap: 4px; }
+#coach { position: absolute; z-index: 6; top: var(--ht); left: calc(var(--hl) + var(--hb) + var(--hg)); right: var(--hr); max-width: 440px;
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px 10px 10px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); animation: popin .3s ease-out; }
+#coach.hidden { display: none; }
+#coach .coach-face { flex: none; width: 56px; height: 56px; border-radius: 18px; overflow: hidden; background: #fff4d1; display: grid; place-items: center; }
+#coach .coach-face .portrait { width: 56px; height: 56px; }
+#coach .coach-body { flex: 1; min-width: 0; }
+#coach .coach-who { display: flex; align-items: baseline; gap: 8px; }
+#coach .coach-who b { font: 750 13px/1.2 var(--font-display); font-stretch: var(--narrow); letter-spacing: .02em; text-transform: uppercase; }
+#coach .coach-who span { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+#coach .coach-text { margin-top: 3px; font-size: 14px; line-height: 1.4; font-weight: 550; }
+#coach .coach-acts { display: flex; gap: 6px; margin-top: 8px; }
+#coach .coach-acts:empty { display: none; }
+#coach .btn.ghost { background: none; box-shadow: none; color: var(--ink-soft); padding-left: 6px; padding-right: 6px; }
+#spot { position: absolute; z-index: 6; pointer-events: none; border-radius: 22px; opacity: 0; transition: opacity .2s; box-shadow: 0 0 0 3px var(--yellow), 0 0 0 7px rgba(255, 197, 49, .35); }
+#spot.show { opacity: 1; animation: spotpulse 1.4s ease-in-out infinite; }
+@keyframes spotpulse { 50% { box-shadow: 0 0 0 3px var(--yellow), 0 0 0 12px rgba(255, 197, 49, .12); } }
+#ui.visiting #coach, #ui.visiting #spot { display: none; }
+@media (max-width: 760px) {
+  .starter-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .starter-grid .pick-tile b { font-size: 10.5px; }
+  .starter-grid .pick-tile .portrait { width: 44px; height: 44px; }
+  #coach .coach-text { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { #spot.show { animation: none; } }

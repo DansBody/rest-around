@@ -424,4 +424,21 @@ export const ZH_TW = {
   'Use the ingredients and vouchers shown to reach Lv{n}': '用掉上面列出的食材和研習券，升到 Lv{n}', 'Study → Lv{n}': '研習 → Lv{n}',
   'Study a drink or bake to level it up (Lv1→10): it sells for more and earns more café points. Each level takes its ingredients plus study vouchers from Today, and your café level sets how far dishes can go.':
     '研習飲品或烘焙就能升級（Lv1→10）：賣價更高，咖啡廳點數也更多。每升一級要用掉食材和研習券（從「今日」取得），咖啡廳等級決定餐點最高能升到幾級。',
+  // ---------------- first visit: partner pick & tour (ui/tutorial.js)
+  'Pick your partner': '選一位夥伴', 'They run the café with you from day one, and show you how it all works.': '夥伴從第一天起就和你一起顧店，也會帶你熟悉咖啡廳的一切。',
+  'Starts as your Server: takes orders, serves drinks and clears tables.': '從服務生做起：點餐、送飲料、收桌子。', 'No special skills yet: a steady pair of hands.': '目前沒有特殊技能，是個穩穩的好幫手。',
+  'Start with {name}': '和 {name} 一起開店', "Let's go!": '開始吧！', 'Next': '下一步', 'Skip tour': '跳過導覽', 'Partner': '夥伴',
+  '{name} is your partner and stays with the café.': '{name} 是你的夥伴，會一直留在店裡。',
+  "Hi, I'm {name}! This café is ours now. Let me show you around.": '嗨，我是 {name}！這間咖啡廳現在是我們的了，我帶你逛逛。',
+  'Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.': '拖曳畫面可以四處看看；用兩指縮放或滾輪拉近拉遠，兩指旋轉可以轉換角度。',
+  'Here comes a guest! I take the orders and {chef} brews. Watch us serve.': '客人來了！我負責點餐，{chef} 負責沖咖啡。看我們怎麼招呼客人。',
+  'our Barista': '咖啡師',
+  'Tap Staff to see how much energy we have left. Snacks perk us up.': '點「員工」看看我們還剩多少體力，吃點心可以恢復精神。',
+  'The checklist is Today: a gift every day and three goals. Open your gift!': '清單按鈕是「今日」：每天一份禮物和三個任務。先打開禮物吧！',
+  'Goals pay study vouchers. In the Menu, study the Espresso to Lv2: it sells for more.': '任務會送研習券。到「菜單」把義式濃縮研習到 Lv2，就能賣得更貴。',
+  'Tap the hammer to build and decorate.': '點鐵鎚就能建造和佈置。',
+  'Looks great! Tap Done when you are happy with it.': '很好看！滿意了就按「完成」。',
+  'Add a table, a chair or a plant, then tap Done.': '放一張桌子、椅子或盆栽，然後按「完成」。',
+  "That's the basics! We keep serving while you're away, so come back and see how we did.": '基本的就是這些！你不在時我們也會繼續營業，記得回來看看成績。',
+  "We're closed for the night. The doors open at 08:00, see you then!": '現在是打烊時間，08:00 開門，到時見！',
 };

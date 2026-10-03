@@ -131,6 +131,12 @@ full climb), paid in one go. Vouchers never come from coins: only from the Today
 each), and the café level caps how far dishes go (Lv2 + 1 every 3 café levels). Numbers: `studyCost` / `dishCap`
 in `src/data.js`.
 
+**First visit.** A new café starts with a pick from the whole cast (`src/ui/tutorial.js`): the chosen
+character becomes your **partner**, starts as the Server (another character, picked at random, is the Barista),
+can never be fired, and walks you through the café: looking around, the first guest, Staff, Today and the gift,
+studying the Espresso, and building. Each step moves on once you have done it (a yellow ring marks what to
+tap); the tour can be skipped, and a café that opens at night does the guest step when the doors open.
+
 **Today.** The checklist button (top-left) opens the Today panel: the daily gift (ingredients and coins; the
 7th day in a row adds 5 vouchers), three daily goals (two serving goals the café also works on while you are
 away, one for you to do: feed snacks, buy at the Market, cast skills), and a bonus chest for claiming all three.

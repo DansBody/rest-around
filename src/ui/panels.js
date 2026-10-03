@@ -163,7 +163,8 @@ function renderStaff(ui, body) {
           h('button.btn.small', { onclick: () => { ui.subview = { outfit: a }; ui.renderPanel(); } }, t('Outfit')),
           h('button.btn.small', { onclick: () => { ui.subview = { job: a }; ui.renderPanel(); } }, t('Change job')),
           h('button.btn.small.xbtn', { onclick: () => ui.select(a), title: t('Show on the floor') }, gl('eye', null, 16)),
-          confirmBtn('button.btn.small.danger.push', t('Fire'), t('Confirm fire'), () => g.eco.fire(a)))) : null));
+          a.look.model === s.partner ? h('span.pill.partner.push', glyph('heart', 14), t('Partner'))
+            : confirmBtn('button.btn.small.danger.push', t('Fire'), t('Confirm fire'), () => g.eco.fire(a)))) : null));
   }
   body.append(h('div.section-title', t('Hire')));
   const full = staff.length >= slots;
@@ -296,7 +297,7 @@ function renderMenu(ui, body) {
         unlocked ? stockLine(g, d, st) : null,
         unlocked ? h('div.chips.acts',
           h('button.btn.small' + (st.on ? '.primary' : ''), { onclick: () => g.eco.toggleMenu(d.id) }, st.on ? gl('check', t('On menu'), 14) : t('Add to menu')),
-          maxed || plan.why === 'cap' ? null : h('button.btn.small' + (canStudy ? '.primary' : '.disabled'), { onclick: () => g.eco.study(d.id), title: t('Use the ingredients and vouchers shown to reach Lv{n}', { n: st.lv + 1 }) }, gl('level', t('Study → Lv{n}', { n: st.lv + 1 }), 15))) : null)));
+          maxed || plan.why === 'cap' ? null : h('button.btn.small' + (canStudy ? '.primary' : '.disabled'), { 'data-study': d.id, onclick: () => g.eco.study(d.id), title: t('Use the ingredients and vouchers shown to reach Lv{n}', { n: st.lv + 1 }) }, gl('level', t('Study → Lv{n}', { n: st.lv + 1 }), 15))) : null)));
   }
   body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Every cup uses up its ingredients — one pack makes about {n} servings of each recipe. Keep the pantry stocked, or let the market top it up for you (Market tab).', { n: SERVINGS_PER_UNIT })));
   body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Study a drink or bake to level it up (Lv1→10): it sells for more and earns more café points. Each level takes its ingredients plus study vouchers from Today, and your café level sets how far dishes can go.')));

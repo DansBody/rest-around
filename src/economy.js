@@ -382,6 +382,7 @@ export class Economy {
   }
   fire(st) {
     const g = this.game;
+    if (st.look.model === this.s.partner) return g.toast(t('{name} is your partner and stays with the café.', { name: st.name }), 'bad');
     if (st.job) st.abortJob();
     g.removeAgent(st);
     g.toast(t('{name} waved goodbye.', { name: st.name }));

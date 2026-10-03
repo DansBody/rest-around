@@ -7,7 +7,7 @@ import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
 import { saveSlots, loadSlots } from './pastry.js';
-import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, questById, DAILY, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE } from './data.js';
+import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, UNIQUE_MODELS, SEEDS, questById, DAILY, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
@@ -118,6 +118,8 @@ export function apply(game, data) {
     totals: { ...d.totals, ...(s.totals || {}) },
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,
+    partner: UNIQUE_MODELS.includes(s.partner) ? s.partner : null,
+    tutorial: Array.isArray(s.tutorial) ? s.tutorial.filter((x, i, a) => typeof x === 'string' && x.length < 16 && a.indexOf(x) === i).slice(0, 16) : [],
   };
   while (st.level < MAX_LEVEL && st.points >= LEVEL_POINTS[st.level + 1]) st.level++;
   for (const dish of DISHES) {

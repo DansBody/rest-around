@@ -497,6 +497,7 @@ ${k.desc}
     this.acc += dt;
     if (this.acc < 0.1) return;
     this.acc = 0;
+    if (this.tutorial) this.tutorial.update();
     const g = this.game, s = g.state;
     this.el.coins.textContent = fmt(s.coins);
     const lp = g.levelProgress();

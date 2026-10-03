@@ -13,8 +13,8 @@ import { Build } from './build.js';
 import { Street } from './ambient.js';
 import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
-import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY } from './data.js';
-import { bus } from './util.js';
+import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, UNIQUE_NAMES } from './data.js';
+import { bus, choice } from './util.js';
 
 /** Events drawn in the 3D scene (and the cut-in for them); the rest are for the HUD, panels and cards. */
 const SCENE_EVENTS = new Set(['ability', 'kitCast', 'abilityWindup']);
@@ -44,7 +44,9 @@ export function defaultState() {
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, rounds: 0 },
     settings: { sound: true, music: true, volume: 0.7, glass: true, autoRestock: true },
-    tutorialSeen: false,
+    partner: null,       // the character the player picked to start with (model id): runs the tutorial, can't be fired
+    tutorial: [],        // tutorial steps done (ui/tutorial.js)
+    tutorialSeen: false, // the tutorial is over (finished or skipped)
   };
 }
 
@@ -110,9 +112,28 @@ export class Game {
     for (let x = 4; x < 8; x++) for (let y = 0; y < 2; y++) w.floors[x][y] = 'fl_cream';
     this.addStaff(makeStaff(this, 'waiter', 'mochalatte'), 2, 2);
     this.addStaff(makeStaff(this, 'chef', 'bbaekko'), 6, 2);
+    this.state.vouchers = 2;   // enough for the tutorial's first study
     this.day.snap();   // onto the wall clock (and the day's goal)
     this.day.nextSpawn = 3;
     this.rating.recompute();
+  }
+
+  /**
+   * The new player's pick: `model` becomes the partner and starts as the Server; another character, picked at
+   * random, takes the Barista job. Only for a brand-new café (the two starter staff swap who they are).
+   */
+  setStarter(model) {
+    if (!UNIQUE_MODELS.includes(model)) return;
+    const waiter = this.staff.find((a) => a.role === 'waiter'), chef = this.staff.find((a) => a.role === 'chef');
+    const other = choice(UNIQUE_MODELS.filter((m) => m !== model));
+    for (const [a, m] of [[waiter, model], [chef, other]]) {
+      if (!a) continue;
+      a.look.model = m;
+      a.name = UNIQUE_NAMES[m];
+      this.refreshCharacter(a);
+    }
+    this.state.partner = model;
+    this.changed('staff');
   }
 
   addStaff(s, x, y) {

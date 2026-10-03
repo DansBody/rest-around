@@ -14,6 +14,7 @@ import { initAccount } from './ui/account.js';
 import { updateVisit } from './ui/visit.js';
 import { helpedCard } from './ui/friends.js';
 import { chooseStart } from './ui/welcome.js';
+import { startTutorial } from './ui/tutorial.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
 import { h } from './util.js';
@@ -126,6 +127,7 @@ async function boot() {
     ui.queueModal(() => ui.awayCard(away.report));
   };
   if (game.awayReport) ui.queueModal(() => ui.awayCard(game.awayReport));
+  if (!game.visit) startTutorial(ui);   // a new café: pick a partner, who shows the player around
   cloud.onIncoming(cloud.incoming);   // after "Welcome back", which says what the café did on its own
 
   let last = performance.now();
