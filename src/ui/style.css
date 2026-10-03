@@ -54,7 +54,8 @@
   --sar: env(safe-area-inset-right, 0px);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; background: #ededed; font-family: var(--font); color: var(--ink);
+/* touch-action: the page scrolls panels but never zooms (pinch or double-tap); see nozoom.js for iOS */
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: #ededed; font-family: var(--font); color: var(--ink);
   -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
 #game { position: fixed; inset: 0; }
 #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }

@@ -19,6 +19,7 @@ import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
 import { h } from './util.js';
 import { OFFLINE } from './data.js';
+import { lockPageZoom } from './nozoom.js';
 
 const loading = document.getElementById('loading');
 const bar = loading.querySelector('.load-bar i');
@@ -154,4 +155,5 @@ async function boot() {
   loading.classList.add('hide');
   setTimeout(() => loading.remove(), 500);
 }
+lockPageZoom();
 boot();
