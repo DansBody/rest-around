@@ -2,7 +2,7 @@
 import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait, thumb } from '../portrait.js';
-import { ACCESSORIES, roleLook, nextCast } from '../looks.js';
+import { ACCESSORIES, roleLook } from '../looks.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
@@ -127,6 +127,7 @@ function renderStaff(ui, body) {
   const g = ui.game, s = g.state;
   if (ui.subview && ui.subview.outfit) return renderOutfit(ui, body, ui.subview.outfit);
   if (ui.subview && ui.subview.job) return renderJobChange(ui, body, ui.subview.job);
+  if (ui.subview && ui.subview.hire) return renderHirePick(ui, body, ui.subview.hire);
   const staff = g.staff;
   const slots = staffSlots(s.level);
   // the numbers up top; the rules behind them only when asked
@@ -164,23 +165,38 @@ function renderStaff(ui, body) {
   }
   body.append(h('div.section-title', t('Hire')));
   const full = staff.length >= slots;
-  const nextModel = nextCast(new Set(staff.map((a) => a.look.model)));   // new hires are always an original character
-  if (nextModel) {
-    body.append(h('div.scard.open',
-      h('div.scard-head', portrait(roleLook('waiter', nextModel), 56, 56),
-        h('div.grow', h('div.scard-title', h('b', UNIQUE_NAMES[nextModel])), h('div.muted', t('Joins with your next hire')))),
-      h('div.scard-body', h('div.sklist', ...kitLines(nextModel, true, true)))));
-  } else body.append(h('div.muted', t('Every character is already on the team')));
+  // hiring opens a job; who fills it is picked next (renderHirePick), from the cast nobody wears yet
+  const free = freeCast(g);
+  if (!free.length) body.append(h('div.muted', t('Every character is already on the team')));
   for (const [role, r] of Object.entries(ROLES)) {
     const count = staff.filter((a) => a.role === role).length;
     const note = t(ROLE_NOTE[role]);
     body.append(h('div.row.split',
-      portrait(roleLook(role, nextModel || undefined), 48, 48),
+      portrait(roleLook(role, free[0]), 48, 48),
       h('div.grow', h('h3', r.name)),
-      h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => g.eco.hire(role) }, t('Hire') + ' ', coinPill(r.hire)),
+      h('button.btn.primary.small' + (full || !free.length || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => { ui.subview = { hire: role }; ui.renderPanel(); } }, t('Hire') + ' ', coinPill(r.hire)),
       h('div.row-full', h('div.muted', note), h('div.meta', t('Wage {w}/day, you have {n}', { w: staffWage(role, 1), n: count })))));
   }
   if (full) body.append(h('div.muted', t('All slots are full — reach the next level for more.')));
+}
+/** Our own characters nobody on the team wears, in cast order. */
+const freeCast = (g) => UNIQUE_MODELS.filter((m) => !g.staff.some((a) => a.look.model === m));
+/** Step two of hiring: the job is chosen, now the player picks who takes it. */
+function renderHirePick(ui, body, role) {
+  const g = ui.game, r = ROLES[role];
+  const back = () => { ui.subview = null; ui.renderPanel(); };
+  const full = g.staff.length >= staffSlots(g.state.level);
+  body.append(
+    h('div.subhead', h('button.btn.small', { onclick: back }, gl('back', t('Back'), 14)), h('b', t('Hire a {role}', { role: r.name }))),
+    h('div.muted', { style: { margin: '2px 2px 8px' } }, t('Choose who joins the team. Hiring costs {n} coins.', { n: r.hire })));
+  for (const m of freeCast(g)) {
+    const kit = kitLines(m, true, true);
+    body.append(h('div.scard.open',
+      h('div.scard-head', portrait(roleLook(role, m), 56, 56),
+        h('div.grow', h('div.scard-title', h('b', UNIQUE_NAMES[m]))),
+        h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => { if (g.eco.hire(role, m)) back(); } }, t('Hire') + ' ', coinPill(r.hire))),
+      kit.length ? h('div.scard-body', h('div.sklist', ...kit)) : null));
+  }
 }
 const ROLE_NOTE = { waiter: 'Takes orders, serves drinks, clears tables.', chef: 'Brews at a free espresso station.', cleaner: 'Sweeps up and tidies the restrooms and reading nooks.', bartender: 'Bakes in the Bread Oven and keeps the Pastry Case stocked.' };
 function renderJobChange(ui, body, a) {

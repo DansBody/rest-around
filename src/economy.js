@@ -4,14 +4,13 @@ import { SNACKS,
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, furnitureById, EXPANSIONS, SKILL, CLUBS, TROUBLE,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
-  staffWage, rentFor, ingPrice,
+  staffWage, rentFor, ingPrice, UNIQUE_MODELS, UNIQUE_NAMES,
 } from './data.js';
 import * as pantry from './pantry.js';
 
 const FEED_SLACK = 15;   // feeding the whole team skips anyone this close to full energy
 import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
-import { nextCast } from './looks.js';
 import { t } from './i18n.js';
 import { choice, randInt, clamp } from './util.js';
 
@@ -254,12 +253,13 @@ export class Economy {
   }
 
   // ---------------- staff ----------------
-  hire(role) {
+  /** Hire `model` (one of our own characters nobody on the team wears) as a `role`. */
+  hire(role, model) {
     const g = this.game, s = this.s;
     if (g.staff.length >= staffSlots(s.level)) return g.toast(t('All staff slots are full — level up for more'), 'bad');
-    if (!nextCast(new Set(g.staff.map((a) => a.look.model)))) return g.toast(t('Every character is already on the team'), 'bad');
+    if (!UNIQUE_MODELS.includes(model) || g.staff.some((a) => a.look.model === model)) return g.toast(t('{name} is already on the team', { name: UNIQUE_NAMES[model] || model }), 'bad');
     if (!this.spend(ROLES[role].hire, t('hiring'))) return;
-    const st = makeStaff(g, role);
+    const st = makeStaff(g, role, model);
     const e = g.world.entry;
     const spot = g.freeTileNear(e.x + 1, e.y) || e;
     g.addStaff(st, spot.x, spot.y);

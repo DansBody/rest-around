@@ -122,7 +122,7 @@ export const ZH_TW = {
   'Staff {n}/{m}': '名額 {n}/{m}', 'Costs {n}/day': '每日支出 {n}', 'How staff work': '員工怎麼運作',
   'Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid when the café closes. If the till runs short, the team starts the next day tired.':
     '員工工作會累，餵點心可以恢復精神。薪水（{w}）和房租（{r}）在打烊時結算；錢不夠的話，隔天團隊會精神不濟。',
-  'Confirm fire': '確定解雇', 'Joins with your next hire': '下一位雇用的員工', 'Wage {w}/day, you have {n}': '日薪 {w}，目前 {n} 位',
+  'Confirm fire': '確定解雇', 'Wage {w}/day, you have {n}': '日薪 {w}，目前 {n} 位',
   'unlocks at {title}': '{title}解鎖',
 
   // ---------------- staff panel
@@ -146,6 +146,8 @@ export const ZH_TW = {
   'Staff are our own characters, and take the name of the one they wear.': '員工都是原創角色，名字會跟著他們穿的角色走。',
   'Next to join: {name}': '下一位加入：{name}',
   'Every character is already on the team': '所有角色都已經在團隊裡了',
+  'Hire a {role}': '雇用{role}', 'Choose who joins the team. Hiring costs {n} coins.': '選一位角色加入團隊，雇用費 {n} 金幣。',
+  '{name} is already on the team': '{name} 已經在團隊裡了',
   'Knight': '騎士', 'Mage': '法師', 'Barbarian': '野蠻人', 'Rogue': '盜賊', 'Hooded Rogue': '兜帽盜賊',
   'Helmet': '頭盔', 'Cape': '披風', 'Hat': '帽子', 'Hood': '兜帽',
 
