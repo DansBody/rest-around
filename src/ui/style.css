@@ -105,7 +105,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 #hud .num { font-variant-numeric: tabular-nums; }
 #hudbrand { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 280px; height: 46px; padding: 0 16px; overflow: hidden;
   border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); }
-#hudbrand .bname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -.02em; line-height: 1; }
+#hudbrand .bname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -.02em; line-height: 1.35; }   /* room for Chinese glyphs, which overflow: hidden would clip */
 .hb-lv { flex: none; padding: 3px 7px; border-radius: 99px; background: var(--ink); color: #fff; font: 700 11px/1.2 var(--font); letter-spacing: .02em; text-transform: uppercase; }
 /* level progress: a hairline along the bottom of the pill */
 .hb-xpbar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--fill-2); }
@@ -251,7 +251,7 @@ button.hs:hover { background: var(--fill); }
 #panel .row, #panel .scard, #panel .tile, #panel .toggle { box-shadow: 0 1px 2px rgba(23, 23, 26, .04); }
 .panel-head { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
 .panel-head .ph-ico { display: none; }
-.panel-head h2 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 28px; letter-spacing: -.04em; line-height: 1.1; flex: 1; color: var(--ink); }
+.panel-head h2 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 28px; letter-spacing: -.04em; line-height: 1.3; flex: 1; color: var(--ink); }
 .panel-head .xbtn { width: 40px; min-width: 40px; height: 40px; min-height: 40px; border-radius: 50%; background: var(--surface); }
 .panel-head .xbtn:hover { background: var(--fill-2); }
 .panel-body { overflow-y: auto; overflow-x: hidden; flex: 1; padding: 2px 6px 4px 2px; margin: 0 -8px 0 -2px; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.18) transparent; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
@@ -489,8 +489,8 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 /* folded tray on phones: Buy and Done are the same size at either end, the tip centred between them */
 .bb-fold { padding: 8px; }
 .bb-fold > .btn { min-width: 96px; min-height: 44px; height: 44px; padding: 0 16px; font-size: 15px; }
-.bb-fold > .btn.done { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
-.bb-fold .grow { text-align: center; white-space: normal; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.bb-fold > .btn.done { margin-left: auto; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.bb-fold .grow { flex: 1; text-align: center; white-space: normal; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 /* build mode hides the daily goal and the skills; Friends goes too, so the left edge is clear */
 .building #friendsbtn { display: none; }
 
