@@ -250,6 +250,10 @@ export const ABILITY = { chargePerLv: 0.15, idleCharge: 0.35, impatientAfter: 20
 // unlocked once the character reaches skill Lv2 in any job. The kit follows the character they wear.
 // Perk numbers: `speed`/`mul` multiply walking (and, for `mul`, working) speed; see Staff.kitMul().
 export const NIGHT_FROM = 19;   // "Evening Glow" starts
+// The castable `active` skills are switched off for now: perks still apply, and the definitions stay
+// below so they can come back by setting this to true. (The server's earnings cap in authority.js still
+// allows for Wild Magic's coin shower, which only makes it a little looser.)
+export const KIT_ACTIVES = false;
 export const KITS = {
   cheetie: {
     perks: [

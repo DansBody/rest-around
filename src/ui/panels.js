@@ -6,7 +6,7 @@ import { ACCESSORIES, roleLook } from '../looks.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, CLUBS, staffWage, servingCost, SERVINGS_PER_UNIT, OFFLINE,
+  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, servingCost, SERVINGS_PER_UNIT, OFFLINE,
 } from '../data.js';
 import { clearSave, save, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
@@ -52,7 +52,7 @@ export function kitLines(model, unlocked = true, long = false) {
   const kit = KITS[model];
   if (!kit) return [];
   const rows = [];
-  const k = kit.active;
+  const k = KIT_ACTIVES && kit.active;
   if (k) rows.push(skillItem('cast', unlocked ? k.glyph : 'lock', unlocked ? k.color : LOCKED, k.name,
     unlocked ? t('Cast, {n} s cooldown', { n: k.cooldown }) : t('Unlocks at skill Lv{n}', { n: ABILITY_UNLOCK_LV }), long ? k.desc : null));
   for (const p of kit.perks) rows.push(skillItem(p.bad ? 'bad' : 'perk', p.glyph, p.bad ? DRAWBACK : PERK, p.name, p.bad ? t('Drawback') : t('Always on'), long ? p.desc : null));
@@ -181,22 +181,19 @@ function renderStaff(ui, body) {
 }
 /** Our own characters nobody on the team wears, in cast order. */
 const freeCast = (g) => UNIQUE_MODELS.filter((m) => !g.staff.some((a) => a.look.model === m));
-/** Step two of hiring: the job is chosen, now the player picks who takes it. */
+/** Step two of hiring: the job is chosen, now the player taps who takes it, then confirms. */
 function renderHirePick(ui, body, role) {
-  const g = ui.game, r = ROLES[role];
+  const g = ui.game, r = ROLES[role], sub = ui.subview;
   const back = () => { ui.subview = null; ui.renderPanel(); };
+  const free = freeCast(g);
+  if (!free.includes(sub.pick)) sub.pick = free[0];
   const full = g.staff.length >= staffSlots(g.state.level);
   body.append(
     h('div.subhead', h('button.btn.small', { onclick: back }, gl('back', t('Back'), 14)), h('b', t('Hire a {role}', { role: r.name }))),
-    h('div.muted', { style: { margin: '2px 2px 8px' } }, t('Choose who joins the team. Hiring costs {n} coins.', { n: r.hire })));
-  for (const m of freeCast(g)) {
-    const kit = kitLines(m, true, true);
-    body.append(h('div.scard.open',
-      h('div.scard-head', portrait(roleLook(role, m), 56, 56),
-        h('div.grow', h('div.scard-title', h('b', UNIQUE_NAMES[m]))),
-        h('button.btn.primary.small' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => { if (g.eco.hire(role, m)) back(); } }, t('Hire') + ' ', coinPill(r.hire))),
-      kit.length ? h('div.scard-body', h('div.sklist', ...kit)) : null));
-  }
+    h('div.pick-staff', free.map((m) => h('button.pick-tile' + (m === sub.pick ? '.on' : ''), { onclick: () => { sub.pick = m; ui.renderPanel(); }, title: UNIQUE_NAMES[m] },
+      portrait(roleLook(role, m), 64, 64), h('b', UNIQUE_NAMES[m])))));
+  if (sub.pick) body.append(h('button.btn.primary' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { style: { width: '100%', marginTop: '12px' }, onclick: () => { if (g.eco.hire(role, sub.pick)) back(); } },
+    t('Hire {name}', { name: UNIQUE_NAMES[sub.pick] }) + ' ', coinPill(r.hire)));
 }
 const ROLE_NOTE = { waiter: 'Takes orders, serves drinks, clears tables.', chef: 'Brews at a free espresso station.', cleaner: 'Sweeps up and tidies the restrooms and reading nooks.', bartender: 'Bakes in the Bread Oven and keeps the Pastry Case stocked.' };
 function renderJobChange(ui, body, a) {

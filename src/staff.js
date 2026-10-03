@@ -6,7 +6,7 @@ import { staffLook, nextCast } from './looks.js';
 import { JOB_LABEL } from './jobs.js';
 import { servings } from './pantry.js';
 import { freeSlot, slotOfTicket, putBack } from './pastry.js';
-import { dishById, furnitureById, ingById, ingIcon, EXTRA_CAT, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS, CLUBS, TROUBLE } from './data.js';
+import { dishById, furnitureById, ingById, ingIcon, EXTRA_CAT, ROLES, UNIQUE_NAMES, SPEED, ENERGY, SKILL, skillLevel, ABILITIES, ABILITY_UNLOCK_LV, ABILITY, KITS, KIT_ACTIVES, CLUBS, TROUBLE } from './data.js';
 import { CASTS } from './kits.js';
 import { DOOR_Y } from './world.js';
 import { DIRS, dirFromDelta } from './iso.js';
@@ -46,7 +46,10 @@ export class Staff extends Agent {
   }
 
   // ---------------- character kit (perks + a castable skill, see KITS) ----------------
-  get kit() { return KITS[this.look.model] || { perks: [], active: null }; }
+  get kit() {
+    const kit = KITS[this.look.model] || { perks: [], active: null };
+    return KIT_ACTIVES ? kit : { ...kit, active: null };
+  }
   perk(id) { return this.kit.perks.find((p) => p.id === id) || null; }
   /** Best skill level across every job they have worked in. */
   bestLv() { return Math.max(...Object.keys(ROLES).map((r) => this.skillLv(r))); }

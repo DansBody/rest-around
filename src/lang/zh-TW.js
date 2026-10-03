@@ -146,7 +146,7 @@ export const ZH_TW = {
   'Staff are our own characters, and take the name of the one they wear.': '員工都是原創角色，名字會跟著他們穿的角色走。',
   'Next to join: {name}': '下一位加入：{name}',
   'Every character is already on the team': '所有角色都已經在團隊裡了',
-  'Hire a {role}': '雇用{role}', 'Choose who joins the team. Hiring costs {n} coins.': '選一位角色加入團隊，雇用費 {n} 金幣。',
+  'Hire a {role}': '雇用{role}', 'Hire {name}': '雇用 {name}',
   '{name} is already on the team': '{name} 已經在團隊裡了',
   'Knight': '騎士', 'Mage': '法師', 'Barbarian': '野蠻人', 'Rogue': '盜賊', 'Hooded Rogue': '兜帽盜賊',
   'Helmet': '頭盔', 'Cape': '披風', 'Hat': '帽子', 'Hood': '兜帽',
