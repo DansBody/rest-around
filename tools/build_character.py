@@ -261,6 +261,30 @@ CHARACTERS = {
         'face': (0.8, 1.3),
         'repairs': [],
     },
+    'bamgeut': {
+        'name': 'Bamgeut',
+        # Fan-made fluffy cloud-headed bear for the user's own testing. gpt-image-bridge three views (the
+        # artwork attached as reference, arms lowered to the cast's rest pose) -> Meshy 7
+        # multi-image-to-3d 01a0ffce-9110-70c1-80f7-47c63237de42, remesh 01a0ffd0-b57e-748a-bdcf-151f9a5e34e9.
+        # The little bear ears sit inside the cloud of fluff, so they stay on the head bone (ear_y above the
+        # model): bending them would tear the puffs around them. face_width 0 keeps the cloud's shape.
+        'scale': 1.1, 'face_width': 0, 'smooth_normals': True,
+        'texture_size': 2048, 'texture_subsampling': 0, 'texture_mipmaps': False,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.2, 0)),
+            ('leg_l', 'hips', (0.15, 0.2, 0)), ('leg_r', 'hips', (-0.15, 0.2, 0)),
+            ('chest', 'hips', (0, 0.4, 0)),
+            ('arm_l', 'chest', (0.36, 0.58, 0)), ('hand_l', 'arm_l', (0.5, 0.3, 0.03)),
+            ('arm_r', 'chest', (-0.36, 0.58, 0)), ('hand_r', 'arm_r', (-0.5, 0.3, 0.03)),
+            ('head', 'chest', (0, 0.65, 0)),
+            ('ear_l', 'head', (0.42, 1.55, 0)), ('ear_r', 'head', (-0.42, 1.55, 0)),
+        ],
+        'skin': {'leg': (0.12, 0.22), 'arm_x': (0.33, 0.4), 'arm_y': (0.18, 0.24),
+                 'arm_top': (0.56, 0.62), 'head': (0.6, 0.7), 'chest': (0.2, 0.4),
+                 'ear_y': (2.0, 2.1), 'ear_x': (0.3, 0.4)},
+        'face': (0.8, 1.3),
+        'repairs': [],
+    },
     'guest_b': {
         'name': 'GuestB',
         # the guests' standard chibi body: a plain earless cream animal in a grey tee, recoloured per

@@ -69,12 +69,17 @@ a wink) follows the same route: `gpt-image-bridge` three views with the artwork 
 holds in the artwork was left out), Meshy 7 multi-image-to-3d and a 12,433-triangle remesh. It has no
 ears: the leaf stays on the head bone and `ear_y` sits above the model. `face_width: 0` keeps the round
 head. Views and GLB are in `build/character-source/bboogyuli/` (not committed).
+**BAMGEUT** (`bamgeut`, a fan-made bear whose head is a big cloud of cream fluff, with little tan
+ears and a red heart on its chest) was made the same way, with one more view pass: the artwork holds its
+arms out wide, so the views were redrawn with the arms hanging down like the rest of the cast (the clips
+lift the arms from that rest pose). Meshy 7 multi-image-to-3d, 12,453-triangle remesh. The ears sit inside
+the fluff and stay on the head bone; `face_width: 0` keeps the cloud. Sources in `build/character-source/bamgeut/`.
 Source task IDs are recorded in `CHARACTERS`; TATA's downloaded GLB and input views are kept locally in
 `build/character-source/heart-character/` (not committed). To
 rebuild after changing a model or a clip: download the remesh GLB and run
 `python tools/build_character.py <id> <remesh.glb>`. They *are* the staff: every staff member is one of
 them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, so the number of staff
-slots tops out at the size of the cast (currently nine). They're never random guests. Guests and passers-by
+slots tops out at the size of the cast (currently ten). They're never random guests. Guests and passers-by
 use **GuestB** (`guest_b`), a plain body recoloured per guest with fur/shirt colours and procedural ears.
 KayKit characters remain in the manifest as legacy assets.
 
@@ -192,7 +197,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (74)
+### 3D models (75)
 
 **Furniture**
 
@@ -298,6 +303,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `rj` | `models/characters/RJ.gltf` | own rig + clips |
 | `chimmy` | `models/characters/Chimmy.gltf` | own rig + clips |
 | `bboogyuli` | `models/characters/Bboogyuli.gltf` | own rig + clips |
+| `bamgeut` | `models/characters/Bamgeut.gltf` | own rig + clips |
 
 ### 2D images (77)
 
