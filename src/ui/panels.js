@@ -8,7 +8,7 @@ import {
   INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
   UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE,
 } from '../data.js';
-import { clearSave, save, serialize } from '../save.js';
+import { clearSave, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
 import { accountSection } from './account.js';
 import { renderFriends } from './friends.js';
@@ -102,7 +102,7 @@ export const PANELS = {
   train: { title: 'Training', icon: 'tool_train', render: renderTraining },
   market: { title: 'Market', icon: 'tool_market', render: renderMarket },
   friends: { title: 'Friends', icon: 'tool_friends', render: renderFriends },
-  settings: { title: 'Settings', icon: 'tool_settings', render: renderSettings },
+  settings: { title: 'Settings', icon: 'tool_settings', render: renderSettings, tick: tickSettings },
 };
 
 // ------------------------------------------------------------------ staff
@@ -339,6 +339,18 @@ function renderMarket(ui, body) {
 }
 
 // ------------------------------------------------------------------ settings
+/** "Saved automatically · 12 s ago": the server's copy when online, else this device's. */
+function autosaveText(g) {
+  const at = cloud.online ? cloud.savedAt : g.savedAt;
+  if (!at) return t('Saves automatically');
+  const sec = Math.max(0, Math.round((Date.now() - at) / 1000));
+  const ago = sec < 60 ? t('{n} s ago', { n: sec }) : t('{n} min ago', { n: Math.floor(sec / 60) });
+  return (cloud.online ? t('Saved automatically') : t('Saved on this device')) + ' · ' + ago;
+}
+function tickSettings(ui, body) {
+  const el = body.querySelector('.autosave');
+  if (el) el.textContent = autosaveText(ui.game);
+}
 function renderSettings(ui, body) {
   const g = ui.game, s = g.state;
   const name = h('input', { type: 'text', value: s.name, maxlength: 24 });
@@ -356,8 +368,8 @@ function renderSettings(ui, body) {
     h('div.orow', h('span', t('Volume')), vol),
     h('div.section-title', t('Game')),
     toggle(t('Auto-restock ingredients'), 'autoRestock', () => { if (s.settings.autoRestock) g.eco.autoRestock(); }),
+    h('div.orow', h('span', t('Autosave')), h('span.muted.autosave', autosaveText(g))),
     h('div.btnrow',
-      h('button.btn.small', { onclick: () => { cloud.beat(g); ui.toast(save(g) ? t('Saved!') : t('Could not save (storage blocked?)'), 'good'); } }, gl('save', t('Save now'), 15)),
       confirmBtn('button.btn.small.danger', t('Reset game'), t('Tap again to erase everything'), async () => {
         g.resetting = true;
         if (cloud.online) {   // the server keeps the café: swap it for a new one there first
