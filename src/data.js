@@ -53,10 +53,14 @@ export const WALLS = [
   { id: 'wp_rose', name: 'Rose Stripes', asset: 'tex_wall_stripe', tint: '#f7cfd9', price: 9, level: 3, decor: 0.4 },
   { id: 'wp_sky', name: 'Sky Stripes', asset: 'tex_wall_stripe', tint: '#cfe1f4', price: 12, level: 5, decor: 0.5 },
 ];
+// Bigger floor plans, built in real time: paid up front, then `hours` of construction while the café keeps
+// trading in its old room (state.expansion, see Build.expand); `rating` is the stars needed to start.
 export const EXPANSIONS = [
-  { size: 10, level: 3, price: 600 },
-  { size: 12, level: 5, price: 1600 },
-  { size: 14, level: 7, price: 4000 },
+  { size: 10, level: 3, price: 1500, hours: 1, rating: 0 },
+  { size: 12, level: 6, price: 6000, hours: 4, rating: 3 },
+  { size: 14, level: 10, price: 18000, hours: 12, rating: 3.5 },
+  { size: 16, level: 16, price: 45000, hours: 24, rating: 4 },
+  { size: 18, level: 22, price: 100000, hours: 48, rating: 4.5 },
 ];
 export const SELL_RATE = 0.5;
 /** Chairs one table can take (facing it from any side). */
@@ -141,9 +145,30 @@ export const dishPrice = (d, lv) => Math.round(d.price * (1 + 0.16 * (lv - 1)));
 export const dishPoints = (d, lv) => Math.round(d.points * (1 + 0.2 * (lv - 1)));
 
 // ---------------- progression ----------------
-export const LEVEL_POINTS = [0, 0, 90, 260, 560, 1000, 1650, 2500, 3700, 5300, 7500, 10500, 14500, 20000];
+// Café points to reach each level, Lv1–30: the first levels in under two days, then about a day and a half each,
+// then three to four days each, so Lv30 takes a casual player about 67 days. Worked out by tools/curve.mjs from
+// what a café at each level's caps earns a day; re-run it after changing the economy.
+export const LEVEL_POINTS = [0, 0, 90, 260, 560, 1000, 1650, 3300, 5200, 7400, 10050, 13000, 16400, 20650, 25250, 30250, 40250, 50850, 62150, 74750, 88150, 101650, 117150, 133250, 150950, 170450, 190950, 213950, 238450, 264450, 291950];
 export const MAX_LEVEL = LEVEL_POINTS.length - 1;
-export const staffSlots = (lv) => Math.min(UNIQUE_MODELS.length, 1 + lv);   // one slot per original character
+// What the café level allows, as [from level, value] steps (the last step reached counts). Seats are chairs at a
+// table; the stations are the espresso machines, bread ovens and pastry cases. Decor is never capped.
+const LEVEL_STEPS = {
+  staff: [[1, 2], [2, 3], [3, 4], [4, 5], [6, 6], [9, 7], [13, 8], [18, 9], [24, 10]],
+  seats: [[1, 4], [3, 6], [5, 8], [7, 10], [8, 12], [10, 14], [12, 16], [14, 18], [16, 20], [19, 22], [22, 24]],
+  stove: [[1, 1], [5, 2], [12, 3], [20, 4]],
+  oven: [[1, 0], [2, 1], [8, 2], [16, 3]],
+  bar: [[1, 0], [2, 1], [12, 2]],
+  awayHours: [[1, 0], [11, 1], [17, 2], [23, 3], [25, 4], [26, 5], [27, 6], [28, 7], [29, 8], [30, 9]],   // on top of OFFLINE.capHours
+};
+const stepAt = (steps, lv) => { let v = steps[0][1]; for (const [from, x] of steps) if (lv >= from) v = x; return v; };
+export const staffSlots = (lv) => Math.min(UNIQUE_MODELS.length, stepAt(LEVEL_STEPS.staff, lv));   // one slot per original character
+/** Seats (chairs facing a table) the café level allows. */
+export const seatCap = (lv) => stepAt(LEVEL_STEPS.seats, lv);
+/** Production stations of a kind ('stove' | 'oven' | 'bar') the café level allows (null: not capped). */
+export const STATION_KINDS = ['stove', 'oven', 'bar'];
+export const stationCap = (kind, lv) => (STATION_KINDS.includes(kind) ? stepAt(LEVEL_STEPS[kind], lv) : null);
+/** Hours of trading counted while away, which grow with the café. */
+export const awayHours = (lv) => OFFLINE.capHours + stepAt(LEVEL_STEPS.awayHours, lv);
 export const gardenPlots = (lv) => Math.min(6, 1 + lv);
 export function menuSlots(lv) {
   const t = [
@@ -188,7 +213,7 @@ export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSecon
 
 // Bump whenever a number here, offline.js or authority.js changes what a save earns. The server and the
 // game must run the same balance (see ONLINE.md): deploy the server first, then the game.
-export const BALANCE_VERSION = 9;
+export const BALANCE_VERSION = 10;
 
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 

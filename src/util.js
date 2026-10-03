@@ -87,3 +87,9 @@ export const bus = {
   on(ev, fn) { if (!listeners.has(ev)) listeners.set(ev, new Set()); listeners.get(ev).add(fn); return () => listeners.get(ev).delete(fn); },
   emit(ev, data) { const s = listeners.get(ev); if (s) for (const fn of [...s]) fn(data); },
 };
+
+/** "3:12:05" (or "12:05" under an hour) of time left. */
+export function fmtLeft(ms) {
+  const sec = Math.max(0, Math.ceil(ms / 1000)), hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60), ss = sec % 60;
+  return (hh ? hh + ':' + String(mm).padStart(2, '0') : String(mm)) + ':' + String(ss).padStart(2, '0');
+}

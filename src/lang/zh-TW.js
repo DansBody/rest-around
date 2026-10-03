@@ -473,4 +473,16 @@ export const ZH_TW = {
   'One more {name}!': '再一張「{name}」！',
   'A table for two! Tap Done to open up.': '兩人桌完成！按「完成」開始營業。',
   'This table already has two chairs': '這張桌子已經有兩張椅子了', 'Too many chairs around: a table seats two': '周圍椅子太多了：一張桌子只能坐兩位',
+  // ---------------- level caps, timed expansions (phase C)
+  'Seats are full for level {n} ({m}/{m}): level up for more': '等級 {n} 的座位已滿（{m}/{m}），升級後可以再多放',
+  '{name}: {m}/{m} at level {n}, level up for more': '{name}：等級 {n} 最多 {m} 台，升級後可以再多放',
+  'Level {n} allows {m}; level up for more': '等級 {n} 最多 {m} 個，升級後可以再多放',
+  'Seats': '座位', 'Espresso machines': '咖啡機', 'Ovens': '烤箱', 'Pastry cases': '甜點櫃',
+  'up to {n} seats': '座位上限 {n} 個', 'up to {n} espresso machines': '咖啡機上限 {n} 台', 'up to {n} bread ovens': '烤箱上限 {n} 台', 'up to {n} pastry cases': '甜點櫃上限 {n} 個',
+  'the café trades {n} h while you are away': '離線營業時數延長到 {n} 小時',
+  'Expanding to {n}×{n} needs a {r}★ rating': '擴建到 {n}×{n} 需要 {r}★ 評價', 'The builders are already at work': '工人已經在施工了',
+  'the expansion': '擴建', 'Construction started: {n}×{n} is ready in {h} h': '開工了！{n}×{n} 會在 {h} 小時後完工',
+  'Construction done: the café is now {n}×{n}!': '完工了！咖啡廳擴建成 {n}×{n}！',
+  'Building the {n}×{n} floor plan': '{n}×{n} 擴建工程進行中', 'The café stays open meanwhile.': '施工期間咖啡廳照常營業。',
+  '{n} h to build': '施工 {n} 小時', 'Needs a {r}★ rating': '需要 {r}★ 評價', 'Paid now, built in {n} h while the café stays open.': '現在付款，{n} 小時後完工，施工期間照常營業。',
 };

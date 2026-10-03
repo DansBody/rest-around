@@ -5,7 +5,7 @@
 // or every side of a chair, are refused with a reason.
 import { World, DOOR_Y } from './world.js';
 import { DIRS } from './iso.js';
-import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE, wallDecorById, wallLayout, wallDoorSpan, WALL_GAP, TABLE_SEATS } from './data.js';
+import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE, wallDecorById, wallLayout, wallDoorSpan, WALL_GAP, TABLE_SEATS, seatCap, stationCap, STATION_KINDS } from './data.js';
 import { tileKey, bus } from './util.js';
 import { t } from './i18n.js';
 
@@ -106,9 +106,22 @@ export class Build {
       if (front && front.kind === 'table' && (front.seats || []).length >= TABLE_SEATS) { res.reason = t('This table already has two chairs'); return res; }
       if (!front || front.kind !== 'table') res.hint = t('Tip: chairs must face a table to seat guests (R to rotate)');
     }
+    let newSeats = 0;
+    if (probe.kind === 'chair') {
+      const d = DIRS[dir], front = w.furnitureAt(x + d.dx, y + d.dy);
+      if (front && front.kind === 'table') newSeats = 1;
+    }
     if (probe.kind === 'table') {
       const facing = w.furniture.filter((c) => c.kind === 'chair' && blocked.has(tileKey(c.x + DIRS[c.dir].dx, c.y + DIRS[c.dir].dy)));
       if (facing.length > TABLE_SEATS) { res.reason = t('Too many chairs around: a table seats two'); return res; }
+      newSeats = facing.length;
+    }
+    // the café level caps the seats and the production stations (decor is never capped)
+    const lv = g.state.level;
+    if (newSeats && w.seats.length + newSeats > seatCap(lv)) { res.reason = t('Seats are full for level {n} ({m}/{m}): level up for more', { n: lv, m: seatCap(lv) }); return res; }
+    if (STATION_KINDS.includes(probe.kind) && w.byKind(probe.kind).length >= stationCap(probe.kind, lv)) {
+      res.reason = t('{name}: {m}/{m} at level {n}, level up for more', { name: furnitureById[type].name, n: lv, m: stationCap(probe.kind, lv) });
+      return res;
     }
     res.valid = true;
     return res;
@@ -319,17 +332,44 @@ export class Build {
     g.changed('build');
   }
 
-  nextExpansion() { return EXPANSIONS.find((e) => e.size > this.game.world.size) || null; }
+  /** The next floor plan up (the one under construction counts as taken). */
+  nextExpansion() {
+    const s = this.game.state, size = Math.max(this.game.world.size, s.expansion ? s.expansion.size : 0);
+    return EXPANSIONS.find((e) => e.size > size) || null;
+  }
+  /** Why the next expansion can't start now (null: it can). */
+  expandBlock(e = this.nextExpansion()) {
+    const g = this.game, s = g.state;
+    if (!e) return 'max';
+    if (s.expansion) return 'building';
+    if (e.level > s.level) return 'level';
+    if (s.rating < e.rating) return 'rating';
+    if (!g.eco.canAfford(e.price)) return 'coins';
+    return null;
+  }
+  /** Pay for the next floor plan and start building it: the room grows once the work is done (finishExpansion). */
   expand() {
-    const g = this.game, e = this.nextExpansion();
-    if (!e) return;
-    if (e.level > g.state.level) return this.say(t('Reach level {n} to expand', { n: e.level }), 'bad');
-    if (!g.eco.spend(e.price, 'the expansion')) return;
-    g.world.resize(e.size);
-    g.camera.setRoom(e.size);
+    const g = this.game, e = this.nextExpansion(), why = this.expandBlock(e);
+    if (why === 'level') return this.say(t('Reach level {n} to expand', { n: e.level }), 'bad');
+    if (why === 'rating') return this.say(t('Expanding to {n}×{n} needs a {r}★ rating', { n: e.size, r: e.rating }), 'bad');
+    if (why === 'building') return this.say(t('The builders are already at work'), 'bad');
+    if (why || !g.eco.spend(e.price, t('the expansion'))) return;
+    const now = g.now();
+    g.state.expansion = { size: e.size, start: now, end: now + e.hours * 3600 * 1000 };
+    g.sfx('place');
+    this.say(t('Construction started: {n}×{n} is ready in {h} h', { n: e.size, h: e.hours }), 'good');
+    g.changed('build'); g.changed('expansion');
+  }
+  /** The builders are done (checked every second, and on load): the room takes its new size. */
+  finishExpansion() {
+    const g = this.game, x = g.state.expansion;
+    if (!x || g.now() < x.end) return false;
+    g.state.expansion = null;
+    if (x.size > g.world.size) { g.world.resize(x.size); g.camera.setRoom(x.size); }
     g.sfx('levelup');
-    this.say(t('The café is now {n}×{n}!', { n: e.size }), 'good');
-    g.changed('build');
+    g.toast(t('Construction done: the café is now {n}×{n}!', { n: x.size }), 'good');
+    g.changed('build'); g.changed('expansion');
+    return true;
   }
 
   sellSelected() {

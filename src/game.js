@@ -44,6 +44,7 @@ export function defaultState() {
     snacks: { cookie: 1 },
     wardrobe: {},        // accessories bought: id -> copies (each copy is worn by one character at a time)
     garden: [],
+    expansion: null,     // a bigger floor plan being built: { size, start, end } (ms on the wall clock), see Build.expand
     giftDay: 0,          // the calendar day the gift was last opened
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, rounds: 0 },
@@ -188,9 +189,14 @@ export class Game {
   }
 
   // ---------------- tick ----------------
+  /** The wall clock this café runs on (ms; ahead of the real one under the debug speed-up). */
+  now() { return Date.now() + this.clockSkew * 1000; }
+
   update(realDt) {
     realDt = Math.min(realDt, 0.1);
     this.renderTime += realDt;
+    // a room under construction grows once the builders are done (not mid-edit in build mode)
+    if (this.state.expansion && !this.build.active && !this.visit && (this.expT = (this.expT || 0) + realDt) >= 1) { this.expT = 0; this.build.finishExpansion(); }
     this.fx.update(realDt);
     const running = !this.build.active && !this.paused && !this.hold;
     if (running) {

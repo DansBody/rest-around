@@ -7,7 +7,7 @@ import { CharacterView } from './charview.js';
 import { AbilityFx } from './abilityfx.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById, wallDecorById, wallLayout } from './data.js';
-import { clamp, easeOutBack, lerp } from './util.js';
+import { clamp, easeOutBack, lerp, fmtLeft } from './util.js';
 import { FONT, DISPLAY_FONT } from './placeholder.js';
 import { t } from './i18n.js';
 
@@ -336,6 +336,7 @@ export class Renderer {
     this.syncWalls(realDt);
     this.syncWallDecor();
     this.syncDoor();
+    this.syncConstruction();
     this.syncFurniture(realDt);
     this.syncTrash();
     this.syncCharacters(realDt);
@@ -715,12 +716,63 @@ export class Renderer {
     return { x: (tmpV.x * 0.5 + 0.5) * this.overlay.width / this.dpr, y: (-tmpV.y * 0.5 + 0.5) * this.overlay.height / this.dpr, s: this.game.camera.zoom };
   }
 
+  /**
+   * A floor plan under construction (state.expansion): the new strip of ground turns to bare earth behind a low
+   * striped fence, with cones and a stack of boards; the countdown sign is drawn in drawOverlay. Rebuilt only
+   * when what is being built changes.
+   */
+  syncConstruction() {
+    const g = this.game, x = g.state.expansion;
+    const key = x && x.size > g.world.size ? g.world.size + '>' + x.size : '';
+    if (key === this.siteKey) return;
+    this.siteKey = key;
+    if (this.site) { this.scene.remove(this.site); this.site.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); this.site = null; }
+    if (!key) return;
+    const W0 = g.world.size * TILE, W1 = x.size * TILE, grp = new THREE.Group();
+    if (!this.stripeTex) {   // diagonal ink-and-yellow tape
+      const c = document.createElement('canvas'); c.width = 64; c.height = 16;
+      const cx = c.getContext('2d'); cx.fillStyle = '#ffc531'; cx.fillRect(0, 0, 64, 16); cx.fillStyle = '#17171a';
+      for (let i = -16; i < 64; i += 16) { cx.beginPath(); cx.moveTo(i, 16); cx.lineTo(i + 8, 16); cx.lineTo(i + 16, 0); cx.lineTo(i + 8, 0); cx.fill(); }
+      this.stripeTex = new THREE.CanvasTexture(c); this.stripeTex.wrapS = THREE.RepeatWrapping; this.stripeTex.colorSpace = THREE.SRGBColorSpace;
+    }
+    const earth = new THREE.MeshLambertMaterial({ color: 0xcdb48e }), post = new THREE.MeshLambertMaterial({ color: 0xf4f4f0 });
+    const coneM = new THREE.MeshLambertMaterial({ color: 0xff8a3d }), wood = new THREE.MeshLambertMaterial({ color: 0xc69a63 });
+    const patch = (x0, z0, x1, z1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), earth); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, 0.015, (z0 + z1) / 2); m.receiveShadow = true; grp.add(m); };
+    patch(W0, 0, W1, W1); patch(0, W0, W0, W1);
+    const fence = (x0, z0, x1, z1) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(z1 - z0, x1 - x0);
+      const tex = this.stripeTex.clone(); tex.repeat.set(len / 1.2, 1); tex.needsUpdate = true;
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.22, 0.06), new THREE.MeshLambertMaterial({ map: tex }));
+      rail.position.set((x0 + x1) / 2, 0.62, (z0 + z1) / 2); rail.rotation.y = -ang; rail.castShadow = true; grp.add(rail);
+      for (let i = 0, n = Math.max(1, Math.round(len / 2.4)); i <= n; i++) {
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.8, 0.12), post);
+        p.position.set(x0 + ((x1 - x0) * i) / n, 0.4, z0 + ((z1 - z0) * i) / n); p.castShadow = true; grp.add(p);
+      }
+    };
+    const e = W1 + 0.35;
+    fence(e, -0.35, e, e); fence(-0.35, e, e, e);
+    for (const [cx, cz] of [[W0 + 0.9, 0.9], [W0 + 0.9, W1 - 0.9], [0.9, W0 + 0.9], [(W0 + W1) / 2, (W0 + W1) / 2]]) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.6, 12), coneM); cone.position.set(cx, 0.3, cz); cone.castShadow = true; grp.add(cone);
+    }
+    for (let i = 0; i < 4; i++) {   // a stack of boards in the far corner
+      const b = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.3), wood);
+      b.position.set(W1 - 1.4, 0.06 + i * 0.13, W1 - 1.1 + (i % 2) * 0.32); b.rotation.y = 0.15 * (i - 1.5); b.castShadow = true; grp.add(b);
+    }
+    this.scene.add(grp); this.site = grp;
+  }
+
   drawOverlay() {
     const { ctx, game } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const z = game.camera.zoom;
+    // the countdown sign over a floor plan under construction
+    const ex = game.state.expansion;
+    if (ex && ex.size > game.world.size && !game.visit) {
+      const mid = (game.world.size + ex.size) / 2, q = this.project(mid, mid, 2.4);
+      if (q) this.siteSign(q.x, q.y, `${ex.size}×${ex.size}`, fmtLeft(Math.max(0, ex.end - game.now())), z);
+    }
     // stoves & broken facilities
     for (const f of game.world.furniture) {
       const def = models.def(furnitureById[f.type].asset) || {};
@@ -807,6 +859,19 @@ export class Renderer {
       rr(ctx, x - w / 2, y, Math.max(h, w * v), h, h / 2); ctx.fillStyle = color; ctx.fill();
       rr(ctx, x - w / 2 + 1, y + 1, Math.max(h, w * v) - 2, h * 0.4, h * 0.2); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fill();
     }
+    ctx.restore();
+  }
+
+  /** The construction sign: a yellow pill with the new size and the time left. */
+  siteSign(x, y, size, left, z = 1) {
+    const ctx = this.ctx, k = clamp(z, 0.85, 1.3);
+    ctx.save();
+    ctx.font = `750 ${Math.round(13 * k)}px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const text = `${size} · ${left}`, tw = ctx.measureText(text).width, ph = 26 * k;
+    ctx.shadowColor = 'rgba(16,24,40,0.28)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+    rr(ctx, x - tw / 2 - 12 * k, y - ph / 2, tw + 24 * k, ph, ph / 2); ctx.fillStyle = '#ffc531'; ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.5; ctx.strokeStyle = '#17171a'; ctx.stroke();
+    ctx.fillStyle = '#17171a'; ctx.fillText(text, x, y + 0.5);
     ctx.restore();
   }
 

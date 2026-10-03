@@ -719,7 +719,7 @@ ${k.desc}
       if (ups.length) quiet.push(h('div.away-note', h('b', t('New things unlocked:')), ' ' + ups.join(' · ')));
     }
     if (r.snacksUsed) quiet.push(h('div.away-note', t('The team shared {n} snack(s) from the pantry to keep going.', { n: r.snacksUsed })));
-    if (r.capped) quiet.push(h('div.away-note', t('Trading is counted for up to {n} hours while you are away.', { n: OFFLINE.capHours })));
+    if (r.capped) quiet.push(h('div.away-note', t('Trading is counted for up to {n} hours while you are away.', { n: Math.round(r.usedSec / 3600) })));
     const fig = (icon, label, v) => h('div.recap-fig', assets.iconEl(icon, 30), h('b', v), h('span', label));
     const line = (label, v) => h('div.recap-line', h('span', label), h('b', v));
     return h('div.card.away',

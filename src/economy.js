@@ -5,7 +5,7 @@ import { SNACKS,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, furnitureById, EXPANSIONS, SKILL, CLUBS, TROUBLE,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
   staffWage, rentFor, ingPrice, UNIQUE_MODELS, UNIQUE_NAMES, ROUND_SCALE, perRound,
-  DAILY, dailyCoins, dailyPoints, studyCost, dishCap, wearById,
+  DAILY, dailyCoins, dailyPoints, studyCost, dishCap, wearById, seatCap, stationCap, STATION_KINDS, awayHours,
 } from './data.js';
 import * as pantry from './pantry.js';
 
@@ -27,6 +27,10 @@ export function unlocksFor(level) {
   for (const f of Object.values(furnitureById)) if (f.level === level) unlocks.push(f.name);
   for (const w of WALL_DECOR) if (w.level === level) unlocks.push(w.name);
   for (const e of EXPANSIONS) if (e.level === level) unlocks.push(t('{n}×{n} floor plan', { n: e.size }));
+  if (seatCap(level) > seatCap(prev)) unlocks.push(t('up to {n} seats', { n: seatCap(level) }));
+  const station = { stove: 'up to {n} espresso machines', oven: 'up to {n} bread ovens', bar: 'up to {n} pastry cases' };
+  for (const k of STATION_KINDS) if (stationCap(k, level) > stationCap(k, prev)) unlocks.push(t(station[k], { n: stationCap(k, level) }));
+  if (awayHours(level) > awayHours(prev)) unlocks.push(t('the café trades {n} h while you are away', { n: awayHours(level) }));
   if (dishCap(level) > dishCap(prev)) unlocks.push(t('drinks and bakes can be studied up to Lv{n}', { n: dishCap(level) }));
   unlocks.push(t('+{n} study vouchers', { n: DAILY.levelUpVouchers }));
   return unlocks;

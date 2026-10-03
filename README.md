@@ -122,6 +122,16 @@ starts and sends who goes, the guests' side is in `customer.js`, the responders'
 `src/ui/training.js` (rules and score) and `src/tryout3d.js` (their 3D stages). The debug panel (`` ` ``) has *Rude guest* and *Dine & dash* buttons. Trouble only happens
 while you play: the settlement for time away does not model it.
 
+**Levels (Lv1–30).** The first six levels go in under two days, then about a day and a half each, then three to
+four days each: Lv30 takes a casual player about two months (`LEVEL_POINTS`, worked out by `node tools/curve.mjs`
+from what a café at each level earns). Every level brings something: the café level caps the **seats** (chairs at a
+table: 4 at Lv1 up to 24) and the **production stations** (espresso machines, ovens, pastry cases), and raises the
+staff slots, how far dishes can be studied, the hours the café trades while you are away (12 h, up to 21 h at
+Lv30) and the floor plans on offer; the build tray shows "Seats 4/6" beside the tabs. Decor is never capped.
+**Expansions are built in real time**: 10×10 (Lv3, 1 h), 12×12 (Lv6, 3★, 4 h), 14×14 (Lv10, 3.5★, 12 h), 16×16
+(Lv16, 4★, 24 h), 18×18 (Lv22, 4.5★, 48 h), paid up front; the café trades in its old room meanwhile, with a
+fenced building site and a countdown sign outside (`EXPANSIONS`, `Build.expand`).
+
 **Progression.** Coins buy furniture, staff, training, ingredients and room expansions. Café points
 level you up, which unlocks bigger floor plans, more staff slots, more menu slots, new furniture,
 wall decor and new drinks. **Study** a drink or bake (Menu) to level it from Lv1 to Lv10 (higher price, more

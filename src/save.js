@@ -116,6 +116,9 @@ export function apply(game, data) {
     giftDay: Math.floor(num(s.giftDay, 0, 0, 1e7)),
     streak: { n: Math.floor(num(s.streak && s.streak.n, 0, 0, 7)), day: Math.floor(num(s.streak && s.streak.day, 0, 0, 1e7)) },
     vouchers: Math.floor(num(s.vouchers, 0, 0, 1e6)),
+    // a floor plan under construction: only one of the listed sizes, with a sane finish time
+    expansion: s.expansion && EXPANSIONS.some((e) => e.size === s.expansion.size) && num(s.expansion.end, 0, 0, 1e14) > 0
+      ? { size: s.expansion.size, start: num(s.expansion.start, 0, 0, 1e14), end: num(s.expansion.end, 0, 0, 1e14) } : null,
     totals: { ...d.totals, ...(s.totals || {}) },
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,

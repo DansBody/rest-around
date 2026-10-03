@@ -13,7 +13,7 @@
 // the same file can run in the browser now and on a server later.
 import { CASHIER,
   DAY, OFFLINE, ENERGY, SKILL, skillLevel, KITS, ROLES, DISHES, dishById, furnitureById, floorById, wallById, wallDecorById,
-  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE, DAILY,
+  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE, DAILY, awayHours,
 } from './data.js';
 import { RATING_WEIGHTS } from './rating.js';
 import { roundAt, clockAt, localDay } from './clock.js';
@@ -124,7 +124,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   if (!data || !data.state || !data.world || !(elapsedSec >= O.minSeconds)) return null;
   const out = JSON.parse(JSON.stringify(data));
   const st = out.state, wd = out.world;
-  const capSec = O.capHours * 3600;
+  const capSec = (opts.capHours ?? awayHours(levelFor(st.points || 0))) * 3600;   // a bigger café counts more hours away
   const sec = Math.min(elapsedSec, capSec);
   const days = sec / (O.hoursPerDay * 3600);
   const rng = rngFrom(((opts.seedBase ?? data.savedAt ?? 0) ^ Math.floor(sec)) >>> 0);

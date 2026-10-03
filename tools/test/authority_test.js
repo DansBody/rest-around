@@ -1,7 +1,8 @@
 // Sanity checks for src/authority.js on the fixtures: honest-looking changes pass, edited saves are caught.
 //   node tools/test/authority_test.js
 import { capCheck, wealth } from '../../src/authority.js';
-import { ROLES } from '../../src/data.js';
+import { ROLES, LEVEL_POINTS, EXPANSIONS, staffSlots, seatCap } from '../../src/data.js';
+import { levelFor } from '../../src/offline.js';
 import * as fx from './fixtures.js';
 
 let fail = 0;
@@ -68,31 +69,54 @@ for (const [name, make] of Object.entries(fx)) {
   r = capCheck(prev, n, 45);
   ok(r.flags.includes('xp') && r.data.staff[0].skills.waiter === prev.staff[0].skills.waiter, `${name}: XP edit is reverted`);
 }
-// The expanded cast can be hired at a sufficient level, paying the normal hiring fee.
+// The cast can be hired up to the level's staff slots (paying the normal fee), not one more.
 {
-  const prev = fx.grown(), next = fx.grown();
-  next.staff.push({ name: 'TATA', role: 'waiter', look: { model: 'tata', hide: [], tint: null, scale: 1, roleHat: null }, energy: 100, skills: {}, x: 1, y: 1 });
-  next.state.coins -= ROLES.waiter.hire;
-  const r = capCheck(prev, next, 45);
-  ok(!r.reject && !r.flags.length, 'grown: paid sixth hire (TATA) passes');
-  const six = structuredClone(next);
-  next.staff.push({ ...next.staff[5], name: 'RJ', look: { ...next.staff[5].look, model: 'rj' } });
-  next.state.coins -= ROLES.waiter.hire;
-  const seventh = capCheck(six, next, 45);
-  ok(!seventh.reject && !seventh.flags.length, 'grown: paid seventh hire (RJ) passes');
-  next.staff.push({ ...next.staff[6], name: 'Extra' });
-  const extra = capCheck(prev, next, 45);
-  ok(extra.reject && extra.flags.includes('staff'), 'grown: eighth staff member is rejected');
+  const at = (lv) => { const d = fx.grown(); d.state.points = LEVEL_POINTS[lv]; return d; };
+  const lv = 9, slots = staffSlots(lv), models = ['tata', 'rj', 'chimmy', 'bboogyuli', 'bamgeut'];
+  let prev = at(lv);
+  for (let i = 0; prev.staff.length < slots; i++) {
+    const next = structuredClone(prev);
+    next.staff.push({ ...next.staff[0], name: models[i], look: { ...next.staff[0].look, model: models[i] }, skills: {} });
+    next.state.coins -= ROLES.waiter.hire;
+    const r = capCheck(prev, next, 45);
+    ok(!r.reject && !r.flags.length, `level ${lv}: paid hire #${next.staff.length} of ${slots} passes`);
+    prev = next;
+  }
+  const extra = structuredClone(prev);
+  extra.staff.push({ ...extra.staff[0], name: 'Extra', look: { ...extra.staff[0].look, model: 'bamgeut' } });
+  ok(capCheck(prev, extra, 45).reject, `level ${lv}: hire #${slots + 1} is rejected`);
   const low = fx.starter();
-  low.staff = next.staff.slice(0, 6);
+  low.staff = prev.staff.slice(0, staffSlots(1) + 2);
   const tooEarly = capCheck(fx.starter(), low, 45);
-  ok(tooEarly.reject && tooEarly.flags.includes('staff'), 'starter: six staff without the required level are rejected');
-  const levelFive = structuredClone(six);
-  levelFive.state.points = 1200;
-  const earlyRJ = structuredClone(levelFive);
-  earlyRJ.staff = next.staff.slice(0, 7);
-  earlyRJ.state.coins -= ROLES.waiter.hire;
-  const tooEarlyRJ = capCheck(levelFive, earlyRJ, 45);
-  ok(tooEarlyRJ.reject && tooEarlyRJ.flags.includes('staff'), 'level five: seventh hire before level six is rejected');
+  ok(tooEarly.reject && tooEarly.flags.includes('staff'), 'starter: more staff than the level allows are rejected');
+}
+// Seats and stations past the level's caps are rejected; a room already over them may keep what it has.
+{
+  const prev = fx.grown(), lv = levelFor(prev.state.points);
+  const many = structuredClone(prev);
+  for (let i = 0; i < 12; i++) many.world.furniture.push({ t: 'table_oak', x: 20 + i * 3, y: 30, d: 1 }, { t: 'chair_oak', x: 19 + i * 3, y: 30, d: 0 }, { t: 'chair_oak', x: 21 + i * 3, y: 30, d: 2 });
+  many.state.coins -= 12 * 80;
+  const r = capCheck(prev, many, 45);
+  ok(r.reject && r.flags.includes('seats'), `level ${lv}: 24 more seats than the cap (${seatCap(lv)}) are rejected`);
+  const kept = capCheck(many, structuredClone(many), 45);
+  ok(!kept.flags.includes('seats') && !kept.reject, 'a room already over the seat cap keeps its seats');
+  const stoves = structuredClone(prev);
+  for (let i = 0; i < 4; i++) stoves.world.furniture.push({ t: 'stove_basic', x: 30 + i, y: 40, d: 1 });
+  stoves.state.coins -= 4 * 120;
+  ok(capCheck(prev, stoves, 45).flags.includes('stations'), `level ${lv}: espresso machines past the cap are rejected`);
+}
+// Expansions are built in real time: the room can't grow before the server's clock passes the finish time.
+{
+  const prev = fx.starter(); prev.savedAt = 1e12; prev.state.points = LEVEL_POINTS[3];
+  const e = EXPANSIONS.find((x) => x.size === 10), ms = e.hours * 3600 * 1000;
+  const start = structuredClone(prev); start.state.coins += 5000; prev.state.coins += 5000;
+  start.state.coins -= e.price; start.state.expansion = { size: 10, start: prev.savedAt + 10000, end: prev.savedAt + 10000 + ms };
+  ok(!capCheck(prev, start, 45).reject, 'starting a 10×10 expansion passes');
+  const instant = structuredClone(start); instant.state.expansion.end = instant.state.expansion.start + 1000;
+  ok(capCheck(prev, instant, 45).flags.includes('expansion'), 'an expansion that finishes at once is rejected');
+  const grown = structuredClone(start); grown.state.expansion = null; grown.world.size = 10;
+  const accepted = structuredClone(start); accepted.savedAt = prev.savedAt + 45000;
+  ok(capCheck(accepted, grown, 60).flags.includes('expansion'), 'the room growing before the work is done is rejected');
+  ok(!capCheck(accepted, grown, ms / 1000).reject, 'the room grows once the work is done');
 }
 process.exit(fail ? 1 : 0);

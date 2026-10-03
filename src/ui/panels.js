@@ -1,13 +1,13 @@
 // Panel contents. Each panel re-renders on state changes (and once a second when `live`).
-import { h, fmt } from '../util.js';
+import { h, fmt, fmtLeft } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait, thumb } from '../portrait.js';
 import { roleLook } from '../looks.js';
 import { openWardrobe, SLOT_NAME } from './wardrobe.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, MAX_DISH_LEVEL, dishCap, menuSlots, staffSlots,
-  INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE, CREDITS, WEAR, WEAR_SLOTS, wearById,
+  INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE, seatCap, stationCap, EXPANSIONS,
+  awayHours, UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE, CREDITS, WEAR, WEAR_SLOTS, wearById,
 } from '../data.js';
 import { clearSave, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
@@ -394,7 +394,7 @@ function renderSettings(ui, body) {
         }
         clearSave(); location.reload();
       })),
-    h('div.muted', { style: { marginTop: '6px' } }, t('Progress autosaves every 10 seconds and when you close the tab. The café keeps trading while you are away (up to {n} hours) and tells you how it went when you come back.', { n: OFFLINE.capHours })),
+    h('div.muted', { style: { marginTop: '6px' } }, t('Progress autosaves every 10 seconds and when you close the tab. The café keeps trading while you are away (up to {n} hours) and tells you how it went when you come back.', { n: awayHours(s.level) })),
     ...accountSection(ui),
     h('div.section-title', t('Controls')),
     h('div.muted', { style: { lineHeight: 1.8 } },
@@ -424,9 +424,14 @@ export function buildTray(ui, bar) {
   const g = ui.game, b = g.build, s = g.state;
   if (!b.active) { bar.replaceChildren(); return; }
   const cat = ui.buildCat || 'dining';
+  // what the café level allows here, against what is down: seats with the tables, stations with the equipment
+  const w = g.world, capPill = (label, n, max) => h('span.pill.cap' + (n >= max ? '.full' : ''), { title: t('Level {n} allows {m}; level up for more', { n: s.level, m: max }) }, `${label} ${n}/${max}`);
+  const caps = cat === 'dining' ? [capPill(t('Seats'), w.seats.length, seatCap(s.level))]
+    : cat === 'kitchen' ? [['stove', 'Espresso machines'], ['oven', 'Ovens'], ['bar', 'Pastry cases']].filter(([k]) => stationCap(k, s.level) > 0).map(([k, l]) => capPill(t(l), w.byKind(k).length, stationCap(k, s.level))) : [];
   const tabs = h('div.bb-top',
     h('div.tabs', BUILD_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), { onclick: () => { ui.buildCat = c.id; b.setTool(null); } }, t(c.name)))),
     h('div.grow'),
+    caps.length ? h('div.bb-caps', caps) : null,
     h('button.btn.primary.done', { onclick: () => b.exit() }, gl('check', t('Done'), 16)));
   const items = h('div.bb-items');
   const card = (key, name, price, lvl, sel, onclick, thumbFn, sub) => {
@@ -461,11 +466,25 @@ export function buildTray(ui, bar) {
       items.append(card('wp:' + w.id + segs, w.name, w.price * segs, w.level, on, () => b.applyWallpaper(w.id), () => thumb(w.asset, w.tint)));
     }
   } else if (cat === 'room') {
-    const e = b.nextExpansion();
-    items.append(e
-      ? h('div.row', { style: { flex: 1 } }, I('icon_move', 40), h('div.grow', h('h3', t('Expand to {n}×{n}', { n: e.size })), h('div.muted', e.level > s.level ? t('Reach level {n} to unlock', { n: e.level }) : t('More room for tables, fun and decor!'))),
-        h('button.btn.primary' + (e.level > s.level ? '.disabled' : ''), { onclick: () => b.expand() }, coinPill(e.price)))
-      : h('div.row', { style: { flex: 1 } }, h('div.grow', h('h3', t('Your café is as big as it gets!')))));
+    const x = s.expansion, e = b.nextExpansion();
+    if (x) {   // under construction: what is being built and how long it still takes
+      const total = x.end - x.start, left = Math.max(0, x.end - g.now());
+      items.append(h('div.row.expand-row', { style: { flex: 1 } }, glyph('build', 34),
+        h('div.grow', h('h3', t('Building the {n}×{n} floor plan', { n: x.size })), h('div.muted', t('The café stays open meanwhile.')),
+          h('div.pbar.gold.expand-bar', h('i', { style: { width: (total ? (1 - left / total) * 100 : 100) + '%' } }))),
+        h('b.expand-left', fmtLeft(left))));
+    } else if (e) {
+      const why = b.expandBlock(e);
+      const need = [
+        h('span.pill' + (e.level > s.level ? '.short' : ''), t('Lv{n}', { n: e.level })),
+        e.rating ? h('span.pill' + (s.rating < e.rating ? '.short' : ''), I('icon_star', 14), e.rating) : null,
+        h('span.pill', glyph('clock', 14), t('{n} h to build', { n: e.hours })),
+      ];
+      items.append(h('div.row.expand-row', { style: { flex: 1 } }, I('icon_move', 40),
+        h('div.grow', h('h3', t('Expand to {n}×{n}', { n: e.size })), h('div.chips', need),
+          h('div.muted', why === 'level' ? t('Reach level {n} to unlock', { n: e.level }) : why === 'rating' ? t('Needs a {r}★ rating', { r: e.rating }) : t('Paid now, built in {n} h while the café stays open.', { n: e.hours }))),
+        h('button.btn.primary' + (why ? '.disabled' : ''), { onclick: () => b.expand() }, coinPill(e.price))));
+    } else items.append(h('div.row', { style: { flex: 1 } }, h('div.grow', h('h3', t('Your café is as big as it gets!')))));
   }
   const touch = g.touchMode;
   // an item is picked: the tray folds down to one line so the café is in full view, and the rotate /

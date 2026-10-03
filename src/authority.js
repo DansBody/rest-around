@@ -20,8 +20,9 @@
 import {
   DAY, dishById, furnitureById, floorById, wallById, wallDecorById, EXPANSIONS, ROLES, ingById, ingPrice, snackById,
   SERVINGS_PER_UNIT, levelUpCost, dishPrice, dishPoints, EXTRA_CAT, SEEDS, gardenPlots, staffSlots, KITS, MAX_LEVEL,
-  DAILY, dailyCoins, dailyPoints, studySpent, wearById,
+  DAILY, dailyCoins, dailyPoints, studySpent, wearById, seatCap, stationCap, STATION_KINDS,
 } from './data.js';
+import { DIRS } from './iso.js';
 import { MODEL, capacity, levelFor, arrivalsPerHour, SIM_SEC_PER_HOUR } from './offline.js';
 
 export const CAP = {
@@ -43,7 +44,7 @@ export function wealth(d) {
   for (const f of w.furniture || []) v += (furnitureById[f.t] || {}).price || 0;
   for (const col of w.floors || []) for (const id of col || []) if (id !== 'fl_oak') v += (floorById[id] || {}).price || 0;   // oak is what a new room comes with
   if (w.wallpaper && w.wallpaper !== 'wp_cream') v += ((wallById[w.wallpaper] || {}).price || 0) * (w.size * 2 - 1);
-  for (const e of EXPANSIONS) if (e.size <= w.size) v += e.price;
+  for (const e of EXPANSIONS) if (e.size <= w.size || (s.expansion && e.size === s.expansion.size)) v += e.price;   // built, or paid for and being built
   for (const id of s.wallDeco || []) v += (wallDecorById[id] || {}).price || 0;
   for (const st of d.staff || []) v += (ROLES[st.role] || {}).hire || 0;
   for (const [id, n] of Object.entries(s.inv || {})) if (ingById[id]) v += ingPrice(ingById[id]) * n;
@@ -61,6 +62,16 @@ export function wealth(d) {
     if (seed) v += seed.price + Math.max(0, Math.min(1, p.prog || 0)) * (seed.yield * ingPrice(ingById[seed.crop]) - seed.price);
   }
   return v;
+}
+
+/** Seats (chairs facing a table: tables take one tile) and production stations of each kind, as the level caps count them. */
+export function capacityCounts(d) {
+  const f = (d.world.furniture || []).filter((x) => furnitureById[x.t]);
+  const kind = (x) => furnitureById[x.t].kind;
+  const tables = new Set(f.filter((x) => kind(x) === 'table').map((x) => x.x + ',' + x.y));
+  const out = { seats: f.filter((x) => kind(x) === 'chair' && DIRS[x.d] && tables.has((x.x + DIRS[x.d].dx) + ',' + (x.y + DIRS[x.d].dy))).length };
+  for (const k of STATION_KINDS) out[k] = f.filter((x) => kind(x) === k).length;
+  return out;
 }
 
 /** Study vouchers held, plus those that went into dish levels. */
@@ -129,6 +140,22 @@ export function capCheck(prev, next, wallSec) {
   const tzMoved = (next.state.tz || 0) !== (prev.state.tz || 0);
   if (prevRound && roundStep > Math.ceil(sim / DAY.round) + 1 + (tzMoved ? 13 : 0)) return reject('rounds');
   if ((next.staff || []).length > staffSlots(levelFor(next.state.points || 0))) return reject('staff');
+
+  // seats and stations the level caps: a room over its caps (from before them) may keep what it has, not add more
+  const lvNext = levelFor(next.state.points || 0), cn = capacityCounts(next), cp = capacityCounts(prev);
+  if (cn.seats > seatCap(lvNext) && cn.seats > cp.seats) return reject('seats');
+  for (const k of STATION_KINDS) if (cn[k] > stationCap(k, lvNext) && cn[k] > cp[k]) return reject('stations');
+
+  // floor plans are built in real time (Build.expand): the room only grows once the server's clock passed the
+  // finish time of the expansion it already knew about; a new one can't be dated before the last accepted save
+  const slack = 120 * 1000, prevAt = prev.savedAt || 0, nowAt = prevAt + Math.max(0, wallSec) * 1000;
+  const px = prev.state.expansion, nx = next.state.expansion;
+  if (next.world.size > prev.world.size && !(px && px.size === next.world.size && px.end <= nowAt + slack)) return reject('expansion');
+  if (nx && !(px && px.size === nx.size)) {
+    const e = EXPANSIONS.find((x) => x.size === nx.size), ms = e ? e.hours * 3600 * 1000 : 0;
+    if (!e || e.level > level || Math.abs(nx.end - nx.start - ms) > 2000 || nx.end < prevAt + ms - slack) return reject('expansion');
+  }
+  if (nx && px && px.size === nx.size && nx.end < px.end) return reject('expansion');   // no shortening the work
 
   // what this café could have earned: the better of the layout it had and the one it has now
   const tp = [throughput(prev, level), throughput(next, level)];
