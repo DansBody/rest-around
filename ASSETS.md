@@ -114,6 +114,8 @@ or bake is shown), `cookProp` / `cookScale` (the cup shown while the espresso ma
 (evening glow), `tintable` + `tintMode` (`multiply` keeps the model's own colours).
 
 **Icons.** `ing_*.png`, `tool_*.png` and `icon_coin.png` are 3D-looking illustrations from text-to-image.
+The four job icons in the hire list (`role_*.png`) came from one `gpt-image-bridge` 2×2 sheet with
+`tool_menu.png` attached as the style reference, cut into quadrants and cleaned the same way.
 Background removal is a flood fill from the corners (anything near-white that touches the border goes),
 a 1 px erode and a soft edge, then a crop to the artwork. A PNG at a manifest path replaces the
 vector fallback icon (or the icon rendered from the model) without code changes.
@@ -295,7 +297,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `chimmy` | `models/characters/Chimmy.gltf` | own rig + clips |
 | `bboogyuli` | `models/characters/Bboogyuli.gltf` | own rig + clips |
 
-### 2D images (73)
+### 2D images (77)
 
 | id | file | size (px) | notes |
 |---|---|---|---|
@@ -337,6 +339,10 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `icon_level` | `ui/icon_level.png` | 40×40 |  |
 | `tool_build` | `ui/tool_build.png` | 64×64 |  |
 | `tool_staff` | `ui/tool_staff.png` | 64×64 |  |
+| `role_waiter` | `ui/role_waiter.png` | 64×64 |  |
+| `role_chef` | `ui/role_chef.png` | 64×64 |  |
+| `role_cleaner` | `ui/role_cleaner.png` | 64×64 |  |
+| `role_bartender` | `ui/role_bartender.png` | 64×64 |  |
 | `tool_menu` | `ui/tool_menu.png` | 64×64 |  |
 | `tool_garden` | `ui/tool_garden.png` | 64×64 |  |
 | `tool_market` | `ui/tool_market.png` | 64×64 |  |

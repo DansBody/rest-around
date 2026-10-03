@@ -172,7 +172,7 @@ function renderStaff(ui, body) {
     const count = staff.filter((a) => a.role === role).length;
     const note = t(ROLE_NOTE[role]);
     body.append(h('div.row.split',
-      portrait(roleLook(role, free[0]), 48, 48),
+      I('role_' + role, 48),
       h('div.grow', h('h3', r.name)),
       h('button.btn.primary.small' + (full || !free.length || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => { ui.subview = { hire: role }; ui.renderPanel(); } }, t('Hire') + ' ', coinPill(r.hire)),
       h('div.row-full', h('div.muted', note), h('div.meta', t('Wage {w}/day, you have {n}', { w: staffWage(role, 1), n: count })))));
