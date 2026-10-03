@@ -107,9 +107,11 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
   border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); }
 #hudbrand .bname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -.02em; line-height: 1.35; }   /* room for Chinese glyphs, which overflow: hidden would clip */
 .hb-lv { flex: none; padding: 3px 7px; border-radius: 99px; background: var(--ink); color: #fff; font: 700 11px/1.2 var(--font); letter-spacing: .02em; text-transform: uppercase; }
-/* level progress: a hairline along the bottom of the pill */
-.hb-xpbar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--fill-2); }
-.hb-xpbar i { position: absolute; inset: 0 auto 0 0; background: var(--yellow); transition: width .3s; }
+/* level progress: a ring round the pill (path drawn in ui.js), filling clockwise from the top centre */
+.hb-ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hb-ring path { fill: none; stroke-width: 3; }
+.hb-ring-track { stroke: var(--fill-2); }
+.hb-ring-fill { stroke: var(--yellow); stroke-dasharray: 100 100; stroke-dashoffset: 100; transition: stroke-dashoffset .4s ease; }
 #hudstats { flex: none; display: flex; align-items: center; height: 46px; padding: 0 4px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); }
 .hs { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 100%; padding: 0 12px; border: 0; background: none; color: var(--ink);
   font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: -.02em; white-space: nowrap; }

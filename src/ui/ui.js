@@ -91,8 +91,25 @@ export class UI {
     this.el.brandName = h('span.bname', this.game.state.name);
     this.el.lvlTxt = h('span');   // level points and the day go in the tooltips, not on screen
     this.el.day = h('span');
-    this.el.lvlBar = h('i');
-    const brand = h('div#hudbrand', this.el.brandName, this.el.lvlNum, h('span.hb-xpbar', this.el.lvlBar));
+    // level progress: a ring round the café pill, filling clockwise from the top centre
+    const NS = 'http://www.w3.org/2000/svg';
+    const ring = document.createElementNS(NS, 'svg');
+    ring.setAttribute('class', 'hb-ring'); ring.setAttribute('aria-hidden', 'true');
+    const track = document.createElementNS(NS, 'path'), fill = document.createElementNS(NS, 'path');
+    track.setAttribute('class', 'hb-ring-track'); fill.setAttribute('class', 'hb-ring-fill');
+    for (const p of [track, fill]) { p.setAttribute('pathLength', '100'); ring.appendChild(p); }
+    this.el.lvlBar = fill;
+    const brand = h('div#hudbrand', this.el.brandName, this.el.lvlNum, ring);
+    // the pill is as wide as the name: redraw its outline whenever it changes size
+    if (this.hudRO) this.hudRO.disconnect();
+    this.hudRO = new ResizeObserver(() => {
+      const w = brand.offsetWidth, ht = brand.offsetHeight, sw = 3, r = ht / 2 - sw / 2;
+      if (!w) return;
+      const d = `M${w / 2} ${sw / 2}H${w - ht / 2}A${r} ${r} 0 0 1 ${w - ht / 2} ${ht - sw / 2}H${ht / 2}A${r} ${r} 0 0 1 ${ht / 2} ${sw / 2}Z`;
+      ring.setAttribute('viewBox', `0 0 ${w} ${ht}`);
+      track.setAttribute('d', d); fill.setAttribute('d', d);
+    });
+    this.hudRO.observe(brand);
     // the five-star row is still kept up to date, but the pill shows one star and the number
     this.el.stars = h('span.stars');
     this.starEls = [];
@@ -503,7 +520,7 @@ ${k.desc}
     if (this.el.brandName.textContent !== s.name) this.el.brandName.textContent = s.name;
     this.updateQuest();
     this.el.lvlTxt.textContent = s.level >= g.maxLevel() ? t('MAX') : `${fmt(lp.cur)}/${fmt(lp.next)}`;
-    this.el.lvlBar.style.width = lp.frac * 100 + '%';
+    this.el.lvlBar.style.strokeDashoffset = String(100 - lp.frac * 100);
     this.el.brandName.parentNode.title = `${s.name} · ${this.el.lvlNum.textContent} · ${t('Café level & points')} ${this.el.lvlTxt.textContent}`;
     for (let i = 0; i < 5; i++) {
       const f = clamp(s.rating - i, 0, 1);
