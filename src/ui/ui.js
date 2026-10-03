@@ -11,6 +11,7 @@ import { audio } from '../audio.js';
 import { unlocksFor } from '../economy.js';
 import { roundOfDay, ROUNDS_PER_DAY } from '../clock.js';
 import { glyph } from './icons.js';
+import { maybeLesson, startWatch } from './tutorial.js';
 import { TILE } from '../models.js';
 import { glassFx } from './glass.js';
 import { t, tt, titledRole, setLang, getLang } from '../i18n.js';
@@ -58,6 +59,7 @@ export class UI {
     bus.on('build', (on) => this.onBuild(on));
     bus.on('buildChanged', () => { this.renderBuild(); this.renderGhostCtl(); });
     bus.on('roundEnd', (s) => this.notice({ kind: 'receipt', show: () => this.receipt(s) }));
+    bus.on('troubleStarted', (e) => startWatch(this, e.c, e.kind));
     bus.on('levelUp', (e) => this.notice({ kind: 'level', e, show: () => this.celebrate(e) }));
     bus.on('ability', (a) => this.cutIn(a));
     bus.on('kitCast', (a) => this.cutIn(a, a.kit.active));
@@ -513,6 +515,7 @@ ${k.desc}
     this.acc = 0;
     if (this.tutorial) this.tutorial.update();
     this.pumpNotices();
+    if (!this.tutorial) maybeLesson(this);   // a kind of trouble just unlocked: the partner teaches it
     const g = this.game, s = g.state;
     this.el.coins.textContent = fmt(s.coins);
     const lp = g.levelProgress();

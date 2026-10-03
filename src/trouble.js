@@ -21,6 +21,7 @@ export class Troubles {
   allowed(kind) {
     const g = this.game, T = TROUBLE[kind];
     if (g.visit || g.state.level < T.level || this.today[kind] >= perRound(T.perDay)) return false;   // perDay was set for the old 8-minute day
+    if (!g.state.tutorialSeen || !g.state.tutorial.includes('L-' + kind)) return false;   // not before the lesson about it (ui/tutorial.js)
     return !this.game.customers.some((c) => (c.trouble ? !c.trouble.over && c.trouble.kind === kind : kind === 'rude' && c.rude));
   }
   roll(kind) {
@@ -40,6 +41,8 @@ export class Troubles {
     const club = CLUBS[CLUB_FOR[kind]];
     const trained = g.staff.some((s) => s.clubLv(club.id) > 0);
     const msg = kind === 'rude' ? t('A rude guest is pushing your staff around!') : t('{name} is sneaking off without paying!', { name: c.name });
+    // the first one of its kind is watched together with the partner, a bit slower (ui/tutorial.js startWatch)
+    if (!g.state.tutorial.includes('W-' + kind)) { c.slowMo = 0.7; g.emit('troubleStarted', { c, kind }); }
     g.toast(trained ? msg : msg + ' ' + t('Nobody can stop them yet: train someone at the {club} (Training tab).', { club: club.name }), 'bad');
     g.changed('trouble');
   }

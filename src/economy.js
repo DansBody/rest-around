@@ -385,7 +385,8 @@ export class Economy {
   learnClub(st, id) {
     const g = this.game, club = CLUBS[id];
     if (!club || !g.staff.includes(st) || st.clubLv(id) > 0) return false;
-    if (!this.spend(club.fee, club.name)) return false;
+    if (this.freeClub === id) this.freeClub = null;   // the trouble lesson's free first session (ui/tutorial.js)
+    else if (!this.spend(club.fee, club.name)) return false;
     st.clubs[id] = 1;
     st.emote('emote_sparkle', 2); st.hop();
     g.fx.sparkle(g.at(st.x, st.y, 60), 16, club.color);

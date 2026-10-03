@@ -464,7 +464,7 @@ export class Customer extends Agent {
     });
     let look = 0;
     this.wait(T.sneak, 'idle', { every: (dt) => { if ((look -= dt) <= 0) { look = 0.35; this.dir = (this.dir + 2) % 4; } } });
-    this.do(() => { this.speed = this.baseSpeed * T.tiptoe; });
+    this.do(() => { this.speed = this.baseSpeed * T.tiptoe * (this.slowMo || 1); });
     this.walk(e.x, e.y, { onFail: () => this.dashOut() });
     this.do(() => this.dashOut());
   }
@@ -473,7 +473,8 @@ export class Customer extends Agent {
     this.clearQueue();
     g.openDoor(1.4);
     this.task = 'Running off with the bill';
-    this.speed = T.run; this.speedMul = T.run / SPEED.customer;   // legs a blur
+    const run = T.run * (this.slowMo || 1);
+    this.speed = run; this.speedMul = run / SPEED.customer;   // legs a blur
     this.glide(-1.1, DOOR_Y + 0.5);
     this.do(() => this.releaseAll());
     this.glide(-2.5, DOOR_Y + 0.5);

@@ -24,7 +24,7 @@ export function renderTraining(ui, body) {
   for (const club of Object.values(CLUBS)) {
     const T = TROUBLE[club.trouble];
     const trained = g.staff.filter((a) => a.clubLv(club.id) > 0).length;
-    body.append(h('div.club', { style: { '--c': club.color } },
+    body.append(h('div.club', { style: { '--c': club.color }, 'data-club': club.id },
       h('div.club-head',
         h('span.club-ico', glyph(club.glyph, 26)),
         h('div.grow', h('h3', club.name), h('div.club-sub', h('b', club.skill), h('span', '·'), h('span', t(TROUBLE_NAME[club.trouble])))),
@@ -48,8 +48,9 @@ function staffPicker(ui, club) {
     return h('button.pick-tile' + (a === pick ? '.on' : '') + (lv ? '.done' : ''), { disabled: !!lv, title: a.name, onclick: () => { ui.trainPick[club.id] = a.id; ui.renderPanel(); } },
       portrait(a.look, 56, 56), h('b', a.name), lv ? h('span.pick-learned', glyph('check', 12), t('Lv{n}', { n: lv })) : null);
   }));
+  const free = g.eco.freeClub === club.id;   // the lesson pays for the first session
   const go = pick
-    ? h('button.btn.primary.club-go' + (g.eco.canAfford(club.fee) ? '' : '.disabled'), { onclick: () => startTryout(ui, pick, club) }, t('Train {name}', { name: pick.name }), ' ', coinPill(club.fee))
+    ? h('button.btn.primary.club-go' + (free || g.eco.canAfford(club.fee) ? '' : '.disabled'), { onclick: () => startTryout(ui, pick, club) }, t('Train {name}', { name: pick.name }), ' ', free ? h('span.pill', t('Free')) : coinPill(club.fee))
     : h('div.muted.club-done', t('Everyone on the team has learned {skill}.', { skill: club.skill }));
   return [tiles, go];
 }
@@ -57,7 +58,7 @@ function staffPicker(ui, club) {
 function startTryout(ui, a, club) {
   const g = ui.game;
   audio.unlock();
-  if (!g.eco.canAfford(club.fee)) { ui.toast(t('Not enough coins for {what} (need {n})', { what: club.name, n: club.fee }), 'bad'); g.sfx('error'); return; }
+  if (g.eco.freeClub !== club.id && !g.eco.canAfford(club.fee)) { ui.toast(t('Not enough coins for {what} (need {n})', { what: club.name, n: club.fee }), 'bad'); g.sfx('error'); return; }
   g.sfx('click');
   ui.queueModal(() => tryoutCard(ui, a, club));
 }
@@ -81,13 +82,14 @@ function tryoutCard(ui, a, club) {
   const play = () => { audio.unlock(); stop = (club.id === 'baseball' ? batting : sprint)(ui, a, card, result, close); };
   const result = (ok, score) => {
     stop = null;
+    const free = g.eco.freeClub === club.id;
     if (ok && !g.eco.learnClub(a, club.id)) ok = null;   // passed, but the fee could not be paid
     card.replaceChildren(...[
       h('div.tryout-hero', portrait(a.look, 72, 72), h('span.club-ico.big' + (ok ? '' : '.off'), glyph(ok ? 'check' : club.glyph, 30))),
       h('div.big-title', ok ? t('{name} learned {skill}!', { name: a.name, skill: club.skill }) : ok === null ? t('Not enough coins') : t('Not this time')),
       h('div.muted', score),
       ok ? h('div.how', club.desc) : null,
-      ok ? h('div.muted', t('Club fee paid: {n} coins', { n: club.fee })) : null,
+      ok ? h('div.muted', free ? t('The first session is free') : t('Club fee paid: {n} coins', { n: club.fee })) : null,
       ok ? h('button.btn.primary', { onclick: close }, t('Great!'))
         : h('div.feed-btns', h('button.btn', { onclick: close }, t('Later')), ok === null ? null : h('button.btn.primary', { onclick: play }, t('Try again')))].filter(Boolean));
   };

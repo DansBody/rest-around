@@ -146,7 +146,11 @@ character becomes your **partner**, starts as the Server (another character, pic
 can never be fired, and walks you through the café: looking around, setting up the first table for two (a new
 café is a bare room with just the espresso machine and the till; no guests come in before there is a seat),
 the first guest (followed from the door through the order, the brewing and the delivery), Staff, Today and the
-gift, and studying the Espresso. A table seats two: chairs may face it from any side, but not a third. Each step moves on once you have done it (a yellow ring marks what to
+gift, and studying the Espresso. A table seats two: chairs may face it from any side, but not a third. Trouble is taught as it unlocks: at
+Lv2 (dine and dash) and Lv3 (rude guests) the partner takes you to the club that handles it, the first session
+there is free, and that kind of trouble only starts once the lesson is over (done or skipped); the first real
+incident of each kind is watched together, the camera and the ring on the troublemaker, then on whoever goes after
+them. Each step moves on once you have done it (a yellow ring marks what to
 tap); the tour can be skipped, and a café that opens at night does the guest step when the doors open.
 
 **Today.** The checklist button (top-left) opens the Today panel: the daily gift (ingredients and coins; the

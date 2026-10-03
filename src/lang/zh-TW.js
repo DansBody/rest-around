@@ -485,4 +485,15 @@ export const ZH_TW = {
   'Construction done: the café is now {n}×{n}!': '完工了！咖啡廳擴建成 {n}×{n}！',
   'Building the {n}×{n} floor plan': '{n}×{n} 擴建工程進行中', 'The café stays open meanwhile.': '施工期間咖啡廳照常營業。',
   '{n} h to build': '施工 {n} 小時', 'Needs a {r}★ rating': '需要 {r}★ 評價', 'Paid now, built in {n} h while the café stays open.': '現在付款，{n} 小時後完工，施工期間照常營業。',
+  // ---------------- trouble lessons (ui/tutorial.js)
+  "From now on, a guest may try to sneak out without paying. Let's get someone ready at the {club}: the first session is on me!": '從現在起，有些客人可能會想吃霸王餐溜走。我們先找人去{club}練習吧，第一次我請客！',
+  'Now and then a rude guest may come in and push the team around. A batter from the {club} sends them flying: the first session is on me!': '偶爾會有奧客上門欺負我們的員工。{club}練出來的打者能把他們一棒送走，第一次我請客！',
+  'Now we can chase down anyone who runs off with the bill. Off we go!': '這下有人想吃霸王餐，我們也追得上了。繼續營業吧！',
+  'Now nobody pushes our team around. Back to work!': '這下沒人敢欺負我們的團隊了。回去工作吧！',
+  'Pick who goes, then tap the button below. Pass the tryout to learn {skill}.': '選一位員工，再按下方的按鈕。通過測驗就能學會「{skill}」。',
+  'Tap Training.': '點「進修」。', 'Skip': '跳過', 'The first session is free': '第一次進修免費',
+  'Caught! {name} pays up after all.': '抓到了！{name} 乖乖付錢了。', 'They got away this time. Everyone who trains at the {club} joins the chase.': '這次被溜走了。多派幾位員工去{club}練習，追的人就更多。',
+  '{by} is giving chase!': '{by} 追上去了！', '{name} is sneaking out without paying!': '{name} 想偷偷溜走不付錢！',
+  'Home run! Out they go.': '全壘打！把他送走了。', 'They stormed off. A trained batter gets there sooner.': '他氣沖沖地走了。有練過的打者能更快趕到。',
+  '{by} grabs the bat!': '{by} 拿起球棒了！', 'A rude guest is pushing the team around!': '有奧客在欺負我們的員工！',
 };

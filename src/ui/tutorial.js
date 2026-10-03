@@ -8,7 +8,8 @@
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
 import { roleLook } from '../looks.js';
-import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById } from '../data.js';
+import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, CLUBS, TROUBLE } from '../data.js';
+import { CLUB_FOR } from '../trouble.js';
 import { kitLines } from './panels.js';
 import { glyph } from './icons.js';
 import { TILE } from '../models.js';
@@ -54,6 +55,72 @@ const PRAISE = ['Nice!', "That's it!", 'Perfect!', 'Great job!'];
 const partnerName = (g) => UNIQUE_NAMES[g.state.partner] || '';
 const partnerId = (g) => { const a = g.staff.find((x) => x.look.model === g.state.partner); return a ? a.id : ''; };
 
+// ---------------- lessons: trouble, taught as it unlocks ----------------
+// When a kind of trouble unlocks (dine and dash at Lv2, rude guests at Lv3) the partner takes the player to the
+// club that handles it, and the first session there is free; that kind of trouble only starts once the lesson
+// is over (done or skipped: 'L-dash' / 'L-rude' in state.tutorial, see Troubles.allowed). The first real
+// incident of each kind is then watched together (startWatch).
+const LESSON = {
+  dash: {
+    intro: () => t("From now on, a guest may try to sneak out without paying. Let's get someone ready at the {club}: the first session is on me!", { club: CLUBS.track.name }),
+    done: () => t('Now we can chase down anyone who runs off with the bill. Off we go!'),
+  },
+  rude: {
+    intro: () => t('Now and then a rude guest may come in and push the team around. A batter from the {club} sends them flying: the first session is on me!', { club: CLUBS.baseball.name }),
+    done: () => t('Now nobody pushes our team around. Back to work!'),
+  },
+};
+function lessonSteps(kind) {
+  const club = CLUBS[CLUB_FOR[kind]], L = LESSON[kind];
+  const trained = (g) => g.staff.some((a) => a.clubLv(club.id) > 0);
+  return [
+    { id: kind + '-1', center: true, next: true, text: L.intro },
+    { id: kind + '-2', dim: true, panel: 'train', enter: (tu) => { tu.g.eco.freeClub = club.id; },
+      target: (ui) => (ui.panel === 'train' ? ui.el.panelBody.querySelector(`[data-club="${club.id}"] .club-go`) : ui.toolBtns.train),
+      text: (g, tu, ui) => (ui.panel === 'train' ? t('Pick who goes, then tap the button below. Pass the tryout to learn {skill}.', { skill: club.skill }) : t('Tap Training.')),
+      done: trained },
+    { id: kind + '-3', center: true, next: true, text: L.done, doneLabel: () => t('Got it') },
+  ];
+}
+/** A lesson waiting to be taught now (the tour over, nothing else on screen), started; true if one was. */
+export function maybeLesson(ui) {
+  const g = ui.game, s = g.state;
+  if (ui.tutorial || !s.tutorialSeen || g.visit || g.build.active || ui.modalOpen || (ui.notices && ui.notices.length)) return false;
+  if (ui.el.celebrate.classList.contains('show') || ui.el.receipt.classList.contains('show')) return false;
+  for (const kind of ['dash', 'rude']) {
+    if (s.level < TROUBLE[kind].level || s.tutorial.includes('L-' + kind)) continue;
+    ui.closePanel();
+    ui.tutorial = new Tour(ui, lessonSteps(kind), { id: 'L-' + kind, onEnd: (tu) => { if (tu.g.eco.freeClub === CLUBS[CLUB_FOR[kind]].id) tu.g.eco.freeClub = null; } });
+    return true;
+  }
+  return false;
+}
+
+/**
+ * The first real incident of each kind, watched together: the ring and the camera stay on whoever matters
+ * (the troublemaker, then whoever goes after them), the partner says what is happening, and once it is over
+ * a Got it ends it. The troublemaker of that first time moves a bit slower (Customer.slowMo).
+ */
+export function startWatch(ui, c, kind) {
+  const g = ui.game, id = 'W-' + kind;
+  if (ui.tutorial || g.visit || g.state.tutorial.includes(id)) return false;
+  const focus = () => (c.trouble && c.trouble.by && !c.trouble.over ? c.trouble.by : c);
+  const text = () => {
+    const tr = c.trouble || {}, by = tr.by;
+    if (kind === 'dash') {
+      if (tr.over) return c.state === 'caught' ? t('Caught! {name} pays up after all.', { name: c.name }) : t('They got away this time. Everyone who trains at the {club} joins the chase.', { club: CLUBS.track.name });
+      return by ? t('{by} is giving chase!', { by: by.name }) : t('{name} is sneaking out without paying!', { name: c.name });
+    }
+    if (tr.over) return c.state === 'flying' ? t('Home run! Out they go.') : t('They stormed off. A trained batter gets there sooner.');
+    return by ? t('{by} grabs the bat!', { by: by.name }) : t('A rude guest is pushing the team around!');
+  };
+  const step = { id: 'w-' + kind, panel: null, target: (u) => (g.renderer && !c.gone ? g.renderer.agentRing(focus()) : null), text, next: () => !!(c.trouble && c.trouble.over), doneLabel: () => t('Got it') };
+  ui.closePanel();
+  g.camera.follow(() => (ui.tutorial && ui.tutorial.opts.id === id && !c.gone ? { x: focus().x * TILE, z: focus().y * TILE } : null), () => ({ x: 0, y: 70 }));
+  ui.tutorial = new Tour(ui, [step], { id });
+  return true;
+}
+
 /** Start (or pick up) the tour for a new café. Call once the UI is up. */
 export function startTutorial(ui) {
   const s = ui.game.state;
@@ -86,9 +153,14 @@ function pickCard(ui) {
   return card;
 }
 
+/**
+ * The coach: runs a list of steps (the first-visit tour, or a short lesson later on) with the partner's card,
+ * the ring and the dimming. `opts.id` marks a lesson as over in state.tutorial when it ends (done or skipped).
+ */
 class Tour {
-  constructor(ui) {
+  constructor(ui, steps = STEPS, opts = {}) {
     this.ui = ui; this.g = ui.game;
+    this.steps = steps; this.opts = opts;
     this.moved = false;
     this.cam = this.camKey();
     this.card = h('div#coach');
@@ -110,7 +182,7 @@ class Tour {
   camKey() { const c = this.g.camera; return [c.tx, c.tz, c.yawTarget, c.distTarget].map((v) => v.toFixed(1)).join(); }
   /** The step to show: the first one not done whose time has come (the guest waits for the doors to open). */
   current() {
-    const left = STEPS.filter((st) => !this.done.includes(st.id));
+    const left = this.steps.filter((st) => !this.done.includes(st.id));
     return left.find((st) => !st.ready || st.ready(this.g, this)) || null;
   }
   finish(id, praise) {
@@ -119,9 +191,14 @@ class Tour {
     this.g.changed('tutorial');
   }
   end() {
-    this.g.state.tutorialSeen = true;
-    // skipped before the table was set up: guests still need somewhere to sit
-    if (!this.g.world.seats.length) { if (this.g.build.active) this.g.build.exit(); this.g.ensureSeats(); }
+    if (this.opts.id) {   // a lesson: over for good, done or skipped
+      if (!this.done.includes(this.opts.id)) this.done.push(this.opts.id);
+      if (this.opts.onEnd) this.opts.onEnd(this);
+    } else {
+      this.g.state.tutorialSeen = true;
+      // skipped before the table was set up: guests still need somewhere to sit
+      if (!this.g.world.seats.length) { if (this.g.build.active) this.g.build.exit(); this.g.ensureSeats(); }
+    }
     this.card.remove(); this.spot.remove();
     this.mark(null);
     this.ui.root.classList.remove('touring');
@@ -205,7 +282,7 @@ class Tour {
     this.praise = null;
     let st = this.current();
     while (st && st.done && st.done(g, ui, this)) { this.finish(st.id, true); return this.update(); }
-    if (!STEPS.some((x) => !this.done.includes(x.id))) return this.end();
+    if (!this.steps.some((x) => !this.done.includes(x.id))) return this.end();
     if (st && st.id !== this.stepId) {
       this.stepId = st.id;
       if (st.panel !== undefined && ui.panel && ui.panel !== st.panel) ui.closePanel();   // the last step's panel goes away
@@ -226,17 +303,17 @@ class Tour {
     if (key !== this.key) {
       this.key = key;
       const look = (g.staff.find((a) => a.look.model === g.state.partner) || {}).look || roleLook('waiter', g.state.partner);
-      const n = STEPS.findIndex((x) => x === st);
-      const last = n === STEPS.length - 1;
+      const n = this.steps.findIndex((x) => x === st);
+      const last = n === this.steps.length - 1;
       this.card.replaceChildren(
         h('i.coach-arrow'),
         h('div.coach-face', portrait(look, 56, 56)),
         h('div.coach-body',
-          h('div.coach-who', h('b', partnerName(g)), n >= 0 ? h('span', `${n + 1}/${STEPS.length}`) : null),
+          h('div.coach-who', h('b', partnerName(g)), n >= 0 && this.steps.length > 1 ? h('span', `${n + 1}/${this.steps.length}`) : null),
           h('div.coach-text', id === 'praise' ? [glyph('check', 18), ' ', text] : text),
           id === 'praise' ? null : h('div.coach-acts',
-            nextOn ? h('button.btn.small.primary', { onclick: () => { this.finish(st.id, !st.center); this.update(); } }, last ? t("Let's go!") : n === 0 ? t('Next') : t('Got it')) : null,
-            !last ? h('button.btn.small.ghost', { onclick: () => this.end() }, t('Skip tour')) : null)));
+            nextOn ? h('button.btn.small.primary', { onclick: () => { this.finish(st.id, !st.center); this.update(); } }, last ? (st.doneLabel ? st.doneLabel() : t("Let's go!")) : n === 0 ? t('Next') : t('Got it')) : null,
+            !last ? h('button.btn.small.ghost', { onclick: () => this.end() }, this.opts.id ? t('Skip') : t('Skip tour')) : null)));
       this.card.classList.toggle('praise', id === 'praise');
     }
     this.card.classList.toggle('hidden', !!ui.modalOpen);
