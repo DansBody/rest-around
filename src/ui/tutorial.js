@@ -25,7 +25,7 @@ const STEPS = [
   { id: 'hello', center: true, next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: partnerName(g) }) },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
   { id: 'guest', panel: null, ready: (g) => !g.day.isNight, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
-    text: (g, tu) => (tu.guest && tu.guest.state === 'arriving' ? t('Here comes a guest! Watch the door.') : t('I take the order and {chef} brews it. Watch us serve!', { chef: chefName(g) })),
+    text: (g, tu) => tu.guestText(),
     done: (g, ui, tu) => !!(tu.guest && tu.guest.served) },   // the guest the tour called, not whoever else was in
   { id: 'staff', dim: true, panel: 'staff',
     target: (ui) => (ui.panel !== 'staff' ? ui.toolBtns.staff : ui.el.panelBody.querySelector(`[data-staff="${partnerId(ui.game)}"] .scard-status`)),
@@ -47,7 +47,6 @@ const STEPS = [
 const PRAISE = ['Nice!', "That's it!", 'Perfect!', 'Great job!'];
 const partnerName = (g) => UNIQUE_NAMES[g.state.partner] || '';
 const partnerId = (g) => { const a = g.staff.find((x) => x.look.model === g.state.partner); return a ? a.id : ''; };
-const chefName = (g) => { const c = g.staff.find((a) => a.role === 'chef'); return c ? c.name : t('our Barista'); };
 
 /** Start (or pick up) the tour for a new café. Call once the UI is up. */
 export function startTutorial(ui) {
@@ -122,13 +121,62 @@ class Tour {
     if (this.guest && !this.guest.gone) return;
     if (this.guestAt && now - this.guestAt < 15000) return;
     const c = this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
+    c.patient = true;   // never walks out: no free seat or a slow kitchen just means a longer wait
     this.guestAt = now;
     // the camera keeps them in view, a little above the middle so the card below doesn't cover them (a drag ends it)
-    this.g.camera.follow(() => (this.stepId === 'guest' && !c.gone ? { x: c.x * TILE, z: c.y * TILE } : null), () => ({ x: 0, y: 70 }));
+    // the camera keeps whoever is busy with them in view (see watched()), a little above the middle so the card
+    // below doesn't cover them; a drag ends it
+    this.g.camera.follow(() => { const a = this.stepId === 'guest' && !c.gone ? this.watched().who : null; return a ? { x: a.x * TILE, z: a.y * TILE } : null; }, () => ({ x: 0, y: 70 }));
+  }
+  /**
+   * Who to watch while the tour's guest is served, and why: the guest walking in and finding a seat, the server
+   * on the way to take the order, the barista brewing it (or the baker baking the side), the server bringing it
+   * over, then the guest again, enjoying it. { who, what }
+   */
+  watched() {
+    const c = this.guest, g = this.g;
+    if (!c || c.gone) return { who: null, what: 'none' };
+    if (c.state === 'arriving' || c.state === 'enter') return { who: c, what: 'arrive' };
+    if (c.state === 'toSeat') return { who: c, what: 'seat' };
+    if (c.state === 'queue') return { who: c, what: 'queue' };
+    if (c.state === 'eating') return { who: c, what: 'enjoy' };
+    // whoever has picked up a job for this guest: taking the order, brewing, baking or carrying it over
+    const busy = g.jobs.list.filter((j) => j.customer === c && j.assignee && !j.done && !j.canceled);
+    const pick = (type) => busy.find((j) => j.type === type);
+    const j = c.state === 'waitOrder' ? pick('order') : pick('deliver') || pick('cook') || pick('drink');
+    if (j) return { who: j.assignee, what: j.type };
+    if (c.state === 'waitOrder') return { who: c, what: 'wantOrder' };
+    // nobody on it this moment: something is ready to carry (watch the servers), or still waiting its turn (the baristas)
+    const tickets = c.tickets || [];
+    const role = tickets.some((tk) => tk.state === 'ready') ? 'waiter' : tickets.some((tk) => tk.state !== 'served') ? (tickets.find((tk) => tk.state !== 'served').kind === 'drink' ? 'bartender' : 'chef') : null;
+    const crew = role ? g.staff.filter((a) => a.role === role) : [];
+    const who = crew.find((a) => a.look.model === g.state.partner) || crew[0];
+    if (who) return { who, what: role === 'waiter' ? 'pickup' : 'queued' };
+    return { who: c, what: 'waitFood' };
+  }
+  /** What the partner says about it ("I" when the partner is the one doing it). */
+  guestText() {
+    const { who, what } = this.watched(), g = this.g;
+    const me = who && who.look && who.look.model === g.state.partner, name = who ? who.name : '';
+    switch (what) {
+      case 'arrive': return t('Here comes a guest! Watch the door.');
+      case 'seat': return t('They pick a free seat.');
+      case 'queue': return t('Every seat is taken, so they wait for a table to free up.');
+      case 'wantOrder': return t('Seated! Someone will be over to take the order.');
+      case 'order': return me ? t("I'm off to take their order.") : t('{name} is taking their order.', { name });
+      case 'cook': return me ? t("I'm brewing their coffee.") : t('{name} is brewing their coffee at the espresso machine.', { name });
+      case 'drink': return me ? t("I'm baking their treat.") : t('{name} is baking their treat.', { name });
+      case 'deliver': return me ? t("Ready! I'm bringing it over.") : t('Ready! {name} is bringing it over.', { name });
+      case 'queued': return me ? t('A few orders ahead of theirs: theirs is next.') : t('{name} has a few orders ahead of theirs: theirs is next.', { name });
+      case 'pickup': return me ? t("It's ready on the counter: I'll grab it.") : t("It's ready on the counter: {name} will grab it.", { name });
+      case 'waitFood': return t('Order in! The kitchen gets on it.');
+      case 'enjoy': return t('Enjoy! They pay when they finish.');
+      default: return t('Here comes a guest! Watch the door.');
+    }
   }
   /** Where the guest is on screen (ringed while they come in and get served); the camera keeps them in view. */
   guestSpot() {
-    const c = this.guest, R = this.g.renderer;
+    const c = this.watched().who, R = this.g.renderer;
     if (!c || c.gone || !R) return null;
     return R.agentRing(c);
   }

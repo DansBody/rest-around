@@ -458,4 +458,13 @@ export const ZH_TW = {
   'Now the Menu: this is where drinks level up.': '接著是「菜單」：飲品在這裡升級。', 'Study the Espresso: it uses the beans and a voucher, and sells for more at Lv2.': '研習義式濃縮：用掉咖啡豆和一張研習券，升到 Lv2 就能賣得更貴。',
   'Pick a table, a chair or a plant, then tap the floor to put it down.': '挑一張桌子、椅子或盆栽，再點地板放下去。',
   'Got it': '知道了', 'Nice!': '很好！', "That's it!": '就是這樣！', 'Perfect!': '完美！', 'Great job!': '做得好！',
+  'Every seat is taken, so they wait for a table to free up.': '座位都滿了，他們先在一旁等空桌。',
+  'A few orders ahead of theirs: theirs is next.': '前面還有幾張單，下一個就輪到他們。', '{name} has a few orders ahead of theirs: theirs is next.': '{name} 前面還有幾張單，下一個就輪到他們。',
+  "It's ready on the counter: I'll grab it.": '做好放在吧台了，我去拿。', "It's ready on the counter: {name} will grab it.": '做好放在吧台了，{name} 會去拿。',
+  'They pick a free seat.': '他們正在找空位坐下。', 'Seated! Someone will be over to take the order.': '坐好了！馬上會有人過去點餐。',
+  "I'm off to take their order.": '我去幫他們點餐。', '{name} is taking their order.': '{name} 正在幫他們點餐。',
+  "I'm brewing their coffee.": '我正在幫他們沖咖啡。', '{name} is brewing their coffee at the espresso machine.': '{name} 正在咖啡機前沖咖啡。',
+  "I'm baking their treat.": '我正在烤他們點的點心。', '{name} is baking their treat.': '{name} 正在烤他們點的點心。',
+  "Ready! I'm bringing it over.": '好了！我把它送過去。', 'Ready! {name} is bringing it over.': '好了！{name} 正把它送過去。',
+  'Order in! The kitchen gets on it.': '點好了！吧台馬上開始做。', 'Enjoy! They pay when they finish.': '請慢用！他們吃完就會結帳。',
 };
