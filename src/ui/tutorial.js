@@ -18,22 +18,23 @@ import { t } from '../i18n.js';
  * The steps. `text` is what the partner says, `target` what to ring (an element, or { x, y, r } for a spot in
  * the scene), `dim` darkens everything else (a function: only then), `center` puts the card mid-screen, `ready` holds a step back (the
  * guest waits for the doors to open, the goodbye for everything else), `done` says the player did it, `next`
- * puts a button on the card instead (a function: only then). `enter` runs once as the step comes up.
+ * puts a button on the card instead (a function: only then). `enter` runs once as the step comes up, and
+ * `panel` names the one panel the step works in (null: none): any other panel open then is closed.
  */
 const STEPS = [
   { id: 'hello', center: true, next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: partnerName(g) }) },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
-  { id: 'guest', ready: (g) => !g.day.isNight, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
+  { id: 'guest', panel: null, ready: (g) => !g.day.isNight, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
     text: (g, tu) => (tu.guest && tu.guest.state === 'arriving' ? t('Here comes a guest! Watch the door.') : t('I take the order and {chef} brews it. Watch us serve!', { chef: chefName(g) })),
     done: (g, ui, tu) => !!(tu.guest && tu.guest.served) },   // the guest the tour called, not whoever else was in
-  { id: 'staff', dim: true,
+  { id: 'staff', dim: true, panel: 'staff',
     target: (ui) => (ui.panel !== 'staff' ? ui.toolBtns.staff : ui.el.panelBody.querySelector(`[data-staff="${partnerId(ui.game)}"] .scard-status`)),
     text: (g, tu, ui) => (ui.panel !== 'staff' ? t('Tap Staff to meet the team.') : t('This bar is my energy. When it runs out I nap; a snack perks me right up.')),
     next: (g, ui) => ui.panel === 'staff' },
-  { id: 'today', dim: true, target: (ui) => (ui.panel === 'today' ? ui.el.panelBody.querySelector('.today-gift .btn.primary') : ui.el.questBtn),
+  { id: 'today', dim: true, panel: 'today', target: (ui) => (ui.panel === 'today' ? ui.el.panelBody.querySelector('.today-gift .btn.primary') : ui.el.questBtn),
     text: (g, tu, ui) => (ui.panel === 'today' ? t('A gift every day, and three goals that pay study vouchers. Open your gift!') : t('This checklist is Today. Tap it!')),
     done: (g) => !g.eco.giftAvailable() },
-  { id: 'study', dim: true, target: (ui) => (ui.panel === 'menu' ? ui.el.panelBody.querySelector('[data-study="espresso"]') : ui.toolBtns.menu),
+  { id: 'study', dim: true, panel: 'menu', target: (ui) => (ui.panel === 'menu' ? ui.el.panelBody.querySelector('[data-study="espresso"]') : ui.toolBtns.menu),
     text: (g, tu, ui) => (ui.panel === 'menu' ? t('Study the Espresso: it uses the beans and a voucher, and sells for more at Lv2.') : t('Now the Menu: this is where drinks level up.')),
     done: (g) => Object.values(g.state.dishes).some((d) => d.lv >= 2) },
   { id: 'build', dim: (ui, tu) => !ui.game.build.active || tu.placed(), enter: (tu) => tu.ui.closePanel(),
@@ -123,14 +124,13 @@ class Tour {
     const c = this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
     this.guestAt = now;
     // the camera keeps them in view, a little above the middle so the card below doesn't cover them (a drag ends it)
-    this.g.camera.follow(() => (this.stepId === 'guest' && !c.gone ? { x: (c.x + 0.5) * TILE, z: (c.y + 0.5) * TILE } : null), () => ({ x: 0, y: 70 }));
+    this.g.camera.follow(() => (this.stepId === 'guest' && !c.gone ? { x: c.x * TILE, z: c.y * TILE } : null), () => ({ x: 0, y: 70 }));
   }
   /** Where the guest is on screen (ringed while they come in and get served); the camera keeps them in view. */
   guestSpot() {
     const c = this.guest, R = this.g.renderer;
     if (!c || c.gone || !R) return null;
-    const p = R.project(c.x + 0.5, c.y + 0.5, 1.6);
-    return p ? { x: p.x, y: p.y, r: 46 * p.s } : null;
+    return R.agentRing(c);
   }
 
   /** Called with the UI's update (10 times a second). */
@@ -145,7 +145,11 @@ class Tour {
     let st = this.current();
     while (st && st.done && st.done(g, ui, this)) { this.finish(st.id, true); return this.update(); }
     if (!STEPS.some((x) => !this.done.includes(x.id))) return this.end();
-    if (st && st.id !== this.stepId) { this.stepId = st.id; if (st.enter) st.enter(this); }
+    if (st && st.id !== this.stepId) {
+      this.stepId = st.id;
+      if (st.panel !== undefined && ui.panel && ui.panel !== st.panel) ui.closePanel();   // the last step's panel goes away
+      if (st.enter) st.enter(this);
+    }
     if (st && st.id === 'guest') this.callGuest();
     // nothing ready yet (only the guest left, and it's night): say when the doors open
     const text = st ? st.text(g, this, ui) : t("We're closed for the night. The doors open at 08:00, see you then!");
