@@ -1,5 +1,6 @@
 // A* on the 4-connected tile grid. Walls/furniture are impassable; other agents add soft cost
-// (so paths route around them when possible) but never hard-block, which keeps the crowd deadlock-free.
+// (so paths route around them when possible). A caller stuck behind someone can also pass
+// `block`: tiles to treat as walls for this one search (the people standing in the way).
 import { DIRS } from './iso.js';
 import { tileKey } from './util.js';
 
@@ -30,11 +31,13 @@ class Heap {
  * @param goals array of {x,y}; the path ends at whichever is cheapest.
  * @param opts.goalOk allow goal tiles that are not walkable (e.g. stepping into a chair)
  * @param opts.cost (x,y) => extra cost for entering a tile (agent avoidance)
+ * @param opts.block Set of tileKeys that are impassable for this search (goals included)
  * @returns array of tiles (excluding start) or null when unreachable. [] when already at a goal.
  */
 export function findPath(world, sx, sy, goals, opts = {}) {
   if (!Array.isArray(goals)) goals = [goals];
-  goals = goals.filter((g) => world.inBounds(g.x, g.y) && (opts.goalOk || world.isWalkable(g.x, g.y) || (g.x === sx && g.y === sy)));
+  goals = goals.filter((g) => world.inBounds(g.x, g.y) && (opts.goalOk || world.isWalkable(g.x, g.y) || (g.x === sx && g.y === sy))
+    && !(opts.block && opts.block.has(tileKey(g.x, g.y))));
   if (!goals.length) return null;
   const goalSet = new Set(goals.map((g) => tileKey(g.x, g.y)));
   if (goalSet.has(tileKey(sx, sy))) return [];
@@ -61,6 +64,7 @@ export function findPath(world, sx, sy, goals, opts = {}) {
       const nx = cur.x + d.dx, ny = cur.y + d.dy;
       if (!world.inBounds(nx, ny)) continue;
       const nk = tileKey(nx, ny);
+      if (opts.block && opts.block.has(nk)) continue;
       const walk = world.isWalkable(nx, ny);
       if (!walk && !(opts.goalOk && goalSet.has(nk))) continue;
       // don't path *through* the goal-only tiles, and never through the entry when not needed? (entry is walkable)

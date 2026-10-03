@@ -1,6 +1,9 @@
 // Base agent: tile-to-tile movement with A*, per-tile claims for crowd avoidance, blocked-step
-// handling (nudge idle blockers → re-route → brief ghosting so nobody can deadlock), and a small
-// action queue (walk / face / wait / do) that the customer and staff brains script against.
+// handling, and a small action queue (walk / face / wait / do) that the customer and staff brains
+// script against. Someone in the way is never walked through on sight: idle blockers step off the
+// route, the walker looks for a way around (taking longer detours the longer it waits), and in a
+// head-on meeting in a narrow aisle the lower-priority one backs into a side pocket. Only a jam
+// that none of that clears ends in ghosting through, so cramped layouts really do slow the cafe.
 import { findPath } from './pathfinding.js';
 import { DIRS, dirFromDelta } from './iso.js';
 import { tileKey, lerp, choice, uid } from './util.js';
@@ -36,8 +39,9 @@ export class Agent {
     this.phase = 0;
     this.moving = false;
     this.blockedT = 0;
+    this.nextDetourT = 0.25;
+    this.jamEmoted = false;
     this.ghost = false;
-    this.replanned = false;
     this.mode = 'idle';
     this.expr = null;
     this.held = null;
@@ -88,15 +92,28 @@ export class Agent {
     this.clearQueue();
   }
 
-  isIdleStanding() { return !this.stepping && !this.queue.length && !this.onTile && this.canNudge(); }
+  /** Standing about with nothing to finish: no queue, or just a plain wait (loitering, waiting for a table). */
+  isIdleStanding() {
+    const q = this.queue[0];
+    return !this.stepping && !this.onTile && this.canNudge() && (!q || (q.type === 'wait' && !q.mode));
+  }
   canNudge() { return false; }
 
-  nudge() {
+  /** Step aside for `by`, preferring a tile that is not on its route. */
+  nudge(by) {
     if (!this.isIdleStanding()) return;
     const w = this.game.world;
     const opts = DIRS.map((d) => ({ x: this.tx + d.dx, y: this.ty + d.dy })).filter((t) => w.isWalkable(t.x, t.y) && !this.game.agentTiles.has(t.x, t.y) && !w.isEntry(t.x, t.y));
-    if (opts.length) this.walk(...Object.values(choice(opts)));
+    const route = by && by.path ? new Set(by.path.map((t) => tileKey(t.x, t.y))) : null;
+    const clear = route ? opts.filter((t) => !route.has(tileKey(t.x, t.y))) : opts;
+    if (!opts.length) return;
+    const t = choice(clear.length ? clear : opts);
+    this.queue.unshift({ type: 'walk', x: t.x, y: t.y, onFail: () => {} });   // the wait carries on from the new spot
   }
+
+  /** Who keeps the right of way in a narrow spot: staff over guests, a full tray over empty hands, then seniority. */
+  walkPriority() { return this.kind === 'customer' ? 0 : this.held ? 2 : 1; }
+  yieldsTo(o) { const a = this.walkPriority(), b = o.walkPriority(); return a !== b ? a < b : this.id > o.id; }
 
   update(dt) {
     if (this.bubble && this.game.simTime > this.bubble.until) this.bubble = null;
@@ -152,7 +169,7 @@ export class Agent {
     return 'done';
   }
 
-  planPath(a, avoid) {
+  planPath(a, avoid, block = null) {
     const goals = a.goals || [{ x: a.x, y: a.y }];
     const g = this.game;
     const cost = avoid ? (x, y) => {
@@ -160,7 +177,65 @@ export class Agent {
       if (!o.length) return 0;
       return o.some((b) => !b.stepping) ? 6 : 1.5;
     } : null;
-    return findPath(g.world, this.tx, this.ty, goals, { goalOk: a.goalOk, cost });
+    return findPath(g.world, this.tx, this.ty, goals, { goalOk: a.goalOk, cost, block });
+  }
+
+  /** Is `o` a walker stuck on my tile (a head-on meeting)? */
+  static headOn(me, o) {
+    return !o.stepping && !o.ghost && !!o.path && o.path.length > 0 && o.path[0].x === me.tx && o.path[0].y === me.ty
+      && o.queue.length > 0 && o.queue[0].type === 'walk';
+  }
+
+  /** Blocked on `next`: try a route around the people in the way, or back off for an oncoming walker. */
+  findWayAround(a, next, blockers) {
+    const g = this.game;
+    const block = new Set([tileKey(next.x, next.y)]);
+    // anyone standing close by counts as a wall for this search; walkers further off will have moved on
+    for (const o of g.agents) {
+      if (o === this || o.ghost || o.stepping || !o.visible) continue;
+      if (Math.abs(o.tx - this.tx) + Math.abs(o.ty - this.ty) <= 3) for (const k of o.claimed) block.add(k);
+    }
+    const oncoming = blockers.find((o) => Agent.headOn(this, o));
+    if (oncoming && oncoming.path[1]) block.add(tileKey(oncoming.path[1].x, oncoming.path[1].y));
+    const p = this.planPath(a, true, block);
+    // patience: a short way round at once, a longer one the longer we have been standing here
+    const budget = 4 + this.blockedT * 4;
+    if (p && p.length && p.length <= (this.path ? this.path.length : 0) + budget) { this.path = p; return true; }
+    if (oncoming && this.yieldsTo(oncoming)) {
+      const pocket = this.findPocket(oncoming);
+      if (pocket) { this.path = pocket; a.repath = true; a.holdT = 0.45; return true; }
+    }
+    return false;
+  }
+
+  /** Shortest walk to a free tile off `o`'s route (the nearest doorway, alcove or wider bit of aisle). */
+  findPocket(o) {
+    const g = this.game, w = g.world;
+    const route = new Set(o.path.map((t) => tileKey(t.x, t.y)));
+    const ok = tileKey(o.tx, o.ty);
+    route.add(ok);
+    const start = tileKey(this.tx, this.ty);
+    const came = new Map([[start, -1]]);
+    let frontier = [{ x: this.tx, y: this.ty }];
+    for (let depth = 0; depth < 8 && frontier.length; depth++) {
+      const nextF = [];
+      for (const c of frontier) {
+        for (const d of DIRS) {
+          const nx = c.x + d.dx, ny = c.y + d.dy, k = tileKey(nx, ny);
+          if (came.has(k) || k === ok || !w.isWalkable(nx, ny) || w.isEntry(nx, ny)) continue;
+          if (g.agentTiles.others(nx, ny, this).length) continue;
+          came.set(k, tileKey(c.x, c.y));
+          if (!route.has(k)) {
+            const path = [];
+            for (let q = k; q !== start; q = came.get(q)) path.push({ x: Math.floor(q / 1000), y: q % 1000 });
+            return path.reverse();
+          }
+          nextF.push({ x: nx, y: ny });
+        }
+      }
+      frontier = nextF;
+    }
+    return null;
   }
 
   runWalk(a, dt) {
@@ -170,6 +245,12 @@ export class Agent {
       if (!this.path) return 'fail';
     }
     if (!this.stepping) {
+      if (a.repath && (!this.path || !this.path.length)) {   // stepped aside: let the other pass, then carry on
+        if (a.holdT > 0) { a.holdT -= dt; return 'running'; }
+        a.repath = false;
+        this.path = this.planPath(a, true);
+        if (!this.path) return 'fail';
+      }
       if (!this.path || !this.path.length) { this.path = null; return 'done'; }
       const next = this.path[0];
       const w = this.game.world;
@@ -184,13 +265,13 @@ export class Agent {
       if (hardBlock.length && !this.ghost) {
         this.blockedT += dt;
         this.dir = dirFromDelta(next.x - this.tx, next.y - this.ty, this.dir);
-        for (const o of hardBlock) o.nudge();
-        if (this.blockedT > 0.35 && !this.replanned) {
-          this.replanned = true;
-          const p = this.planPath(a, true);
-          if (p) this.path = p;
+        for (const o of hardBlock) o.nudge(this);
+        if (this.blockedT >= this.nextDetourT) {
+          this.nextDetourT = this.blockedT + 0.6 + (this.id % 3) * 0.1;   // staggered so two walkers don't mirror each other
+          this.findWayAround(a, next, hardBlock);
         }
-        if (this.blockedT > 1.6 + (this.id % 5) * 0.15) this.ghost = true; // pass through politely rather than deadlock
+        if (this.blockedT > 2.5 && !this.jamEmoted) { this.jamEmoted = true; this.emote('emote_wait', 1.8); }
+        if (this.blockedT > 6 + (this.id % 5) * 0.3) this.ghost = true; // a jam nothing clears: squeeze past rather than deadlock
         return 'running';
       }
       this.path.shift();
@@ -200,7 +281,8 @@ export class Agent {
       this.stepping = { fx, fy, tx, ty, t: 0, from: { x: this.tx, y: this.ty }, len: Math.hypot(tx - fx, ty - fy) || 1 };
       this.dir = dirFromDelta(tx - fx, ty - fy, this.dir);
       this.blockedT = 0;
-      this.replanned = false;
+      this.nextDetourT = 0.25;
+      this.jamEmoted = false;
     }
     const s = this.stepping;
     const sp = this.speed * (this.speedMul || 1);
@@ -212,7 +294,7 @@ export class Agent {
       if (s.from.x !== Math.floor(s.tx) || s.from.y !== Math.floor(s.ty)) this.release(s.from.x, s.from.y);
       this.stepping = null;
       this.ghost = false;
-      if (!this.path.length) { this.path = null; return 'done'; }
+      if (!this.path.length && !a.repath) { this.path = null; return 'done'; }
     }
     return 'running';
   }

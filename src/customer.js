@@ -32,6 +32,8 @@ export class Customer extends Agent {
   }
 
   canNudge() { return this.state === 'queue' && !this.stepping; }
+  /** Guests on their way out get through the doorway crowd first: it is what frees the space. */
+  walkPriority() { return this.state === 'leaving' ? 0.5 : 0; }
   stateLabel() { return this.state + (this.showPatience ? ` ${Math.round(this.patience * 100)}%` : ''); }
 
   update(dt) {
