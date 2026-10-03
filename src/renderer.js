@@ -14,6 +14,7 @@ import { t } from './i18n.js';
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
 const Y_UP = new THREE.Vector3(0, 1, 0);
 const tmpV = new THREE.Vector3();
+const tmpHead = new THREE.Vector3();
 
 function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
 /** A little painted sign (shop sign, OPEN plaque) as a texture. */
@@ -699,6 +700,14 @@ export class Renderer {
     tmpV.set(gx * TILE, h, gy * TILE).project(this.cam);
     if (tmpV.z > 1) return null;
     return { x: (tmpV.x * 0.5 + 0.5) * this.overlay.width / this.dpr, y: (-tmpV.y * 0.5 + 0.5) * this.overlay.height / this.dpr, s: this.game.camera.zoom };
+  }
+  /** A ring that takes in character `a` on screen: centred between the feet and the head (null when not drawn). */
+  agentRing(a) {
+    const cv = this.chars.get(a), f = this.project(a.x, a.y, 0);
+    const h = cv && f ? this.projectV(cv.headTop(tmpHead)) : null;
+    if (!h) return null;
+    const half = (f.y - h.y) / 2;   // headTop sits a little above the head (room for bubbles), so the ring is a bit tighter
+    return { x: (f.x + h.x) / 2, y: f.y - half * 0.85, r: Math.max(24, half * 0.85 + 10) };
   }
   projectV(v) {
     tmpV.copy(v).project(this.cam);
