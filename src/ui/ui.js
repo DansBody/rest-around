@@ -3,7 +3,7 @@
 import { h, bus, fmt, fmtTime, clamp } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
-import { PANELS, buildTray, skillLine, kitLines, clubLines, confirmBtn } from './panels.js';
+import { PANELS, buildTray, skillLine, confirmBtn } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
 import { DAILY, DAY, SNACKS, SKILL, ABILITY_UNLOCK_LV, CLUBS, TROUBLE, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
 import { DOOR_Y } from '../world.js';
@@ -11,8 +11,12 @@ import { audio } from '../audio.js';
 import { unlocksFor } from '../economy.js';
 import { roundOfDay, ROUNDS_PER_DAY } from '../clock.js';
 import { glyph } from './icons.js';
+import { TILE } from '../models.js';
 import { glassFx } from './glass.js';
 import { t, tt, titledRole, setLang, getLang } from '../i18n.js';
+
+const FOLLOW_DIST = 24;   // following a character zooms in to at most this camera distance
+const HUD_TOP = 70;       // px under the top bar; a followed character is centred between it and a bottom sheet
 
 // the tab bar uses monochrome line glyphs so it reads as one clean black capsule
 const TOOLS = [
@@ -430,6 +434,17 @@ ${k.desc}
     if (a) { this.closePanel(); this.el.ratingTip.classList.remove('show'); }
     this.game.selected = a;
     this.renderInfo(true);
+    // the camera keeps them in view, clear of the card, until they're deselected (or the view is dragged away)
+    if (a && this.game.selected === a) {
+      this.game.camera.follow(() => (this.game.selected === a && !a.gone ? { x: a.x * TILE, z: a.y * TILE } : null), () => this.infoOffset(), FOLLOW_DIST);
+    }
+  }
+  /** Where the followed character should sit on screen: centred in the part of the view the card leaves free. */
+  infoOffset() {
+    const r = this.el.info.getBoundingClientRect(), c = this.game.camera;
+    if (!r.width) return { x: 0, y: 0 };
+    if (r.width > c.vw * 0.6) return { x: 0, y: c.vh / 2 - (HUD_TOP + r.top) / 2 };   // a bottom sheet (phones)
+    return { x: r.right / 2, y: 0 };   // a card on the left
   }
   renderInfo(full) {
     const a = this.game.selected;
@@ -441,35 +456,35 @@ ${k.desc}
     const key = a.kind === 'staff' ? a.role + a.skillLv() + a.look.model + a.kitUnlocked() + JSON.stringify(a.clubs) : '';
     if (full || this.infoFor !== a || this.infoKey !== key) {
       this.infoFor = a; this.infoKey = key;
-      this.infoPortrait = portrait(a.look, 64, 80);
-      this.infoTask = h('div.muted');
+      // kept short: who, what they're doing, how they're holding up; the rest is a tap away in Staff
+      this.infoPortrait = portrait(a.look, 52, 52);
+      this.infoTask = h('span.info-task');
+      this.infoMood = h('span.info-mood');
       this.infoBar = h('i');
       this.infoBarLbl = h('span.muted');
       const isStaff = a.kind === 'staff';
+      const close = () => { this.game.selected = null; this.renderInfo(); };
       const body = [
         h('div.info-head', this.infoPortrait, h('div.grow',
           h('h3', a.name),
-          isStaff ? skillLine(a) : h('div.muted', t('Guest')),
-          (this.infoMood = h('div', { style: { fontWeight: 900, fontSize: '14px' } })))),
-        h('div', { style: { marginTop: '8px' } }, this.infoTask),
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' } }, assets.iconEl(isStaff ? 'icon_energy' : 'icon_patience', 22), h('div.pbar.grow', { style: { flex: 1 } }, this.infoBar), this.infoBarLbl),
+          isStaff ? skillLine(a) : h('div.muted', t('Guest'))),
+          h('button.btn.small.xbtn.info-x', { onclick: close, title: t('Close'), 'aria-label': t('Close') }, glyph('close', 14))),
+        h('div.info-status', this.infoTask, this.infoMood),
+        h('div.info-bar', assets.iconEl(isStaff ? 'icon_energy' : 'icon_patience', 20), h('div.pbar', this.infoBar), this.infoBarLbl),
       ];
       if (isStaff) {
-        body.push(h('div.btnrow', SNACKS.map((s) => h('button.btn.small', { title: t('Feed {snack} (+{n} energy)', { snack: s.name, n: s.energy }), onclick: () => { this.game.eco.feed(a, s.id); this.renderInfo(true); } },
-          assets.iconEl(s.asset, 22), `×${this.game.state.snacks[s.id] || 0}`))));
-        const ab = a.ability;
-        this.infoCharge = h('i');
-        // the job's ability shows its charge; the character's own skills show how they fire
-        const on = a.abilityUnlocked();
-        body.push(h('div.sklist', { style: { marginTop: '8px' } },
-          h('div.sk.auto', { style: { '--c': on ? ab.color : '#a1a1a6' }, title: ab.desc }, h('span.sk-ico', glyph(on ? ab.glyph : 'lock', 16)),
-            h('div.sk-name', h('b', ab.name), on ? h('div.pbar', { style: { flex: 1, minWidth: '40px' } }, this.infoCharge) : h('span.sk-tag', t('Unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] })))),
-          ...kitLines(a.look.model, a.kitUnlocked()), ...clubLines(a)));
-        body.push(h('div.btnrow',
-          h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { outfit: a }; this.renderPanel(); } }, t('Change outfit')),
-          h('button.btn.small', { onclick: () => { this.openPanel('staff'); this.subview = { job: a }; this.renderPanel(); } }, t('Change job'))));
+        const details = () => {   // the full card in Staff, opened and scrolled to
+          this.openPanel('staff');
+          (this.staffOpen ||= new Set()).add(a.id);
+          this.renderPanel();
+          const card = this.el.panelBody.querySelector(`[data-staff="${a.id}"]`);
+          if (card) card.scrollIntoView({ block: 'start' });
+        };
+        body.push(h('div.info-acts',
+          SNACKS.map((s) => h('button.btn.small', { title: t('Feed {snack} (+{n} energy)', { snack: s.name, n: s.energy }), onclick: () => { this.game.eco.feed(a, s.id); this.renderInfo(true); } },
+            assets.iconEl(s.asset, 20), `×${this.game.state.snacks[s.id] || 0}`)),
+          h('button.btn.small.info-more', { onclick: details }, t('More info'), glyph('forward', 14))));
       }
-      body.push(h('div.btnrow', h('button.btn.small', { onclick: () => { this.game.selected = null; this.renderInfo(); } }, t('Close'))));
       el.replaceChildren(h('div.grabber'), ...body);
       el.classList.add('show');
       this.syncSheets();
@@ -480,7 +495,6 @@ ${k.desc}
       this.infoBar.style.width = a.energy + '%';
       this.infoBar.parentElement.className = 'pbar ' + (a.energy < 25 ? 'orange' : '');
       this.infoBarLbl.textContent = Math.round(a.energy) + '%';
-      if (this.infoCharge) { this.infoCharge.style.width = (a.boosted() ? 100 : a.charge * 100) + '%'; this.infoCharge.style.background = a.ability.color; }
     } else {
       this.infoMood.textContent = tt(a.mood);
       this.infoTask.textContent = tt(a.task);

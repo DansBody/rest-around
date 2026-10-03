@@ -11,6 +11,7 @@ import { roleLook } from '../looks.js';
 import { UNIQUE_MODELS, UNIQUE_NAMES } from '../data.js';
 import { kitLines } from './panels.js';
 import { glyph } from './icons.js';
+import { TILE } from '../models.js';
 import { t } from '../i18n.js';
 
 /**
@@ -24,7 +25,7 @@ const STEPS = [
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
   { id: 'guest', ready: (g) => !g.day.isNight, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
     text: (g, tu) => (tu.guest && tu.guest.state === 'arriving' ? t('Here comes a guest! Watch the door.') : t('I take the order and {chef} brews it. Watch us serve!', { chef: chefName(g) })),
-    done: (g, ui, tu) => g.state.stats.served > (g.state.stats === tu.stats ? tu.served : 0) },   // a new round starts its count over
+    done: (g, ui, tu) => !!(tu.guest && tu.guest.served) },   // the guest the tour called, not whoever else was in
   { id: 'staff', dim: true,
     target: (ui) => (ui.panel !== 'staff' ? ui.toolBtns.staff : ui.el.panelBody.querySelector(`[data-staff="${partnerId(ui.game)}"] .scard-status`)),
     text: (g, tu, ui) => (ui.panel !== 'staff' ? t('Tap Staff to meet the team.') : t('This bar is my energy. When it runs out I nap; a snack perks me right up.')),
@@ -82,7 +83,6 @@ function pickCard(ui) {
 class Tour {
   constructor(ui) {
     this.ui = ui; this.g = ui.game;
-    this.stats = this.g.state.stats; this.served = this.stats.served;
     this.moved = false; this.built = false;
     this.cam = this.camKey();
     this.card = h('div#coach');
@@ -120,14 +120,15 @@ class Tour {
     const now = performance.now();
     if (this.guest && !this.guest.gone) return;
     if (this.guestAt && now - this.guestAt < 15000) return;
-    this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
+    const c = this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
     this.guestAt = now;
+    // the camera keeps them in view, a little above the middle so the card below doesn't cover them (a drag ends it)
+    this.g.camera.follow(() => (this.stepId === 'guest' && !c.gone ? { x: (c.x + 0.5) * TILE, z: (c.y + 0.5) * TILE } : null), () => ({ x: 0, y: 70 }));
   }
   /** Where the guest is on screen (ringed while they come in and get served); the camera keeps them in view. */
   guestSpot() {
     const c = this.guest, R = this.g.renderer;
     if (!c || c.gone || !R) return null;
-    if (!this.camLeft) this.g.camera.glideTo(Math.max(1.5, c.x + 0.5), c.y + 0.5);
     const p = R.project(c.x + 0.5, c.y + 0.5, 1.6);
     return p ? { x: p.x, y: p.y, r: 46 * p.s } : null;
   }
@@ -135,7 +136,7 @@ class Tour {
   /** Called with the UI's update (10 times a second). */
   update() {
     const g = this.g, ui = this.ui;
-    if (this.camKey() !== this.cam) { this.moved = true; if (this.stepId === 'guest' && !g.camera.goal) this.camLeft = true; }
+    if (this.camKey() !== this.cam) this.moved = true;
     this.cam = this.camKey();
     if (g.build.active && !this.built) { this.built = true; this.furn = g.world.furniture.length; }
     // a moment of praise after a step is done, before the next one comes up

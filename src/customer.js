@@ -215,6 +215,7 @@ export class Customer extends Agent {
     g.rating.addService(0.55 + 0.45 * s);
     if (spot) g.rating.addService(0.55 + 0.45 * s);   // Spotlight: this table counts double
     g.state.stats.served++;
+    this.served = true;   // (the tour waits for its own guest to get this far)
     const bakes = this.tickets.filter((t) => dishById[t.dish].cat === EXTRA_CAT).length;
     g.eco.questProgress('guests', 1); g.eco.questProgress('cups', this.tickets.length - bakes); g.eco.questProgress('bakes', bakes);
     const seat = this.seat;

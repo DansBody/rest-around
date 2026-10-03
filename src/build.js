@@ -285,8 +285,9 @@ export class Build {
     const f = g.world.addFurniture(type, x, y, this.dir);
     f.bounce = 1;
     g.sfx('place');
+    // bought: done with it, back to the shop (tap it again to rotate / move / sell it)
+    this.tool = null; this.ghost = null; this.locked = false;
     this.say(v.hint || t('Placed {name} (−{n})', { name: cat.name, n: cat.price }), v.hint ? 'warn' : 'good');
-    this.refresh();
     g.changed('build');
   }
 

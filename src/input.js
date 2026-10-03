@@ -57,7 +57,7 @@ export function setupInput(game, canvas, ui, debug) {
       if (!pinch.turning) { pinch.turn += turn; pinch.turning = Math.abs(pinch.turn) > PINCH_TURN; turn = 0; }
       shown().camera.zoomNow(now.d / pinch.d);
       if (turn) cam.rotateBy(turn);   // the room turns the same way as the fingers
-      R().keepUnder(held, now.mx, now.my);
+      if (!shown().camera.track) R().keepUnder(held, now.mx, now.my);   // following someone: zoom and turn around them
       Object.assign(pinch, now);
       return;
     }
@@ -75,7 +75,7 @@ export function setupInput(game, canvas, ui, debug) {
     if (!down.moved && Math.hypot(p.x - down.sx, p.y - down.sy) > 6) { down.moved = true; canvas.classList.add('dragging'); }
     if (down.moved) {
       if (down.button === 2 || e.shiftKey) cam.rotateBy(-(p.x - down.x) * 0.008);
-      else R().panBetween(down.x, down.y, p.x, p.y);
+      else { shown().camera.unfollow(false); R().panBetween(down.x, down.y, p.x, p.y); }   // dragging takes the camera back
       down.x = p.x; down.y = p.y;
     }
   });
