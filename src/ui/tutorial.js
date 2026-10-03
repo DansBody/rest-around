@@ -1,32 +1,50 @@
 // First visit: the player picks a starting partner from the whole cast, and that character walks them through
-// the café in a few steps (a coach card at the top with their portrait, and a yellow spotlight on what to tap).
-// Each step moves on when the player has actually done it, not on a Next button; the tour can be skipped any time.
+// the café one thing at a time. The coach card sits next to whatever the step is about (with a little arrow),
+// a yellow ring marks it, and for "tap this" steps the rest of the screen dims a little (it all stays
+// tappable). Each step moves on when the player has actually done it, with a short word of praise; the tour
+// can be skipped any time. While it runs, other nudges wait: red badges are hidden except on the ring's target,
+// cheerful toasts are muted and level-up / receipt cards are held back (UI.notice).
 // What is done is kept in state.tutorial (step ids), and state.tutorialSeen once it is over.
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
 import { roleLook } from '../looks.js';
 import { UNIQUE_MODELS, UNIQUE_NAMES } from '../data.js';
 import { kitLines } from './panels.js';
+import { glyph } from './icons.js';
 import { t } from '../i18n.js';
 
 /**
- * The tour. `target` is the element to spotlight, `ready` holds a step back (a guest step at night is done
- * after the others), `done` says the player did it (`tu` carries what the tour saw happen), `next` puts a
- * button on the card instead.
+ * The steps. `text` is what the partner says, `target` what to ring (an element, or { x, y, r } for a spot in
+ * the scene), `dim` darkens everything else (a function: only then), `center` puts the card mid-screen, `ready` holds a step back (the
+ * guest waits for the doors to open, the goodbye for everything else), `done` says the player did it, `next`
+ * puts a button on the card instead (a function: only then). `enter` runs once as the step comes up.
  */
 const STEPS = [
-  { id: 'hello', next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: UNIQUE_NAMES[g.state.partner] }) },
+  { id: 'hello', center: true, next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: partnerName(g) }) },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
-  { id: 'guest', ready: (g) => !g.day.isNight, text: (g) => t('Here comes a guest! I take the orders and {chef} brews. Watch us serve.', { chef: chefName(g) }),
+  { id: 'guest', ready: (g) => !g.day.isNight, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
+    text: (g, tu) => (tu.guest && tu.guest.state === 'arriving' ? t('Here comes a guest! Watch the door.') : t('I take the order and {chef} brews it. Watch us serve!', { chef: chefName(g) })),
     done: (g, ui, tu) => g.state.stats.served > (g.state.stats === tu.stats ? tu.served : 0) },   // a new round starts its count over
-  { id: 'staff', target: (ui) => ui.toolBtns.staff, text: () => t('Tap Staff to see how much energy we have left. Snacks perk us up.'), done: (g, ui) => ui.panel === 'staff' },
-  { id: 'today', target: (ui) => (ui.panel === 'today' ? ui.el.panelBody.querySelector('.today-gift .btn.primary') : ui.el.questBtn), text: () => t('The checklist is Today: a gift every day and three goals. Open your gift!'), done: (g) => !g.eco.giftAvailable() },
-  { id: 'study', target: (ui) => (ui.panel === 'menu' ? ui.el.panelBody.querySelector('[data-study="espresso"]') : ui.toolBtns.menu), text: () => t('Goals pay study vouchers. In the Menu, study the Espresso to Lv2: it sells for more.'),
+  { id: 'staff', dim: true,
+    target: (ui) => (ui.panel !== 'staff' ? ui.toolBtns.staff : ui.el.panelBody.querySelector(`[data-staff="${partnerId(ui.game)}"] .scard-status`)),
+    text: (g, tu, ui) => (ui.panel !== 'staff' ? t('Tap Staff to meet the team.') : t('This bar is my energy. When it runs out I nap; a snack perks me right up.')),
+    next: (g, ui) => ui.panel === 'staff' },
+  { id: 'today', dim: true, target: (ui) => (ui.panel === 'today' ? ui.el.panelBody.querySelector('.today-gift .btn.primary') : ui.el.questBtn),
+    text: (g, tu, ui) => (ui.panel === 'today' ? t('A gift every day, and three goals that pay study vouchers. Open your gift!') : t('This checklist is Today. Tap it!')),
+    done: (g) => !g.eco.giftAvailable() },
+  { id: 'study', dim: true, target: (ui) => (ui.panel === 'menu' ? ui.el.panelBody.querySelector('[data-study="espresso"]') : ui.toolBtns.menu),
+    text: (g, tu, ui) => (ui.panel === 'menu' ? t('Study the Espresso: it uses the beans and a voucher, and sells for more at Lv2.') : t('Now the Menu: this is where drinks level up.')),
     done: (g) => Object.values(g.state.dishes).some((d) => d.lv >= 2) },
-  { id: 'build', target: (ui, tu) => (!ui.game.build.active ? ui.toolBtns.build : tu.placed() ? ui.el.buildbar.querySelector('.done') : null), text: (g, tu) => (!g.build.active ? t('Tap the hammer to build and decorate.') : tu.placed() ? t('Looks great! Tap Done when you are happy with it.') : t('Add a table, a chair or a plant, then tap Done.')),
+  { id: 'build', dim: (ui, tu) => !ui.game.build.active || tu.placed(), enter: (tu) => tu.ui.closePanel(),
+    target: (ui, tu) => (!ui.game.build.active ? ui.toolBtns.build : tu.placed() ? ui.el.buildbar.querySelector('.done') : ui.el.buildbar),
+    text: (g, tu) => (!g.build.active ? t('Tap the hammer to build and decorate.') : tu.placed() ? t('Looks great! Tap Done when you are happy with it.') : t('Pick a table, a chair or a plant, then tap the floor to put it down.')),
     done: (g, ui, tu) => tu.built && !g.build.active },
-  { id: 'bye', next: true, ready: (g, tu) => STEPS.every((x) => x.id === 'bye' || tu.done.includes(x.id)), text: () => t("That's the basics! We keep serving while you're away, so come back and see how we did.") },
+  { id: 'bye', center: true, next: true, ready: (g, tu) => STEPS.every((x) => x.id === 'bye' || tu.done.includes(x.id)), enter: (tu) => tu.g.camera.fit(tu.g.world.size),
+    text: () => t("That's the basics! We keep serving while you're away, so come back and see how we did.") },
 ];
+const PRAISE = ['Nice!', "That's it!", 'Perfect!', 'Great job!'];
+const partnerName = (g) => UNIQUE_NAMES[g.state.partner] || '';
+const partnerId = (g) => { const a = g.staff.find((x) => x.look.model === g.state.partner); return a ? a.id : ''; };
 const chefName = (g) => { const c = g.staff.find((a) => a.role === 'chef'); return c ? c.name : t('our Barista'); };
 
 /** Start (or pick up) the tour for a new café. Call once the UI is up. */
@@ -70,7 +88,8 @@ class Tour {
     this.card = h('div#coach');
     this.spot = h('div#spot');
     ui.root.append(this.spot, this.card);
-    this.stepId = null;
+    ui.root.classList.add('touring');
+    this.stepId = null; this.praise = null; this.targetEl = null;
     this.update();
   }
   get done() { return this.g.state.tutorial; }
@@ -82,47 +101,134 @@ class Tour {
     const left = STEPS.filter((st) => !this.done.includes(st.id));
     return left.find((st) => !st.ready || st.ready(this.g, this)) || null;
   }
-  finish(id) { if (!this.done.includes(id)) this.done.push(id); this.g.changed('tutorial'); }
+  finish(id, praise) {
+    if (!this.done.includes(id)) this.done.push(id);
+    if (praise) this.praise = { text: t(PRAISE[Math.floor(Math.random() * PRAISE.length)]), until: performance.now() + 1300 };
+    this.g.changed('tutorial');
+  }
   end() {
     this.g.state.tutorialSeen = true;
     this.card.remove(); this.spot.remove();
+    this.mark(null);
+    this.ui.root.classList.remove('touring');
     this.ui.tutorial = null;
   }
+
+  /** The guest step brings its own guest rather than leaving the player waiting for the next one to wander in
+   *  (and another, if that one walks out unserved), and the camera goes to meet them. */
+  callGuest() {
+    const now = performance.now();
+    if (this.guest && !this.guest.gone) return;
+    if (this.guestAt && now - this.guestAt < 15000) return;
+    this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
+    this.guestAt = now;
+  }
+  /** Where the guest is on screen (ringed while they come in and get served); the camera keeps them in view. */
+  guestSpot() {
+    const c = this.guest, R = this.g.renderer;
+    if (!c || c.gone || !R) return null;
+    if (!this.camLeft) this.g.camera.glideTo(Math.max(1.5, c.x + 0.5), c.y + 0.5);
+    const p = R.project(c.x + 0.5, c.y + 0.5, 1.6);
+    return p ? { x: p.x, y: p.y, r: 46 * p.s } : null;
+  }
+
   /** Called with the UI's update (10 times a second). */
   update() {
     const g = this.g, ui = this.ui;
-    if (this.camKey() !== this.cam) this.moved = true;
+    if (this.camKey() !== this.cam) { this.moved = true; if (this.stepId === 'guest' && !g.camera.goal) this.camLeft = true; }
+    this.cam = this.camKey();
     if (g.build.active && !this.built) { this.built = true; this.furn = g.world.furniture.length; }
+    // a moment of praise after a step is done, before the next one comes up
+    if (this.praise && performance.now() < this.praise.until) { this.show('praise', null, this.praise.text, null); return; }
+    this.praise = null;
     let st = this.current();
-    while (st && st.done && st.done(g, ui, this)) { this.finish(st.id); st = this.current(); }
+    while (st && st.done && st.done(g, ui, this)) { this.finish(st.id, true); return this.update(); }
     if (!STEPS.some((x) => !this.done.includes(x.id))) return this.end();
+    if (st && st.id !== this.stepId) { this.stepId = st.id; if (st.enter) st.enter(this); }
+    if (st && st.id === 'guest') this.callGuest();
     // nothing ready yet (only the guest left, and it's night): say when the doors open
-    const text = st ? st.text(g, this) : t("We're closed for the night. The doors open at 08:00, see you then!");
-    const key = (st ? st.id : 'wait') + '|' + text + '|' + (ui.modalOpen ? 1 : 0);
-    if (key !== this.key) { this.key = key; this.render(st, text); }
-    this.place(st);
+    const text = st ? st.text(g, this, ui) : t("We're closed for the night. The doors open at 08:00, see you then!");
+    const target = st && st.target && !ui.modalOpen ? st.target(ui, this) : null;
+    this.show(st ? st.id : 'wait', st, text, target);
   }
-  render(st, text) {
-    const g = this.g, partner = g.staff.find((a) => a.look.model === g.state.partner);
-    const look = partner ? partner.look : roleLook('waiter', g.state.partner);
-    const n = STEPS.findIndex((x) => x === st);
-    this.card.replaceChildren(
-      h('div.coach-face', portrait(look, 56, 56)),
-      h('div.coach-body',
-        h('div.coach-who', h('b', UNIQUE_NAMES[g.state.partner] || ''), n >= 0 ? h('span', `${n + 1}/${STEPS.length}`) : null),
-        h('div.coach-text', text),
-        h('div.coach-acts',
-          st && st.next ? h('button.btn.small.primary', { onclick: () => { this.finish(st.id); this.update(); } }, n === STEPS.length - 1 ? t("Let's go!") : t('Next')) : null,
-          n < STEPS.length - 1 ? h('button.btn.small.ghost', { onclick: () => this.end() }, t('Skip tour')) : null)));
-    this.card.classList.toggle('hidden', !!this.ui.modalOpen);
+
+  /** Draw the card (only when what it says changed) and place it, the ring and the dimming around `target`. */
+  show(id, st, text, target) {
+    const ui = this.ui, g = this.g;
+    const nextOn = st && (typeof st.next === 'function' ? st.next(g, ui) : st.next);
+    const key = [id, text, nextOn ? 1 : 0].join('|');
+    if (key !== this.key) {
+      this.key = key;
+      const look = (g.staff.find((a) => a.look.model === g.state.partner) || {}).look || roleLook('waiter', g.state.partner);
+      const n = STEPS.findIndex((x) => x === st);
+      const last = n === STEPS.length - 1;
+      this.card.replaceChildren(
+        h('i.coach-arrow'),
+        h('div.coach-face', portrait(look, 56, 56)),
+        h('div.coach-body',
+          h('div.coach-who', h('b', partnerName(g)), n >= 0 ? h('span', `${n + 1}/${STEPS.length}`) : null),
+          h('div.coach-text', id === 'praise' ? [glyph('check', 18), ' ', text] : text),
+          id === 'praise' ? null : h('div.coach-acts',
+            nextOn ? h('button.btn.small.primary', { onclick: () => { this.finish(st.id, !st.center); this.update(); } }, last ? t("Let's go!") : n === 0 ? t('Next') : t('Got it')) : null,
+            !last ? h('button.btn.small.ghost', { onclick: () => this.end() }, t('Skip tour')) : null)));
+      this.card.classList.toggle('praise', id === 'praise');
+    }
+    this.card.classList.toggle('hidden', !!ui.modalOpen);
+    this.card.classList.toggle('center', !!(st && st.center));
+    this.place(st, target);
   }
-  /** Ring the step's target, wherever it is on screen now (hidden when it is not showing). */
-  place(st) {
-    const el = st && st.target && !this.ui.modalOpen ? st.target(this.ui, this) : null;
-    const r = el && el.isConnected ? el.getBoundingClientRect() : null;
-    if (!r || !r.width || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') { this.spot.classList.remove('show'); return; }
-    const root = this.ui.root.getBoundingClientRect(), pad = 6;
-    Object.assign(this.spot.style, { left: `${r.left - root.left - pad}px`, top: `${r.top - root.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
-    this.spot.classList.add('show');
+
+  /** Mark the ringed element (its red badge stays visible while the others are hidden during the tour). */
+  mark(el) {
+    if (this.targetEl === el) return;
+    if (this.targetEl) this.targetEl.classList.remove('tour-target');
+    if (el) el.classList.add('tour-target');
+    this.targetEl = el;
+  }
+
+  /** Ring the target and put the card beside it, pointing at it; with no target the card sits at the top. */
+  place(st, target) {
+    const ui = this.ui, root = ui.root.getBoundingClientRect();
+    let r = null;
+    if (target instanceof Element) {
+      const cs = target.isConnected ? getComputedStyle(target) : null;
+      const b = cs && cs.display !== 'none' && cs.visibility !== 'hidden' ? target.getBoundingClientRect() : null;
+      if (b && b.width) r = { left: b.left - root.left, top: b.top - root.top, width: b.width, height: b.height, round: false };
+    } else if (target) r = { left: target.x - target.r, top: target.y - target.r, width: target.r * 2, height: target.r * 2, round: true };
+    this.mark(target instanceof Element && r ? target : null);
+    const dim = !!(r && st && (typeof st.dim === 'function' ? st.dim(ui, this) : st.dim));
+    this.spot.classList.toggle('show', !!r);
+    this.spot.classList.toggle('dim', dim);
+    this.spot.classList.toggle('round', !!(r && r.round));
+    if (r) {
+      const pad = r.round ? 0 : 6;
+      Object.assign(this.spot.style, { left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
+    }
+    // the card: mid-screen, or beside the target (above it in the lower half of the screen, below it otherwise)
+    const c = this.card, W = root.width, H = root.height;
+    if (c.classList.contains('center') || c.classList.contains('hidden')) { c.style.cssText = ''; return; }
+    c.classList.remove('above', 'below', 'side');
+    if (!r) { c.style.cssText = ''; return; }
+    const ch = c.offsetHeight || 110, gap = 16;
+    // inside an open side panel (desktop) with room to its left: sit beside the panel, so the row stays readable
+    const P = ui.panel ? ui.el.panel.getBoundingClientRect() : null;
+    const room = P ? P.left - root.left - 28 : 0;
+    if (P && room >= 300 && r.left >= P.left - root.left - 1) {
+      const sw = Math.min(380, room), cy = r.top + r.height / 2;
+      const top = Math.max(8, Math.min(H - ch - 8, cy - ch / 2));
+      Object.assign(c.style, { left: `${P.left - root.left - gap - sw}px`, top: `${top}px`, right: 'auto', width: `${sw}px`, maxWidth: 'none' });
+      c.style.setProperty('--ay', `${Math.max(20, Math.min(ch - 20, cy - top))}px`);
+      c.classList.add('side');
+      return;
+    }
+    const cw = Math.min(420, W - 24);
+    const cx = r.left + r.width / 2;
+    const above = r.top + r.height / 2 > H / 2;
+    let top = above ? r.top - gap - ch - 6 : r.top + r.height + gap + 6;
+    top = Math.max(8, Math.min(H - ch - 8, top));
+    const left = Math.max(12, Math.min(W - cw - 12, cx - cw / 2));
+    Object.assign(c.style, { left: `${left}px`, top: `${top}px`, right: 'auto', width: `${cw}px`, maxWidth: 'none' });
+    c.style.setProperty('--ax', `${Math.max(22, Math.min(cw - 22, cx - left))}px`);
+    c.classList.add(above ? 'above' : 'below');
   }
 }

@@ -450,4 +450,10 @@ export const ZH_TW = {
   'Add a table, a chair or a plant, then tap Done.': '放一張桌子、椅子或盆栽，然後按「完成」。',
   "That's the basics! We keep serving while you're away, so come back and see how we did.": '基本的就是這些！你不在時我們也會繼續營業，記得回來看看成績。',
   "We're closed for the night. The doors open at 08:00, see you then!": '現在是打烊時間，08:00 開門，到時見！',
+  'Here comes a guest! Watch the door.': '客人來了！看門口。', 'I take the order and {chef} brews it. Watch us serve!': '我來點餐，{chef} 負責沖。看我們招呼客人！',
+  'Tap Staff to meet the team.': '點「員工」認識一下大家。', 'This bar is my energy. When it runs out I nap; a snack perks me right up.': '這條是我的體力。用完我會打瞌睡，吃份點心馬上就有精神。',
+  'This checklist is Today. Tap it!': '這個清單按鈕是「今日」，點一下！', 'A gift every day, and three goals that pay study vouchers. Open your gift!': '每天一份禮物，還有三個會送研習券的任務。先打開禮物吧！',
+  'Now the Menu: this is where drinks level up.': '接著是「菜單」：飲品在這裡升級。', 'Study the Espresso: it uses the beans and a voucher, and sells for more at Lv2.': '研習義式濃縮：用掉咖啡豆和一張研習券，升到 Lv2 就能賣得更貴。',
+  'Pick a table, a chair or a plant, then tap the floor to put it down.': '挑一張桌子、椅子或盆栽，再點地板放下去。',
+  'Got it': '知道了', 'Nice!': '很好！', "That's it!": '就是這樣！', 'Perfect!': '完美！', 'Great job!': '做得好！',
 };

@@ -53,8 +53,8 @@ export class UI {
     bus.on('changed', () => { this.dirty = true; });
     bus.on('build', (on) => this.onBuild(on));
     bus.on('buildChanged', () => { this.renderBuild(); this.renderGhostCtl(); });
-    bus.on('roundEnd', (s) => this.receipt(s));
-    bus.on('levelUp', (e) => this.celebrate(e));
+    bus.on('roundEnd', (s) => this.notice({ kind: 'receipt', show: () => this.receipt(s) }));
+    bus.on('levelUp', (e) => this.notice({ kind: 'level', e, show: () => this.celebrate(e) }));
     bus.on('ability', (a) => this.cutIn(a));
     bus.on('kitCast', (a) => this.cutIn(a, a.kit.active));
     bus.on('roundStart', () => this.toast(t('☀️ 08:00 — doors open!'), 'good'));
@@ -498,6 +498,7 @@ ${k.desc}
     if (this.acc < 0.1) return;
     this.acc = 0;
     if (this.tutorial) this.tutorial.update();
+    this.pumpNotices();
     const g = this.game, s = g.state;
     this.el.coins.textContent = fmt(s.coins);
     const lp = g.levelProgress();
@@ -603,10 +604,30 @@ ${k.desc}
 
   // ---------------- toasts & modals ----------------
   toast(msg, kind = '') {
+    if (this.tutorial && kind !== 'bad') return;   // the tour speaks for itself; only trouble gets through
     const t = h('div.toast' + (kind ? '.' + kind : ''), msg);
     this.el.toasts.appendChild(t);
     while (this.el.toasts.children.length > 4) this.el.toasts.firstChild.remove();
     setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 350); }, 2800);
+  }
+  /**
+   * Level-up and receipt cards come one at a time, and wait while something else has the player's attention:
+   * the tour, a modal, an open panel or the card before them. Level-ups waiting together merge into one card.
+   */
+  notice(n) {
+    (this.notices || (this.notices = [])).push(n);
+    this.pumpNotices();
+  }
+  pumpNotices() {
+    const q = this.notices;
+    if (!q || !q.length || this.tutorial || this.modalOpen || this.panel || this.game.build.active) return;
+    if (this.el.celebrate.classList.contains('show') || this.el.receipt.classList.contains('show')) return;
+    const n = q.shift();
+    if (n.kind === 'level') {   // fold the level-ups queued behind it into the same card
+      const e = { level: n.e.level, unlocks: [...n.e.unlocks] };
+      while (q.length && q[0].kind === 'level') { const m = q.shift(); e.level = m.e.level; e.unlocks.push(...m.e.unlocks); }
+      this.celebrate(e);
+    } else n.show();
   }
   queueModal(fn) {
     this.modalQueue.push(fn);

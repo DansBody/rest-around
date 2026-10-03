@@ -971,9 +971,23 @@ button.pick-row:hover { background: var(--fill-2); }
 .starter-pick h3 { margin: 2px 0 6px; font: 750 20px/1.1 var(--font-display); font-stretch: var(--narrow); }
 .starter-role { margin-bottom: 8px; font-size: 12.5px; }
 .pill.partner { background: #fff4d1; gap: 4px; }
+/* the coach card: at the top by default, mid-screen for hello / goodbye, otherwise beside what it talks about
+   (tutorial.js sets left / top / width and --ax, where the arrow points) */
 #coach { position: absolute; z-index: 6; top: var(--ht); left: calc(var(--hl) + var(--hb) + var(--hg)); right: var(--hr); max-width: 440px;
   display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px 10px 10px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); animation: popin .3s ease-out; }
 #coach.hidden { display: none; }
+#coach.center { top: 50%; left: 50%; right: auto; width: min(400px, calc(100% - 32px)); max-width: none; translate: -50% -50%; padding: 18px; flex-direction: column; align-items: center; text-align: center; }
+#coach.center .coach-face { width: 88px; height: 88px; border-radius: 28px; }
+#coach.center .coach-face .portrait { width: 88px; height: 88px; }
+#coach.center .coach-who { justify-content: center; }
+#coach.center .coach-text { font-size: 16px; }
+#coach.center .coach-acts { justify-content: center; }
+#coach .coach-arrow { display: none; position: absolute; left: var(--ax, 50%); width: 14px; height: 14px; margin-left: -7px; background: var(--surface); rotate: 45deg; }
+#coach.above .coach-arrow { display: block; bottom: -6px; }
+#coach.below .coach-arrow { display: block; top: -6px; }
+#coach.side .coach-arrow { display: block; left: auto; right: -6px; top: var(--ay, 50%); margin: -7px 0 0; }
+#coach.praise .coach-text { display: flex; align-items: center; gap: 4px; color: var(--green); font-weight: 700; }
+#coach.praise .coach-text .glyph { color: var(--green); }
 #coach .coach-face { flex: none; width: 56px; height: 56px; border-radius: 18px; overflow: hidden; background: #fff4d1; display: grid; place-items: center; }
 #coach .coach-face .portrait { width: 56px; height: 56px; }
 #coach .coach-body { flex: 1; min-width: 0; }
@@ -984,9 +998,15 @@ button.pick-row:hover { background: var(--fill-2); }
 #coach .coach-acts { display: flex; gap: 6px; margin-top: 8px; }
 #coach .coach-acts:empty { display: none; }
 #coach .btn.ghost { background: none; box-shadow: none; color: var(--ink-soft); padding-left: 6px; padding-right: 6px; }
+/* the ring around the target; for "tap this" steps the rest of the screen dims through its shadow (taps still go through) */
 #spot { position: absolute; z-index: 6; pointer-events: none; border-radius: 22px; opacity: 0; transition: opacity .2s; box-shadow: 0 0 0 3px var(--yellow), 0 0 0 7px rgba(255, 197, 49, .35); }
+#spot.round { border-radius: 50%; }
 #spot.show { opacity: 1; animation: spotpulse 1.4s ease-in-out infinite; }
+#spot.dim { box-shadow: 0 0 0 3px var(--yellow), 0 0 0 7px rgba(255, 197, 49, .35), 0 0 0 200vmax rgba(18, 18, 22, .32); }
+#spot.dim.show { animation: none; }
 @keyframes spotpulse { 50% { box-shadow: 0 0 0 3px var(--yellow), 0 0 0 12px rgba(255, 197, 49, .12); } }
+/* one nudge at a time: during the tour the red badges hide, except on the ringed target */
+#ui.touring .badge:not(.tour-target .badge), #ui.touring .qb-badge.alert:not(.tour-target .qb-badge) { display: none; }
 #ui.visiting #coach, #ui.visiting #spot { display: none; }
 @media (max-width: 760px) {
   .starter-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }

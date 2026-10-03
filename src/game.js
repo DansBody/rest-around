@@ -266,12 +266,13 @@ export class Game {
   changed(what) { this.emit('changed', what); }
 
   /** A guest appears at one end of the street and walks to the door. */
-  spawnCustomer(force = false) {
+  /** `fromY`: where along the street they start (default: one end or the other, out of sight). */
+  spawnCustomer(force = false, fromY = null) {
     if (!force && this.customers.filter((c) => c.state === 'arriving').length >= 4) return null;
     const c = new Customer(this);
     if (!force && this.troubles.rollRude()) c.makeRude();
     this.agents.push(c);
-    c.begin(Math.random() < 0.5 ? -7 : this.world.size + 7);
+    c.begin(fromY ?? (Math.random() < 0.5 ? -7 : this.world.size + 7));
     return c;
   }
 

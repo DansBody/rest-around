@@ -35,7 +35,10 @@ export class Camera {
   }
   /** world units per screen pixel at the target distance */
   unitsPerPx() { return (2 * this.dist * Math.tan((this.fov * Math.PI) / 360)) / Math.max(1, this.vh); }
+  /** Ease the look-at point over to grid position (gx, gy) (the tour showing something); a drag cancels it. */
+  glideTo(gx, gy) { this.goal = { x: gx * TILE, z: gy * TILE }; }
   pan(dx, dy) {
+    this.goal = null;
     const u = this.unitsPerPx();
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
     // screen right = (cos, -sin); screen "up" on the ground = (-sin, -cos) (away from camera)
@@ -51,7 +54,7 @@ export class Camera {
   rotate(steps) { this.yawTarget += (steps * Math.PI) / 2; }
   rotateBy(rad) { this.yawTarget += rad; this.yaw += rad; }
   /** Still turning or zooming toward where it was sent. */
-  settling() { return Math.abs(this.yawTarget - this.yaw) > 1e-3 || Math.abs(this.distTarget - this.dist) > 1e-2; }
+  settling() { return !!this.goal || Math.abs(this.yawTarget - this.yaw) > 1e-3 || Math.abs(this.distTarget - this.dist) > 1e-2; }
   clamp() {
     const b = this.bounds;
     this.tx = clamp(this.tx, b.x0, b.x1);
@@ -61,6 +64,12 @@ export class Camera {
     const k = Math.min(1, dt * 8);
     this.yaw += (this.yawTarget - this.yaw) * k;
     this.dist += (this.distTarget - this.dist) * k;
+    if (this.goal) {
+      const j = Math.min(1, dt * 3);
+      this.tx += (this.goal.x - this.tx) * j; this.tz += (this.goal.z - this.tz) * j;
+      this.clamp();
+      if (Math.abs(this.goal.x - this.tx) + Math.abs(this.goal.z - this.tz) < 0.02) this.goal = null;
+    }
   }
   /** Camera position in world space. */
   position() {
