@@ -366,8 +366,9 @@ button.scard-head { cursor: pointer; }
 .scard.open .scard-chev { transform: rotate(90deg); }
 .scard-body { padding: 0 12px 12px; }
 .scard-acts { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; margin-top: 8px; }
-.scard-acts .btn { flex: none; white-space: nowrap; }
-.scard-acts .push { margin-left: auto; }
+.scard-acts .btn { flex: 1 1 auto; justify-content: center; white-space: nowrap; }   /* the buttons share the row's width */
+.scard-acts .xbtn { flex: none; }
+.scard-acts .pill.push { margin-left: auto; }
 .acts-label { flex: none; min-width: 40px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
 .sk-dots { display: flex; gap: 6px; margin-top: 7px; }
 .sk-dot { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--c) 14%, var(--surface)); }
@@ -541,6 +542,17 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 @keyframes popin { from { transform: translateY(8px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
 .info-head { display: flex; gap: 12px; align-items: center; }
 .info-head h3 { margin: 0; font-family: var(--font-display); font-weight: 750; font-size: 20px; letter-spacing: -.03em; }
+.info-head .grow { min-width: 0; }
+.info-head h3 { padding-right: 34px; }   /* clear of the close button in the corner */
+.info-x { position: absolute; top: 12px; right: 12px; border-radius: 50%; }
+.info-status { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; font-size: 13px; }
+.info-task { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); font-weight: 500; }
+.info-mood { flex: none; font-weight: 700; }
+.info-bar { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.info-bar .pbar { flex: 1; }
+.info-acts { display: flex; gap: 6px; margin-top: 12px; }
+.info-acts .btn { flex: 1 1 auto; justify-content: center; padding: 0 8px; }
+.info-acts .info-more { gap: 2px; }
 
 /* ---------- toasts & modals ---------- */
 #toasts { position: absolute; top: calc(76px + var(--sat)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 6; }

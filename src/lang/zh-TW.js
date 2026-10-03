@@ -149,6 +149,8 @@ export const ZH_TW = {
   'Accessories are bought in the Market. Each one dresses one character at a time.': '配件在市集購買，每件一次只能給一位角色戴。',
   'Put accessories on in Staff → Outfit. Buy a second copy to dress two characters in the same thing.': '到「員工 → 服裝」幫角色戴上。想讓兩位戴同一款，就再買一件。',
   '{item} is in the wardrobe: dress someone up from Staff → Outfit.': '{item} 已放進衣櫃，到「員工 → 服裝」幫角色戴上吧。',
+  'Feed them from Staff when they tire.': '員工累了，到「員工」分頁餵他們吃點心。',
+  'More info': '詳細',
   'Nothing for this spot yet.': '這個部位還沒有配件。', 'Shop in the Market': '去市集逛逛',
   'Barista Cap': '咖啡師帽', 'Beret': '貝雷帽', 'Cowboy Hat': '牛仔帽', 'Top Hat': '紳士高帽', 'Wizard Hat': '巫師帽', 'Winter Beanie': '毛線帽',
   'Golden Crown': '黃金皇冠', 'Laurel Wreath': '月桂冠', 'Dark Glasses': '墨鏡', 'Aviators': '飛行員眼鏡', 'Bow Tie': '領結', 'Backpack': '背包',

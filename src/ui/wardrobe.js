@@ -141,7 +141,7 @@ export function wardrobeCard(ui, a, slot = 'head') {
         items.map((w) => h('button.wr-item' + (e && e.id === w.id ? '.on' : ''), { onclick: () => pick(w.id), title: w.name },
           thumb(w.model, null, 56, 48), h('span', w.name), holder(w.id) ? h('small', t('On {name}', { name: holder(w.id).name })) : null))),
       items.length ? null : h('div.wr-empty', h('span.muted', t('Nothing for this spot yet.')),
-        h('button.btn.small', { onclick: () => { close(); ui.openPanel('market'); } }, t('Shop in the Market'))),
+        h('button.btn.small', { onclick: () => { close(); ui.marketCat = 'wear'; ui.openPanel('market'); } }, t('Shop in the Market'))),
       owner ? h('div.bmsg.warn', t('{name} is wearing this. It moves over when you tap Done.', { name: owner.name })) : null,
       e ? h('div.wr-adjust',
         h('div.wr-pads',

@@ -307,9 +307,16 @@ export function segs(text) {
 }
 
 // ------------------------------------------------------------------ market
+// one tab per stall, like the build tray's categories (the panel remembers the last one in ui.marketCat)
+const MARKET_CATS = [{ id: 'ing', name: 'Ingredients' }, { id: 'snack', name: 'Staff snacks' }, { id: 'wear', name: 'Accessories' }];
 function renderMarket(ui, body) {
   const g = ui.game, s = g.state;
-  body.append(h('div.section-title', t('Ingredients')));
+  const cat = ui.marketCat || 'ing';
+  body.append(h('div.tabs.market-tabs', MARKET_CATS.map((c) => h('button.btn.small.tab' + (c.id === cat ? '.on' : ''), {
+    onclick: () => { ui.marketCat = c.id; ui.renderPanel(); ui.el.panelBody.scrollTop = 0; },
+  }, t(c.name)))));
+  if (cat === 'snack') return marketSnacks(ui, body);
+  if (cat === 'wear') return marketWear(ui, body);
   body.append(h('div.toggle', h('span', t('Auto-restock')), h('button.switch' + (s.settings.autoRestock ? '.on' : ''), { role: 'switch', 'aria-checked': String(!!s.settings.autoRestock), title: t('Auto-restock'), onclick: () => { s.settings.autoRestock = !s.settings.autoRestock; if (s.settings.autoRestock) g.eco.autoRestock(); ui.renderPanel(); } })));
   body.append(h('div.muted', { style: { marginBottom: '6px' } }, s.settings.autoRestock
     ? t('Packs for the dishes on your menu are bought automatically when they run low: up to {n} coins a round (spent {m} this round). A pack makes about {k} servings.', { n: g.eco.restockBudget(), m: s.stats ? s.stats.restocked || 0 : 0, k: SERVINGS_PER_UNIT })
@@ -323,13 +330,20 @@ function renderMarket(ui, body) {
         : h('span.muted', I('icon_lock', 16), ' ' + t('Lv{n}', { n: i.level }))));
   }
   body.append(grid);
-  body.append(h('div.section-title', t('Staff snacks')));
+}
+
+function marketSnacks(ui, body) {
+  const g = ui.game, s = g.state;
   for (const sn of SNACKS) {
     body.append(h('div.row', I(sn.asset, 36), h('div.grow', h('h3', sn.name), h('div.muted', t('+{n} energy · you have {m}', { n: sn.energy, m: s.snacks[sn.id] || 0 }))),
       h('button.btn.small', { onclick: () => g.eco.buySnack(sn.id) }, coinPill(sn.price))));
   }
-  // accessories: each copy dresses one character at a time (put them on in Staff → Outfit)
-  body.append(h('div.section-title', t('Accessories')));
+  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Feed them from Staff when they tire.')));
+}
+
+// accessories: each copy dresses one character at a time (put them on in Staff → Outfit)
+function marketWear(ui, body) {
+  const g = ui.game, s = g.state;
   const wear = h('div.grid2');
   for (const w of WEAR) {
     const n = s.wardrobe[w.id] || 0;
