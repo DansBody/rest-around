@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const out = join(root, 'dist');
-const PUBLISH = ['index.html', 'src', 'assets', 'vendor'];
+const PUBLISH = ['index.html', 'privacy.html', 'src', 'assets', 'vendor'];
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);

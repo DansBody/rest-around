@@ -1,0 +1,96 @@
+<!doctype html>
+<!-- The privacy policy linked from the Google sign-in consent screen. Plain static page, no scripts. -->
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ededed">
+  <title>Refillit · 隱私權政策 Privacy Policy</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+  <style>
+    @font-face {
+      font-family: 'Refillit Grotesk';
+      src: url('assets/fonts/archivo.woff2') format('woff2');
+      font-weight: 100 900;
+      font-stretch: 62% 125%;
+      font-display: swap;
+    }
+    :root {
+      --font: 'Refillit Grotesk', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+      --ink: #17171a;
+      --ink-soft: #626268;
+      --surface: #fdfdfc;
+      --sheet: #f1f1ef;
+      --line: #e4e4e0;
+      --yellow: #ffc531;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--sheet); color: var(--ink); font: 16px/1.7 var(--font); }
+    main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; }
+    header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+    header img { width: 64px; height: 64px; border-radius: 16px; background: var(--surface); }
+    h1 { margin: 0; font-size: 34px; line-height: 1.1; font-weight: 800; font-stretch: 78%; text-transform: uppercase; letter-spacing: .01em; }
+    h1 small { display: block; font-size: 15px; font-weight: 600; font-stretch: 100%; text-transform: none; color: var(--ink-soft); letter-spacing: 0; margin-top: 4px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px 22px 8px; margin-bottom: 14px; }
+    h2 { margin: 0 0 8px; font-size: 19px; font-weight: 800; display: flex; align-items: baseline; gap: 10px; }
+    h2 span { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+    h2::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); transform: translateY(-2px); }
+    p, ul { margin: 0 0 14px; }
+    ul { padding-left: 20px; }
+    .en { color: var(--ink-soft); font-size: 14.5px; }
+    .meta { color: var(--ink-soft); font-size: 14px; margin: 0 0 20px; }
+    a { color: var(--ink); text-decoration-color: var(--yellow); text-decoration-thickness: 3px; text-underline-offset: 3px; }
+    footer { margin-top: 28px; font-size: 14px; color: var(--ink-soft); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="assets/brand/icon-192.png" alt="">
+    <h1>Privacy<small>Refillit 隱私權政策</small></h1>
+  </header>
+  <p class="meta">生效日期 Effective 2026-10-03 · 適用網站 <a href="https://refillit.pages.dev">refillit.pages.dev</a></p>
+
+  <section class="card">
+    <h2>我們收集什麼 <span>What we collect</span></h2>
+    <ul>
+      <li><b>帳號資料</b>：第一次遊玩時會自動建立一個匿名帳號。如果你選擇用 Google 登入，我們會收到你的 Google 帳號 email、名稱與頭像網址；如果用 email 登入，則保存你的 email 與加密過的密碼。</li>
+      <li><b>遊戲資料</b>：咖啡廳存檔、咖啡廳名稱、等級、好友代碼、好友關係，以及好友之間的互助與贈禮紀錄。</li>
+      <li><b>瀏覽器本機資料</b>：存檔副本與語言設定會存放在你瀏覽器的 localStorage；其中存檔會同步到你的帳號，語言設定只留在這台裝置上。</li>
+    </ul>
+    <p class="en">An anonymous account is created when you first play. If you sign in with Google we receive your Google email address, name and profile picture URL; with email sign-in we keep your email and a hashed password. We also store your café save, café name, level, friend code, friendships and friend help/gift history. A copy of the save and your language choice are kept in your browser's localStorage.</p>
+  </section>
+
+  <section class="card">
+    <h2>用途 <span>How we use it</span></h2>
+    <p>只用來讓你登入、保存與同步遊戲進度，以及提供好友功能（讓好友看到你的咖啡廳名稱與等級）。我們不放廣告、不使用追蹤或分析工具，也不會出售或出租任何個人資料。</p>
+    <p class="en">Only to sign you in, save and sync your progress, and run friend features (friends can see your café name and level). No ads, no tracking or analytics, and we never sell or rent personal data.</p>
+  </section>
+
+  <section class="card">
+    <h2>第三方服務 <span>Services we rely on</span></h2>
+    <ul>
+      <li><b>Supabase</b>：帳號登入與資料庫，存放上述帳號與遊戲資料。</li>
+      <li><b>Google</b>：僅在你選擇 Google 登入時使用。我們只要求基本資料（email、名稱、頭像），不會存取你的 Gmail、雲端硬碟或其他 Google 資料。</li>
+      <li><b>Cloudflare Pages</b>：網站代管，可能留有一般的連線紀錄（例如 IP 位址）。</li>
+    </ul>
+    <p class="en">Supabase hosts sign-in and the database. Google is used only if you choose Google sign-in, with basic scopes (email, name, picture) and no access to Gmail, Drive or other Google data. Cloudflare Pages hosts the site and may keep standard request logs such as IP addresses.</p>
+  </section>
+
+  <section class="card">
+    <h2>刪除與聯絡 <span>Deletion &amp; contact</span></h2>
+    <p>想刪除帳號與所有遊戲資料，或對隱私有任何疑問，請寄信到 <a href="mailto:djhoung@gmail.com">djhoung@gmail.com</a>，並附上你登入用的 email。我們會在 30 天內處理完成。你也可以隨時清除瀏覽器資料來移除本機存檔。</p>
+    <p class="en">To delete your account and all game data, or for any privacy question, email <a href="mailto:djhoung@gmail.com">djhoung@gmail.com</a> from (or mentioning) the address you sign in with. We complete deletion within 30 days. Clearing your browser data removes the local save.</p>
+  </section>
+
+  <section class="card">
+    <h2>政策更新 <span>Changes</span></h2>
+    <p>政策若有變動，會更新本頁並修改上方的生效日期。</p>
+    <p class="en">If this policy changes we will update this page and its effective date.</p>
+  </section>
+
+  <footer><a href="./">← 回到 Refillit</a></footer>
+</main>
+</body>
+</html>
