@@ -41,7 +41,8 @@ export class Customer extends Agent {
     super.update(dt);
     if (this.gliding) this.moving = true;
     const g = this.game;
-    if (this.showPatience && this.pRate > 0 && g.timeStopT <= 0) {   // Time Pause freezes the countdown
+    // Time Pause freezes the countdown; the tour's guest (`patient`) waits as long as it takes
+    if (this.showPatience && this.pRate > 0 && g.timeStopT <= 0 && !this.patient) {
       this.patience -= this.pRate * dt * (g.inSpotlight(this.x, this.y) ? 0.4 : 1);
       if (this.patience <= 0) { this.patience = 0; this.fedUp(); }
     }
@@ -72,6 +73,7 @@ export class Customer extends Agent {
     if (clean.length) return this.gotoSeat(this.pickSeat(clean));
     const queued = g.customers.filter((c) => c.state === 'queue').length;
     if (dirty.length > queued && queued < 3) return this.queueForSeat();
+    if (this.patient) return this.queueForSeat();   // the tour's guest waits for a seat however full it is
     // with a cashier counter there's a proper line: guests wait for someone to finish, too
     if (this.hasCashier() && queued < CASHIER.queue && g.world.seats.some((s) => s.customer)) return this.queueForSeat();
     this.mood = 'No free seats';

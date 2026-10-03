@@ -13,7 +13,10 @@ import { Build } from './build.js';
 import { Street } from './ambient.js';
 import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
-import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, UNIQUE_NAMES } from './data.js';
+import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, UNIQUE_NAMES, furnitureById } from './data.js';
+
+/** The table for two a café gets when the player never set one up: [type, x, y, dir]. */
+const STARTER_SEATS = [['table_oak', 3, 4, 1], ['chair_oak', 2, 4, 0], ['chair_oak', 4, 4, 2]];
 import { bus, choice } from './util.js';
 
 /** Events drawn in the 3D scene (and the cut-in for them); the rest are for the HUD, panels and cards. */
@@ -97,26 +100,34 @@ export class Game {
     this.agents = []; this.agentTiles.clear(); this.jobs.clear();
     this.timeStopT = 0; this.spotlight = null;
     const w = this.world;
+    // a bare room: just the espresso machine and the till. Tables and chairs come in the tour (STARTER_SEATS if
+    // it's skipped first), the decorating is the player's
     w.addFurniture('stove_basic', 6, 0, 1);
-    w.addFurniture('table_oak', 3, 4, 1);
-    w.addFurniture('chair_oak', 2, 4, 0);
-    w.addFurniture('chair_oak', 4, 4, 2);
-    w.addFurniture('table_oak', 3, 6, 1);
-    w.addFurniture('chair_oak', 2, 6, 0);
-    w.addFurniture('chair_oak', 4, 6, 2);
-    w.addFurniture('plant_fern', 7, 7, 1);
-    w.addFurniture('lamp_butter', 0, 7, 1);
-    w.addFurniture('welcome', 1, 1, 1);
     w.addFurniture('cashier', 5, 0, 1);
-    w.addFurniture('bookshelf', 2, 0, 1);
-    w.addFurniture('sofa', 0, 5, 0);   // against the west wall, facing the room
-    for (let x = 4; x < 8; x++) for (let y = 0; y < 2; y++) w.floors[x][y] = 'fl_cream';
+    this.state.wallDeco = [];
     this.addStaff(makeStaff(this, 'waiter', 'mochalatte'), 2, 2);
     this.addStaff(makeStaff(this, 'chef', 'bbaekko'), 6, 2);
     this.state.vouchers = 2;   // enough for the tutorial's first study
     this.day.snap();   // onto the wall clock (and the day's goal)
     this.day.nextSpawn = 3;
     this.rating.recompute();
+  }
+
+  /**
+   * A table for two in the middle of the room, if the café has nowhere to sit (the tour was skipped before it).
+   * Paid for like any purchase, so the server's wealth check sees coins turned into furniture, not furniture from nowhere.
+   */
+  ensureSeats() {
+    const w = this.world, s = this.state;
+    if (w.seats.length) return false;
+    for (const [type, x, y, d] of STARTER_SEATS) {
+      if (w.furnitureAt(x, y)) continue;
+      w.addFurniture(type, x, y, d);
+      s.coins = Math.max(0, s.coins - furnitureById[type].price);
+    }
+    this.changed('coins');
+    this.changed('build');
+    return true;
   }
 
   /**

@@ -48,6 +48,7 @@ export class DayCycle {
     if (s.clock < DAY.length) s.stats.open = (s.stats.open || 0) + dt;   // opening hours traded live: what payday charges for
     if (this.isOpen) {
       this.nextSpawn -= dt;
+      if (this.nextSpawn <= 0 && !g.world.seats.length) this.nextSpawn = 2;   // nobody comes in before there is somewhere to sit
       if (this.nextSpawn <= 0) {
         const c = g.spawnCustomer();
         if (c) {

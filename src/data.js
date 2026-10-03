@@ -59,6 +59,8 @@ export const EXPANSIONS = [
   { size: 14, level: 7, price: 4000 },
 ];
 export const SELL_RATE = 0.5;
+/** Chairs one table can take (facing it from any side). */
+export const TABLE_SEATS = 2;
 export const furnitureById = Object.fromEntries(FURNITURE.map((f) => [f.id, f]));
 export const floorById = Object.fromEntries(FLOORS.map((f) => [f.id, f]));
 export const wallById = Object.fromEntries(WALLS.map((f) => [f.id, f]));

@@ -8,7 +8,7 @@
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
 import { roleLook } from '../looks.js';
-import { UNIQUE_MODELS, UNIQUE_NAMES } from '../data.js';
+import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById } from '../data.js';
 import { kitLines } from './panels.js';
 import { glyph } from './icons.js';
 import { TILE } from '../models.js';
@@ -24,8 +24,18 @@ import { t } from '../i18n.js';
 const STEPS = [
   { id: 'hello', center: true, next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: partnerName(g) }) },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
-  { id: 'guest', panel: null, ready: (g) => !g.day.isNight, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
-    text: (g, tu) => (tu.guest && tu.guest.state === 'arriving' ? t('Here comes a guest! Watch the door.') : t('I take the order and {chef} brews it. Watch us serve!', { chef: chefName(g) })),
+  // the room starts bare: a table for two first (the guest needs somewhere to sit)
+  { id: 'seats', panel: null, dim: (ui, tu) => tu.seatStage() !== 'table' && tu.seatStage() !== 'chairs',
+    target: (ui, tu) => ({ hammer: ui.toolBtns.build, table: ui.el.buildbar.querySelector('[data-item="f:table_oak"]'), chairs: ui.el.buildbar.querySelector('[data-item="f:chair_oak"]'), done: ui.el.buildbar.querySelector('.done') })[tu.seatStage()] || null,
+    text: (g, tu) => ({
+      hammer: t("Guests need somewhere to sit. Tap the hammer and let's set up a table."),
+      table: t('Pick the {name}, then tap the floor to put it down.', { name: furnitureById.table_oak.name }),
+      chairs: g.world.seats.length ? t('One more {name}!', { name: furnitureById.chair_oak.name }) : t('Now two {name}s facing the table, any side you like. A table seats two.', { name: furnitureById.chair_oak.name }),
+      done: t('A table for two! Tap Done to open up.'),
+    })[tu.seatStage()],
+    done: (g) => !g.build.active && g.world.seats.length >= 2 },
+  { id: 'guest', panel: null, ready: (g) => !g.day.isNight && g.world.seats.length > 0, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
+    text: (g, tu) => tu.guestText(),
     done: (g, ui, tu) => !!(tu.guest && tu.guest.served) },   // the guest the tour called, not whoever else was in
   { id: 'staff', dim: true, panel: 'staff',
     target: (ui) => (ui.panel !== 'staff' ? ui.toolBtns.staff : ui.el.panelBody.querySelector(`[data-staff="${partnerId(ui.game)}"] .scard-status`)),
@@ -37,17 +47,12 @@ const STEPS = [
   { id: 'study', dim: true, panel: 'menu', target: (ui) => (ui.panel === 'menu' ? ui.el.panelBody.querySelector('[data-study="espresso"]') : ui.toolBtns.menu),
     text: (g, tu, ui) => (ui.panel === 'menu' ? t('Study the Espresso: it uses the beans and a voucher, and sells for more at Lv2.') : t('Now the Menu: this is where drinks level up.')),
     done: (g) => Object.values(g.state.dishes).some((d) => d.lv >= 2) },
-  { id: 'build', dim: (ui, tu) => !ui.game.build.active || tu.placed(), enter: (tu) => tu.ui.closePanel(),
-    target: (ui, tu) => (!ui.game.build.active ? ui.toolBtns.build : tu.placed() ? ui.el.buildbar.querySelector('.done') : ui.el.buildbar),
-    text: (g, tu) => (!g.build.active ? t('Tap the hammer to build and decorate.') : tu.placed() ? t('Looks great! Tap Done when you are happy with it.') : t('Pick a table, a chair or a plant, then tap the floor to put it down.')),
-    done: (g, ui, tu) => tu.built && !g.build.active },
   { id: 'bye', center: true, next: true, ready: (g, tu) => STEPS.every((x) => x.id === 'bye' || tu.done.includes(x.id)), enter: (tu) => tu.g.camera.fit(tu.g.world.size),
     text: () => t("That's the basics! We keep serving while you're away, so come back and see how we did.") },
 ];
 const PRAISE = ['Nice!', "That's it!", 'Perfect!', 'Great job!'];
 const partnerName = (g) => UNIQUE_NAMES[g.state.partner] || '';
 const partnerId = (g) => { const a = g.staff.find((x) => x.look.model === g.state.partner); return a ? a.id : ''; };
-const chefName = (g) => { const c = g.staff.find((a) => a.role === 'chef'); return c ? c.name : t('our Barista'); };
 
 /** Start (or pick up) the tour for a new café. Call once the UI is up. */
 export function startTutorial(ui) {
@@ -84,7 +89,7 @@ function pickCard(ui) {
 class Tour {
   constructor(ui) {
     this.ui = ui; this.g = ui.game;
-    this.moved = false; this.built = false;
+    this.moved = false;
     this.cam = this.camKey();
     this.card = h('div#coach');
     this.spot = h('div#spot');
@@ -94,8 +99,14 @@ class Tour {
     this.update();
   }
   get done() { return this.g.state.tutorial; }
-  /** Something was put down (or taken away) since build mode opened. */
-  placed() { return this.built && this.g.world.furniture.length !== this.furn; }
+  /** Where the table-for-two step stands: out of build mode, no table yet, chairs to add, or ready to finish. */
+  seatStage() {
+    const g = this.g, w = g.world;
+    if (!g.build.active) return 'hammer';
+    const tables = w.byKind('table');
+    if (!tables.length) return 'table';
+    return tables.some((f) => (f.seats || []).length >= 2) ? 'done' : 'chairs';
+  }
   camKey() { const c = this.g.camera; return [c.tx, c.tz, c.yawTarget, c.distTarget].map((v) => v.toFixed(1)).join(); }
   /** The step to show: the first one not done whose time has come (the guest waits for the doors to open). */
   current() {
@@ -109,6 +120,8 @@ class Tour {
   }
   end() {
     this.g.state.tutorialSeen = true;
+    // skipped before the table was set up: guests still need somewhere to sit
+    if (!this.g.world.seats.length) { if (this.g.build.active) this.g.build.exit(); this.g.ensureSeats(); }
     this.card.remove(); this.spot.remove();
     this.mark(null);
     this.ui.root.classList.remove('touring');
@@ -122,13 +135,62 @@ class Tour {
     if (this.guest && !this.guest.gone) return;
     if (this.guestAt && now - this.guestAt < 15000) return;
     const c = this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
+    c.patient = true;   // never walks out: no free seat or a slow kitchen just means a longer wait
     this.guestAt = now;
     // the camera keeps them in view, a little above the middle so the card below doesn't cover them (a drag ends it)
-    this.g.camera.follow(() => (this.stepId === 'guest' && !c.gone ? { x: c.x * TILE, z: c.y * TILE } : null), () => ({ x: 0, y: 70 }));
+    // the camera keeps whoever is busy with them in view (see watched()), a little above the middle so the card
+    // below doesn't cover them; a drag ends it
+    this.g.camera.follow(() => { const a = this.stepId === 'guest' && !c.gone ? this.watched().who : null; return a ? { x: a.x * TILE, z: a.y * TILE } : null; }, () => ({ x: 0, y: 70 }));
+  }
+  /**
+   * Who to watch while the tour's guest is served, and why: the guest walking in and finding a seat, the server
+   * on the way to take the order, the barista brewing it (or the baker baking the side), the server bringing it
+   * over, then the guest again, enjoying it. { who, what }
+   */
+  watched() {
+    const c = this.guest, g = this.g;
+    if (!c || c.gone) return { who: null, what: 'none' };
+    if (c.state === 'arriving' || c.state === 'enter') return { who: c, what: 'arrive' };
+    if (c.state === 'toSeat') return { who: c, what: 'seat' };
+    if (c.state === 'queue') return { who: c, what: 'queue' };
+    if (c.state === 'eating') return { who: c, what: 'enjoy' };
+    // whoever has picked up a job for this guest: taking the order, brewing, baking or carrying it over
+    const busy = g.jobs.list.filter((j) => j.customer === c && j.assignee && !j.done && !j.canceled);
+    const pick = (type) => busy.find((j) => j.type === type);
+    const j = c.state === 'waitOrder' ? pick('order') : pick('deliver') || pick('cook') || pick('drink');
+    if (j) return { who: j.assignee, what: j.type };
+    if (c.state === 'waitOrder') return { who: c, what: 'wantOrder' };
+    // nobody on it this moment: something is ready to carry (watch the servers), or still waiting its turn (the baristas)
+    const tickets = c.tickets || [];
+    const role = tickets.some((tk) => tk.state === 'ready') ? 'waiter' : tickets.some((tk) => tk.state !== 'served') ? (tickets.find((tk) => tk.state !== 'served').kind === 'drink' ? 'bartender' : 'chef') : null;
+    const crew = role ? g.staff.filter((a) => a.role === role) : [];
+    const who = crew.find((a) => a.look.model === g.state.partner) || crew[0];
+    if (who) return { who, what: role === 'waiter' ? 'pickup' : 'queued' };
+    return { who: c, what: 'waitFood' };
+  }
+  /** What the partner says about it ("I" when the partner is the one doing it). */
+  guestText() {
+    const { who, what } = this.watched(), g = this.g;
+    const me = who && who.look && who.look.model === g.state.partner, name = who ? who.name : '';
+    switch (what) {
+      case 'arrive': return t('Here comes a guest! Watch the door.');
+      case 'seat': return t('They pick a free seat.');
+      case 'queue': return t('Every seat is taken, so they wait for a table to free up.');
+      case 'wantOrder': return t('Seated! Someone will be over to take the order.');
+      case 'order': return me ? t("I'm off to take their order.") : t('{name} is taking their order.', { name });
+      case 'cook': return me ? t("I'm brewing their coffee.") : t('{name} is brewing their coffee at the espresso machine.', { name });
+      case 'drink': return me ? t("I'm baking their treat.") : t('{name} is baking their treat.', { name });
+      case 'deliver': return me ? t("Ready! I'm bringing it over.") : t('Ready! {name} is bringing it over.', { name });
+      case 'queued': return me ? t('A few orders ahead of theirs: theirs is next.') : t('{name} has a few orders ahead of theirs: theirs is next.', { name });
+      case 'pickup': return me ? t("It's ready on the counter: I'll grab it.") : t("It's ready on the counter: {name} will grab it.", { name });
+      case 'waitFood': return t('Order in! The kitchen gets on it.');
+      case 'enjoy': return t('Enjoy! They pay when they finish.');
+      default: return t('Here comes a guest! Watch the door.');
+    }
   }
   /** Where the guest is on screen (ringed while they come in and get served); the camera keeps them in view. */
   guestSpot() {
-    const c = this.guest, R = this.g.renderer;
+    const c = this.watched().who, R = this.g.renderer;
     if (!c || c.gone || !R) return null;
     return R.agentRing(c);
   }
@@ -138,7 +200,6 @@ class Tour {
     const g = this.g, ui = this.ui;
     if (this.camKey() !== this.cam) this.moved = true;
     this.cam = this.camKey();
-    if (g.build.active && !this.built) { this.built = true; this.furn = g.world.furniture.length; }
     // a moment of praise after a step is done, before the next one comes up
     if (this.praise && performance.now() < this.praise.until) { this.show('praise', null, this.praise.text, null); return; }
     this.praise = null;
