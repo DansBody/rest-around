@@ -206,7 +206,8 @@ asset tables (`node tools/assets-table.mjs` refreshes them; optional, the game n
 * Café props, drinks, bakes, icons and the plush staff: made for this game with Meshy (see ASSETS.md).
 * A few 3D models: **Kay Lousberg** — KayKit Restaurant Bits, Furniture Bits, Character Pack:
   Adventurers (CC0). www.kaylousberg.com
-* Fonts: Fredoka and Nunito (SIL Open Font License).
+* Fonts: Archivo, Fredoka and Nunito (SIL Open Font License).
+* UI icons: Phosphor Icons (MIT).
 * three.js (MIT).
 
 ## Languages
@@ -252,7 +253,7 @@ index.html              page shell
 assets/manifest.json    3D models (file, scale, footprint, heights, tints, accessories) + 2D images
 assets/models/          glTF models: cafe/ (our own props, drinks, bakes), characters/, plus a few KayKit (CC0) pieces
 assets/textures|food|ui PNG drop-in folders (surface textures, food icons, UI icons)
-assets/fonts/           bundled OFL fonts (Nunito, Fredoka)
+assets/fonts/           bundled OFL fonts (Archivo, Nunito, Fredoka)
 vendor/three/           three.js r169 + GLTFLoader/SkeletonUtils (MIT), loaded via an import map
 ASSETS.md               asset guide + generated tables
 tools/assets-table.mjs  optional: regenerate the ASSETS.md tables from the manifest

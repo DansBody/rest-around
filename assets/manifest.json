@@ -27,12 +27,12 @@
   },
   "fonts": {
     "ui": {
-      "family": "Inter",
-      "fallback": "'Inter',-apple-system,'Segoe UI','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif"
+      "family": "Refillit Grotesk",
+      "fallback": "'Refillit Grotesk','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif"
     },
     "display": {
-      "family": "Inter",
-      "fallback": "'Inter',-apple-system,'Segoe UI','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif"
+      "family": "Refillit Grotesk",
+      "fallback": "'Refillit Grotesk','PingFang TC','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif"
     }
   },
   "characterAnimationFile": "models/characters/animations.glb",

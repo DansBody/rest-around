@@ -1,12 +1,21 @@
-/* Refillit UI — mono: solid white surfaces floating over the 3D scene, near-black ink, black
-   primary actions and pill tabs, big soft radii. Colour is kept for meaning only (stars, coins,
-   staff abilities, good/bad states) so the café itself stays the colourful part of the screen.
+/* Refillit UI — editorial mono: off-white surfaces floating over the 3D scene, near-black ink, black
+   primary actions, big soft radii. Panels are light grey sheets holding white cards. One warm yellow
+   marks what is active or ready; other colour is kept for meaning only (coins, staff abilities,
+   good/bad states) so the café itself stays the colourful part of the screen.
    Phones (≤760px): panels and the character card become one bottom sheet at a time. */
 @font-face {
   font-family: 'Refillit UI';
   src: url('../../assets/fonts/ui.woff2') format('woff2');
   font-style: normal;
   font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Refillit Grotesk';   /* Archivo: variable weight and width */
+  src: url('../../assets/fonts/archivo.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
   font-display: swap;
 }
 @font-face {
@@ -17,15 +26,18 @@
   font-display: swap;
 }
 :root {
-  --font: 'Refillit UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
-  --font-display: 'Refillit Display', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
-  --ink: #111111;
-  --ink-soft: #6e6e73;
-  --ink-faint: #a1a1a6;
-  --surface: #ffffff;
-  --fill: #f4f4f5;          /* rows, tiles, inactive tabs */
-  --fill-2: #ebebed;        /* hover / tracks */
-  --line: #e7e7ea;
+  --font: 'Refillit Grotesk', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --font-display: 'Refillit Grotesk', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --narrow: 78%;            /* font-stretch for display numbers and headings */
+  --ink: #17171a;
+  --ink-soft: #626268;      /* 5.9:1 on white */
+  --ink-faint: #85858b;     /* 3.7:1: meta text only, never body copy */
+  --surface: #fdfdfc;
+  --sheet: #f1f1ef;         /* panel / sheet ground under the white cards */
+  --fill: #f2f2f0;          /* rows, tiles, inactive tabs */
+  --fill-2: #e8e8e5;        /* hover / tracks */
+  --line: #e4e4e0;
+  --yellow: #ffc531;        /* the one accent: active tab, ready, highlights */
   --accent: #111111;        /* primary actions are black */
   --accent-2: #2a2a2d;
   --accent-ink: #111111;
@@ -85,14 +97,26 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .btn[disabled], .btn.disabled { opacity: .35; cursor: not-allowed; transform: none; }
 .xbtn { width: 36px; min-width: 36px; padding: 0 !important; }
 
-/* ---------- top HUD ---------- */
-#hud { position: absolute; top: calc(12px + var(--sat)); left: 50%; max-width: calc(100vw - var(--sal) - var(--sar) - 24px); transform: translateX(-50%); display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
+/* ---------- top HUD: one centred row, the café pill then the live numbers ---------- */
+#hud { position: absolute; top: calc(12px + var(--sat)); left: calc(14px + var(--sal)); right: calc(14px + var(--sar)); display: flex; align-items: center; justify-content: center; gap: 8px; pointer-events: none !important; }
+#hud > * { pointer-events: auto; }
 .chip { display: inline-flex; align-items: center; gap: 7px; height: 46px; padding: 0 16px 0 10px; border-radius: 999px;
   font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: -.02em; }
-#hud .num { min-width: 36px; text-align: left; font-variant-numeric: tabular-nums; }
-.lvl-wrap { display: flex; flex-direction: column; gap: 5px; min-width: 110px; }
-.lvl-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; }
-.lvl-top .muted { font-size: 11.5px; }
+#hud .num { font-variant-numeric: tabular-nums; }
+#hudbrand { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 280px; height: 46px; padding: 0 16px; overflow: hidden;
+  border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); }
+#hudbrand .bname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -.02em; line-height: 1; }
+.hb-lv { flex: none; padding: 3px 7px; border-radius: 99px; background: var(--ink); color: #fff; font: 700 11px/1.2 var(--font); letter-spacing: .02em; text-transform: uppercase; }
+/* level progress: a hairline along the bottom of the pill */
+.hb-xpbar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--fill-2); }
+.hb-xpbar i { position: absolute; inset: 0 auto 0 0; background: var(--yellow); transition: width .3s; }
+#hudstats { flex: none; display: flex; align-items: center; height: 46px; padding: 0 4px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.hs { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 100%; padding: 0 12px; border: 0; background: none; color: var(--ink);
+  font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: -.02em; white-space: nowrap; }
+.hs + .hs::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 1px; background: var(--line); }
+button.hs { cursor: pointer; border-radius: 999px; }
+button.hs:hover { background: var(--fill); }
+.hs.speed { color: var(--ink-soft); font-size: 14px; }
 .pbar { position: relative; height: 6px; border-radius: 99px; background: var(--fill-2); overflow: hidden; }
 .pbar > i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--ink); transition: width .3s; }
 .pbar.gold > i { background: var(--gold); }
@@ -100,31 +124,22 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .pbar.orange > i { background: #f07a2a; }
 .pbar.red > i { background: var(--red); }
 .stars { display: inline-flex; gap: 0; align-items: center; cursor: pointer; }
-.rating { cursor: pointer; }
-.rating .star-one { display: none; }
-.clock { font-size: 15px; display: flex; flex-direction: column; line-height: 1.08; }
-.clock small { white-space: nowrap; font-family: var(--font); font-size: 10px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-#gift { cursor: pointer; padding: 0 11px; animation: wiggle 1.6s ease-in-out infinite; }
 @keyframes wiggle { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(-7deg) scale(1.06); } 20% { transform: rotate(7deg) scale(1.06); } 30% { transform: rotate(0); } }
-.rating-tip { position: absolute; top: calc(70px + var(--sat)); left: 50%; translate: -50% 0;   /* not transform: the pop-in animation owns that */ width: 290px; font-size: 13px; display: none; z-index: 5; }
+.rating-tip { position: absolute; top: calc(70px + var(--sat)); left: 50%; translate: -50% 0; width: 290px; font-size: 13px; display: none; z-index: 5; }
 .rating-tip.show { display: block; animation: popin .25s ease-out; }
 .rgrid { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 10px 10px; align-items: center; margin: 10px 0 8px; font-weight: 600; }
 .rgrid .rpct { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* brand chip: café badge + name + level */
-.brand { padding: 0 18px 0 5px; gap: 10px; }
-.brand .badge-c { position: relative; width: 36px; height: 36px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--ink); }
-.brand .badge-c .ico { width: 24px; height: 24px; }
-.brand .badge-c b { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); font: 700 9.5px var(--font-display); color: var(--ink); background: #fff; border-radius: 99px; padding: 1px 6px; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
-.brand .bname { font-family: var(--font-display); font-weight: 700; font-size: 15px; line-height: 1; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.brand .lvl-wrap { min-width: 150px; }
-.lvl-top .bname { min-width: 0; }
-.lvl-top .muted { flex: none; white-space: nowrap; }
+/* numbers and Latin headings run narrow and heavy (Chinese falls back to the system face) */
+.hs, .hb-lv, .stat b, .big-title, #cutin .ci-text b, .scard-title b, .row h3, .tile b, .pill { font-stretch: var(--narrow); }
+.hs { font-weight: 750; }
+.big-title { font-weight: 850; letter-spacing: -.03em; }
+.stat b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
 
 /* ---------- floating round buttons ----------
    One size and spacing for all of them: the left column (daily goal, friends) and the right column
    (camera) start at the same height; the skills button sits on the tab bar's centre line. */
-#ui { --hb: 46px; --hg: 10px; --ht: calc(76px + var(--sat)); --hl: calc(14px + var(--sal)); --hr: calc(14px + var(--sar)); --hbot: calc(23px + var(--sab)); }
+#ui { --hb: 46px; --hg: 10px; --ht: calc(72px + var(--sat)); --hl: calc(14px + var(--sal)); --hr: calc(14px + var(--sar)); --hbot: calc(23px + var(--sab)); }
 #questbtn, #friendsbtn, #abtoggle { position: absolute; width: var(--hb); height: var(--hb); min-width: var(--hb); padding: 0; justify-content: center; border-radius: 50%; cursor: pointer; }
 
 /* daily goal: a checklist button with a progress ring; the card pops out beside it */
@@ -159,12 +174,6 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 #friendsbtn.active .glyph { color: #fff; }
 #friendsbtn .badge { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 5px; border-radius: 10px;
   background: var(--red); color: #fff; font: 700 10.5px var(--font); box-shadow: 0 0 0 2px #fff; }
-/* ---------- camera controls: the right column ---------- */
-#camctl { position: absolute; top: var(--ht); right: var(--hr); display: flex; flex-direction: column; gap: var(--hg); }
-#camctl .btn { width: var(--hb); min-width: var(--hb); height: var(--hb); padding: 0; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-sm); }
-#camctl .btn:hover { background: var(--fill); }
-/* the side panel opens over this corner on wide screens: the camera buttons step aside */
-#ui.has-panel #camctl { display: none; }
 
 /* ---------- staff skills: a button that folds the dock out above it ---------- */
 #abtoggle { left: var(--hl); bottom: var(--hbot); }
@@ -220,22 +229,31 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 #cutin .ci-text b { max-width: min(56vw, 360px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 24px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); }
 #cutin .ci-text span { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-top: 4px; }
 
-/* ---------- toolbar: black capsule tab bar ---------- */
-#toolbar { position: absolute; bottom: calc(14px + var(--sab)); left: 50%; transform: translateX(-50%); display: flex; gap: 2px; padding: 6px; border-radius: 999px;
-  background: #111; box-shadow: 0 12px 30px rgba(0,0,0,.28); }
-.tool { position: relative; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border-radius: 50%; color: rgba(255,255,255,.6); background: transparent; }
-.tool:hover { background: rgba(255,255,255,.08); color: #fff; }
+/* ---------- toolbar: a white bar of bold icons, no labels; the open one gets a yellow dot ---------- */
+#toolbar { position: absolute; bottom: calc(14px + var(--sab)); left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 6px 10px; border-radius: 26px;
+  background: var(--surface); box-shadow: var(--shadow); }
+.tool { position: relative; display: grid; place-items: center; width: 54px; height: 52px; padding: 0; border-radius: 18px; color: var(--ink); background: transparent; }
+@media (hover: hover) { .tool:hover { background: var(--fill); } }   /* touch screens keep :hover after a tap */
 .tool .glyph { color: currentColor; }
-.tool.active { color: #111; background: #fff; }
-.tool .badge { position: absolute; top: 4px; right: 4px; min-width: 17px; height: 17px; display: grid; place-items: center; background: var(--red); color: #fff; border-radius: 10px; font-size: 10.5px; font-weight: 700; padding: 0 5px; box-shadow: 0 0 0 2px #111; }
+.tool::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--yellow); transform: scale(0); transition: transform .2s cubic-bezier(.3,1.6,.5,1); }
+.tool.active { background: transparent; }
+.tool.active::after { transform: scale(1); }
+.tool .badge { position: absolute; top: 6px; right: 8px; min-width: 16px; height: 16px; display: grid; place-items: center; background: var(--red); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 0 4px; box-shadow: 0 0 0 2px var(--surface); }
 
 /* ---------- side panel (desktop) / bottom sheet (phones) ---------- */
 #panel { position: absolute; top: calc(76px + var(--sat)); right: calc(14px + var(--sar)); bottom: calc(96px + var(--sab)); width: min(430px, calc(100vw - var(--sal) - var(--sar) - 28px)); display: flex; flex-direction: column; padding: 18px 18px 12px;
   transform: translateX(calc(100% + 30px)); opacity: 0; pointer-events: none; transition: transform .38s cubic-bezier(.2,.9,.3,1), opacity .2s; }
 #panel.open { transform: none; opacity: 1; pointer-events: auto; }
-.panel-head { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
-.panel-head h2 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 750; font-size: 24px; letter-spacing: -.03em; flex: 1; color: var(--ink); }
-.panel-head .ico { width: 30px; height: 30px; }
+/* a grey sheet of white cards; the title alone heads it (no icon) */
+#panel { --cell: var(--surface); --cell-hover: #fafaf8; background: var(--sheet); }
+#panel .tab:not(.on) { background: var(--surface); }
+#panel .note { background: var(--surface); }
+#panel .row, #panel .scard, #panel .tile, #panel .toggle { box-shadow: 0 1px 2px rgba(23, 23, 26, .04); }
+.panel-head { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+.panel-head .ph-ico { display: none; }
+.panel-head h2 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 28px; letter-spacing: -.04em; line-height: 1.1; flex: 1; color: var(--ink); }
+.panel-head .xbtn { width: 40px; min-width: 40px; height: 40px; min-height: 40px; border-radius: 50%; background: var(--surface); }
+.panel-head .xbtn:hover { background: var(--fill-2); }
 .panel-body { overflow-y: auto; overflow-x: hidden; flex: 1; padding: 2px 6px 4px 2px; margin: 0 -8px 0 -2px; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.18) transparent; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 #scrim { position: absolute; inset: 0; display: none; background: rgba(0,0,0,.18); }
 
@@ -303,7 +321,11 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .stat-strip .pill { white-space: nowrap; padding: 4px 11px 4px 6px; font-size: 13px; }
 .stat-strip .btn.xbtn { margin-left: auto; width: 36px; height: 36px; min-height: 36px; border-radius: 50%; }
 .note { margin: 10px 0 0; padding: 10px 12px; border-radius: 14px; background: var(--fill); font-size: 13.5px; font-weight: 500; line-height: 1.55; color: var(--ink-soft); }
-.scard { margin-bottom: 8px; border-radius: 20px; background: var(--cell); }
+.scard { position: relative; margin-bottom: 8px; border-radius: 20px; background: var(--cell); }
+/* staff cards read as tickets: a notch either side, level with the portrait */
+#panel .scard::before, #panel .scard::after { content: ''; position: absolute; top: 33px; width: 14px; height: 14px; border-radius: 50%; background: var(--sheet); }
+#panel .scard::before { left: -7px; }
+#panel .scard::after { right: -7px; }
 .scard-head { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px; border: 0; border-radius: 20px; background: none; text-align: left; font: inherit; color: inherit; }
 button.scard-head { cursor: pointer; }
 .scard-head .portrait { width: 56px; height: 56px; }
@@ -315,6 +337,9 @@ button.scard-head { cursor: pointer; }
 .scard-status { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 13px; color: var(--ink-soft); }
 .scard-status .task { flex: 0 1 auto; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scard-status .pbar { flex: 1; min-width: 40px; }
+.scard-status .pbar { height: 4px; }
+/* a folded staff card shows who, what they are doing and their energy; the skills wait inside */
+#panel .scard:not(.open) .sk-dots { display: none; }
 .scard-chev { flex: none; align-self: center; display: grid; color: var(--ink-faint); transition: transform .2s; }
 .scard.open .scard-chev { transform: rotate(90deg); }
 .scard-body { padding: 0 12px 12px; }
@@ -369,6 +394,42 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .stock.low { color: #c46a12; font-weight: 650; }
 .stock.out { color: #c4262c; font-weight: 650; }
 
+/* ---------- one grid inside panels ----------
+   Card content starts 12px in (.row, .scard-head, .toggle, .orow all use it). Section titles sit on the
+   card edge; loose notes line up with the text inside the cards above them. A card that has a header
+   (icon + title) and a full-width body splits them with a hairline, so the two left edges read as two parts. */
+.section-title { margin: 22px 2px 10px; }
+.panel-body > .muted, .panel-body > .note + .muted { margin: 8px 0 10px; padding: 0 12px; font-size: 12.5px; }
+.toggle { padding: 8px 8px 8px 12px; }
+#panel .orow { margin: 6px 0; padding: 10px 12px; border-radius: 18px; background: var(--cell); grid-template-columns: 72px minmax(0, 1fr); }
+#panel input[type=text] { background: var(--surface); padding: 12px; border-radius: 18px; }
+.row.split.dish .row-full { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.scard-body { margin: 0 12px; padding: 10px 0 12px; border-top: 1px solid var(--line); }
+.scard-body .sk { padding-left: 0; padding-right: 0; }
+.scard-body .sklist { margin-bottom: 4px; }
+/* plain buttons default to the grey fill, which is the sheet's own colour: inside a panel they are white with a hairline */
+#panel .btn:not(.primary):not(.danger):not(.ghost):not(.tab) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+@media (hover: hover) { #panel .btn:not(.primary):not(.danger):not(.ghost):not(.tab):hover { background: #f7f7f5; } }
+/* a price inside a button is just its icon and number, not a pill within a pill */
+.btn .pill { padding: 0; background: none; box-shadow: none; font-size: inherit; }
+.btn.primary .pill { background: none; }
+/* the strip over the staff list: one line, pills and buttons one height (the headcount pill drops its icon to fit a phone) */
+.stat-strip { gap: 4px; }
+.stat-strip .pill, .stat-strip .btn.small { min-height: 36px; height: 36px; }
+.stat-strip .pill { padding: 0 10px; }
+.stat-strip .pill:first-child .ico { display: none; }
+.stat-strip .btn.small:not(.xbtn) { padding: 0 10px; }
+.stat-strip .btn.xbtn { width: 36px; min-width: 36px; margin-left: 0; }
+/* the two numbers are labels, not controls: no pill; the action next to them is an outlined button */
+.stat-strip .pill { padding: 0 6px 0 2px; background: none; box-shadow: none; }
+#panel .stat-strip .feedall.btn.small:not(.primary):not(.ghost) { margin-left: auto; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
+@media (max-width: 370px) { .stat-strip .feedall .ico { display: none; } }
+/* market tiles: buy one / buy five side by side */
+.tile .btnrow { grid-template-columns: 1fr 1fr; gap: 6px; }
+.tile .btnrow .btn { min-width: 0; padding: 0 6px; gap: 3px; font-size: 13px; }
+.tile .btnrow .btn .ico { width: 15px; height: 15px; }
+.club-desc { margin: 8px 0; }
+
 /* ---------- build tray ---------- */
 #buildbar { position: absolute; left: 50%; bottom: calc(14px + var(--sab)); transform: translate(-50%, 140%); transition: transform .35s cubic-bezier(.2,.9,.3,1); width: min(980px, calc(100vw - var(--sal) - var(--sar) - 20px)); }
 #buildbar.open { transform: translate(-50%, 0); }
@@ -379,6 +440,8 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .bb-top .tab { flex: none; }
 .bb-top .grow { flex: 1; }
 .bb-top .done { flex: none; }
+/* Done looks the same folded or open: outlined, so it never competes with the black active tab */
+.bb-top .btn.primary.done { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
 .bb-top .fold { flex: none; width: 34px; min-width: 34px; padding: 0; }
 .bb-top .fold .glyph { transform: rotate(-90deg); }   /* the back arrow, pointing down: fold the tray */
 .bb-fold { display: flex; align-items: center; gap: 10px; }
@@ -423,6 +486,13 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .bb-mini .muted { font-size: 12.5px; margin-top: 2px; }
 .bb-mini .muted.bad { color: #c4262c; font-weight: 600; }
 .bb-mini .btn { flex: none; }
+/* folded tray on phones: Buy and Done are the same size at either end, the tip centred between them */
+.bb-fold { padding: 8px; }
+.bb-fold > .btn { min-width: 96px; min-height: 44px; height: 44px; padding: 0 16px; font-size: 15px; }
+.bb-fold > .btn.done { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.bb-fold .grow { text-align: center; white-space: normal; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* build mode hides the daily goal and the skills; Friends goes too, so the left edge is clear */
+.building #friendsbtn { display: none; }
 
 /* rotate · place · cancel (or rotate · move · sell) floating under the item in the scene */
 /* build mode: a ring of buttons centred on the item (positions set in ui.js renderGhostCtl) */
@@ -436,6 +506,8 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   box-shadow: 0 6px 18px rgba(0,0,0,.2), 0 1px 3px rgba(0,0,0,.1); transition: transform .15s; }
 .gc-btn:active { transform: scale(.9); }
 #ghostctl > .gc-btn:active { transform: translate(-50%, -50%) scale(.9); }
+#ghostctl > .gc-btn.out-r { transform: translate(-24px, -50%); }
+#ghostctl > .gc-btn.out-r:active { transform: translate(-24px, -50%) scale(.9); }
 .gc-btn .glyph { color: currentColor; }
 .gc-btn.ok { width: 58px; height: 58px; background: #111; color: #fff; }
 .gc-btn.ok.off { background: #9a9aa0; }
@@ -487,6 +559,9 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 #debug label { display: flex; gap: 6px; align-items: center; font-weight: 600; margin: 4px 0; }
 
 /* ---------- loading ---------- */
+/* the start screen keeps the system face it has always had (the in-game UI is Archivo, via manifest.fonts) */
+#loading { --font: 'Inter', -apple-system, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --font-display: var(--font); font-family: var(--font); }
 #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; transition: opacity .5s; background: #f4f4f5; }
 #loading.hide { opacity: 0; pointer-events: none; }
 .load-card { text-align: center; padding: 34px 44px 28px; }
@@ -538,12 +613,10 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 
 /* ---------- tablets & small laptops ---------- */
 @media (max-width: 760px) {
-  #hud { gap: 6px; transform: translateX(-50%) scale(.9); transform-origin: top center; }
-  .tool { width: 48px; height: 48px; }
-  #toolbar { padding: 5px; }
+  .tool { width: 50px; height: 48px; }
+  #toolbar { padding: 5px 8px; }
   /* phones: the same columns, a little tighter; the skills button sits just above the tab bar */
-  #ui { --hb: 44px; --ht: calc(58px + var(--sat)); --hl: calc(10px + var(--sal)); --hr: calc(10px + var(--sar)); --hbot: calc(88px + var(--sab)); }
-  #ui.has-panel #camctl { display: flex; }
+  #ui { --hb: 44px; --ht: calc(62px + var(--sat)); --hl: calc(10px + var(--sal)); --hr: calc(10px + var(--sar)); --hbot: calc(88px + var(--sab)); }
   .ability { width: 50px; min-width: 50px; height: 50px; }
   .ability .ab-face { inset: 4px; width: 42px !important; height: 42px !important; }
   .ability.kit { width: 44px; min-width: 44px; height: 44px; }
@@ -558,7 +631,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   .grabber { display: block; width: 40px; height: 5px; border-radius: 9px; background: #d4d4d8; margin: 4px auto 10px; flex: none; }
   .panel-head h2 { font-size: 22px; }
   #ui.has-sheet #scrim { display: block; }
-  #ui.has-sheet #abilities, #ui.has-sheet #abtoggle, #ui.has-sheet #quest, #ui.has-sheet #questbtn, #ui.has-sheet #camctl, #ui.has-sheet #friendsbtn { display: none; }
+  #ui.has-sheet #abilities, #ui.has-sheet #abtoggle, #ui.has-sheet #quest, #ui.has-sheet #questbtn, #ui.has-sheet #friendsbtn { display: none; }
   /* bigger touch targets inside sheets */
   .btn.small { min-height: 44px; }
   .tab { min-height: 44px; }
@@ -568,31 +641,22 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 }
 /* ---------- phones ---------- */
 @media (max-width: 600px) {
-  /* One row: coins · café · rating · clock · gift. The café name is what gives way when it is tight. */
-  #hud { left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); top: calc(8px + var(--sat)); width: auto; max-width: none; transform: none; display: flex; flex-wrap: nowrap; justify-content: center; align-items: center; gap: 4px; }
-  #hud > * { flex: none; }
-  #hud .chip { min-width: 0; font-size: 14px; height: 40px; padding: 0 9px 0 6px; gap: 4px; }
-  #hud .chip > .ico { width: 20px; height: 20px; }
-  #hud .num { min-width: 0; }
-  #hud #gift { width: 40px; min-width: 40px; padding: 0; justify-content: center; }
-  #hud .brand { flex: 0 1 auto; min-width: 0; padding: 0 10px 0 4px; gap: 7px; }
-  .brand .badge-c { width: 30px; height: 30px; }
-  .brand .badge-c .ico { width: 20px; height: 20px; }
-  .brand .badge-c b { font-size: 9px; padding: 0 5px; bottom: -5px; }
-  #hud .clock small, #hud .lvl-top span:last-child { display: none; }
-  .brand .bname { max-width: 96px; font-size: 13px; }
-  .lvl-wrap, .brand .lvl-wrap { min-width: 44px; flex: 1 1 auto; gap: 4px; }
-  /* rating: one star and the number */
-  #hud .stars { display: none; }
-  #hud .rating .star-one { display: inline-block; }
+  /* the café card gives way (its name ellipsizes) before the numbers do */
+  #hud { left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); top: calc(8px + var(--sat)); gap: 6px; }
+  #hudbrand { flex: 0 1 auto; height: 42px; padding: 0 12px; gap: 6px; }
+  #hudbrand .bname { font-size: 14.5px; }
+  #hudstats { height: 42px; padding: 0 2px; }
+  .hs { padding: 0 9px; gap: 4px; font-size: 14.5px; }
+  .hs .ico { width: 17px; height: 17px; }
+  .hs + .hs::before { top: 12px; bottom: 12px; }
   #quest { width: min(220px, calc(100vw - var(--sal) - var(--sar) - 16px - var(--hb) - var(--hg))); padding: 6px 12px 6px 6px; border-radius: 20px; }
   #quest .q-ico { width: 34px; height: 34px; border-radius: 12px; }
   #quest .q-ico .ico { width: 24px; height: 24px; }
   #quest .q-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
-  #toasts, #buildbanner { top: calc(58px + var(--sat)); }
-  #celebrate { top: calc(62px + var(--sat)); }
+  #toasts, #buildbanner { top: calc(60px + var(--sat)); }
+  #celebrate { top: calc(60px + var(--sat)); }
   #buildbanner { font-size: 12px; white-space: nowrap; }
-  .rating-tip { top: calc(56px + var(--sat)); width: calc(100vw - var(--sal) - var(--sar) - 16px); }
+  .rating-tip { top: calc(60px + var(--sat)); width: calc(100vw - var(--sal) - var(--sar) - 16px); }
   /* The six primary actions fit without wrapping even on a 320px phone. */
   #toolbar { left: 50%; right: auto; max-width: calc(100vw - var(--sal) - var(--sar) - 12px); transform: translateX(-50%); justify-content: space-between; gap: 4px; overflow: hidden; }
   /* build tray hugs the bottom edge on phones */
@@ -601,26 +665,17 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   .bitem { width: 84px; }
   .bitem canvas { width: 56px; height: 44px; }
 }
-/* below ~420px the café name does not fit in the single HUD row: keep the badge and the level bar */
-@media (max-width: 420px) {
-  #hud .brand .bname { display: none; }
-  #hud .brand { flex: none; }
-  #hud .brand .lvl-wrap { min-width: 40px; width: 40px; flex: none; }
-}
 /* narrow phones (≤360px): smaller tabs keep a gutter on both sides of the tab bar */
 @media (max-width: 360px) {
   .tool { width: 44px; height: 44px; }
   #toolbar { gap: 2px; }
-  #hud { gap: 3px; }
-  #hud .chip { padding-right: 7px; }
-  /* the café chip shrinks to its level badge */
-  #hud .brand { width: 40px; padding: 0; justify-content: center; }
-  #hud .brand .lvl-wrap { display: none; }
+  #hudbrand .bname { display: none; }   /* narrowest phones: the level pill alone */
+  .hs { padding: 0 7px; }
 }
 /* Short landscape phones need one compact HUD row and a shallow sheet. */
 @media (max-height: 560px) and (orientation: landscape) and (max-width: 960px) {
-  #hud { left: 50%; right: auto; top: calc(4px + var(--sat)); width: max-content; max-width: none; display: flex; flex-wrap: nowrap; gap: 5px; transform: translateX(-50%) scale(.78); transform-origin: top center; }
-  #hud .brand .lvl-wrap { min-width: 84px; }
+  #hud { top: calc(6px + var(--sat)); }
+  #hudbrand, #hudstats { height: 38px; }
   #ui { --hbot: calc(66px + var(--sab)); }
   /* too short for the skills to fold out upwards: they open sideways from the button */
   #abilities { bottom: var(--hbot); left: calc(var(--hl) + var(--hb) + var(--hg)); flex-direction: row; }
@@ -631,7 +686,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   #toasts, #buildbanner, #celebrate { top: calc(58px + var(--sat)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #gift, #quest.done .q-ico, .ability.ready { animation: none; }
+  #quest.done .q-ico, .ability.ready { animation: none; }
 }
 
 /* ---------------- account (settings + sign-in cards) ---------------- */
@@ -675,10 +730,6 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .help-act.done .help-n .glyph { color: #fff; }
 /* toasts move to the bottom while visiting (the tab bar is hidden there), so they never sit on the banner */
 #ui.visiting #toasts { top: auto; bottom: calc(84px + var(--sab)); flex-direction: column-reverse; }
-/* phones and tablets: the tab bar is hidden while visiting, so the camera buttons move down there, clear of the banner whatever its height */
-@media (max-width: 760px) {
-  #ui.visiting #camctl { top: auto; bottom: calc(22px + var(--sab)); flex-direction: row; }
-}
 @media (max-width: 600px) {
   #visitbar { left: 8px; right: 8px; width: auto; transform: none; top: calc(8px + var(--sat)); }
   #visitbar .vb-top { flex-wrap: wrap; row-gap: 8px; }
@@ -818,8 +869,3 @@ button.pick-row:hover { background: var(--fill-2); }
 @keyframes foothit { 0% { transform: scale(.93); background: var(--fill-2); } 100% { transform: scale(1); } }
 .tryout-title { position: relative; }
 .tryout-x { position: absolute; right: 0; top: 50%; translate: 0 -50%; width: 32px; height: 32px; min-width: 32px; padding: 0; justify-content: center; border-radius: 50%; background: var(--fill); }
-
-/* Touch screens turn, zoom and move the view with two fingers, so the rotate / recenter buttons only get in the way */
-@media (hover: none) and (pointer: coarse) {
-  #camctl { display: none !important; }
-}
