@@ -4,7 +4,7 @@
 // upload is checked against that ceiling (see ONLINE.md, "上限檢查"):
 //
 //   - wealth: coins plus everything coins were turned into (furniture, floors, walls, room size, staff,
-//     ingredients, snacks, dish upgrades, seeds). Buying only moves coins into things, selling loses half,
+//     ingredients, snacks, accessories, dish upgrades, seeds). Buying only moves coins into things, selling loses half,
 //     wages and rent burn coins; so wealth can only grow by trading, the daily goals and gift, the garden
 //     and the odd Coin Shower. A crop in the garden counts as far as it has grown. Growth beyond the ceiling is taken back out of the coins.
 //   - points (and so the level), the rating, the round counter and staff skill XP, each against its own ceiling.
@@ -20,7 +20,7 @@
 import {
   DAY, dishById, furnitureById, floorById, wallById, wallDecorById, EXPANSIONS, ROLES, ingById, ingPrice, snackById,
   SERVINGS_PER_UNIT, levelUpCost, dishPrice, dishPoints, EXTRA_CAT, SEEDS, gardenPlots, staffSlots, KITS, MAX_LEVEL,
-  DAILY, dailyCoins, dailyPoints, studySpent,
+  DAILY, dailyCoins, dailyPoints, studySpent, wearById,
 } from './data.js';
 import { MODEL, capacity, levelFor, arrivalsPerHour, SIM_SEC_PER_HOUR } from './offline.js';
 
@@ -49,6 +49,7 @@ export function wealth(d) {
   for (const [id, n] of Object.entries(s.inv || {})) if (ingById[id]) v += ingPrice(ingById[id]) * n;
   for (const [id, n] of Object.entries(s.opened || {})) if (ingById[id]) v += ingPrice(ingById[id]) * n / SERVINGS_PER_UNIT;
   for (const [id, n] of Object.entries(s.snacks || {})) if (snackById[id]) v += snackById[id].price * n;
+  for (const [id, n] of Object.entries(s.wardrobe || {})) if (wearById(id)) v += wearById(id).price * n;
   for (const [id, x] of Object.entries(s.dishes || {})) {
     const dish = dishById[id];
     if (!dish || !x) continue;

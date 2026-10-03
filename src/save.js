@@ -7,7 +7,7 @@ import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
 import { saveSlots, loadSlots } from './pastry.js';
-import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, UNIQUE_MODELS, SEEDS, questById, DAILY, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE } from './data.js';
+import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, UNIQUE_MODELS, SEEDS, questById, DAILY, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE, WEAR } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
@@ -139,6 +139,8 @@ export function apply(game, data) {
   st.unpaid = !!s.unpaid;
   st.snacks = {};
   for (const sn of SNACKS) { const n = Math.floor(num(s.snacks && s.snacks[sn.id], 0, 0, 1e6)); if (n) st.snacks[sn.id] = n; }
+  st.wardrobe = {};
+  for (const w of WEAR) { const n = Math.floor(num(s.wardrobe && s.wardrobe[w.id], 0, 0, 99)); if (n) st.wardrobe[w.id] = n; }
   // the garden made way for the Training tab: whatever was growing goes to the pantry, as far as it had grown
   for (const p of Array.isArray(s.garden) ? s.garden.slice(0, 6) : []) {
     const seed = p && SEEDS.find((x) => x.crop === p.crop);
@@ -209,6 +211,10 @@ export function apply(game, data) {
     maxId = Math.max(maxId, a.id);
     if (a.energy <= 0) a.energy = Math.min(ENERGY.wakeAt, 5);
   }
+  // whatever the team is wearing is owned (saves from before the shop: the barista cap they had on, mostly)
+  const wearing = {};
+  for (const a of game.staff) for (const w of Object.values(a.look.wear || {})) wearing[w.id] = (wearing[w.id] || 0) + 1;
+  for (const [id, n] of Object.entries(wearing)) st.wardrobe[id] = Math.max(st.wardrobe[id] || 0, n);
   bumpUid(maxId + 1000);
   game.troubles.newDay();
   game.day.nextSpawn = 4;

@@ -142,14 +142,22 @@ export const ZH_TW = {
   'Current job': '目前職業', 'Retrain': '轉職', 'Needs a Juice Bar to work': '需要果汁吧台才能工作',
   "Staff gain experience by finishing jobs in their current role and keep it in every role they've had. Skill makes them walk and work faster (up to +{n}% as a Master). Retraining costs half the hiring fee — going back to a job they're already {title} or better at is free.":
     '員工完成目前職業的工作會累積經驗，而且每個做過的職業經驗都會保留。技能越高，走路和做事越快（大師最多快 {n}%）。轉職費用是雇用費的一半；回到已經達到{title}以上的職業則免費。',
-  "{name}'s wardrobe": '{name} 的衣櫃', 'Character': '角色', 'Wear': '配件', 'Chef hat': '廚師帽',
+  'Accessories': '配件', 'Head': '頭', 'Face': '臉', 'Neck': '頸', 'On back': '背', 'Nothing': '不戴',
+  'Drag to turn': '拖曳旋轉', 'On {name}': '{name} 戴著', '{name} is wearing this. It moves over when you tap Done.': '{name} 正戴著這件，按「完成」後會換到這位身上。',
+  'Up': '上', 'Down': '下', 'Toward the face': '往前', 'Toward the back': '往後',
+  'Tilt': '傾斜', 'Lean': '前傾', 'Size': '大小', 'Back to the automatic fit': '回到自動位置',
+  'Accessories are bought in the Market. Each one dresses one character at a time.': '配件在市集購買，每件一次只能給一位角色戴。',
+  'Put accessories on in Staff → Outfit. Buy a second copy to dress two characters in the same thing.': '到「員工 → 服裝」幫角色戴上。想讓兩位戴同一款，就再買一件。',
+  '{item} is in the wardrobe: dress someone up from Staff → Outfit.': '{item} 已放進衣櫃，到「員工 → 服裝」幫角色戴上吧。',
+  'Nothing for this spot yet.': '這個部位還沒有配件。', 'Shop in the Market': '去市集逛逛',
+  'Barista Cap': '咖啡師帽', 'Beret': '貝雷帽', 'Cowboy Hat': '牛仔帽', 'Top Hat': '紳士高帽', 'Wizard Hat': '巫師帽', 'Winter Beanie': '毛線帽',
+  'Golden Crown': '黃金皇冠', 'Laurel Wreath': '月桂冠', 'Dark Glasses': '墨鏡', 'Aviators': '飛行員眼鏡', 'Bow Tie': '領結', 'Backpack': '背包',
+  "{name}'s wardrobe": '{name} 的衣櫃', 'Character': '角色', 'Chef hat': '廚師帽',
   'Staff are our own characters, and take the name of the one they wear.': '員工都是原創角色，名字會跟著他們穿的角色走。',
   'Next to join: {name}': '下一位加入：{name}',
   'Every character is already on the team': '所有角色都已經在團隊裡了',
   'Hire a {role}': '雇用{role}', 'Hire {name}': '雇用 {name}',
   '{name} is already on the team': '{name} 已經在團隊裡了',
-  'Knight': '騎士', 'Mage': '法師', 'Barbarian': '野蠻人', 'Rogue': '盜賊', 'Hooded Rogue': '兜帽盜賊',
-  'Helmet': '頭盔', 'Cape': '披風', 'Hat': '帽子', 'Hood': '兜帽',
 
   // ---------------- skills & abilities
   'Novice': '新手', 'Apprentice': '見習', 'Skilled': '熟練', 'Expert': '專家', 'Master': '大師',
@@ -206,7 +214,7 @@ export const ZH_TW = {
   'Drag to pan · Wheel or pinch to zoom · Right-drag, two-finger twist or ': '拖曳移動畫面．滾輪或雙指縮放．右鍵拖曳、雙指旋轉或 ',
   ' to turn the camera · Click a character for details': ' 轉動鏡頭．點角色查看詳情',
   ' build · ': ' 建造．', ' rotate · ': ' 旋轉．', ' sell · ': ' 賣掉．', ' cancel/close · ': ' 取消／關閉．', ' debug': ' 除錯',
-  'About': '關於',
+  'About': '關於', 'Credits': '素材來源', 'modified': '經修改',
   'Refillit — a cozy 3D café. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).': 'Refillit：一間溫馨的 3D 咖啡廳。美術素材可以替換：把 glTF 模型或 PNG 放進 assets/（見 ASSETS.md）。',
 
   // ---------------- build

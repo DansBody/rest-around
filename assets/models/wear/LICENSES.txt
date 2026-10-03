@@ -1,0 +1,146 @@
+Wardrobe accessories in this folder: third-party models under CC BY 4.0, modified for Refillit
+(hierarchy flattened, re-centred and rescaled, textures shrunk, PBR maps dropped; the beret's texture had a
+game logo painted out). Credited in-game under Settings -> Credits (CREDITS in src/data.js).
+
+==== hat_beret ====
+Model Information:
+* title:	beret
+* source:	https://sketchfab.com/3d-models/beret-fda9ca498d5a4693962002256eecd970
+* author:	photon (that one larry) (https://sketchfab.com/Professor_E12)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "beret" (https://sketchfab.com/3d-models/beret-fda9ca498d5a4693962002256eecd970) by photon (that one larry) (https://sketchfab.com/Professor_E12) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== hat_cowboy ====
+Model Information:
+* title:	Cowboy Hat (Free)
+* source:	https://sketchfab.com/3d-models/cowboy-hat-free-bd968c68d7b74629a7e062af0842082b
+* author:	wolfgar74 (https://sketchfab.com/wolfgar74)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Cowboy Hat (Free)" (https://sketchfab.com/3d-models/cowboy-hat-free-bd968c68d7b74629a7e062af0842082b) by wolfgar74 (https://sketchfab.com/wolfgar74) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== hat_top ====
+Model Information:
+* title:	Top Hat | FREE Download
+* source:	https://sketchfab.com/3d-models/top-hat-free-download-4fdf3ad3c88d4bb58ea7aabb9bfcffae
+* author:	Robin Butler (https://sketchfab.com/StarTrekGuy)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Top Hat | FREE Download" (https://sketchfab.com/3d-models/top-hat-free-download-4fdf3ad3c88d4bb58ea7aabb9bfcffae) by Robin Butler (https://sketchfab.com/StarTrekGuy) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== hat_wizard ====
+Model Information:
+* title:	Stylized wizard hat
+* source:	https://sketchfab.com/3d-models/stylized-wizard-hat-f59021d602334367987bcd7657cec722
+* author:	Enkarra (https://sketchfab.com/Enkarra)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Stylized wizard hat" (https://sketchfab.com/3d-models/stylized-wizard-hat-f59021d602334367987bcd7657cec722) by Enkarra (https://sketchfab.com/Enkarra) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== hat_winter ====
+Model Information:
+* title:	Winter Hat
+* source:	https://sketchfab.com/3d-models/winter-hat-637a36cb74204c719883af7feb4b7c28
+* author:	StubbornFunkyDonkey (https://sketchfab.com/stubbornfunkydonkey)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Winter Hat" (https://sketchfab.com/3d-models/winter-hat-637a36cb74204c719883af7feb4b7c28) by StubbornFunkyDonkey (https://sketchfab.com/stubbornfunkydonkey) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== crown_gold ====
+Model Information:
+* title:	Crown rich (gold)
+* source:	https://sketchfab.com/3d-models/crown-rich-gold-a01505c752944647956037757a1a93f7
+* author:	Mister-Smash (https://sketchfab.com/Mister-Smash)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Crown rich (gold)" (https://sketchfab.com/3d-models/crown-rich-gold-a01505c752944647956037757a1a93f7) by Mister-Smash (https://sketchfab.com/Mister-Smash) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== wreath_laurel ====
+Model Information:
+* title:	Gold Laurel Wreath - Lowpoly
+* source:	https://sketchfab.com/3d-models/gold-laurel-wreath-lowpoly-3a8ea8bf9f3a425481c5408b6d4273fd
+* author:	S M Xenakis (https://sketchfab.com/xenaa)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Gold Laurel Wreath - Lowpoly" (https://sketchfab.com/3d-models/gold-laurel-wreath-lowpoly-3a8ea8bf9f3a425481c5408b6d4273fd) by S M Xenakis (https://sketchfab.com/xenaa) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== glasses_round ====
+Model Information:
+* title:	Glasses
+* source:	https://sketchfab.com/3d-models/glasses-5c78f100eea749c895d69fe2ed728197
+* author:	T-Art (https://sketchfab.com/person-x)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Glasses" (https://sketchfab.com/3d-models/glasses-5c78f100eea749c895d69fe2ed728197) by T-Art (https://sketchfab.com/person-x) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== glasses_sun ====
+Model Information:
+* title:	Sun Glasses
+* source:	https://sketchfab.com/3d-models/sun-glasses-30a3f18ead9e452f9ab2c32151e7b2f6
+* author:	dez_z (https://sketchfab.com/dez_z)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Sun Glasses" (https://sketchfab.com/3d-models/sun-glasses-30a3f18ead9e452f9ab2c32151e7b2f6) by dez_z (https://sketchfab.com/dez_z) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== bowtie ====
+Model Information:
+* title:	Bow Tie
+* source:	https://sketchfab.com/3d-models/bow-tie-9e1b78768e4447f4befbcc2211bfe1d0
+* author:	Peakz (https://sketchfab.com/Peakz)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Bow Tie" (https://sketchfab.com/3d-models/bow-tie-9e1b78768e4447f4befbcc2211bfe1d0) by Peakz (https://sketchfab.com/Peakz) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+==== backpack ====
+Model Information:
+* title:	A Backpack For An Adventure
+* source:	https://sketchfab.com/3d-models/a-backpack-for-an-adventure-2ad86321197a49feb54b7726743d7fd0
+* author:	Thomas Lean (https://sketchfab.com/thomaslean)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "A Backpack For An Adventure" (https://sketchfab.com/3d-models/a-backpack-for-an-adventure-2ad86321197a49feb54b7726743d7fd0) by Thomas Lean (https://sketchfab.com/thomaslean) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

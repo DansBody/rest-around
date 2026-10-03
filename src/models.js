@@ -301,24 +301,19 @@ class ModelStore {
   async load(manifest, onProgress) {
     const list = manifest.models || [];
     for (const d of list) this.defs.set(d.id, d);
-    this.anims = manifest.characterAnimations || {};
     const files = new Map();
     const fetchGltf = (file) => {
       if (!files.has(file)) files.set(file, this.loader.loadAsync(BASE + file).catch(() => null));
       return files.get(file);
     };
     let done = 0;
-    // shared animation library for all characters (same KayKit rig)
-    const animFile = manifest.characterAnimationFile;
-    const animGltf = animFile ? await fetchGltf(animFile) : null;
-    this.clips = animGltf ? animGltf.animations : [];
     await Promise.all(list.map(async (d) => {
       if (d.category === 'character') {
         const g = d.file ? await fetchGltf(d.file) : null;
         if (g) {
           g.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.frustumCulled = false; } });
-          // characters with their own rig bring their own clips; the rest share the KayKit library
-          this.characters.set(d.id, { scene: g.scene, clips: d.animations ? g.animations : [...this.clips, ...g.animations] });
+          // every character brings its own rig and clips
+          this.characters.set(d.id, { scene: g.scene, clips: g.animations });
         } else this.placeholder.add(d.id);
       } else {
         this.templates.set(d.id, await this.build(d, fetchGltf));
@@ -361,10 +356,10 @@ class ModelStore {
     root.traverse((m) => {
       if (m.isMesh) {
         m.castShadow = d.castShadow !== false; m.receiveShadow = true;
-        // softer, cozier shading than PBR for the flat-coloured KayKit atlas
+        // softer, cozier shading than PBR
         if (m.material && !m.material.isMeshLambertMaterial && !m.material.isMeshBasicMaterial) {
           const o = m.material;
-          m.material = new THREE.MeshLambertMaterial({ map: o.map, color: o.color, transparent: o.transparent, opacity: o.opacity });
+          m.material = new THREE.MeshLambertMaterial({ map: o.map, color: o.color, transparent: o.transparent, opacity: o.opacity, side: o.side });
         }
       }
     });
@@ -439,6 +434,7 @@ class ModelStore {
       if (o.name === (d.hand || 'handslot.r')) bones.hand = o;
       if (o.name === (d.handL || 'handslot.l')) bones.handL = o;
       if (o.name === (d.head || 'head')) bones.head = o;
+      if (o.name === (d.chest || 'chest')) bones.chest = o;
     });
     if (d.scale) root.scale.setScalar(d.scale);
     return { root, mixer, actions, bones };

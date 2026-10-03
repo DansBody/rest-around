@@ -157,10 +157,10 @@ export function menuSlots(lv) {
 
 // ---------------- staff ----------------
 export const ROLES = {
-  waiter: { name: 'Server', hire: 90, model: 'rogue', look: { top: ['jacket', '#9cc3e6'], bottom: ['pants', '#6d6a8a'], hat: null } },
-  chef: { name: 'Barista', hire: 110, model: 'barbarian', look: { top: ['jacket', '#fbfaf5'], bottom: ['pants', '#7c6f67'], hat: ['chef', '#ffffff'] } },
-  cleaner: { name: 'Cleaner', hire: 70, model: 'knight', look: { top: ['hoodie', '#b5e0c8'], bottom: ['pants', '#7fa7c9'], hat: ['cap', '#f5b3a5'] } },
-  bartender: { name: 'Baker', hire: 100, model: 'mage', look: { top: ['jacket', '#d99aa8'], bottom: ['skirt', '#5c4d6b'], hat: ['bow', '#f7d58b'] } },
+  waiter: { name: 'Server', hire: 90 },
+  chef: { name: 'Barista', hire: 110 },
+  cleaner: { name: 'Cleaner', hire: 70 },
+  bartender: { name: 'Baker', hire: 100 },
 };
 // ---------------- running costs ----------------
 // Ingredients are used up as drinks are made: one pack (the unit sold at the market) makes
@@ -195,6 +195,56 @@ export const CHARACTER_MODELS = ['guest_b'];
 // Staff are always one of our own characters (one staff member each, named after the character).
 export const UNIQUE_MODELS = ['mochalatte', 'bbaekko', 'heehee', 'cheetie', 'oritokki', 'tata', 'rj', 'chimmy', 'bboogyuli', 'bamgeut'];
 export const UNIQUE_NAMES = { mochalatte: 'Mocha Latte', bbaekko: 'Bbaekko', heehee: 'Hee Hee', cheetie: 'Cheetie', oritokki: 'Oritokki', tata: 'TATA', rj: 'RJ', chimmy: 'Chimmy', bboogyuli: 'BBOOGYULI', bamgeut: 'BAMGEUT' };
+
+// ---------------- wardrobe ----------------
+// Accessories worn on a character's bones. Each model's origin is its attach point and its width is 1
+// (tools/build_accessory.py); src/wear.js fits it to each character from the shape of their head/body:
+//   fit  width relative to the head (hats, glasses) or the body (bow tie, backpack)
+//   sit  head: how far below the top of the head the base sits (fraction of head height)
+//   at   face: eye height (fraction of head height from the bottom)
+//   sy   height factor, for a model made for a taller head than our round ones (a beanie)
+//   rot  default tilt in degrees (x, y, z)
+// Bought in the Market (price in coins); each copy dresses one character at a time (state.wardrobe: id -> copies).
+export const WEAR_SLOTS = ['head', 'face', 'neck', 'back'];
+export const WEAR = [
+  { id: 'cap_barista', name: 'Barista Cap', price: 120, slot: 'head', model: 'm_baristahat', fit: 0.95, sit: 0.1, guest: false },
+  { id: 'hat_beret', name: 'Beret', price: 150, slot: 'head', model: 'w_hat_beret', fit: 0.85, sit: 0.12, rot: [0, 0, -10] },
+  { id: 'hat_cowboy', name: 'Cowboy Hat', price: 240, slot: 'head', model: 'w_hat_cowboy', fit: 1.3, sit: 0.15 },
+  { id: 'hat_top', name: 'Top Hat', price: 260, slot: 'head', model: 'w_hat_top', fit: 0.95, sit: 0.1 },
+  { id: 'hat_wizard', name: 'Wizard Hat', price: 280, slot: 'head', model: 'w_hat_wizard', fit: 1.05, sit: 0.26 },
+  { id: 'hat_winter', name: 'Winter Beanie', price: 160, slot: 'head', model: 'w_hat_winter', fit: 0.92, sit: 0.4, sy: 0.6 },
+  { id: 'crown_gold', name: 'Golden Crown', price: 400, slot: 'head', model: 'w_crown_gold', fit: 0.55, sit: 0.04 },
+  { id: 'wreath_laurel', name: 'Laurel Wreath', price: 220, slot: 'head', model: 'w_wreath_laurel', fit: 0.82, sit: 0.24 },
+  { id: 'glasses_round', name: 'Dark Glasses', price: 140, slot: 'face', model: 'w_glasses_round', fit: 0.62, at: 0.48 },
+  { id: 'glasses_sun', name: 'Aviators', price: 180, slot: 'face', model: 'w_glasses_sun', fit: 0.62, at: 0.48 },
+  { id: 'bowtie', name: 'Bow Tie', price: 120, slot: 'neck', model: 'w_bowtie', fit: 0.4 },
+  { id: 'backpack', name: 'Backpack', price: 300, slot: 'back', model: 'w_backpack', fit: 0.85 },
+];
+export const wearById = (id) => WEAR.find((w) => w.id === id);
+// what a player may change when placing an accessory: an offset (world units), a tilt (degrees), a size factor
+export const WEAR_LIMITS = { p: 0.6, r: 45, s: [0.5, 1.6] };
+// guests now and then turn up in something (items marked guest: false never): the chance of a hat, of glasses, of a bow tie
+export const GUEST_WEAR = { head: 0.22, face: 0.12, neck: 0.08 };
+
+// Third-party art shown in the game (Settings → Credits). CC BY models must stay credited here.
+export const CREDITS = [
+  { what: 'beret', by: 'photon (that one larry)', url: 'https://sketchfab.com/3d-models/beret-fda9ca498d5a4693962002256eecd970', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Cowboy Hat (Free)', by: 'wolfgar74', url: 'https://sketchfab.com/3d-models/cowboy-hat-free-bd968c68d7b74629a7e062af0842082b', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Top Hat | FREE Download', by: 'Robin Butler', url: 'https://sketchfab.com/3d-models/top-hat-free-download-4fdf3ad3c88d4bb58ea7aabb9bfcffae', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Stylized wizard hat', by: 'Enkarra', url: 'https://sketchfab.com/3d-models/stylized-wizard-hat-f59021d602334367987bcd7657cec722', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Winter Hat', by: 'StubbornFunkyDonkey', url: 'https://sketchfab.com/3d-models/winter-hat-637a36cb74204c719883af7feb4b7c28', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Crown rich (gold)', by: 'Mister-Smash', url: 'https://sketchfab.com/3d-models/crown-rich-gold-a01505c752944647956037757a1a93f7', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Gold Laurel Wreath - Lowpoly', by: 'S M Xenakis', url: 'https://sketchfab.com/3d-models/gold-laurel-wreath-lowpoly-3a8ea8bf9f3a425481c5408b6d4273fd', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Glasses', by: 'T-Art', url: 'https://sketchfab.com/3d-models/glasses-5c78f100eea749c895d69fe2ed728197', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Sun Glasses', by: 'dez_z', url: 'https://sketchfab.com/3d-models/sun-glasses-30a3f18ead9e452f9ab2c32151e7b2f6', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Bow Tie', by: 'Peakz', url: 'https://sketchfab.com/3d-models/bow-tie-9e1b78768e4447f4befbcc2211bfe1d0', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'A Backpack For An Adventure', by: 'Thomas Lean', url: 'https://sketchfab.com/3d-models/a-backpack-for-an-adventure-2ad86321197a49feb54b7726743d7fd0', license: 'CC BY 4.0', note: 'modified' },
+  { what: 'Restaurant Bits, Furniture Bits', by: 'Kay Lousberg', url: 'https://kaylousberg.com', license: 'CC0' },
+  { what: 'Archivo', by: 'Omnibus-Type', url: 'https://github.com/Omnibus-Type/Archivo', license: 'SIL OFL 1.1' },
+  { what: 'Fredoka, Nunito', by: 'Google Fonts', url: 'https://fonts.google.com', license: 'SIL OFL 1.1' },
+  { what: 'Phosphor Icons', by: 'Phosphor', url: 'https://phosphoricons.com', license: 'MIT' },
+];
+
 export const SKIN_TONES = ['#fde3cf', '#f6cfae', '#e8b48f', '#c98c68', '#9c6a4f', '#f9dcc0'];
 export const HAIR_COLORS = ['#4a3328', '#7a4e33', '#c98b4f', '#f0cf7a', '#e59aa8', '#8fb4e0', '#3b3a4a', '#b8a4d8', '#f2efe9'];
 export const OUTFIT_COLORS = ['#f6b8c4', '#a9dcc6', '#9cc3e6', '#f9dd96', '#c9b6e3', '#f5b58d', '#fbfaf5', '#6d6a8a', '#d99aa8', '#b5e0c8', '#7fa7c9', '#e88a7a'];

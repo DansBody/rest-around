@@ -533,7 +533,7 @@ export class Renderer {
     const live = new Set(list);
     for (const a of list) {
       let cv = this.chars.get(a);
-      if (!cv) { cv = new CharacterView(this.scene, a, assets.manifest); this.chars.set(a, cv); }
+      if (!cv) { cv = new CharacterView(this.scene, a); this.chars.set(a, cv); }
       if (!a.pose) a.pose = {};
       cv.root.visible = a.visible !== false;
       cv.update(dt, g);

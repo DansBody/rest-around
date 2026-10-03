@@ -47,7 +47,7 @@ export function helpedCard(ui, list) {
 /** A player's face: one of our characters on a coloured disc. */
 export function avatarEl(avatar, size = 48) {
   const a = avatar && AVATAR.models.includes(avatar.model) ? avatar : { model: AVATAR.models[0], bg: AVATAR.bgs[0] };
-  const pic = portrait({ model: a.model, hide: [], tint: null, scale: 1, roleHat: null }, size, size, 'avatar-img');
+  const pic = portrait({ model: a.model, tint: null, scale: 1 }, size, size, 'avatar-img');
   return h('div.avatar', { style: { width: size + 'px', height: size + 'px', background: a.bg } }, pic);
 }
 /** 1–5 hearts, the earned ones filled. */

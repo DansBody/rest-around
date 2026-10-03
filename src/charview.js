@@ -1,8 +1,10 @@
 // A 3D character on screen for one simulation agent (or passer-by). Chooses the skeletal animation
 // from the agent's procedural pose (walk, sit, eat, cook, sweep, nap...), attaches held props
-// (tray + dish, broom, wrench, mug) and role hats, and smooths facing.
+// (tray + dish, broom, wrench, mug) and wardrobe accessories, and smooths facing.
 import { THREE, models, TILE } from './models.js';
 import { addEars } from './ears.js';
+import { shape, fitMatrix, wearBone } from './wear.js';
+import { WEAR_SLOTS, wearById } from './data.js';
 
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
 const SIT_FORWARD = 0.68;
@@ -22,12 +24,12 @@ export function makeBat() {
 }
 
 export class CharacterView {
-  constructor(scene, agent, manifest) {
+  constructor(scene, agent) {
     this.agent = agent;
     const look = agent.look || {};
-    this.modelId = look.model || 'knight';
+    this.modelId = look.model || 'guest_b';
     this.def = models.def(this.modelId) || {};
-    this.anims = this.def.animations || manifest.characterAnimations || {};
+    this.anims = this.def.animations || {};
     const inst = models.character(this.modelId);
     this.inst = inst;
     this.root = new THREE.Group();
@@ -38,19 +40,12 @@ export class CharacterView {
     this.yaw = DIR_YAW[agent.dir ?? 1];
     this.held = {};
     this.heldKey = null;
-    this.hat = null;
-    this.setHat(look.roleHat);
+    this.worn = [];
+    this.setWear(look.wear);
     this.play('idle', 0);
   }
 
   applyLook(look) {
-    const d = models.def(this.modelId) || {};
-    // weapons were stripped from the model files; optional accessories (helmet, hat, cape) can be hidden
-    const hide = new Set((look.hide || []).filter((n) => (d.accessories || []).includes(n)));
-    this.inst.root.traverse((o) => {
-      if (!o.isMesh) return;
-      if (hide.has(o.name) || (o.parent && hide.has(o.parent.name))) o.visible = false;
-    });
     // tint the whole outfit lightly for variety (skin included, kept subtle)
     if (look.tint) {
       const col = new THREE.Color('#ffffff').lerp(new THREE.Color(look.tint), 0.35);
@@ -62,16 +57,22 @@ export class CharacterView {
     if (look.scale) this.inst.root.scale.setScalar(look.scale);
   }
 
-  setHat(kind) {
-    if (this.hat) { this.hat.parent && this.hat.parent.remove(this.hat); this.hat = null; }
-    if (!kind || !this.inst.bones.head) return;
-    const hat = models.instance(kind === 'chef' ? 'm_baristahat' : kind);
-    hat.scale.setScalar(1.05);
-    hat.position.set(0, 1.12, 0);
-    this.inst.bones.head.add(hat);
-    this.hat = hat;
-    // hide model hats/helmets under the chef hat
-    this.inst.root.traverse((o) => { if (o.isMesh && /Helmet|_Hat|Hooded/.test(o.name + (o.parent ? o.parent.name : ''))) o.visible = false; });
+  /** Put on the wardrobe accessories (look.wear: slot -> { id, p, r, s }), fitted to this character. */
+  setWear(wear) {
+    for (const o of this.worn) o.parent && o.parent.remove(o);
+    this.worn = [];
+    if (!wear) return;
+    const s = shape(this.modelId, this.inst);
+    for (const slot of WEAR_SLOTS) {
+      const item = wear[slot] && wearById(wear[slot].id);
+      const bone = item && wearBone(item, this.inst.bones);
+      if (!bone) continue;
+      const o = models.instance(item.model);
+      fitMatrix(item, s, wear[slot]).decompose(o.position, o.quaternion, o.scale);
+      bone.add(o);
+      o.userData.slot = slot;
+      this.worn.push(o);
+    }
   }
 
   play(key, fade = 0.22) {
@@ -138,7 +139,7 @@ export class CharacterView {
       const ch = a.onTile;
       x = (ch.x + 0.5) * TILE; z = (ch.y + 0.5) * TILE;
       target = DIR_YAW[ch.dir];
-      // the KayKit sit clip shifts the hips back by ~0.7 units; step forward so they land on the seat
+      // the sit clip shifts the hips back; step forward so they land on the seat
       const fwd = this.def.sitForward ?? SIT_FORWARD;
       x += Math.sin(target) * fwd; z += Math.cos(target) * fwd;
       anim = 'sit';
@@ -166,7 +167,7 @@ export class CharacterView {
   /** World position of the top of the head (for bubbles and name tags). */
   headTop(out) {
     const h = this.inst.bones.head;
-    if (h) { h.getWorldPosition(out); out.y += this.hat ? 1.95 : 1.25; }
+    if (h) { h.getWorldPosition(out); out.y += this.worn.some((o) => o.userData.slot === 'head') ? 1.95 : 1.25; }
     else { out.copy(this.root.position); out.y += 2.6; }
     return out;
   }

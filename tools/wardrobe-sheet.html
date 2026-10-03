@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><base href="/"><title>Wardrobe sheet</title>
+<style>body{margin:0;background:#f2f2f2;font:11px sans-serif}table{border-collapse:collapse}td,th{padding:0;text-align:center}th{font-weight:600;padding:2px}canvas{width:var(--cell,110px);height:var(--cell,110px);display:block;background:#fff;border:1px solid #e4e4e4}</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
+</head><body><table id="t"></table>
+<script type="module">
+// Every wardrobe accessory on every character, auto-fitted (dev check). Open /tools/wardrobe-sheet.html on the
+// dev server; ?items=a,b  ?chars=x,y  ?yaw=2.7 (turned round)  ?cell=210 (bigger pictures).
+import { assets } from '/src/assets.js';
+import { models, renderIcon } from '/src/models.js';
+import { CharacterView } from '/src/charview.js';
+import { THREE } from '/src/models.js';
+import { WEAR, UNIQUE_MODELS } from '/src/data.js';
+const q = new URLSearchParams(location.search);
+const yaw = +(q.get('yaw') ?? 0.5);
+if (q.get('cell')) document.body.style.setProperty('--cell', q.get('cell') + 'px');
+const only = q.get('items') ? q.get('items').split(',') : null;
+await assets.load(() => {});
+await models.load(assets.manifest, () => {});
+const chars = q.get('chars') ? q.get('chars').split(',') : [...UNIQUE_MODELS, 'guest_b'];
+const t = document.getElementById('t');
+t.insertAdjacentHTML('beforeend', '<tr><th></th>' + chars.map((c) => `<th>${c}</th>`).join('') + '</tr>');
+for (const item of [{ id: 'none' }, ...WEAR.filter((w) => !only || only.includes(w.id))]) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<th>${item.id}</th>`;
+  for (const model of chars) {
+    const look = { model, scale: 1, wear: item.slot ? { [item.slot]: { id: item.id } } : {}, ...(model === 'guest_b' ? { fur: '#e9c39b', shirt: '#9cc3e6', ears: 'bear' } : {}) };
+    const scene = new THREE.Scene();
+    const cv = new CharacterView(scene, { look, x: 0, y: 0, dir: 1, pose: {} });
+    if (cv.inst.mixer) cv.inst.mixer.update(0.5);
+    cv.root.position.set(0, 0, 0); cv.root.rotation.y = yaw;
+    const c = renderIcon(cv.root, 220, { pitch: 0.22, pad: 0.55 });
+    const td = document.createElement('td'); td.append(c); tr.append(td);
+  }
+  t.append(tr);
+  await new Promise((r) => setTimeout(r));
+}
+document.title = 'done';
+</script></body></html>

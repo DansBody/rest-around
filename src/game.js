@@ -39,6 +39,7 @@ export function defaultState() {
     streak: { n: 0, day: 0 },   // daily gifts opened in a row, the last one on `day`
     vouchers: 0,         // study vouchers (研習券): spent with ingredients to level a dish
     snacks: { cookie: 1 },
+    wardrobe: {},        // accessories bought: id -> copies (each copy is worn by one character at a time)
     garden: [],
     giftDay: 0,          // the calendar day the gift was last opened
     stats: null,

@@ -19,15 +19,13 @@ plain CSS in `src/ui/style.css`, so it needs no images.
 | [KayKit Restaurant Bits](https://kaylousberg.itch.io/restaurant-bits) by Kay Lousberg | CC0 | round table, chair, door, plate |
 | [KayKit Furniture Bits](https://kaylousberg.itch.io/furniture-bits) by Kay Lousberg | CC0 | square table, wooden chair, armchair |
 | Refillit's own props, food, drinks and icons | made with Meshy for this game | everything else in the café (see below) |
-| [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | legacy character models and their shared animations; current guests use `GuestB` |
+| Wardrobe accessories from Sketchfab (11 models, listed in `CREDITS` in `src/data.js`) | CC BY 4.0, modified | hats, glasses, bow tie, backpack in `models/wear/`; credited in-game under Settings → Credits |
 | Fredoka, Nunito (Google Fonts) | SIL OFL 1.1 | start-screen fonts (`assets/fonts`, licences alongside) |
 | [Archivo](https://github.com/Omnibus-Type/Archivo) by Omnibus-Type, via Fontsource | SIL OFL 1.1 | in-game UI font, variable weight and width (`assets/fonts/archivo.woff2`) |
 | [Phosphor Icons](https://phosphoricons.com) (bold) | MIT | one-colour UI glyphs, inlined in `src/ui/icons.js` |
 
-The character files were slimmed for the web: weapons removed, the 15 animations the game uses
-moved into one shared `models/characters/animations.glb` (all five characters share the same rig,
-so any character plays any clip), and each character saved as `.gltf` + `.bin` + an external
-`*_texture.png`. Keep textures external: some hosts block the `blob:` URLs three.js uses for
+Each character is saved as `.gltf` + `.bin` + an external texture, with its own rig and clips.
+Keep textures external: some hosts block the `blob:` URLs three.js uses for
 textures embedded in a `.glb`, and the characters then render untextured (white).
 
 **Own characters.** **Mocha Latte** (`mochalatte`, the house hamster), **Bbaekko** (`bbaekko`,
@@ -81,7 +79,15 @@ rebuild after changing a model or a clip: download the remesh GLB and run
 them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, so the number of staff
 slots tops out at the size of the cast (currently ten). They're never random guests. Guests and passers-by
 use **GuestB** (`guest_b`), a plain body recoloured per guest with fur/shirt colours and procedural ears.
-KayKit characters remain in the manifest as legacy assets.
+
+**Wardrobe accessories.** `python tools/build_accessory.py <id> <scene.gltf> --slot head|face|neck|back
+[--rot X,Y,Z]` turns a downloaded glTF (e.g. a Sketchfab "glTF" zip) into `models/wear/<id>.*`: the hierarchy
+is flattened, the origin moved to the attach point for its slot and the width scaled to 1. Add a manifest
+entry (`category: "wear"`, `center: false` so the origin stays put), an entry in `WEAR` in `src/data.js`
+(slot, fit, sit/at) and, for CC BY models, a line in `CREDITS`. `src/wear.js` fits it to every character
+from the shape of their head and body; `tools/wardrobe-sheet.html` (on the dev server) shows every item on
+every character. Each model's licence file is collected in `models/wear/LICENSES.txt`. The beret's texture had a
+game logo painted out before building.
 
 **Café props, drinks, bakes and icons (Refillit's own art).** Everything that makes the place a café
 was made with Meshy from text prompts (the concept art only set the mood), then slimmed by
@@ -172,12 +178,12 @@ The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in t
 | Tinting | `tintable: true` models can be recoloured per shop item. Furniture is re-coloured (the texture is greyed, then tinted); food is lightly multiplied. |
 | Multi-tile | `footprint: [w, h]` in tiles for the "front" orientation (e.g. the 2×1 library wall). |
 | Composites | `parts` builds one item from several models (salad = bowl + lettuce + tomato slices). |
-| Characters | A rigged glTF using the KayKit rig bone names (`handslot.r`, `head`). `accessories` lists mesh names the wardrobe can toggle. Animation names are mapped in `characterAnimations` (idle, walk, carry, sit, cook, sweep, nap, …). |
+| Characters | A rigged glTF from `tools/build_character.py` (bones `hips`, `chest`, `head`, `hand_l/r`, `ear_l/r`). The entry names its hand/head bones and maps the game's animation keys to its own clip names in `animations` (idle, walk, carry, sit, cook, sweep, nap, …). |
 
 **To add a different character pack** (e.g. casual townsfolk from Kenney or Quaternius): add an
 entry to `models` with `category: "character"`, point `file` at the `.gltf`, and — if its rig or
-clip names differ — point `characterAnimationFile` at its animations and update
-`characterAnimations`. Then add the id to `CHARACTER_MODELS` in `src/data.js`.
+clip names differ — map the game's animation keys to its clips in the entry's `animations`. Then add
+the id to `CHARACTER_MODELS` in `src/data.js`.
 
 ## Conventions for images
 
@@ -197,7 +203,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (75)
+### 3D models (81)
 
 **Furniture**
 
@@ -256,7 +262,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `m_tray` | _procedural placeholder_ (`tray`) |  |
 | `m_broom` | _procedural placeholder_ (`broom`) |  |
 | `m_wrench` | _procedural placeholder_ (`wrench`) |  |
-| `m_mug` | `models/props/mug_full.gltf` |  |
+| `m_mug` | `models/cafe/mug_cocoa.gltf` | scale 0.62 |
 | `m_grinder` | `models/cafe/grinder.gltf` |  |
 | `m_table_plant` | `models/cafe/table_plant.gltf` |  |
 | `m_baristahat` | _procedural placeholder_ (`baristacap`) |  |
@@ -288,11 +294,6 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 | id | source | notes |
 |---|---|---|
-| `knight` | `models/characters/Knight.gltf` | accessories: Knight_Helmet, Knight_Cape |
-| `mage` | `models/characters/Mage.gltf` | accessories: Mage_Hat, Mage_Cape |
-| `barbarian` | `models/characters/Barbarian.gltf` | accessories: Barbarian_Hat, Barbarian_Cape |
-| `rogue` | `models/characters/Rogue.gltf` | accessories: Rogue_Cape |
-| `rogue_hooded` | `models/characters/Rogue_Hooded.gltf` | accessories: Rogue_Cape |
 | `guest_b` | `models/characters/GuestB.gltf` | own rig + clips |
 | `mochalatte` | `models/characters/MochaLatte.gltf` | own rig + clips |
 | `bbaekko` | `models/characters/Bbaekko.gltf` | own rig + clips |

@@ -2,11 +2,12 @@
 import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait, thumb } from '../portrait.js';
-import { ACCESSORIES, roleLook } from '../looks.js';
+import { roleLook } from '../looks.js';
+import { openWardrobe, SLOT_NAME } from './wardrobe.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, MAX_DISH_LEVEL, dishCap, menuSlots, staffSlots,
   INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE,
+  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE, CREDITS, WEAR, WEAR_SLOTS, wearById,
 } from '../data.js';
 import { clearSave, save, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
@@ -237,30 +238,21 @@ function tickStaff(ui, body) {
   }
 }
 
+// The wardrobe dresses a staff member up; it never swaps their character (for another one: fire and hire).
 function renderOutfit(ui, body, a) {
-  const g = ui.game;
   const look = a.look;
-  // a staff member is named after their character, so switching the character renames them
-  const refresh = () => { a.name = UNIQUE_NAMES[look.model] || a.name; g.refreshCharacter(a); g.changed('look'); ui.renderPanel(); };
-  const accName = (n) => t(n.split('_').slice(1).join(' ').replace('Hooded', 'Hood'));
   const pc = portrait(look, 150, 190);
   pc.style.margin = '0 auto'; pc.style.display = 'block';
-  // staff are original characters, offered only while nobody else on the team is wearing them
-  const taken = new Set(g.staff.filter((s) => s !== a).map((s) => s.look && s.look.model));
-  const models = UNIQUE_MODELS.filter((m) => !taken.has(m));
   body.append(
     h('div.subhead', h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', t("{name}'s wardrobe", { name: a.name }))),
     pc,
-    h('div.orow', h('span', t('Character')), h('div.stepper',
-      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + models.length - 1) % models.length]; look.hide = []; refresh(); } }, gl('back', null, 14)),
-      h('span', UNIQUE_NAMES[look.model] || look.model),
-      h('button.btn.small', { onclick: () => { look.model = models[(models.indexOf(look.model) + 1) % models.length]; look.hide = []; refresh(); } }, gl('forward', null, 14)))),
-    ...(ACCESSORIES[look.model] || []).length ? [h('div.orow', h('span', t('Wear')), h('div.btnrow', ACCESSORIES[look.model].map((n) => {
-      const on = !(look.hide || []).includes(n);
-      return h('button.btn.small' + (on ? '.primary' : ''), { onclick: () => { look.hide = on ? [...(look.hide || []), n] : (look.hide || []).filter((x) => x !== n); refresh(); } }, on ? gl('check', accName(n), 14) : accName(n));
-    })))] : [],
-    h('div.orow', h('span', t('Barista cap')), h('button.btn.small' + (look.roleHat ? '.primary' : ''), { onclick: () => { look.roleHat = look.roleHat ? null : 'chef'; refresh(); } }, look.roleHat ? t('On') : t('Off'))),
-    h('div.muted', t('Staff are our own characters, and take the name of the one they wear.')));
+    h('div.section-title', t('Accessories')),
+    ...WEAR_SLOTS.map((slot) => {
+      const item = look.wear && look.wear[slot] && wearById(look.wear[slot].id);
+      return h('button.orow.wear-row', { onclick: () => openWardrobe(ui, a, slot) },
+        h('span', t(SLOT_NAME[slot])), h('span.wear-cur' + (item ? '' : '.muted'), item ? item.name : t('Nothing')), glyph('forward', 14));
+    }),
+    h('div.muted', t('Accessories are bought in the Market. Each one dresses one character at a time.')));
 }
 
 // ------------------------------------------------------------------ menu
@@ -336,6 +328,16 @@ function renderMarket(ui, body) {
     body.append(h('div.row', I(sn.asset, 36), h('div.grow', h('h3', sn.name), h('div.muted', t('+{n} energy · you have {m}', { n: sn.energy, m: s.snacks[sn.id] || 0 }))),
       h('button.btn.small', { onclick: () => g.eco.buySnack(sn.id) }, coinPill(sn.price))));
   }
+  // accessories: each copy dresses one character at a time (put them on in Staff → Outfit)
+  body.append(h('div.section-title', t('Accessories')));
+  const wear = h('div.grid2');
+  for (const w of WEAR) {
+    const n = s.wardrobe[w.id] || 0;
+    wear.append(h('div.tile.wear-tile', thumb(w.model, null, 64, 52), h('b', w.name),
+      h('span.muted', n ? t('have {n}', { n }) : t(SLOT_NAME[w.slot])),
+      h('button.btn.small' + (g.eco.canAfford(w.price) ? '' : '.disabled'), { onclick: () => { if (g.eco.buyWear(w.id)) ui.renderPanel(); } }, coinPill(w.price))));
+  }
+  body.append(wear, h('div.muted', { style: { marginTop: '6px' } }, t('Put accessories on in Staff → Outfit. Buy a second copy to dress two characters in the same thing.')));
 }
 
 // ------------------------------------------------------------------ settings
@@ -373,7 +375,9 @@ function renderSettings(ui, body) {
       t('Drag to pan · Wheel or pinch to zoom · Right-drag, two-finger twist or '), h('kbd', 'Q'), '/', h('kbd', 'E'), t(' to turn the camera · Click a character for details'), h('br'),
       h('kbd', 'B'), t(' build · '), h('kbd', 'R'), t(' rotate · '), h('kbd', 'Del'), t(' sell · '), h('kbd', 'Esc'), t(' cancel/close · '), h('kbd', '`'), t(' debug')),
     h('div.section-title', t('About')),
-    h('div.muted', t('Refillit — a cozy 3D café. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).')));
+    h('div.muted', t('Refillit — a cozy 3D café. Art is swappable: drop glTF models or PNGs into assets/ (see ASSETS.md).')),
+    h('div.section-title', t('Credits')),
+    h('div.muted.credits', CREDITS.map((c) => h('div', h('a', { href: c.url, target: '_blank', rel: 'noopener' }, c.what), ' — ', c.by, ' · ', c.license, c.note ? ', ' + t(c.note) : ''))));
 }
 
 function langPicker(ui) {

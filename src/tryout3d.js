@@ -13,7 +13,7 @@ import { randomLook } from './looks.js';
 const lam = (color, o = {}) => new THREE.MeshLambertMaterial({ color, ...o });
 const easeOut = (k) => 1 - (1 - k) * (1 - k);
 
-class Stage {
+export class Stage {
   constructor(canvas, sky) {
     this.canvas = canvas;
     this.gl = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -45,7 +45,7 @@ class Stage {
     return m;
   }
   character(look, x, z, yaw) {
-    const cv = new CharacterView(this.scene, { look, x: 0, y: 0, dir: 1, pose: {} }, assets.manifest);
+    const cv = new CharacterView(this.scene, { look, x: 0, y: 0, dir: 1, pose: {} });
     cv.root.position.set(x, 0, z);
     cv.root.rotation.y = yaw;
     cv.play('idle', 0);

@@ -20,7 +20,7 @@ export function portrait(look, w = 64, h = 80, cls = 'portrait') {
   let c = cache.get(key);
   if (!c) {
     const scene = new THREE.Scene();
-    const cv = new CharacterView(scene, { look, x: 0, y: 0, dir: 1, pose: {} }, assets.manifest);
+    const cv = new CharacterView(scene, { look, x: 0, y: 0, dir: 1, pose: {} });
     if (cv.inst.mixer) cv.inst.mixer.update(0.5);
     cv.root.position.set(0, 0, 0); cv.root.rotation.y = 0.35;
     c = renderIcon(cv.root, 192, { pitch: 0.22, pad: 0.5 });

@@ -16,7 +16,7 @@ import { t, titledRole } from './i18n.js';
 /** A new staff member: `model` (or the next original character nobody wears), named after it. Null when the cast is used up. */
 export function makeStaff(game, role, model) {
   model = model || nextCast(new Set(game.staff.map((s) => s.look.model)));
-  return model ? new Staff(game, role, UNIQUE_NAMES[model], staffLook(model, role)) : null;
+  return model ? new Staff(game, role, UNIQUE_NAMES[model], staffLook(model)) : null;
 }
 
 export class Staff extends Agent {
@@ -217,8 +217,6 @@ export class Staff extends Agent {
     if (this.job) this.abortJob(true);
     this.role = role;
     this.charge = 0; this.fullT = 0;
-    if (role === 'chef') this.look.roleHat = 'chef';
-    else if (this.look.roleHat === 'chef') this.look.roleHat = null;
     this.game.refreshCharacter(this);
     this.game.fx.sparkle(this.game.at(this.x, this.y, 60), 12, '#bfe3ff');
     this.emote('emote_sparkle', 2);

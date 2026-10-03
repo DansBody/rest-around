@@ -204,10 +204,11 @@ accessories); UI images, icons and surface textures are PNGs listed under `asset
 * **Drop-in.** Put a correctly named `.gltf`/`.glb`/`.png` at the manifest path and reload — no
   code changes. Food icons in the UI are rendered from the food models automatically.
 * **Scale:** 1 floor tile = 2 world units (the KayKit grid); models face +Z.
-* **Characters** are our own rigged plush characters (staff) and rigged KayKit Adventurers (guests) with
+* **Characters** are our own rigged plush characters (staff, and the GuestB body for guests) with
   shared animation names (walk, carry, sit, brew, sweep, repair, nap, cheer…) chosen from each agent's
   activity; props (tray + cup, broom, wrench, mug) attach to the hand bone, baristas wear a cap. The wardrobe (Staff → Outfit) swaps the
-  character, toggles helmet/hat/cape and tints the outfit.
+  character and opens the accessory card: hats, glasses, a bow tie or a backpack, fitted automatically and
+  then nudged, tilted and sized by hand (`src/ui/wardrobe.js`, fitting in `src/wear.js`).
 * **Tints:** shop variants (mint table, rose armchair, silver espresso station…) re-colour one model.
 * Outside: lawn, a street with passers-by (guests walk along it to the door, runaways sprint down it)
   and low-poly trees. Lighting follows
@@ -219,8 +220,9 @@ asset tables (`node tools/assets-table.mjs` refreshes them; optional, the game n
 ### Credits
 
 * Café props, drinks, bakes, icons and the plush staff: made for this game with Meshy (see ASSETS.md).
-* A few 3D models: **Kay Lousberg** — KayKit Restaurant Bits, Furniture Bits, Character Pack:
-  Adventurers (CC0). www.kaylousberg.com
+* A few 3D models: **Kay Lousberg** — KayKit Restaurant Bits, Furniture Bits (CC0). www.kaylousberg.com
+* Wardrobe accessories: 11 Sketchfab models (CC BY 4.0, modified); authors and links in `CREDITS` (`src/data.js`),
+  shown in-game under Settings → Credits.
 * Fonts: Archivo, Fredoka and Nunito (SIL Open Font License).
 * UI icons: Phosphor Icons (MIT).
 * three.js (MIT).
@@ -324,8 +326,7 @@ Gameplay numbers (prices, cook times, patience, energy, arrival rates, level cur
 * **Guests share the GuestB body**, with random fur/shirt colours and procedural ears. The staff cast
   includes Mocha Latte, Bbaekko, Hee Hee, Cheetie, Oritokki, TATA and RJ. Add another rigged glTF to the
   manifest to extend the cast (see ASSETS.md).
-* **Legacy KayKit models have no eating animation**; the current GuestB and staff models include an
-  Eat clip, although seated agents currently use Sit with food and effects on the table.
+* The GuestB and staff models include an Eat clip, although seated agents currently use Sit with food and effects on the table.
 * The toilet, the barista cap and the held tools (tray, broom, wrench) are procedural placeholder meshes
   until real models are added.
 * Performance: fine on any GPU; in software-rendered browsers (no WebGL acceleration) the

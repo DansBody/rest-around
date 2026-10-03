@@ -24,6 +24,13 @@ for (const [name, make] of Object.entries(fx)) {
   n = make(); for (let i = 0; i < 6; i++) n.world.furniture.push({ t: 'stove_deluxe', x: 1, y: 1, d: 1, u: 0, b: false, ba: 0 });
   r = capCheck(prev, n, 45);
   ok(r.reject || r.flags.includes('wealth'), `${name}: six free Barista Bars are caught (${r.reject ? 'rejected' : 'coins taken back'})`);
+  // an accessory bought with coins is wealth-neutral; a dozen crowns from nowhere are not
+  n = make(); n.state.wardrobe = { hat_beret: 1 }; n.state.coins -= 150;
+  r = capCheck(prev, n, 45);
+  ok(!r.reject && !r.flags.length && Math.abs(wealth(n) - wealth(prev)) < 1e-9, `${name}: buying a beret is wealth-neutral`);
+  n = make(); n.state.wardrobe = { crown_gold: 12 };
+  r = capCheck(prev, n, 45);
+  ok(r.reject || r.flags.includes('wealth'), `${name}: twelve free crowns are caught (${r.reject ? 'rejected' : 'coins taken back'})`);
   // buying furniture with coins is fine
   n = make(); n.world.furniture.push({ t: 'plant_fern', x: 1, y: 2, d: 1, u: 0, b: false, ba: 0 }); n.state.coins -= 30;
   r = capCheck(prev, n, 45);

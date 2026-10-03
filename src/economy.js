@@ -5,7 +5,7 @@ import { SNACKS,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, furnitureById, EXPANSIONS, SKILL, CLUBS, TROUBLE,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
   staffWage, rentFor, ingPrice, UNIQUE_MODELS, UNIQUE_NAMES, ROUND_SCALE, perRound,
-  DAILY, dailyCoins, dailyPoints, studyCost, dishCap,
+  DAILY, dailyCoins, dailyPoints, studyCost, dishCap, wearById,
 } from './data.js';
 import * as pantry from './pantry.js';
 
@@ -304,6 +304,16 @@ export class Economy {
     this.questProgress('market', qty);
     this.game.sfx('coin');
     this.game.changed('inv');
+  }
+  /** A copy of a wardrobe accessory (each copy dresses one character at a time). */
+  buyWear(id) {
+    const w = wearById(id);
+    if (!w || !this.spend(w.price, w.name)) return false;
+    this.s.wardrobe[id] = (this.s.wardrobe[id] || 0) + 1;
+    this.game.sfx('coin');
+    this.game.toast(t('{item} is in the wardrobe: dress someone up from Staff → Outfit.', { item: w.name }), 'good');
+    this.game.changed('wardrobe');
+    return true;
   }
   buySnack(id, qty = 1) {
     const sn = snackById[id];
