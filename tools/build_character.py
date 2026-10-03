@@ -213,6 +213,30 @@ CHARACTERS = {
         'keep': lambda c: (c.max(1) < 170) | (np.ptp(c, axis=1) > 55),
         'repairs': [{'box': lambda x, y, z: y > 0.14, 'clean': 4, 'tol': 20}],
     },
+    'chimmy': {
+        'name': 'Chimmy',
+        # Fan-made BT21 CHIMMY for the user's own testing. gpt-image-bridge three views (with the
+        # figure photo attached as reference) -> Meshy 7 multi-image-to-3d
+        # 01a0ff78-75f7-743d-9252-f589faba1a8d, remesh 01a0ff7e-b75b-7259-b0e5-f387a69db782.
+        # The floppy ears hang beside the head and stick out past it, so the face-width standard
+        # (which measures the widest point of the cheek band) would squash the head: keep its shape.
+        'scale': 1.1, 'face_width': 0, 'smooth_normals': True,
+        'texture_size': 2048, 'texture_subsampling': 0, 'texture_mipmaps': False,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.3, 0)),
+            ('leg_l', 'hips', (0.17, 0.3, 0)), ('leg_r', 'hips', (-0.17, 0.3, 0)),
+            ('chest', 'hips', (0, 0.55, 0)),
+            ('arm_l', 'chest', (0.42, 0.66, 0)), ('hand_l', 'arm_l', (0.54, 0.42, 0.02)),
+            ('arm_r', 'chest', (-0.42, 0.66, 0)), ('hand_r', 'arm_r', (-0.54, 0.42, 0.02)),
+            ('head', 'chest', (0, 0.74, 0)),
+            ('ear_l', 'head', (0.56, 1.6, 0)), ('ear_r', 'head', (-0.56, 1.6, 0)),
+        ],
+        'skin': {'leg': (0.2, 0.32), 'arm_x': (0.38, 0.45), 'arm_y': (0.3, 0.36),
+                 'arm_top': (0.66, 0.74), 'head': (0.7, 0.8), 'chest': (0.32, 0.55),
+                 'ear_y': (0.95, 1.1), 'ear_x': (0.58, 0.64)},
+        'face': (0.95, 1.4),
+        'repairs': [],
+    },
     'guest_b': {
         'name': 'GuestB',
         # the guests' standard chibi body: a plain earless cream animal in a grey tee, recoloured per

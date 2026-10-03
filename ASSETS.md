@@ -56,12 +56,18 @@ three views and a 12,414-triangle remesh. Its local rig includes 15 clips; the a
 the scarf so the knot follows the chest. The build cleans stray colours on the cream surface,
 protects the facial features and scarf, and uses a 2048 px texture with bilinear sampling and clamped
 atlas edges to avoid colour bleeding. Its source GLBs and views are in `build/character-source/rj/`.
+**Chimmy** (`chimmy`, a fan-made BT21 puppy in a yellow hoodie with black floppy ears and orange
+drawstrings) uses three views from `gpt-image-bridge` with the figure photo attached as a reference
+(`--ref`), Meshy 7 multi-image-to-3d and a 12,304-triangle remesh. Its `face_width: 0` keeps the head's
+shape: the floppy ears stick out past the cheeks, so the house face-width standard would squash it.
+The ears hang from bones at the top of the head, with a 2048 px texture and bilinear sampling like RJ.
+Its views and remesh GLB are in `build/character-source/chimmy/` (not committed).
 Source task IDs are recorded in `CHARACTERS`; TATA's downloaded GLB and input views are kept locally in
 `build/character-source/heart-character/` (not committed). To
 rebuild after changing a model or a clip: download the remesh GLB and run
 `python tools/build_character.py <id> <remesh.glb>`. They *are* the staff: every staff member is one of
 them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, so the number of staff
-slots tops out at the size of the cast (currently seven). They're never random guests. Guests and passers-by
+slots tops out at the size of the cast (currently eight). They're never random guests. Guests and passers-by
 use **GuestB** (`guest_b`), a plain body recoloured per guest with fur/shirt colours and procedural ears.
 KayKit characters remain in the manifest as legacy assets.
 
@@ -177,7 +183,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (72)
+### 3D models (73)
 
 **Furniture**
 
@@ -281,6 +287,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `oritokki` | `models/characters/Oritokki.gltf` | own rig + clips |
 | `tata` | `models/characters/TATA.gltf` | own rig + clips |
 | `rj` | `models/characters/RJ.gltf` | own rig + clips |
+| `chimmy` | `models/characters/Chimmy.gltf` | own rig + clips |
 
 ### 2D images (73)
 
