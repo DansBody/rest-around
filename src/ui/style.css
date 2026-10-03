@@ -541,7 +541,34 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .stat .muted { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .stat .ico { width: 22px; height: 22px; }
 .hero-ico { display: flex; justify-content: center; }
-.card.away { max-width: 440px; }
+.card.away { max-width: 420px; padding: 26px 22px 20px; }
+/* welcome back: one big number, three figures, the best sellers; the rest under Details */
+.away-when { margin-top: 2px; font-size: 13px; }
+.away-hero { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 18px; }
+.away-hero b { font-family: var(--font-display); font-weight: 850; font-size: 60px; font-stretch: 75%; line-height: 1.05; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.away-hero.loss b { color: var(--red); }
+.away-hero-label { margin-top: 2px; font-size: 13px; font-weight: 650; color: var(--ink-soft); }
+.away-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 18px 0 16px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.away-fig { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.away-fig + .away-fig { border-left: 1px solid var(--line); }
+.away-fig b { font-family: var(--font-display); font-weight: 800; font-size: 24px; font-stretch: var(--narrow); line-height: 1.15; font-variant-numeric: tabular-nums; }
+.away-fig span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--ink-soft); line-height: 1.4; }
+.away-top { margin-bottom: 14px; }
+.away-cap { font-size: 12px; font-weight: 650; color: var(--ink-soft); margin-bottom: 6px; }
+.away-dishes { display: flex; justify-content: center; gap: 14px; }
+.away-dish { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.away-dish b { font-family: var(--font-display); font-weight: 750; font-size: 14px; font-stretch: var(--narrow); }
+.away-more { margin: 4px 0 14px; text-align: left; }
+.away-more > summary { list-style: none; display: flex; justify-content: center; align-items: center; gap: 6px; padding: 6px; cursor: pointer; font-size: 13px; font-weight: 650; color: var(--ink-soft); }
+.away-more > summary::-webkit-details-marker { display: none; }
+.away-more > summary::after { content: ''; width: 7px; height: 7px; margin-top: -3px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .2s; }
+.away-more[open] > summary::after { margin-top: 3px; transform: rotate(-135deg); }
+.away-more[open] { padding: 4px 14px 10px; border-radius: 18px; background: var(--fill); }
+.away-sum { margin: 2px 0 8px; font-size: 12.5px; }
+.away-line { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.away-line span { color: var(--ink-soft); font-weight: 600; }
+.away-line b { font-variant-numeric: tabular-nums; }
+.away-more .away-note { margin: 8px 0 0; padding: 0; background: none; font-size: 12.5px; color: var(--ink-soft); }
 .away-note { margin: 6px 0; padding: 8px 12px; border-radius: 14px; background: var(--fill); font-weight: 500; font-size: 13px; line-height: 1.5; text-align: left; }
 .away-note.warn { background: #fff4e0; color: #7a4a00; }
 .away-note .ing { margin: 0 3px; }

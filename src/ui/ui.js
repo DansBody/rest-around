@@ -680,43 +680,50 @@ ${k.desc}
     this.receiptTimer = setTimeout(hide, 30000);
   }
 
-  /** "While you were away": what the café did with the time since the game was last open. */
+  /** "While you were away": what the café did with the time since the game was last open.
+      One big number (the coins, after costs), three figures under it, the best sellers, any warnings;
+      the breakdown and the quieter notes fold away under Details. */
   awayCard(r) {
     const g = this.game;
     const mins = Math.round(r.elapsedSec / 60), dur = mins >= 60 ? t('{h} h {m} min', { h: Math.floor(mins / 60), m: mins % 60 }) : t('{m} min', { m: mins });
-    const stat = (icon, label, v) => h('div.stat', assets.iconEl(icon, 26), h('b', v), h('span.muted', label));
     const sign = (n) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
     const top = Object.entries(r.dishes).sort((a, b) => b[1] - a[1]).slice(0, 4);
     const warn = (...kids) => h('div.away-note.warn', ...kids);
-    const notes = [];
-    if (r.noStaff) notes.push(warn(t('Without both a Server and a Barista nobody could serve guests — hire them so the café earns while you are away.')));
-    if (r.rescued) notes.push(h('div.away-note', t('The supplier dropped off a starter pack to get you going.')));
-    if (r.ranOut.length) notes.push(warn(t('Ran out of:'), ' ', ...r.ranOut.map((i) => h('span.ing', assets.iconEl('ing_' + i, 18), ingById[i].name)), ' ', t('— {n} guest(s) left empty-handed.', { n: r.soldOut })));
-    if (r.ranOut.length && r.restockOff) notes.push(warn(t('Auto-restock is off, so nothing was bought while you were away — turn it on in the Market to keep the café going.')));
-    if (r.broke.length) notes.push(warn(t('Out of order:'), ' ' + [...new Set(r.broke)].map((x) => furnitureById[x].name).join(', ') + '. ' + t('A Cleaner can fix it.')));
-    if (r.unpaid) notes.push(warn(t('The till ran short, so some wages went unpaid — the team is tired.')));
+    const warns = [], quiet = [];
+    if (r.noStaff) warns.push(warn(t('Without both a Server and a Barista nobody could serve guests — hire them so the café earns while you are away.')));
+    if (r.ranOut.length) warns.push(warn(t('Ran out of:'), ' ', ...r.ranOut.map((i) => h('span.ing', assets.iconEl('ing_' + i, 18), ingById[i].name)), ' ', t('— {n} guest(s) left empty-handed.', { n: r.soldOut })));
+    if (r.ranOut.length && r.restockOff) warns.push(warn(t('Auto-restock is off, so nothing was bought while you were away — turn it on in the Market to keep the café going.')));
+    if (r.broke.length) warns.push(warn(t('Out of order:'), ' ' + [...new Set(r.broke)].map((x) => furnitureById[x].name).join(', ') + '. ' + t('A Cleaner can fix it.')));
+    if (r.unpaid) warns.push(warn(t('The till ran short, so some wages went unpaid — the team is tired.')));
+    if (r.rescued) quiet.push(h('div.away-note', t('The supplier dropped off a starter pack to get you going.')));
     if (r.levelTo > r.levelFrom) {
       const ups = []; for (let lv = r.levelFrom + 1; lv <= r.levelTo; lv++) ups.push(...unlocksFor(lv));
-      if (ups.length) notes.push(h('div.away-note', h('b', t('New things unlocked:')), ' ' + ups.join(' · ')));
+      if (ups.length) quiet.push(h('div.away-note', h('b', t('New things unlocked:')), ' ' + ups.join(' · ')));
     }
-    if (r.snacksUsed) notes.push(h('div.away-note', t('The team shared {n} snack(s) from the pantry to keep going.', { n: r.snacksUsed })));
-    if (r.capped) notes.push(h('div.away-note.muted', t('Trading is counted for up to {n} hours while you are away.', { n: OFFLINE.capHours })));
-    const card = h('div.card.away',
-      h('div.hero-ico', assets.iconEl('icon_gift', 56)),
+    if (r.snacksUsed) quiet.push(h('div.away-note', t('The team shared {n} snack(s) from the pantry to keep going.', { n: r.snacksUsed })));
+    if (r.capped) quiet.push(h('div.away-note', t('Trading is counted for up to {n} hours while you are away.', { n: OFFLINE.capHours })));
+    const fig = (icon, label, v) => h('div.away-fig', assets.iconEl(icon, 30), h('b', v), h('span', label));
+    const line = (label, v) => h('div.away-line', h('span', label), h('b', v));
+    return h('div.card.away',
       h('div.big-title', t('Welcome back!')),
-      h('div.muted', ...keepTogether(t('{name} kept serving while you were away ({time}).', { name: g.state.name, time: KEEP }), dur)),
-      h('div.stat-grid',
-        stat('emote_heart', t('Guests served'), r.served),
-        stat('icon_coin', t('Coins earned'), sign(r.net)),
-        stat('icon_points', t('Café points'), '+' + fmt(r.points)),
-        stat('icon_star', t('Rating'), `${r.ratingFrom.toFixed(1)} → ${r.ratingTo.toFixed(1)}`),
-        stat('icon_level', t('Level'), r.levelTo > r.levelFrom ? `${r.levelFrom} → ${r.levelTo}` : r.levelTo),
-        stat('emote_angry', t('Guests lost'), String(r.lost))),
-      h('div.muted', { style: { marginBottom: '6px' } }, ...opSegs(t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) }))),
-      top.length ? h('div', h('div.muted', t('Best sellers')), h('div.ings', { style: { justifyContent: 'center', margin: '4px 0 8px' } }, top.map(([id, n]) => h('span.ing', assets.iconEl(dishById[id].asset, 24), '×' + n)))) : null,
-      ...notes,
+      h('div.muted.away-when', ...keepTogether(t('{name} kept serving while you were away ({time}).', { name: g.state.name, time: KEEP }), dur)),
+      h('div.away-hero' + (r.net < 0 ? '.loss' : ''), assets.iconEl('icon_coin', 44), h('b', sign(r.net))),
+      h('div.away-hero-label', t('Coins earned')),
+      h('div.away-figs',
+        fig('emote_heart', t('Guests served'), r.served),
+        fig('icon_star', t('Rating'), r.ratingTo.toFixed(1)),
+        fig('icon_points', t('Café points'), '+' + fmt(r.points))),
+      top.length ? h('div.away-top', h('div.away-cap', t('Best sellers')),
+        h('div.away-dishes', top.map(([id, n]) => h('span.away-dish', assets.iconEl(dishById[id].asset, 44), h('b', '×' + n))))) : null,
+      ...warns,
+      h('details.away-more',
+        h('summary', t('Details')),
+        h('div.muted.away-sum', ...opSegs(t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) }))),
+        line(t('Rating'), `${r.ratingFrom.toFixed(1)} → ${r.ratingTo.toFixed(1)}`),
+        line(t('Guests lost'), String(r.lost)),
+        line(t('Level'), r.levelTo > r.levelFrom ? `${r.levelFrom} → ${r.levelTo}` : String(r.levelTo)),
+        ...quiet),
       h('button.btn.primary', { onclick: () => this.closeModal() }, t('Back to the café')));
-    return card;
   }
   /** Level-up card: non-blocking (the café keeps running) and auto-dismissing. */
   celebrate(e) {
