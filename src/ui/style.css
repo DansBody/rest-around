@@ -1058,3 +1058,22 @@ button.pick-row:hover { background: var(--fill-2); }
   #coach .coach-text { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) { #spot.show { animation: none; } }
+
+/* ---------- one surface system everywhere ----------
+   Every bottom sheet (panels, the character card, the build tray) is the grey sheet, and what sits
+   on it (cards, tiles, plain buttons, inactive tabs) is white. Tab rows inside panels are equal-width
+   segments of one height, whether or not they carry a count. */
+#info, #buildbar .card { background: var(--sheet); }
+#info .btn:not(.primary):not(.danger):not(.ghost),
+#buildbar .btn:not(.primary):not(.danger):not(.ghost):not(.tab),
+#buildbar .bb-top .tab:not(.on),
+#buildbar .bmsg:not(.bad):not(.good):not(.warn) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+#buildbar .bitem:not(.charm) { background: var(--surface); }
+#buildbar .bitem.locked { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+#buildbar .thumb-slot { background: var(--surface); }
+#buildbar .bb-fold > .btn.done, #buildbar .bb-top .btn.primary.done { box-shadow: inset 0 0 0 1.5px var(--ink); }
+#info .portrait { background: var(--surface); }
+#panel .pick-staff:not(.club-pick) .pick-tile { background: var(--surface); }
+#panel .pick-staff:not(.club-pick) .pick-tile.on { box-shadow: inset 0 0 0 2px var(--ink); }
+#panel .tabs:not(.seg) { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); overflow: visible; }
+#panel .tabs .tab { min-height: 44px; }
