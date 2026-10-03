@@ -664,27 +664,34 @@ ${k.desc}
   receipt(sm) {
     const dr = sm.ratingEnd - sm.ratingStart;
     const hide = () => this.el.receipt.classList.remove('show');
-    const stat = (icon, label, v) => h('div.stat', assets.iconEl(icon, 26), h('b', v), h('span.muted', label));
     const costs = (sm.wages || 0) + (sm.rent || 0), stock = sm.restocked || 0, profit = sm.coins - costs - stock;
+    const sign = (n) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
     const note = sm.owed ? t('The till ran short, so some wages went unpaid — the team will start tired.')
       : sm.soldOut ? t('{n} guest(s) left because a drink was sold out — keep the pantry stocked!', { n: sm.soldOut })
         : sm.dashed ? t('{n} guest(s) ran off without paying — someone from the Track Club could have caught them.', { n: sm.dashed })
         : sm.noSeat ? t('{n} guest(s) left because every seat was taken — more tables would help!', { n: sm.noSeat })
           : dr >= 0 ? t('Word is spreading about your cozy little place.') : t('Keep things clean and fast to win back the stars.');
-    this.el.receipt.replaceChildren(h('div.card',
+    // like the welcome-back card: the profit big, three figures, the books under Details
+    const fig = (icon, label, v) => h('div.recap-fig', assets.iconEl(icon, 28), h('b', v), h('span', label));
+    const line = (label, v) => h('div.recap-line', h('span', label), h('b', v));
+    this.el.receipt.replaceChildren(h('div.card.recap',
       h('div.big-title', t('Closing time')),
-      h('div.muted', t('The chairs are up and the lights are low. Here’s how the round went:')),
-      h('div.stat-grid',
-        stat('emote_heart', t('Guests served'), sm.served),
-        stat('emote_angry', t('Guests lost'), `${sm.lost + sm.noSeat}`),
-        stat('icon_coin', t('Coins earned'), '+' + fmt(sm.coins)),
-        stat('icon_coin', t('Wages & rent'), '−' + fmt(costs)),
-        stat('ing_beans', t('Ingredients'), '−' + fmt(stock)),
-        stat('icon_coin', t('Profit'), (profit >= 0 ? '+' : '−') + fmt(Math.abs(profit))),
-        stat('icon_points', t('Café points'), '+' + fmt(sm.points)),
-        stat('icon_star', t('Rating'), `${sm.ratingStart.toFixed(1)} → ${sm.ratingEnd.toFixed(1)}`),
-        stat('icon_level', t('Level'), sm.levelEnd > sm.levelStart ? `${sm.levelStart} → ${sm.levelEnd}` : sm.levelEnd)),
-      h('div.muted', { style: { marginBottom: '10px' } }, note, ' ', t('The next round opens at the next even hour.')),
+      h('div.recap-hero' + (profit < 0 ? '.loss' : ''), assets.iconEl('icon_coin', 36), h('b', sign(profit))),
+      h('div.recap-hero-label', t('Profit')),
+      h('div.recap-figs',
+        fig('emote_heart', t('Guests served'), sm.served),
+        fig('icon_star', t('Rating'), sm.ratingEnd.toFixed(1)),
+        fig('icon_points', t('Café points'), '+' + fmt(sm.points))),
+      h('div.muted.recap-note', note),
+      h('details.recap-more',
+        h('summary', t('Details')),
+        line(t('Coins earned'), '+' + fmt(sm.coins)),
+        line(t('Wages & rent'), '−' + fmt(costs)),
+        line(t('Ingredients'), '−' + fmt(stock)),
+        line(t('Guests lost'), String(sm.lost + sm.noSeat)),
+        line(t('Rating'), `${sm.ratingStart.toFixed(1)} → ${sm.ratingEnd.toFixed(1)}`),
+        line(t('Level'), sm.levelEnd > sm.levelStart ? `${sm.levelStart} → ${sm.levelEnd}` : String(sm.levelEnd)),
+        h('div.recap-note-sm', t('The next round opens at the next even hour.'))),
       h('button.btn.primary', { onclick: hide }, t('Good night'))));
     this.el.receipt.classList.add('show');
     clearTimeout(this.receiptTimer);
@@ -713,25 +720,25 @@ ${k.desc}
     }
     if (r.snacksUsed) quiet.push(h('div.away-note', t('The team shared {n} snack(s) from the pantry to keep going.', { n: r.snacksUsed })));
     if (r.capped) quiet.push(h('div.away-note', t('Trading is counted for up to {n} hours while you are away.', { n: OFFLINE.capHours })));
-    const fig = (icon, label, v) => h('div.away-fig', assets.iconEl(icon, 30), h('b', v), h('span', label));
-    const line = (label, v) => h('div.away-line', h('span', label), h('b', v));
+    const fig = (icon, label, v) => h('div.recap-fig', assets.iconEl(icon, 30), h('b', v), h('span', label));
+    const line = (label, v) => h('div.recap-line', h('span', label), h('b', v));
     return h('div.card.away',
       h('div.big-title', t('Welcome back!')),
-      h('div.muted.away-when', ...keepTogether(t('{name} kept serving while you were away ({time}).', { name: g.state.name, time: KEEP }), dur)),
-      h('div.away-hero' + (r.net < 0 ? '.loss' : ''), assets.iconEl('icon_coin', 44), h('b', sign(r.net))),
-      h('div.away-hero-label', t('Coins earned')),
-      h('div.away-figs',
+      h('div.muted.recap-when', ...keepTogether(t('{name} kept serving while you were away ({time}).', { name: g.state.name, time: KEEP }), dur)),
+      h('div.recap-hero' + (r.net < 0 ? '.loss' : ''), assets.iconEl('icon_coin', 44), h('b', sign(r.net))),
+      h('div.recap-hero-label', t('Coins earned')),
+      h('div.recap-figs',
         fig('emote_heart', t('Guests served'), r.served),
         fig('icon_star', t('Rating'), r.ratingTo.toFixed(1)),
         fig('icon_points', t('Café points'), '+' + fmt(r.points))),
-      top.length ? h('div.away-top', h('div.away-cap', t('Best sellers')),
-        h('div.away-dishes', top.map(([id, n]) => h('span.away-dish', assets.iconEl(dishById[id].asset, 44), h('b', '×' + n))))) : null,
+      top.length ? h('div.recap-top', h('div.recap-cap', t('Best sellers')),
+        h('div.recap-dishes', top.map(([id, n]) => h('span.recap-dish', assets.iconEl(dishById[id].asset, 44), h('b', '×' + n))))) : null,
       r.goalsDone ? h('div.away-note.goals', glyph('checklist', 18), h('span', t('{n} of today\'s goals finished while you were away.', { n: r.goalsDone })),
         h('button.btn.small', { onclick: () => { this.closeModal(); this.openPanel('today'); } }, t('Claim'))) : null,
       ...warns,
-      h('details.away-more',
+      h('details.recap-more',
         h('summary', t('Details')),
-        h('div.muted.away-sum', ...opSegs(t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) }))),
+        h('div.muted.recap-sum', ...opSegs(t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) }))),
         line(t('Rating'), `${r.ratingFrom.toFixed(1)} → ${r.ratingTo.toFixed(1)}`),
         line(t('Guests lost'), String(r.lost)),
         line(t('Level'), r.levelTo > r.levelFrom ? `${r.levelFrom} → ${r.levelTo}` : String(r.levelTo)),

@@ -389,7 +389,7 @@ export const ZH_TW = {
   'Nobody on the team can handle this yet.': '目前團隊裡沒人能處理這個狀況。',
   'When trouble starts, the nearest trained staff member who is free goes by themselves. The club fee is paid only when they pass.':
     '狀況發生時，最近一位學過、手上有空的員工會自己出動。社團費等通過測驗才收。',
-  '{skill} Lv{n}': '{skill} Lv{n}', 'Train': '進修',
+  '{skill} Lv{n}': '{skill} Lv{n}', 'Train': '進修', 'Train {name}': '讓 {name} 去進修', 'Everyone on the team has learned {skill}.': '大家都學會{skill}了。',
   'Tap (or press Space) to swing just as the ball reaches the circle. Hit {need} of {n} pitches to pass.': '球飛到圓圈時點一下（或按空白鍵）揮棒。{n} 球中打中 {need} 球就過關。',
   'Tap Left and Right in turn (or the arrow keys), as fast as you can. Reach the finish within {s} seconds to pass. Same foot twice and you stumble!':
     '左、右輪流點（或用方向鍵），越快越好。{s} 秒內跑到終點就過關。同一隻腳連按兩次會絆倒喔！',

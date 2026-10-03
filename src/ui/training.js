@@ -30,19 +30,28 @@ export function renderTraining(ui, body) {
         h('div.grow', h('h3', club.name), h('div.club-sub', h('b', club.skill), h('span', '·'), h('span', t(TROUBLE_NAME[club.trouble])))),
         h('span.pill' + (s.level >= T.level ? '.live' : ''), s.level >= T.level ? t('Happening now') : t('From café Lv{n}', { n: T.level }))),
       h('div.club-desc', club.desc),
-      h('div.club-staff', g.staff.map((a) => staffRow(ui, a, club))),
+      ...staffPicker(ui, club),
       !trained && s.level >= T.level ? h('div.bmsg.warn', t('Nobody on the team can handle this yet.')) : null));
   }
   body.append(h('div.muted', { style: { marginTop: '6px' } }, t('When trouble starts, the nearest trained staff member who is free goes by themselves. The club fee is paid only when they pass.')));
 }
 
-function staffRow(ui, a, club) {
-  const g = ui.game, lv = a.clubLv(club.id);
-  return h('div.club-row',
-    portrait(a.look, 40, 40),
-    h('b.grow', a.name),
-    lv ? h('span.pill.learned', glyph('check', 14), t('{skill} Lv{n}', { skill: club.skill, n: lv }))
-      : h('button.btn.small.primary' + (g.eco.canAfford(club.fee) ? '' : '.disabled'), { onclick: () => startTryout(ui, a, club) }, t('Train'), coinPill(club.fee)));
+/** Who goes next, picked like a new hire: the team as tiles (anyone who already knows the skill is
+ *  ticked and greyed out), one tile selected, one button to send them. */
+function staffPicker(ui, club) {
+  const g = ui.game;
+  ui.trainPick ||= {};
+  const open = g.staff.filter((a) => !a.clubLv(club.id));
+  const pick = open.find((a) => a.id === ui.trainPick[club.id]) || open[0];
+  const tiles = h('div.pick-staff.club-pick', g.staff.map((a) => {
+    const lv = a.clubLv(club.id);
+    return h('button.pick-tile' + (a === pick ? '.on' : '') + (lv ? '.done' : ''), { disabled: !!lv, title: a.name, onclick: () => { ui.trainPick[club.id] = a.id; ui.renderPanel(); } },
+      portrait(a.look, 56, 56), h('b', a.name), lv ? h('span.pick-learned', glyph('check', 12), t('Lv{n}', { n: lv })) : null);
+  }));
+  const go = pick
+    ? h('button.btn.primary.club-go' + (g.eco.canAfford(club.fee) ? '' : '.disabled'), { onclick: () => startTryout(ui, pick, club) }, t('Train {name}', { name: pick.name }), ' ', coinPill(club.fee))
+    : h('div.muted.club-done', t('Everyone on the team has learned {skill}.', { skill: club.skill }));
+  return [tiles, go];
 }
 
 function startTryout(ui, a, club) {
