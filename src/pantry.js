@@ -34,20 +34,38 @@ export const ingredientAvailable = (id, level) => { const i = ingById[id]; retur
  * Buy back up the ingredients the menu uses (anything below RESTOCK.minUnits packs, up to RESTOCK.targetUnits),
  * within today's budget and what the till holds. `day` is the running tally { restocked, spent } for the
  * day. Returns the coins spent.
+ *
+ * The budget is spread rather than spent first come, first served: every low ingredient is first brought
+ * up to minUnits, the ones most of the menu leans on first, and only then topped up to targetUnits. And when
+ * the budget is gone but nothing on the menu can be made any more, the till still pays for the cheapest
+ * dish to get going again, so a café with coins in hand never turns guests away for want of a budget.
  */
 export function restock(s, day) {
   let left = restockBudget(s.level) - (day.restocked || 0), spent = 0;
-  const need = new Set();
-  for (const id of Object.keys(s.dishes)) if (s.dishes[id].on && dishById[id].level <= s.level) for (const i of dishById[id].ings) need.add(i);
-  for (const i of need) {
-    if (!ingredientAvailable(i, s.level)) continue;
-    const have = s.inv[i] || 0;
-    if (have >= RESTOCK.minUnits) continue;
-    const price = ingPrice(ingById[i]);
-    const n = Math.min(RESTOCK.targetUnits - have, Math.floor(left / price), Math.floor(s.coins / price));
-    if (n <= 0) continue;
-    s.coins -= price * n; s.inv[i] = have + n; left -= price * n; spent += price * n;
+  const menu = Object.keys(s.dishes).filter((id) => s.dishes[id].on && dishById[id].level <= s.level);
+  const uses = {};   // how much of the menu leans on each ingredient: a brewed drink counts double a bake on the side
+  for (const id of menu) for (const i of dishById[id].ings) uses[i] = (uses[i] || 0) + (dishById[id].cat === EXTRA_CAT ? 1 : 2);
+  const buy = (i, upTo, cap) => {
+    const have = s.inv[i] || 0, price = ingPrice(ingById[i]);
+    const n = Math.min(upTo - have, Math.floor(cap / price), Math.floor(s.coins / price));
+    if (n <= 0) return 0;
+    s.coins -= price * n; s.inv[i] = have + n; spent += price * n;
     day.restocked = (day.restocked || 0) + price * n; day.spent = (day.spent || 0) + price * n;
+    return price * n;
+  };
+  const low = Object.keys(uses)
+    .filter((i) => ingredientAvailable(i, s.level) && (s.inv[i] || 0) < RESTOCK.minUnits)
+    .sort((a, b) => uses[b] - uses[a] || servings(s, a) - servings(s, b));
+  for (const i of low) left -= buy(i, RESTOCK.minUnits, left);
+  for (const i of low) left -= buy(i, RESTOCK.targetUnits, left);
+  // over budget, only to keep the doors open
+  const foods = menu.filter((id) => dishById[id].cat !== EXTRA_CAT);
+  if (foods.length && !foods.some((id) => canMake(s, id))) {
+    const missing = (id) => dishById[id].ings.filter((i) => servings(s, i) < 1);
+    const unlock = (id) => (missing(id).every((i) => ingredientAvailable(i, s.level)) ? missing(id).reduce((a, i) => a + ingPrice(ingById[i]), 0) : Infinity);
+    const pick = foods.reduce((a, b) => (unlock(b) < unlock(a) ? b : a));
+    const gone = missing(pick);
+    if (unlock(pick) <= s.coins) for (const upTo of [1, RESTOCK.minUnits]) for (const i of gone) buy(i, upTo, Infinity);   // one pack of each first, so all of the recipe is covered
   }
   return spent;
 }

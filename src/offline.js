@@ -145,13 +145,15 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     served: 0, lost: 0, noSeat: 0, soldOut: 0, sales: 0, tips: 0, fees: 0, wages: 0, rent: 0, restock: 0, net: 0, points: 0,
     ratingFrom: st.rating, ratingTo: st.rating, levelFrom: w.level, levelTo: w.level,
     dishes: {}, phases: Object.fromEntries(DAY.phases.map((p) => [p.id, 0])), ranOut: [], broke: [], snacksUsed: 0, readyCrops: 0,
-    unpaid: false, noStaff: !team.some((s) => s.role === 'waiter') || !team.some((s) => s.role === 'chef'),
+    unpaid: false, restockOff: !restockOn, noStaff: !team.some((s) => s.role === 'waiter') || !team.some((s) => s.role === 'chef'),
   };
   const ranOut = new Set();
   const serviceLog = [];
   let trash = (wd.trash || []).length;
   const maxTrash = 1.5 + area / 22;
   const startCoins = w.coins;
+  const spentToday = (st.stats && st.stats.restocked) || 0;
+  let lastDay = null;
   const partsNow = (service, trashNow) => {
     const menuNow = Object.keys(w.dishes).filter((id) => w.dishes[id].on && dishById[id].level <= w.level);
     return {
@@ -167,7 +169,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
 
   for (let d = 0, left = days; left > 1e-6; d++, left -= 1) {
     const f = Math.min(1, left);                    // the share of a day this round covers
-    const day = { restocked: 0, spent: 0 };
+    const day = { restocked: d === 0 ? spentToday : 0, spent: 0 };   // the day under way when the game closed keeps what it already spent
     const menu = Object.keys(w.dishes).filter((id) => w.dishes[id].on && dishById[id].level <= w.level);
     const phases = phaseTable();
 
@@ -254,7 +256,8 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     const wages = closed ? 0 : Math.round(sum(team, (s) => staffWage(s.role, skillLevel(s.skills[s.role] || 0))) * f);
     const rent = closed ? 0 : Math.round(rentFor(wd.size) * f);
     const wPaid = Math.min(w.coins, wages), rPaid = Math.min(w.coins - wPaid, rent);
-    w.coins -= wPaid + rPaid; rep.wages += wPaid; rep.rent += rPaid; rep.restock += day.restocked;
+    w.coins -= wPaid + rPaid; rep.wages += wPaid; rep.rent += rPaid; rep.restock += day.restocked - (d === 0 ? spentToday : 0);
+    lastDay = day;
     if (wPaid < wages) rep.unpaid = true;
 
     // the rating drifts toward what the day earned
@@ -276,7 +279,16 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   st.snacks = Object.fromEntries(Object.entries(w.snacks).filter(([, n]) => n > 0));
   st.unpaid = false;
   const wholeDays = Math.floor(days + 1e-6);
-  if (wholeDays >= 1) { st.day = (st.day || 1) + wholeDays; st.clock = 0; }
+  if (wholeDays >= 1) {
+    st.day = (st.day || 1) + wholeDays; st.clock = 0;
+    // a new day: the old day's tally (and its spent market budget) must not carry into it; a part day traded on top already began on this one
+    const partial = lastDay && days - wholeDays > 1e-6;
+    st.stats = { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: w.rating, levelStart: w.level, spent: partial ? lastDay.restocked : 0, restocked: partial ? lastDay.restocked : 0, wages: 0, rent: 0, soldOut: 0, dashed: 0 };
+  } else if (st.stats && lastDay) {
+    // still the same day: what the market sold while away comes out of today's budget
+    const bought = lastDay.restocked - spentToday;
+    st.stats = { ...st.stats, restocked: lastDay.restocked, spent: (st.stats.spent || 0) + bought };
+  }
   st.totals = { ...(st.totals || {}), served: ((st.totals || {}).served || 0) + rep.served, lost: ((st.totals || {}).lost || 0) + rep.lost, coins: ((st.totals || {}).coins || 0) + rep.sales + rep.tips + rep.fees, days: ((st.totals || {}).days || 0) + wholeDays };
   for (const g of st.garden || []) if (g && g.crop && sec >= 600) { g.prog = 1; g.water = 0; rep.readyCrops++; }
   wd.dirty = [];

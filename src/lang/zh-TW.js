@@ -327,6 +327,7 @@ export const ZH_TW = {
   'Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}': '銷售 {s}＋小費 {p}＋休憩區 {f}－薪水房租 {w}－食材 {i}',
   'Best sellers': '熱銷品項', 'Open the café': '開門營業',
   'Without both a Server and a Barista nobody could serve guests — hire them so the café earns while you are away.': '沒有同時請服務生和咖啡師就沒人能接待客人，雇用他們，咖啡廳才能在你不在時賺錢。',
+  'Auto-restock is off, so nothing was bought while you were away — turn it on in the Market to keep the café going.': '自動補貨是關著的，你不在時沒有進貨 — 到市場打開它，店就能一直營業。',
   'Ran out of:': '用完了：', '— {n} guest(s) left empty-handed.': '— 有 {n} 位客人空手離開。',
   'Out of order:': '故障中：', 'A Cleaner can fix it.': '清潔員可以修理。',
   'The till ran short, so some wages went unpaid — the team is tired.': '收銀機的錢不夠，部分薪水沒發出去，團隊很疲憊。',

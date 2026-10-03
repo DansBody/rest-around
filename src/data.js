@@ -177,7 +177,7 @@ export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSecon
 
 // Bump whenever a number here, offline.js or authority.js changes what a save earns. The server and the
 // game must run the same balance (see ONLINE.md): deploy the server first, then the game.
-export const BALANCE_VERSION = 5;
+export const BALANCE_VERSION = 6;
 
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 

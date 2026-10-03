@@ -683,6 +683,7 @@ ${k.desc}
     if (r.noStaff) notes.push(warn(t('Without both a Server and a Barista nobody could serve guests — hire them so the café earns while you are away.')));
     if (r.rescued) notes.push(h('div.away-note', t('The supplier dropped off a starter pack to get you going.')));
     if (r.ranOut.length) notes.push(warn(t('Ran out of:'), ' ', ...r.ranOut.map((i) => h('span.ing', assets.iconEl('ing_' + i, 18), ingById[i].name)), ' ', t('— {n} guest(s) left empty-handed.', { n: r.soldOut })));
+    if (r.ranOut.length && r.restockOff) notes.push(warn(t('Auto-restock is off, so nothing was bought while you were away — turn it on in the Market to keep the café going.')));
     if (r.broke.length) notes.push(warn(t('Out of order:'), ' ' + [...new Set(r.broke)].map((x) => furnitureById[x].name).join(', ') + '. ' + t('A Cleaner can fix it.')));
     if (r.unpaid) notes.push(warn(t('The till ran short, so some wages went unpaid — the team is tired.')));
     if (r.levelTo > r.levelFrom) {
