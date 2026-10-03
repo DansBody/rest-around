@@ -431,7 +431,7 @@ export function buildTray(ui, bar) {
   const items = h('div.bb-items');
   const card = (key, name, price, lvl, sel, onclick, thumbFn, sub) => {
     const locked = lvl > s.level;
-    return h('div.bitem' + (sel ? '.sel' : '') + (locked ? '.locked' : ''), { onclick: locked ? () => b.say(t('Unlocks at level {n}', { n: lvl }), 'bad') : onclick, title: name },
+    return h('div.bitem' + (sel ? '.sel' : '') + (locked ? '.locked' : ''), { 'data-item': key, onclick: locked ? () => b.say(t('Unlocks at level {n}', { n: lvl }), 'bad') : onclick, title: name },
       cachedThumb(key, thumbFn), h('span', name), locked ? h('span.muted', I('icon_lock', 14), ' ' + t('Lv{n}', { n: lvl })) : h('span.pill', I('icon_coin', 16), price + (sub ? t(sub) : '')));
   };
   if (['dining', 'kitchen', 'fun', 'decor'].includes(cat)) {

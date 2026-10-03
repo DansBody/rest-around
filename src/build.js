@@ -5,7 +5,7 @@
 // or every side of a chair, are refused with a reason.
 import { World, DOOR_Y } from './world.js';
 import { DIRS } from './iso.js';
-import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE, wallDecorById, wallLayout, wallDoorSpan, WALL_GAP } from './data.js';
+import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE, wallDecorById, wallLayout, wallDoorSpan, WALL_GAP, TABLE_SEATS } from './data.js';
 import { tileKey, bus } from './util.js';
 import { t } from './i18n.js';
 
@@ -99,10 +99,16 @@ export class Build {
       const a = World.accessTiles(f);
       if (a.length && !a.some((t) => reach.has(tileKey(t.x, t.y)))) { res.reason = t('That blocks access to the {name}', { name: furnitureById[f.type].name }); return res; }
     }
+    // a table seats two: a third chair can't face it, from any side (a table can't be put among three chairs either)
     if (probe.kind === 'chair') {
       const d = DIRS[dir];
       const front = w.furnitureAt(x + d.dx, y + d.dy);
+      if (front && front.kind === 'table' && (front.seats || []).length >= TABLE_SEATS) { res.reason = t('This table already has two chairs'); return res; }
       if (!front || front.kind !== 'table') res.hint = t('Tip: chairs must face a table to seat guests (R to rotate)');
+    }
+    if (probe.kind === 'table') {
+      const facing = w.furniture.filter((c) => c.kind === 'chair' && blocked.has(tileKey(c.x + DIRS[c.dir].dx, c.y + DIRS[c.dir].dy)));
+      if (facing.length > TABLE_SEATS) { res.reason = t('Too many chairs around: a table seats two'); return res; }
     }
     res.valid = true;
     return res;

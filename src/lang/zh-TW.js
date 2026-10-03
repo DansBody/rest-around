@@ -467,4 +467,10 @@ export const ZH_TW = {
   "I'm baking their treat.": '我正在烤他們點的點心。', '{name} is baking their treat.': '{name} 正在烤他們點的點心。',
   "Ready! I'm bringing it over.": '好了！我把它送過去。', 'Ready! {name} is bringing it over.': '好了！{name} 正把它送過去。',
   'Order in! The kitchen gets on it.': '點好了！吧台馬上開始做。', 'Enjoy! They pay when they finish.': '請慢用！他們吃完就會結帳。',
+  "Guests need somewhere to sit. Tap the hammer and let's set up a table.": '客人需要有地方坐。點鐵鎚，我們來擺一張桌子。',
+  'Pick the {name}, then tap the floor to put it down.': '選「{name}」，再點地板放下去。',
+  'Now two {name}s facing the table, any side you like. A table seats two.': '再放兩張「{name}」面向桌子，哪一側都可以。一張桌子坐兩位。',
+  'One more {name}!': '再一張「{name}」！',
+  'A table for two! Tap Done to open up.': '兩人桌完成！按「完成」開始營業。',
+  'This table already has two chairs': '這張桌子已經有兩張椅子了', 'Too many chairs around: a table seats two': '周圍椅子太多了：一張桌子只能坐兩位',
 };

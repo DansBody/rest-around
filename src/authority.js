@@ -202,7 +202,7 @@ export function capCheck(prev, next, wallSec) {
 }
 
 /** A brand-new café (what "Reset game" uploads): nothing earned yet, no more than a new game starts with. */
-export const FRESH_WEALTH = 1500;   // a new game is worth 1432 (200 coins + the starter room, team and pantry)
+export const FRESH_WEALTH = 1500;   // a new game is worth well under it (200 coins + the bare starter room, team and pantry)
 export function isFreshSave(d) {
   return !badShape(d) && d.state.points === 0 && wealth(d) <= FRESH_WEALTH;
 }

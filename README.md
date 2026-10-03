@@ -133,8 +133,10 @@ in `src/data.js`.
 
 **First visit.** A new café starts with a pick from the whole cast (`src/ui/tutorial.js`): the chosen
 character becomes your **partner**, starts as the Server (another character, picked at random, is the Barista),
-can never be fired, and walks you through the café: looking around, the first guest, Staff, Today and the gift,
-studying the Espresso, and building. Each step moves on once you have done it (a yellow ring marks what to
+can never be fired, and walks you through the café: looking around, setting up the first table for two (a new
+café is a bare room with just the espresso machine and the till; no guests come in before there is a seat),
+the first guest (followed from the door through the order, the brewing and the delivery), Staff, Today and the
+gift, and studying the Espresso. A table seats two: chairs may face it from any side, but not a third. Each step moves on once you have done it (a yellow ring marks what to
 tap); the tour can be skipped, and a café that opens at night does the guest step when the doors open.
 
 **Today.** The checklist button (top-left) opens the Today panel: the daily gift (ingredients and coins; the

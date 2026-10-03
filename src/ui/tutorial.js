@@ -8,7 +8,7 @@
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
 import { roleLook } from '../looks.js';
-import { UNIQUE_MODELS, UNIQUE_NAMES } from '../data.js';
+import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById } from '../data.js';
 import { kitLines } from './panels.js';
 import { glyph } from './icons.js';
 import { TILE } from '../models.js';
@@ -24,7 +24,17 @@ import { t } from '../i18n.js';
 const STEPS = [
   { id: 'hello', center: true, next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: partnerName(g) }) },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
-  { id: 'guest', panel: null, ready: (g) => !g.day.isNight, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
+  // the room starts bare: a table for two first (the guest needs somewhere to sit)
+  { id: 'seats', panel: null, dim: (ui, tu) => tu.seatStage() !== 'table' && tu.seatStage() !== 'chairs',
+    target: (ui, tu) => ({ hammer: ui.toolBtns.build, table: ui.el.buildbar.querySelector('[data-item="f:table_oak"]'), chairs: ui.el.buildbar.querySelector('[data-item="f:chair_oak"]'), done: ui.el.buildbar.querySelector('.done') })[tu.seatStage()] || null,
+    text: (g, tu) => ({
+      hammer: t("Guests need somewhere to sit. Tap the hammer and let's set up a table."),
+      table: t('Pick the {name}, then tap the floor to put it down.', { name: furnitureById.table_oak.name }),
+      chairs: g.world.seats.length ? t('One more {name}!', { name: furnitureById.chair_oak.name }) : t('Now two {name}s facing the table, any side you like. A table seats two.', { name: furnitureById.chair_oak.name }),
+      done: t('A table for two! Tap Done to open up.'),
+    })[tu.seatStage()],
+    done: (g) => !g.build.active && g.world.seats.length >= 2 },
+  { id: 'guest', panel: null, ready: (g) => !g.day.isNight && g.world.seats.length > 0, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
     text: (g, tu) => tu.guestText(),
     done: (g, ui, tu) => !!(tu.guest && tu.guest.served) },   // the guest the tour called, not whoever else was in
   { id: 'staff', dim: true, panel: 'staff',
@@ -37,10 +47,6 @@ const STEPS = [
   { id: 'study', dim: true, panel: 'menu', target: (ui) => (ui.panel === 'menu' ? ui.el.panelBody.querySelector('[data-study="espresso"]') : ui.toolBtns.menu),
     text: (g, tu, ui) => (ui.panel === 'menu' ? t('Study the Espresso: it uses the beans and a voucher, and sells for more at Lv2.') : t('Now the Menu: this is where drinks level up.')),
     done: (g) => Object.values(g.state.dishes).some((d) => d.lv >= 2) },
-  { id: 'build', dim: (ui, tu) => !ui.game.build.active || tu.placed(), enter: (tu) => tu.ui.closePanel(),
-    target: (ui, tu) => (!ui.game.build.active ? ui.toolBtns.build : tu.placed() ? ui.el.buildbar.querySelector('.done') : ui.el.buildbar),
-    text: (g, tu) => (!g.build.active ? t('Tap the hammer to build and decorate.') : tu.placed() ? t('Looks great! Tap Done when you are happy with it.') : t('Pick a table, a chair or a plant, then tap the floor to put it down.')),
-    done: (g, ui, tu) => tu.built && !g.build.active },
   { id: 'bye', center: true, next: true, ready: (g, tu) => STEPS.every((x) => x.id === 'bye' || tu.done.includes(x.id)), enter: (tu) => tu.g.camera.fit(tu.g.world.size),
     text: () => t("That's the basics! We keep serving while you're away, so come back and see how we did.") },
 ];
@@ -83,7 +89,7 @@ function pickCard(ui) {
 class Tour {
   constructor(ui) {
     this.ui = ui; this.g = ui.game;
-    this.moved = false; this.built = false;
+    this.moved = false;
     this.cam = this.camKey();
     this.card = h('div#coach');
     this.spot = h('div#spot');
@@ -93,8 +99,14 @@ class Tour {
     this.update();
   }
   get done() { return this.g.state.tutorial; }
-  /** Something was put down (or taken away) since build mode opened. */
-  placed() { return this.built && this.g.world.furniture.length !== this.furn; }
+  /** Where the table-for-two step stands: out of build mode, no table yet, chairs to add, or ready to finish. */
+  seatStage() {
+    const g = this.g, w = g.world;
+    if (!g.build.active) return 'hammer';
+    const tables = w.byKind('table');
+    if (!tables.length) return 'table';
+    return tables.some((f) => (f.seats || []).length >= 2) ? 'done' : 'chairs';
+  }
   camKey() { const c = this.g.camera; return [c.tx, c.tz, c.yawTarget, c.distTarget].map((v) => v.toFixed(1)).join(); }
   /** The step to show: the first one not done whose time has come (the guest waits for the doors to open). */
   current() {
@@ -108,6 +120,8 @@ class Tour {
   }
   end() {
     this.g.state.tutorialSeen = true;
+    // skipped before the table was set up: guests still need somewhere to sit
+    if (!this.g.world.seats.length) { if (this.g.build.active) this.g.build.exit(); this.g.ensureSeats(); }
     this.card.remove(); this.spot.remove();
     this.mark(null);
     this.ui.root.classList.remove('touring');
@@ -186,7 +200,6 @@ class Tour {
     const g = this.g, ui = this.ui;
     if (this.camKey() !== this.cam) this.moved = true;
     this.cam = this.camKey();
-    if (g.build.active && !this.built) { this.built = true; this.furn = g.world.furniture.length; }
     // a moment of praise after a step is done, before the next one comes up
     if (this.praise && performance.now() < this.praise.until) { this.show('praise', null, this.praise.text, null); return; }
     this.praise = null;
