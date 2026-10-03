@@ -5,10 +5,11 @@ import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
 import { PANELS, buildTray, skillLine, kitLines, clubLines, confirmBtn } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { SNACKS, SKILL, ABILITY_UNLOCK_LV, CLUBS, TROUBLE, questById, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
+import { DAY, SNACKS, SKILL, ABILITY_UNLOCK_LV, CLUBS, TROUBLE, questById, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
 import { DOOR_Y } from '../world.js';
 import { audio } from '../audio.js';
 import { unlocksFor } from '../economy.js';
+import { roundOfDay, ROUNDS_PER_DAY } from '../clock.js';
 import { glyph } from './icons.js';
 import { glassFx } from './glass.js';
 import { t, tt, titledRole, setLang, getLang } from '../i18n.js';
@@ -52,11 +53,11 @@ export class UI {
     bus.on('changed', () => { this.dirty = true; });
     bus.on('build', (on) => this.onBuild(on));
     bus.on('buildChanged', () => { this.renderBuild(); this.renderGhostCtl(); });
-    bus.on('dayEnd', (s) => this.queueModal(() => this.summaryCard(s)));
+    bus.on('roundEnd', (s) => this.receipt(s));
     bus.on('levelUp', (e) => this.celebrate(e));
     bus.on('ability', (a) => this.cutIn(a));
     bus.on('kitCast', (a) => this.cutIn(a, a.kit.active));
-    bus.on('dayStart', (d) => this.toast(t('☀️ Day {d} — doors open!', { d }), 'good'));
+    bus.on('roundStart', () => this.toast(t('☀️ 08:00 — doors open!'), 'good'));
     this.renderBuild();
     this.update(1);
     this.initGlass();
@@ -107,8 +108,9 @@ export class UI {
     const rating = h('div.chip.rating', { title: t('Rating'), onclick: () => this.toggleRatingTip() }, this.el.stars, ic('icon_star', 22, 'ico star-one'), this.el.ratingNum);
     this.el.time = h('span', '8:00am');
     this.el.phase = h('small', 'Opening');
-    this.el.day = h('small', 'Day 1');
-    const clock = h('div.chip', { title: t('Day clock') }, ic('icon_clock', 28), h('div.clock', h('span', this.el.day), this.el.time, this.el.phase));
+    this.el.day = h('small', '1/12');
+    this.el.clock = h('div.chip', { title: t('Café clock') }, ic('icon_clock', 28), h('div.clock', h('span', this.el.day), this.el.time, this.el.phase));
+    const clock = this.el.clock;
     this.el.speedTxt = h('span', '1×');
     this.el.speed = h('div.chip', { style: { display: 'none', fontSize: '15px' } }, glyph('fast', 18), this.el.speedTxt);
     this.el.gift = h('div.chip#gift', { title: t('Daily gift!'), onclick: () => this.claimGift() }, ic('icon_gift', 30));
@@ -179,7 +181,7 @@ export class UI {
     // rotate / cancel / place (or rotate / move / sell) floating right next to the item in the scene
     this.el.ghostctl = h('div#ghostctl');
     r.appendChild(this.el.ghostctl);
-    this.el.buildBanner = h('div#buildbanner', glyph('build', 16), t('Build mode — the café is paused'));
+    this.el.buildBanner = h('div#buildbanner', glyph('build', 16), t('Build mode — the time is made up when you finish'));
     r.append(this.el.buildbar, this.el.buildBanner);
 
     // ----- info card, toasts, modal, debug host -----
@@ -187,7 +189,8 @@ export class UI {
     this.el.toasts = h('div#toasts');
     this.el.modal = h('div#modal');
     this.el.celebrate = h('div#celebrate');
-    r.append(this.el.info, this.el.toasts, this.el.modal, this.el.celebrate);
+    this.el.receipt = h('div#receipt');
+    r.append(this.el.info, this.el.toasts, this.el.modal, this.el.celebrate, this.el.receipt);
     this.nodes = [...r.children].filter((n) => !before.has(n));
   }
 
@@ -514,9 +517,12 @@ ${k.desc}
       this.starEls[i].style.clipPath = `inset(0 ${100 - f * 100}% 0 0)`;
     }
     this.el.ratingNum.textContent = s.rating.toFixed(1);
-    this.el.day.textContent = t('Day {n}', { n: s.day });
-    this.el.time.textContent = fmtTime(g.day.hour, getLang() !== 'en');
-    this.el.phase.textContent = g.paused ? t('Closed') : g.build.active ? t('Paused') : g.day.hour >= 22 ? t('Last guests…') : g.day.phase.name;
+    // which of today's rounds this is (they start on the even hours of the player's own clock)
+    const nth = roundOfDay(s.round), from = nth * 2;
+    this.el.day.textContent = `${nth + 1}/${ROUNDS_PER_DAY}`;
+    this.el.clock.title = t('Round {n} of {m} today ({a}:00–{b}:00). A round lasts 2 hours and opens on the even hours.', { n: nth + 1, m: ROUNDS_PER_DAY, a: String(from).padStart(2, '0'), b: String((from + 2) % 24).padStart(2, '0') });
+    this.el.time.textContent = fmtTime(g.day.hour % 24, getLang() !== 'en');
+    this.el.phase.textContent = g.paused ? t('Closed') : g.build.active ? t('Building') : g.day.isNight ? (s.stats && s.stats.closed ? t('Night') : t('Last guests…')) : g.day.hour >= DAY.lastCallHour ? t('Last call') : g.day.phase.name;
     this.el.gift.style.display = g.eco.giftAvailable() ? '' : 'none';
     this.el.speed.style.display = g.timeScale !== 1 ? '' : 'none';
     this.el.speedTxt.textContent = `${g.timeScale}×`;
@@ -634,19 +640,10 @@ ${k.desc}
     this.nextModal();
   }
 
-  summaryCard(sm) {
-    const g = this.game;
+  /** The round's receipt at closing time: a card that stays out of the way (the café rolls on into the night). */
+  receipt(sm) {
     const dr = sm.ratingEnd - sm.ratingStart;
-    const next = () => { this.closeModal(); if (g.paused) g.day.startNextDay(); };
-    const btn = h('button.btn.primary', { onclick: next }, t('Open Day {n}', { n: sm.day + 1 }));
-    let left = 20;
-    if (g.state.settings.autoNextDay) {
-      this.modalTimer = setInterval(() => {
-        left -= 1 * Math.max(1, g.timeScale / 4);
-        btn.textContent = `${t('Open Day {n}', { n: sm.day + 1 })} (${Math.max(0, Math.ceil(left))})`;
-        if (left <= 0) next();
-      }, 1000);
-    }
+    const hide = () => this.el.receipt.classList.remove('show');
     const stat = (icon, label, v) => h('div.stat', assets.iconEl(icon, 26), h('b', v), h('span.muted', label));
     const costs = (sm.wages || 0) + (sm.rent || 0), stock = sm.restocked || 0, profit = sm.coins - costs - stock;
     const note = sm.owed ? t('The till ran short, so some wages went unpaid — the team will start tired.')
@@ -654,9 +651,9 @@ ${k.desc}
         : sm.dashed ? t('{n} guest(s) ran off without paying — someone from the Track Club could have caught them.', { n: sm.dashed })
         : sm.noSeat ? t('{n} guest(s) left because every seat was taken — more tables would help!', { n: sm.noSeat })
           : dr >= 0 ? t('Word is spreading about your cozy little place.') : t('Keep things clean and fast to win back the stars.');
-    return h('div.card',
-      h('div.big-title', t('Day {n} complete!', { n: sm.day })),
-      h('div.muted', t('The chairs are up and the lights are low. Here’s how it went:')),
+    this.el.receipt.replaceChildren(h('div.card',
+      h('div.big-title', t('Closing time')),
+      h('div.muted', t('The chairs are up and the lights are low. Here’s how the round went:')),
       h('div.stat-grid',
         stat('emote_heart', t('Guests served'), sm.served),
         stat('emote_angry', t('Guests lost'), `${sm.lost + sm.noSeat}`),
@@ -667,8 +664,11 @@ ${k.desc}
         stat('icon_points', t('Café points'), '+' + fmt(sm.points)),
         stat('icon_star', t('Rating'), `${sm.ratingStart.toFixed(1)} → ${sm.ratingEnd.toFixed(1)}`),
         stat('icon_level', t('Level'), sm.levelEnd > sm.levelStart ? `${sm.levelStart} → ${sm.levelEnd}` : sm.levelEnd)),
-      h('div.muted', { style: { marginBottom: '10px' } }, note),
-      btn);
+      h('div.muted', { style: { marginBottom: '10px' } }, note, ' ', t('The next round opens at the next even hour.')),
+      h('button.btn.primary', { onclick: hide }, t('Good night'))));
+    this.el.receipt.classList.add('show');
+    clearTimeout(this.receiptTimer);
+    this.receiptTimer = setTimeout(hide, 30000);
   }
 
   /** "While you were away": what the café did with the time since the game was last open. */
@@ -706,7 +706,7 @@ ${k.desc}
       h('div.muted', { style: { marginBottom: '6px' } }, ...opSegs(t('Sales {s} + tips {p} + nooks {f} − wages & rent {w} − ingredients {i}', { s: fmt(r.sales), p: fmt(r.tips), f: fmt(r.fees), w: fmt(r.wages + r.rent), i: fmt(r.restock) }))),
       top.length ? h('div', h('div.muted', t('Best sellers')), h('div.ings', { style: { justifyContent: 'center', margin: '4px 0 8px' } }, top.map(([id, n]) => h('span.ing', assets.iconEl(dishById[id].asset, 24), '×' + n)))) : null,
       ...notes,
-      h('button.btn.primary', { onclick: () => { g.paused = false; this.closeModal(); } }, t('Open the café')));
+      h('button.btn.primary', { onclick: () => this.closeModal() }, t('Back to the café')));
     return card;
   }
   /** Level-up card: non-blocking (the café keeps running) and auto-dismissing. */

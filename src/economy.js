@@ -4,7 +4,7 @@ import { SNACKS,
   LEVEL_POINTS, MAX_LEVEL, DISHES, dishById, levelUpCost, MAX_DISH_LEVEL, ingById, INGREDIENTS,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, furnitureById, EXPANSIONS, SKILL, CLUBS, TROUBLE,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
-  staffWage, rentFor, ingPrice, UNIQUE_MODELS, UNIQUE_NAMES,
+  staffWage, rentFor, ingPrice, UNIQUE_MODELS, UNIQUE_NAMES, ROUND_SCALE, perRound,
 } from './data.js';
 import * as pantry from './pantry.js';
 
@@ -70,6 +70,13 @@ export class Economy {
   }
 
   // ---------------- daily goal ----------------
+  /** A new calendar day (the player's own time zone) brings a new daily goal. */
+  checkDate() {
+    const s = this.s, today = this.game.day.today();
+    if (s.questDay === today && s.quest) return;
+    s.questDay = today;
+    this.rollQuest();
+  }
   /** A fresh goal for the day (never the same kind twice in a row). */
   rollQuest() {
     const s = this.s, prev = s.quest && s.quest.id;
@@ -192,22 +199,25 @@ export class Economy {
     return true;
   }
   refund(id) { pantry.refund(this.s, id); this.game.changed('inv'); }
-  restockBudget() { return pantry.restockBudget(this.s.level); }
+  restockBudget() { return perRound(pantry.restockBudget(this.s.level)); }
   /** Top up the ingredients on the menu from the market, within today's budget. Returns the coins spent. */
   autoRestock() {
     const s = this.s;
     if (!s.settings.autoRestock || !s.stats) return 0;
-    const spent = pantry.restock(s, s.stats);
+    const spent = pantry.restock(s, s.stats, ROUND_SCALE);
     if (spent) { this.game.changed('inv'); this.game.changed('coins'); }
     return spent;
   }
 
-  // ---------------- daily costs ----------------
-  dailyWages() { return this.game.staff.reduce((a, st) => a + staffWage(st.role, st.skillLv()), 0); }
-  dailyRent() { return rentFor(this.game.world.size); }
-  /** Close the books for the day: pay the team and the landlord as far as the till allows. */
-  payDay() {
-    const s = this.s, wages = this.dailyWages(), rent = this.dailyRent();
+  // ---------------- costs per round ----------------
+  dailyWages() { return this.game.staff.reduce((a, st) => a + perRound(staffWage(st.role, st.skillLv())), 0); }
+  dailyRent() { return perRound(rentFor(this.game.world.size)); }
+  /**
+   * Close the books for the round: pay the team and the landlord as far as the till allows. `share` is the
+   * part of the opening hours the café traded live (the rest was settled offline, or the game opened late).
+   */
+  payDay(share = 1) {
+    const s = this.s, wages = Math.round(this.dailyWages() * share), rent = Math.round(this.dailyRent() * share);
     const w = Math.min(s.coins, wages);
     const r = Math.min(s.coins - w, rent);
     s.coins -= w + r;
@@ -236,11 +246,12 @@ export class Economy {
     this.game.changed('inv');
     return true;
   }
-  giftAvailable() { return this.s.giftDay < this.s.day; }
+  /** Once per calendar day (the player's own time zone). */
+  giftAvailable() { return this.s.giftDay !== this.game.day.today(); }
   claimGift() {
     const s = this.s, g = this.game;
     if (!this.giftAvailable()) return null;
-    s.giftDay = s.day;
+    s.giftDay = this.game.day.today();
     const pool = INGREDIENTS.filter((i) => this.ingredientAvailable(i.id));
     const got = {};
     for (let i = 0; i < 4; i++) { const ing = choice(pool).id; got[ing] = (got[ing] || 0) + randInt(1, 2); }

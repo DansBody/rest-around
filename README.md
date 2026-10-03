@@ -149,9 +149,12 @@ simulation. Knobs: `OFFLINE`, `COSTS`, `RESTOCK`, `SERVINGS_PER_UNIT` in `src/da
 **Rating (0–5 ★)** blends service speed, cleanliness, average menu level, decor and broken
 facilities (tap the stars for the breakdown). More stars → more guests.
 
-**Day cycle.** A day lasts about 8 real minutes: First Brew → Brunch Rush → Slow Sips → Tea-Time
-Rush → Evening Glow, then a summary card (served, lost, coins, points, rating change). The next day opens
-automatically after a short countdown (toggle in Settings).
+**Rounds on the wall clock.** There is no day counter: the café follows the real clock in the player's
+own time zone. Every 2 hours, on the even hours, a round opens at 08:00 and runs First Brew → Brunch Rush →
+Slow Sips → Tea-Time Rush → Evening Glow until 22:00 (about 108 real minutes), then wages and rent are paid
+(for the part of the round played live), a receipt card shows the round, and a 12-minute night lets the
+team rest until the next round. The daily goal and the daily gift come once per calendar day. When the game
+was not running (build mode, a mini-game) it plays that time back quickly; time away is settled offline.
 
 ### Controls
 

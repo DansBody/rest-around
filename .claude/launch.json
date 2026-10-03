@@ -32,6 +32,15 @@
       "port": 8124
     },
     {
+      "name": "refillit-clock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8125"
+      ],
+      "port": 8125
+    },
+    {
       "name": "dist",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8130", "--bind", "127.0.0.1", "--directory", "dist"],

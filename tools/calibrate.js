@@ -1,13 +1,15 @@
 // Calibrates the away-from-keyboard model (src/offline.js MODEL) against the live simulation.
 // Run in the browser console of a running game (python tools/devserver.py 8123, open the page, paste this file).
-// For each café layout it plays one day with the real simulation (game.fastForward) and settles the same
-// layout with the model at full efficiency, then prints both side by side. Tune MODEL until they agree
+// For each café layout it plays one round (08:00 to closing) with the real simulation (game.fastForward) and
+// settles the same layout with the model at full efficiency for as many model days as a round's opening
+// hours hold (ROUND_SCALE), then prints both side by side. A round is ~2 real hours of simulation, so this
+// takes a while. Tune MODEL until they agree
 // (served within ~10%, rating within ~0.3 stars), then leave OFFLINE.efficiency below 1 to taste.
 (async () => {
   const g = window.game;
   const { serialize } = await import('/src/save.js');
   const { makeStaff } = await import('/src/staff.js');
-  const { DAY, OFFLINE } = await import('/src/data.js');
+  const { DAY, OFFLINE, ROUND_SCALE } = await import('/src/data.js');
   const { settleOffline } = await import('/src/offline.js?v=' + Date.now());
 
   async function live(o) {
@@ -31,9 +33,11 @@
     for (const a of g.staff) a.look.model = 'mochalatte';   // neutral kit: no perks
     g.state.rating = o.rating ?? 5; g.rating.recompute();
     g.state.quest = null; g.eco.rollQuest(); g.day.nextSpawn = 2;
+    g.state.clock = 0; g.state.stats = g.day.freshStats();   // from opening, whatever the wall clock says
     const snap = JSON.parse(JSON.stringify(serialize(g)));
-    const days = g.fastForward(DAY.length + 130);
-    return { snap, day: days[0] };
+    const rounds = g.fastForward(DAY.length + 130);
+    g.day.snap();
+    return { snap, day: { ...rounds[0], rating: rounds[0].ratingEnd } };
   }
 
   const cases = {
@@ -45,11 +49,11 @@
     big: { tables: 12, stoves: ['stove_deluxe', 'stove_deluxe'], staff: { waiter: 3, chef: 2 }, rating: 4.5 },
   };
   const keep = { ...OFFLINE };
-  OFFLINE.efficiency = 1; OFFLINE.hoursPerDay = 3;
+  OFFLINE.efficiency = 1; OFFLINE.hoursPerDay = 3; OFFLINE.capHours = 99;
   const rows = [];
   for (const [name, o] of Object.entries(cases)) {
     const r = await live(o);
-    const m = settleOffline(r.snap, 3 * 3600 + 1, 1).report;
+    const m = settleOffline(r.snap, ROUND_SCALE * 3 * 3600 + 1, 1).report;
     rows.push(`${name.padEnd(8)} live served ${String(r.day.served).padStart(3)} ★${r.day.rating.toFixed(2)} | model served ${String(m.served).padStart(3)} ★${m.ratingTo.toFixed(2)}`);
   }
   Object.assign(OFFLINE, keep);

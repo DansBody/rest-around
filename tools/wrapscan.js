@@ -57,7 +57,7 @@ export async function runAll() {
   const guest = [...(g.agents || [])].find((a) => a.kind !== 'staff');
   if (guest) { ui.select(guest); await scan('info: guest'); }
   g.selected = null; ui.renderInfo();
-  // build mode, every category (entering it pauses the café; leaving resumes it)
+  // build mode, every category (entering it stops the café; leaving plays the time back)
   document.querySelectorAll('.tool')[0].click(); await wait(300);
   for (let i = 0, n = document.querySelectorAll('#buildbar .tab').length; i < n; i++) { document.querySelectorAll('#buildbar .tab')[i].click(); await scan('build tab ' + i); }
   document.querySelectorAll('.tool')[0].click(); await wait(300);
@@ -68,9 +68,8 @@ export async function runAll() {
     modal.replaceChildren(card); modal.classList.add('show'); await scan(label);
     modal.replaceChildren(...prev); if (!wasShown) modal.classList.remove('show');
   };
-  const auto = g.state.settings.autoNextDay; g.state.settings.autoNextDay = false;
-  await showCard(ui.summaryCard({ day: 12, served: 148, lost: 7, noSeat: 3, coins: 12840, wages: 1260, rent: 320, restocked: 2210, points: 1530, ratingStart: 3.6, ratingEnd: 4.2, levelStart: 7, levelEnd: 8, soldOut: 4 }), 'day summary');
-  g.state.settings.autoNextDay = auto;
+  ui.receipt({ round: 12, served: 148, lost: 7, noSeat: 3, coins: 12840, wages: 1260, rent: 320, restocked: 2210, points: 1530, ratingStart: 3.6, ratingEnd: 4.2, levelStart: 7, levelEnd: 8, soldOut: 4 }); await scan('round receipt');
+  ui.el.receipt.classList.remove('show');
   const dishes = Object.keys(g.state.dishes);
   await showCard(ui.awayCard({ elapsedSec: 12300, served: 212, net: 8450, points: 940, ratingFrom: 3.6, ratingTo: 4.1, levelFrom: 7, levelTo: 8, lost: 12, sales: 9300, tips: 1240, fees: 380, wages: 1900, rent: 320, restock: 250,
     dishes: { [dishes[0]]: 40, [dishes[1]]: 22 }, noStaff: false, rescued: true, ranOut: [], broke: [], unpaid: true, readyCrops: 3, snacksUsed: 2, capped: true, soldOut: 0 }), 'away card');

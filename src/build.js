@@ -1,7 +1,8 @@
 // Build mode: buy/place/move/rotate/sell furniture, hang/move/sell wall decorations, paint floors,
 // apply wallpaper, expand the room.
-// The simulation is paused while building. Layouts that cut any floor off from the door, or block
-// the working side of a stove/bar/restroom/arcade or every side of a chair, are refused with a reason.
+// The simulation stands still while building and catches up to the wall clock afterwards (Game.catchUp).
+// Layouts that cut any floor off from the door, or block the working side of a stove/bar/restroom/arcade
+// or every side of a chair, are refused with a reason.
 import { World, DOOR_Y } from './world.js';
 import { DIRS } from './iso.js';
 import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE, wallDecorById, wallLayout, wallDoorSpan, WALL_GAP } from './data.js';

@@ -2,7 +2,7 @@
 // trouble starts, keeps the day's count, and sends a trained staff member on its own, a moment after the
 // trouble starts (or as soon as someone trained is free). The guests' own behaviour lives in customer.js,
 // the responders' in staff.js.
-import { CLUBS, TROUBLE } from './data.js';
+import { CLUBS, TROUBLE, perRound } from './data.js';
 import { chance, manhattan } from './util.js';
 import { t } from './i18n.js';
 
@@ -20,7 +20,7 @@ export class Troubles {
   /** Can a new incident of `kind` start now? */
   allowed(kind) {
     const g = this.game, T = TROUBLE[kind];
-    if (g.visit || g.state.level < T.level || this.today[kind] >= T.perDay) return false;
+    if (g.visit || g.state.level < T.level || this.today[kind] >= perRound(T.perDay)) return false;   // perDay was set for the old 8-minute day
     return !this.game.customers.some((c) => (c.trouble ? !c.trouble.over && c.trouble.kind === kind : kind === 'rude' && c.rude));
   }
   roll(kind) {

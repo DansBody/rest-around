@@ -32,16 +32,16 @@ export const ingredientAvailable = (id, level) => { const i = ingById[id]; retur
 
 /**
  * Buy back up the ingredients the menu uses (anything below RESTOCK.minUnits packs, up to RESTOCK.targetUnits),
- * within today's budget and what the till holds. `day` is the running tally { restocked, spent } for the
- * day. Returns the coins spent.
+ * within the budget and what the till holds. `day` is the running tally { restocked, spent } for the day
+ * (a model day offline, a round live, where the budget is `scale` times as big). Returns the coins spent.
  *
  * The budget is spread rather than spent first come, first served: every low ingredient is first brought
  * up to minUnits, the ones most of the menu leans on first, and only then topped up to targetUnits. And when
  * the budget is gone but nothing on the menu can be made any more, the till still pays for the cheapest
  * dish to get going again, so a café with coins in hand never turns guests away for want of a budget.
  */
-export function restock(s, day) {
-  let left = restockBudget(s.level) - (day.restocked || 0), spent = 0;
+export function restock(s, day, scale = 1) {
+  let left = Math.round(restockBudget(s.level) * scale) - (day.restocked || 0), spent = 0;
   const menu = Object.keys(s.dishes).filter((id) => s.dishes[id].on && dishById[id].level <= s.level);
   const uses = {};   // how much of the menu leans on each ingredient: a brewed drink counts double a bake on the side
   for (const id of menu) for (const i of dishById[id].ings) uses[i] = (uses[i] || 0) + (dishById[id].cat === EXTRA_CAT ? 1 : 2);

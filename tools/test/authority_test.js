@@ -28,9 +28,17 @@ for (const [name, make] of Object.entries(fx)) {
   n = make(); n.world.furniture.push({ t: 'plant_fern', x: 1, y: 2, d: 1, u: 0, b: false, ba: 0 }); n.state.coins -= 30;
   r = capCheck(prev, n, 45);
   ok(!r.reject && !r.flags.length && Math.abs(wealth(n) - wealth(prev)) < 1e-9, `${name}: buying a plant is wealth-neutral`);
-  // skipping days
-  n = make(); n.state.day += 5;
-  ok(capCheck(prev, n, 45).reject, `${name}: jumping 5 days in 45 s is rejected`);
+  // skipping rounds
+  n = make(); n.state.round += 5;
+  ok(capCheck(prev, n, 45).reject, `${name}: jumping 5 rounds in 45 s is rejected`);
+  n = make(); n.state.round += 1;
+  ok(!capCheck(prev, n, 45).reject, `${name}: the next round opening within 45 s is fine`);
+  n = make(); n.state.round += 4; n.state.tz = 0;
+  ok(!capCheck(prev, n, 45).reject, `${name}: moving time zones shifts the round without a rejection`);
+  // the daily gift, twice in a minute
+  n = make(); n.state.giftDay = (prev.state.giftDay || 0) + 1; n.state.coins += 60;
+  r = capCheck(prev, n, 45);
+  ok(!r.reject && !r.flags.includes('wealth'), `${name}: opening the daily gift is allowed`);
   // rating edit
   n = make(); n.state.rating = 5;
   r = capCheck(prev, n, 10);

@@ -7,9 +7,10 @@ import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
 import { saveSlots, loadSlots } from './pastry.js';
-import { furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT } from './data.js';
+import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
+import { localTz } from './clock.js';
 
 // Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
 export const SAVE_KEY = 'restAround.save.v1';
@@ -108,9 +109,11 @@ export function apply(game, data) {
     level: 1, // derived from points below (never trust a saved level)
     rating: num(s.rating, d.rating, 0, 5),
     service: Array.isArray(s.service) ? s.service.filter((v) => typeof v === 'number').slice(-24) : [],
-    day: Math.floor(num(s.day, 1, 1, 1e6)),
-    clock: num(s.clock, 0, 0, 10000),
-    giftDay: Math.floor(num(s.giftDay, 0, 0, 1e6)),
+    round: Math.floor(num(s.round, 0, 0, 1e7)),   // saves from before the wall clock have none: the clock snaps to now
+    clock: num(s.clock, 0, 0, DAY.round),
+    tz: Math.round(num(s.tz, 0, -720, 840)),
+    questDay: Math.floor(num(s.questDay, 0, 0, 1e7)),
+    giftDay: Math.floor(num(s.giftDay, 0, 0, 1e7)),
     totals: { ...d.totals, ...(s.totals || {}) },
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,
@@ -197,6 +200,10 @@ export function apply(game, data) {
   bumpUid(maxId + 1000);
   game.troubles.newDay();
   game.day.nextSpawn = 4;
-  if (!game.state.quest) game.eco.rollQuest();
+  // onto the wall clock: a short gap (under OFFLINE.minSeconds, which the settlement skips) is played out by
+  // Game.catchUp; a longer one was settled already, and an old save from before the wall clock just jumps
+  if (game.visit || !(st.round > 0) || game.day.wallPos() - game.day.pos() > OFFLINE.minSeconds) game.day.snap();
+  else st.tz = localTz();
+  if (!game.visit) game.eco.checkDate();
   game.rating.recompute();
 }

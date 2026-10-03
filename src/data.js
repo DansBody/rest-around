@@ -171,13 +171,13 @@ export const servingCost = (d) => d.ings.reduce((a, id) => a + ingPrice(ingById[
 
 // ---------------- while you are away ----------------
 // The café keeps trading while the game is closed: on return the time away is settled in one go
-// (see offline.js). One game day of trading takes `hoursPerDay` real hours, at `efficiency` of what
-// playing it live would earn, and only the first `capHours` away are counted.
+// (see offline.js). The model trades in "model days" of the old 8-minute day: one per `hoursPerDay` real
+// hours away, at `efficiency` of what playing it live would earn, and only the first `capHours` are counted.
 export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSeconds: 600 };
 
 // Bump whenever a number here, offline.js or authority.js changes what a save earns. The server and the
 // game must run the same balance (see ONLINE.md): deploy the server first, then the game.
-export const BALANCE_VERSION = 6;
+export const BALANCE_VERSION = 7;
 
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 
@@ -199,8 +199,14 @@ export const BOTTOM_STYLES = ['pants', 'skirt'];
 export const HAT_STYLES = [null, 'chef', 'cap', 'bow'];
 
 // ---------------- simulation tuning ----------------
+// A round follows the wall clock (see clock.js): every 2 real hours, starting on the even local hours, the
+// café opens at 08:00, closes at 22:00 (`length` sim seconds, 1 sim second = 1 real second) and has a short
+// night until the next round opens. Guests walk in at the same pace per real second as they always did:
+// `pace` sim seconds count as one "hour" in the arrival rates (the old 8-minute day), whatever the clock says.
 export const DAY = {
-  length: 480,            // sim seconds per day (8 real minutes at 1x)
+  length: 6480,           // sim seconds from opening (08:00) to closing (22:00)
+  round: 7200,            // sim seconds in a whole round, the night included (2 real hours)
+  pace: 480 / 14,         // sim seconds per hour in the arrival rates
   startHour: 8, endHour: 22, lastCallHour: 21,
   phases: [
     { id: 'opening', name: 'First Brew', from: 8, mult: 0.8 },
@@ -210,6 +216,12 @@ export const DAY = {
     { id: 'closing', name: 'Evening Glow', from: 19, mult: 0.5 },
   ],
 };
+/** The night between closing and the next opening (not one of DAY.phases: nobody walks in). */
+export const NIGHT = { id: 'night', name: 'Night', from: 22, mult: 0 };
+/** Costs that come round once per round (wages, rent, the market budget, the trouble allowance) were set for
+ *  the old 8-minute day; a round's opening hours are this many of those, so per real minute nothing changes. */
+export const ROUND_SCALE = 6480 / 480;
+export const perRound = (n) => Math.round(n * ROUND_SCALE);
 export const PATIENCE = { seat: 24, order: 38, food: 60 };
 // A cashier counter: guests stop to pay on the way out and add `tip` × the bill (× satisfaction) on top of
 // the usual tip; and when every seat is taken, up to `queue` of them wait in line (not only for a table

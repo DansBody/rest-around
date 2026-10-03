@@ -13,14 +13,14 @@ function base({ coins, points, rating, inv, snacks, size, extraFurniture = [], t
     v: 1,
     savedAt: 1790918930069,
     state: {
-      v: 1, name: 'Sunny Café', coins, points, level: 1, rating, service: service(0.88), day: 1, clock: 300,
+      v: 1, name: 'Sunny Café', coins, points, level: 1, rating, service: service(0.88), round: 248739, clock: 300, tz: 480,
       dishes: dishes(on), inv, opened: { sugar: 1.5 }, unpaid: false,
       wallDeco: ['wd_menu', 'wd_frame_tulip', 'wd_hanging'], wallPos: {},
       quest: { id: 'coins', target: 85, prog: 85, done: true }, snacks,
       garden: [{ crop: null, prog: 0, water: 0 }, { crop: null, prog: 0, water: 0 }], giftDay: 0,
       stats: { served: 50, lost: 0, noSeat: 12, coins: 687, points: 180, ratingStart: 2.6, levelStart: 1, spent: 52, restocked: 52, wages: 0, rent: 0, soldOut: 0 },
-      totals: { served: 0, lost: 0, coins: 687, days: 0 },
-      settings: { sound: true, music: true, volume: 0.7, autoNextDay: true, glass: true, autoRestock: true },
+      totals: { served: 0, lost: 0, coins: 687, rounds: 0 },
+      settings: { sound: true, music: true, volume: 0.7, glass: true, autoRestock: true },
       tutorialSeen: false,
     },
     world: {

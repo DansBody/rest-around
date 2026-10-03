@@ -13,9 +13,10 @@
 // the same file can run in the browser now and on a server later.
 import { CASHIER,
   DAY, OFFLINE, ENERGY, SKILL, skillLevel, KITS, ROLES, DISHES, dishById, furnitureById, floorById, wallById, wallDecorById,
-  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS,
+  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE,
 } from './data.js';
 import { RATING_WEIGHTS } from './rating.js';
+import { roundAt, clockAt } from './clock.js';
 import * as pantry from './pantry.js';
 import { STOCK_BAKE_CHANCE } from './pastry.js';
 
@@ -35,7 +36,9 @@ export const MODEL = {
 };
 
 const phaseTable = () => DAY.phases.map((p, i) => ({ ...p, to: i + 1 < DAY.phases.length ? DAY.phases[i + 1].from : DAY.lastCallHour }));
-export const SIM_SEC_PER_HOUR = DAY.length / (DAY.endHour - DAY.startHour);
+/** The model trades in days of the old 8-minute day (the pace the live arrival rates still run at, see DAY.pace). */
+export const MODEL_DAY = DAY.pace * (DAY.endHour - DAY.startHour);
+export const SIM_SEC_PER_HOUR = DAY.pace;
 
 export const levelFor = (points) => { let lv = 1; while (lv < MAX_LEVEL && points >= LEVEL_POINTS[lv + 1]) lv++; return lv; };
 
@@ -46,7 +49,7 @@ function rngFrom(seed) {   // mulberry32
 
 /** Share of a day a staff member can actually spend working: drain while working vs. naps, snacks and the night's rest. */
 export function dutyFor(snackEnergy = 0) {
-  const L = DAY.length;
+  const L = MODEL_DAY;
   return Math.min(MODEL.maxDuty, (ENERGY.overnight + ENERGY.napRegen * L + snackEnergy) / ((ENERGY.drainPerSec + ENERGY.napRegen) * L));
 }
 
@@ -152,7 +155,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   let trash = (wd.trash || []).length;
   const maxTrash = 1.5 + area / 22;
   const startCoins = w.coins;
-  const spentToday = (st.stats && st.stats.restocked) || 0;
+  const spentToday = ((st.stats && st.stats.restocked) || 0) / ROUND_SCALE;   // the round's market budget is ROUND_SCALE model days'
   let lastDay = null;
   const partsNow = (service, trashNow) => {
     const menuNow = Object.keys(w.dishes).filter((id) => w.dishes[id].on && dishById[id].level <= w.level);
@@ -242,7 +245,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     }
 
     // litter: cleaners keep up with it as far as they have the hours for
-    const cleanCap = sum(cleaners, (c) => workMul(c, 'cleaner', phases[1], team)) * duty * DAY.length * f / MODEL.cleanSecPerTrash;
+    const cleanCap = sum(cleaners, (c) => workMul(c, 'cleaner', phases[1], team)) * duty * MODEL_DAY * f / MODEL.cleanSecPerTrash;
     trash = Math.min(maxTrash, seats * 1.25, Math.max(0, trash + trashMade - cleanCap));   // litter lands on the few tiles beside the chairs, so it piles up only so far
     rep.lost += lostDay + soldDay; rep.soldOut += soldDay; rep.noSeat += seatLost;
     // the service rating is the average of the last 24 guests, so it reads the end of the day
@@ -263,7 +266,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     // the rating drifts toward what the day earned
     rep.parts = partsNow(service, trash + (cleaners.length ? 0.04 * servedDay : 0));
     target = ratingTarget(rep.parts);
-    w.rating += (target - w.rating) * (1 - Math.exp(-0.007 * DAY.length * f));
+    w.rating += (target - w.rating) * (1 - Math.exp(-0.007 * MODEL_DAY * f));
   }
 
   // ----- write the result back into the save -----
@@ -278,18 +281,18 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   st.opened = Object.fromEntries(Object.entries(w.opened).filter(([, n]) => n > 0));
   st.snacks = Object.fromEntries(Object.entries(w.snacks).filter(([, n]) => n > 0));
   st.unpaid = false;
-  const wholeDays = Math.floor(days + 1e-6);
-  if (wholeDays >= 1) {
-    st.day = (st.day || 1) + wholeDays; st.clock = 0;
-    // a new day: the old day's tally (and its spent market budget) must not carry into it; a part day traded on top already began on this one
-    const partial = lastDay && days - wholeDays > 1e-6;
-    st.stats = { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: w.rating, levelStart: w.level, spent: partial ? lastDay.restocked : 0, restocked: partial ? lastDay.restocked : 0, wages: 0, rent: 0, soldOut: 0, dashed: 0 };
+  // the clock: wherever the wall clock is now, in the player's time zone (rounds passed while away start fresh)
+  const round = roundAt(now, st.tz), clock = clockAt(now, st.tz);
+  const rounds = Math.max(0, round - (st.round || 0));
+  if (round !== st.round) {
+    st.stats = { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: w.rating, levelStart: w.level, spent: 0, restocked: 0, wages: 0, rent: 0, soldOut: 0, dashed: 0, closed: clock >= DAY.length };
   } else if (st.stats && lastDay) {
-    // still the same day: what the market sold while away comes out of today's budget
-    const bought = lastDay.restocked - spentToday;
-    st.stats = { ...st.stats, restocked: lastDay.restocked, spent: (st.stats.spent || 0) + bought };
+    // still the same round: what the market sold while away comes out of its budget
+    const bought = Math.round(lastDay.restocked - spentToday);   // under 2 hours away: a single model day
+    st.stats = { ...st.stats, restocked: (st.stats.restocked || 0) + bought, spent: (st.stats.spent || 0) + bought };
   }
-  st.totals = { ...(st.totals || {}), served: ((st.totals || {}).served || 0) + rep.served, lost: ((st.totals || {}).lost || 0) + rep.lost, coins: ((st.totals || {}).coins || 0) + rep.sales + rep.tips + rep.fees, days: ((st.totals || {}).days || 0) + wholeDays };
+  st.round = round; st.clock = clock;
+  st.totals = { ...(st.totals || {}), served: ((st.totals || {}).served || 0) + rep.served, lost: ((st.totals || {}).lost || 0) + rep.lost, coins: ((st.totals || {}).coins || 0) + rep.sales + rep.tips + rep.fees, rounds: ((st.totals || {}).rounds || 0) + rounds };
   for (const g of st.garden || []) if (g && g.crop && sec >= 600) { g.prog = 1; g.water = 0; rep.readyCrops++; }
   wd.dirty = [];
   const keep = Math.min((wd.trash || []).length, Math.round(trash));
@@ -305,7 +308,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   for (const s of team) s.ref.energy = Math.max(10, Math.min(100, Math.round((s.ref.energy || 100) + sec * ENERGY.napRegen)) - (rep.unpaid ? COSTS.unpaidEnergy : 0));
   out.savedAt = now;
   rep.net = Math.round(st.coins - startCoins);
-  rep.fees = Math.round(rep.fees);
+  rep.fees = Math.round(rep.fees); rep.restock = Math.round(rep.restock);
   return { data: out, report: rep };
 }
 

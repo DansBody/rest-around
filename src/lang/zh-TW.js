@@ -319,7 +319,7 @@ export const ZH_TW = {
   'Restocking is up to you. A pack makes about {k} servings — guests leave if a drink is sold out.': '補貨要自己來。一包大約能做 {k} 份，飲料賣完客人就會走掉。',
   'Progress autosaves every 10 seconds and when you close the tab. The café keeps trading while you are away (up to {n} hours) and tells you how it went when you come back.': '進度每 10 秒和關閉分頁時自動存檔。你不在的時候咖啡廳照常營業（最多計算 {n} 小時），回來時會告訴你成績。',
   'Wages & rent': '薪水與房租', 'Profit': '淨利',
-  'The till ran short, so some wages went unpaid — the team will start tired.': '收銀機的錢不夠，部分薪水沒發出去，團隊明天會很疲憊。',
+  'The till ran short, so some wages went unpaid — the team will start tired.': '收銀機的錢不夠，部分薪水沒發出去，下一輪團隊會很疲憊。',
   '{n} guest(s) left because a drink was sold out — keep the pantry stocked!': '有 {n} 位客人因為飲料賣完離開了，記得補貨！',
   '{h} h {m} min': '{h} 小時 {m} 分鐘', '{m} min': '{m} 分鐘',
   'Welcome back!': '歡迎回來！',
@@ -389,4 +389,15 @@ export const ZH_TW = {
   'Give up': '放棄',
   '{n} guest(s) ran off without paying — someone from the Track Club could have caught them.': '有 {n} 位客人吃霸王餐跑掉了，田徑隊的員工本來可以追回來！',
   'Crossed the line with {s} s to spare': '提前 {s} 秒衝過終點', '{n} of {m} steps': '跑了 {n}/{m} 步', '{n} s': '{n} 秒', 'Steps {n}/{m}': '步數 {n}/{m}',
+  // wall-clock rounds
+  '☀️ 08:00 — doors open!': '☀️ 08:00，開門營業！', 'Café clock': '咖啡廳時鐘',
+  'Round {n} of {m} today ({a}:00–{b}:00). A round lasts 2 hours and opens on the even hours.': '今天第 {n}/{m} 輪（{a}:00–{b}:00）。每輪 2 小時，每逢偶數整點開店。',
+  'Build mode — the time is made up when you finish': '建造模式：完成後會補算這段時間的營業', 'Building': '建造中', 'Night': '夜間休息', 'Last call': '最後點餐',
+  'Closing time': '打烊了', 'The chairs are up and the lights are low. Here’s how the round went:': '椅子收好、燈也調暗了。這一輪的成績：',
+  'The next round opens at the next even hour.': '下一輪在下個偶數整點開門。', 'Good night': '晚安',
+  'Back to the café': '回到咖啡廳', 'Wages went unpaid last round — the team starts tired.': '上一輪的薪水沒發出去，團隊一開門就很疲憊。',
+  'Costs {n}/round': '每輪支出 {n}', 'Wage per round': '每輪薪水', '/round': '／輪', 'Wage {w}/round, you have {n}': '每輪薪水 {w}，目前 {n} 位',
+  'Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid each round when the café closes. If the till runs short, the team starts the next round tired.':
+    '員工工作會累，餵點心可以恢復精神。薪水（{w}）和房租（{r}）在每輪打烊時結算；錢不夠的話，下一輪團隊會精神不濟。',
+  'Packs for the dishes on your menu are bought automatically when they run low: up to {n} coins a round (spent {m} this round). A pack makes about {k} servings.': '菜單上用到的食材快用完時會自動採購：每輪最多 {n} 金幣（這輪已花 {m}）。一包大約能做 {k} 份。',
 };

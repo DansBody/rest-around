@@ -13,7 +13,7 @@ import { Build } from './build.js';
 import { Street } from './ambient.js';
 import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
-import { DISHES, MAX_LEVEL, START_WALL_DECOR } from './data.js';
+import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY } from './data.js';
 import { bus } from './util.js';
 
 /** Events drawn in the 3D scene (and the cut-in for them); the rest are for the HUD, panels and cards. */
@@ -27,7 +27,9 @@ export function defaultState() {
     name: 'Sunny Café',
     coins: 200, points: 0, level: 1,
     rating: 2.6, service: [],
-    day: 1, clock: 0,
+    round: 0, clock: 0,  // the round under way and sim seconds into it (both follow the wall clock, see clock.js)
+    tz: 0,               // the player's time zone (minutes east of UTC), set from the device
+    questDay: 0,         // the calendar day the daily goal belongs to
     dishes,
     inv: { beans: 6, sugar: 3, milk: 2 },
     opened: {},          // servings left in each ingredient's opened pack (see Economy.consume)
@@ -37,10 +39,10 @@ export function defaultState() {
     quest: null,
     snacks: { cookie: 1 },
     garden: [],
-    giftDay: 0,
+    giftDay: 0,          // the calendar day the gift was last opened
     stats: null,
-    totals: { served: 0, lost: 0, coins: 0, days: 0 },
-    settings: { sound: true, music: true, volume: 0.7, autoNextDay: true, glass: true, autoRestock: true },
+    totals: { served: 0, lost: 0, coins: 0, rounds: 0 },
+    settings: { sound: true, music: true, volume: 0.7, glass: true, autoRestock: true },
     tutorialSeen: false,
   };
 }
@@ -63,6 +65,7 @@ export class Game {
     this.ambient = [];
     this.debug = { grid: false, labels: false, assets: false };
     this.timeScale = 1;
+    this.clockSkew = 0;   // debug speed-up: how far this café's clock has run ahead of the wall (seconds, never saved)
     this.simTime = 0;
     this.renderTime = 0;
     this.paused = false;
@@ -75,6 +78,7 @@ export class Game {
     this.spotlight = null;                       // Spotlight: { x, y, r, t, dur } over the busiest table
     this.state = defaultState();
     this.renderer = null;
+    this.onLongGap = null;   // settles a stretch too long to play out on the spot (set by main.js)
     this.visit = false;   // a friend's café, run only to be looked at (src/visit.js): never saved, never talks to the HUD
   }
 
@@ -88,7 +92,6 @@ export class Game {
     this.world = new World(8);
     this.agents = []; this.agentTiles.clear(); this.jobs.clear();
     this.timeStopT = 0; this.spotlight = null;
-    this.troubles.newDay();
     const w = this.world;
     w.addFurniture('stove_basic', 6, 0, 1);
     w.addFurniture('table_oak', 3, 4, 1);
@@ -106,7 +109,7 @@ export class Game {
     for (let x = 4; x < 8; x++) for (let y = 0; y < 2; y++) w.floors[x][y] = 'fl_cream';
     this.addStaff(makeStaff(this, 'waiter', 'mochalatte'), 2, 2);
     this.addStaff(makeStaff(this, 'chef', 'bbaekko'), 6, 2);
-    this.eco.rollQuest();
+    this.day.snap();   // onto the wall clock (and the day's goal)
     this.day.nextSpawn = 3;
     this.rating.recompute();
   }
@@ -153,13 +156,16 @@ export class Game {
   // ---------------- tick ----------------
   update(realDt) {
     realDt = Math.min(realDt, 0.1);
-    if (this.visit && this.paused && !this.build.active) this.day.startNextDay();   // a friend's café just rolls on into the next day
     this.renderTime += realDt;
     this.fx.update(realDt);
     const running = !this.build.active && !this.paused && !this.hold;
     if (running) {
-      let dt = realDt * this.timeScale;
-      while (dt > 0) { const s = Math.min(dt, 0.05); this.step(s); dt -= s; }
+      if (this.timeScale !== 1) this.clockSkew += realDt * (this.timeScale - 1);
+      // the café runs on the wall clock: play up to where it says, however long the game was not running
+      const need = this.day.wallPos() - this.day.pos();
+      if (need < -5) this.day.snap();   // ahead of the wall (the device clock or time zone moved back): never stand still waiting
+      else if (need > 0.25 + 0.1 * this.timeScale) this.catchUp(need);
+      else { let dt = Math.max(0, need); while (dt > 0) { const s = Math.min(dt, 0.05); this.step(s); dt -= s; } }
     }
     // door animation (real time)
     const target = this.doorHold > 0 ? 1 : 0;
@@ -184,18 +190,30 @@ export class Game {
     this.rating.update(dt);
   }
 
-  /** Advance the simulation quickly without rendering (debug soak tests). Auto-starts new days. */
-  fastForward(seconds, onDay) {
-    const days = [];
+  /**
+   * The game was not running for `sec` seconds (build mode, a mini-game, a card on screen, a hidden tab):
+   * play that time now, quickly and without drawing, so the café earns what it would have; a minute per
+   * frame, so a long stretch never freezes the screen. Longer than a round it is settled the way the time
+   * away is (onLongGap); a friend's café just jumps ahead.
+   */
+  catchUp(sec) {
+    if (this.visit) { this.day.snap(); return; }
+    if (sec > DAY.round) { if (this.onLongGap) this.onLongGap(sec); else this.day.snap(); return; }
+    this.fastForward(Math.min(sec, 60));
+  }
+
+  /** Advance the simulation quickly without rendering (catching up, debug soak tests). Returns the rounds that closed. */
+  fastForward(seconds) {
     let t = 0;
     this.fastForwarding = true;
+    this.ffRounds = [];
     while (t < seconds) {
-      if (this.paused) { days.push({ ...this.state.stats, day: this.state.day, rating: this.state.rating, coins: this.state.coins, level: this.state.level }); if (onDay) onDay(this); this.day.startNextDay(); }
-      this.step(0.05); t += 0.05;
+      const s = Math.min(0.05, seconds - t);
+      this.step(s); t += s;
       this.fx.items.length = 0;
     }
     this.fastForwarding = false;
-    return days;
+    return this.ffRounds;
   }
 
   openDoor(t = 1.2) { this.doorHold = Math.max(this.doorHold, t); }

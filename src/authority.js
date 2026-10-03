@@ -7,7 +7,7 @@
 //     ingredients, snacks, dish upgrades, seeds). Buying only moves coins into things, selling loses half,
 //     wages and rent burn coins; so wealth can only grow by trading, the daily goal and gift, the garden
 //     and the odd Coin Shower. A crop in the garden counts as far as it has grown. Growth beyond the ceiling is taken back out of the coins.
-//   - points (and so the level), the rating, the day counter and staff skill XP, each against its own ceiling.
+//   - points (and so the level), the rating, the round counter and staff skill XP, each against its own ceiling.
 //
 // The ceiling is a throughput bound, not a replay: guests per second can never exceed what the café's
 // stations, servers and seats could handle at full stretch, nor what walks in at a five-star rating at the
@@ -89,7 +89,7 @@ export function badShape(d) {
   if (!d || typeof d !== 'object' || d.v !== 1) return 'version';
   const s = d.state, w = d.world;
   if (!s || typeof s !== 'object' || !w || typeof w !== 'object') return 'shape';
-  if (!num(s.coins, 0, 1e9) || !num(s.points, 0, 1e9) || !num(s.rating, 0, 5) || !num(s.day || 1, 1, 1e6)) return 'numbers';
+  if (!num(s.coins, 0, 1e9) || !num(s.points, 0, 1e9) || !num(s.rating, 0, 5) || !num(s.round || 0, 0, 1e7) || !num(s.tz || 0, -720, 840)) return 'numbers';
   if (![8, ...EXPANSIONS.map((e) => e.size)].includes(w.size)) return 'size';
   if (!Array.isArray(w.furniture) || w.furniture.length > w.size * w.size || !Array.isArray(w.floors)) return 'world';
   if (!Array.isArray(d.staff) || d.staff.length > 8) return 'staff';
@@ -114,9 +114,10 @@ export function capCheck(prev, next, wallSec) {
   const lvPrev = levelFor(prev.state.points || 0);
   const level = Math.min(MAX_LEVEL, lvPrev + 1);   // one level-up within an upload at most counts toward the bonuses
 
-  // the day counter: a live day takes DAY.length sim seconds
-  const dayStep = (next.state.day || 1) - (prev.state.day || 1);
-  if (dayStep < 0 || dayStep > Math.ceil(sim / DAY.length) + 1) return reject('days');
+  // the round counter follows the wall clock: a round takes DAY.round seconds (moving time zones shifts it by up to 13)
+  const prevRound = prev.state.round || 0, roundStep = (next.state.round || 0) - prevRound;
+  const tzMoved = (next.state.tz || 0) !== (prev.state.tz || 0);
+  if (prevRound && roundStep > Math.ceil(sim / DAY.round) + 1 + (tzMoved ? 13 : 0)) return reject('rounds');
   if ((next.staff || []).length > staffSlots(levelFor(next.state.points || 0))) return reject('staff');
 
   // what this café could have earned: the better of the layout it had and the one it has now
@@ -124,10 +125,11 @@ export function capCheck(prev, next, wallSec) {
   const rate = Math.max(tp[0].rate, tp[1].rate);
   const perGuest = Math.max(tp[0].coins, tp[1].coins), ptsGuest = Math.max(tp[0].points, tp[1].points);
   const guests = rate * sim * CAP.tolerance + CAP.slackGuests;
-  // the daily goal and the daily gift: only the ones actually completed / claimed in this window
+  // the daily goal and the daily gift come once per calendar day: only the ones actually completed / claimed in this window
   const b = CAP.bonusPerDay, pq = prev.state.quest, nq = next.state.quest;
-  const quests = dayStep + (nq && nq.done && !(pq && pq.done && pq.id === nq.id) ? 1 : 0);
-  const gifts = Math.max(0, Math.min(dayStep + 1, (next.state.giftDay || 0) - (prev.state.giftDay || 0)));
+  const days = Math.floor(sim / 86400) + (tzMoved ? 1 : 0);
+  const quests = days + (nq && nq.done && !(pq && pq.done && pq.id === nq.id) ? 1 : 0);
+  const gifts = (next.state.giftDay || 0) !== (prev.state.giftDay || 0) ? days + 1 : 0;
   const garden = gardenPlots(level) * Math.max(...SEEDS.map((s) => s.yield * ingPrice(ingById[s.crop]) / s.grow)) * sim;
   const coinShower = tp.some((t) => t.magic) ? (Math.floor(sim / KITS.bbaekko.active.cooldown) + 1) * (12 + 5 * level) : 0;
   const maxIng = Math.max(...Object.values(ingById).map(ingPrice));
@@ -176,5 +178,5 @@ export function capCheck(prev, next, wallSec) {
 /** A brand-new café (what "Reset game" uploads): nothing earned yet, no more than a new game starts with. */
 export const FRESH_WEALTH = 1500;   // a new game is worth 1432 (200 coins + the starter room, team and pantry)
 export function isFreshSave(d) {
-  return !badShape(d) && d.state.points === 0 && (d.state.day || 1) === 1 && wealth(d) <= FRESH_WEALTH;
+  return !badShape(d) && d.state.points === 0 && wealth(d) <= FRESH_WEALTH;
 }

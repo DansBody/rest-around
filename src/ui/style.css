@@ -471,6 +471,10 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .away-note { margin: 6px 0; padding: 8px 12px; border-radius: 14px; background: var(--fill); font-weight: 500; font-size: 13px; line-height: 1.5; text-align: left; }
 .away-note.warn { background: #fff4e0; color: #7a4a00; }
 .away-note .ing { margin: 0 3px; }
+#receipt { position: absolute; bottom: calc(96px + var(--sab, 0px)); right: 12px; width: min(340px, calc(100vw - 24px)); text-align: center; display: none; z-index: 6; }
+#receipt.show { display: block; animation: popin .35s ease-out; }
+#receipt .card > .btn.primary { width: 100%; min-height: 44px; }
+#receipt .big-title { font-size: 22px; }
 #celebrate { position: absolute; top: calc(84px + var(--sat)); left: 50%; translate: -50% 0; width: min(340px, calc(100vw - 24px)); text-align: center; display: none; z-index: 6; }
 #celebrate.show { display: block; animation: popin .35s ease-out; }
 #celebrate .card { border-radius: 32px; }

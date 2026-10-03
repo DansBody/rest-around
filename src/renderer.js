@@ -294,6 +294,13 @@ export class Renderer {
   /** Draw another café (a friend's while visiting, then yours again): drop every view of the old one; the next frame builds the new. */
   show(game) {
     if (game === this.game) return;
+    this.reset();
+    this.game = game;
+    game.renderer = this;
+    this.resize();
+  }
+  /** Forget every drawn piece of the café (its world or team was replaced): the next frame builds them again. */
+  reset() {
     for (const v of this.furn.values()) this.scene.remove(v.obj);
     this.furn.clear();
     for (const cv of this.chars.values()) cv.dispose(this.scene);
@@ -301,9 +308,6 @@ export class Renderer {
     for (const o of this.trash.values()) this.scene.remove(o);
     this.trash.clear();
     this.roomSize = 0;   // rebuilds the room, the walls' decorations and the floor
-    this.game = game;
-    game.renderer = this;
-    this.resize();
   }
 
   // ------------------------------------------------------------------ per frame
@@ -345,8 +349,10 @@ export class Renderer {
     const g = this.game, n = g.world.size * TILE;
     const hr = g.day.hour;
     // sun keeps a fixed "top-left" direction for the default view; colour/intensity follow the clock
-    const t = clamp((hr - 8) / 14, 0, 1);
-    const eve = clamp((hr - 17) / 3, 0, 1), night = clamp((hr - 20) / 2, 0, 1), morn = clamp((10 - hr) / 2, 0, 1);
+    // the night runs from 22 on to 32 (08:00 of the next round): dark until it lifts toward dawn
+    const dawn = clamp((hr - 29) / 3, 0, 1);
+    const t = clamp((hr - 8) / 14, 0, 1) * (1 - dawn);
+    const eve = clamp((hr - 17) / 3, 0, 1) * (1 - dawn), night = clamp((hr - 20) / 2, 0, 1) * (1 - dawn), morn = Math.max(clamp((10 - hr) / 2, 0, 1), dawn);
     const sunCol = hexMix('#fff4e2', '#ffc58f', eve).lerp(new THREE.Color('#9fb0ff'), night).lerp(new THREE.Color('#ffe6c4'), morn);
     this.sun.color.copy(sunCol);
     this.sun.intensity = lerp(2.1, 1.3, eve) * lerp(1, 0.45, night);
@@ -360,7 +366,7 @@ export class Renderer {
     const r = n / 2 + 16;
     const sc = this.sun.shadow.camera;
     if (sc.right !== r) { sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 120; sc.updateProjectionMatrix(); }
-    this.lampOn = clamp((hr - 17.5) / 1.5, 0, 1);
+    this.lampOn = clamp((hr - 17.5) / 1.5, 0, 1) * (1 - dawn);
     this.outdoorGroup.traverse((o) => { if (o.userData.streetLamp) o.material.color.set(this.lampOn > 0.1 ? '#ffe9a8' : '#f4f0e6'); });
   }
 

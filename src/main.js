@@ -7,7 +7,8 @@ import { Renderer } from './renderer.js';
 import { UI } from './ui/ui.js';
 import { DebugPanel } from './ui/debug.js';
 import { setupInput } from './input.js';
-import { load, save, serialize, readLocal } from './save.js';
+import { load, save, serialize, readLocal, apply } from './save.js';
+import { settleOffline } from './offline.js';
 import { cloud, HEARTBEAT } from './cloud.js';
 import { initAccount } from './ui/account.js';
 import { updateVisit } from './ui/visit.js';
@@ -52,6 +53,7 @@ async function boot() {
   let status, offline = false;
   msg.textContent = t('Opening the café…');
   try {
+    if (new URLSearchParams(location.search).has('offline')) throw new Error('?offline: playing without the server');   // local testing
     status = await cloud.login(game, () => { game.newGame(); return serialize(game); }, startScreen);
   } catch (e) {
     console.warn('Server unreachable, playing offline', e);
@@ -112,7 +114,18 @@ async function boot() {
     if (hiddenAt && (Date.now() - hiddenAt) / 1000 >= OFFLINE.minSeconds && !game.resetting) location.reload();
     hiddenAt = 0;
   });
-  if (game.awayReport) { game.paused = true; ui.queueModal(() => ui.awayCard(game.awayReport)); }
+  // The game stood still for longer than it plays out on the spot (a long stretch in build mode, say):
+  // settle that time the way the time away is settled, and say what the café did meanwhile.
+  game.onLongGap = (sec) => {
+    let away = null;
+    try { away = settleOffline(serialize(game), sec, Date.now() + game.clockSkew * 1000, { minSeconds: 0 }); } catch (e) { console.warn('Settling the gap failed', e); }
+    if (!away) { game.day.snap(); return; }
+    apply(game, away.data);
+    renderer.reset();
+    save(game);
+    ui.queueModal(() => ui.awayCard(away.report));
+  };
+  if (game.awayReport) ui.queueModal(() => ui.awayCard(game.awayReport));
   cloud.onIncoming(cloud.incoming);   // after "Welcome back", which says what the café did on its own
 
   let last = performance.now();

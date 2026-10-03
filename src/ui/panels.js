@@ -6,7 +6,7 @@ import { ACCESSORIES, roleLook } from '../looks.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
   INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
-  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, servingCost, SERVINGS_PER_UNIT, OFFLINE,
+  UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE,
 } from '../data.js';
 import { clearSave, save, serialize } from '../save.js';
 import { cloud } from '../cloud.js';
@@ -133,10 +133,10 @@ function renderStaff(ui, body) {
   // the numbers up top; the rules behind them only when asked
   body.append(h('div.stat-strip',
     h('span.pill', I('tool_staff', 16), t('Staff {n}/{m}', { n: staff.length, m: slots })),
-    h('span.pill', I('icon_coin', 16), t('Costs {n}/day', { n: g.eco.dailyWages() + g.eco.dailyRent() })),
+    h('span.pill', I('icon_coin', 16), t('Costs {n}/round', { n: g.eco.dailyWages() + g.eco.dailyRent() })),
     staff.length ? h('button.btn.small.feedall', { title: t('Feed the whole team'), onclick: () => ui.queueModal(() => feedAllCard(ui)) }, I('icon_energy', 18), t('Feed all')) : null,
     h('button.btn.small.xbtn' + (ui.staffHelp ? '.primary' : ''), { title: t('How staff work'), 'aria-expanded': String(!!ui.staffHelp), onclick: () => { ui.staffHelp = !ui.staffHelp; ui.renderPanel(); } }, h('b', '?'))));
-  if (ui.staffHelp) body.append(h('div.note', t('Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid when the café closes. If the till runs short, the team starts the next day tired.', { w: g.eco.dailyWages(), r: g.eco.dailyRent() })));
+  if (ui.staffHelp) body.append(h('div.note', t('Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid each round when the café closes. If the till runs short, the team starts the next round tired.', { w: g.eco.dailyWages(), r: g.eco.dailyRent() })));
   body.append(h('div.section-title', t('Your team')));
   ui.staffOpen ||= new Set();
   for (const a of staff) {
@@ -146,7 +146,7 @@ function renderStaff(ui, body) {
       h('button.scard-head', { onclick: toggle, 'aria-expanded': String(open) },
         portrait(a.look, 56, 56),
         h('div.grow',
-          h('div.scard-title', h('b', a.name), h('span.pill', { title: t('Daily wage') }, I('icon_coin', 14), staffWage(a.role, a.skillLv()) + t('/day'))),
+          h('div.scard-title', h('b', a.name), h('span.pill', { title: t('Wage per round') }, I('icon_coin', 14), perRound(staffWage(a.role, a.skillLv())) + t('/round'))),
           skillLine(a),
           h('div.scard-status', h('span.task', a.napping ? t('😴 Napping') : tt(a.task)), I('icon_energy', 16),
             h('div.pbar.energy' + (a.energy < 25 ? '.orange' : ''), h('i', { style: { width: a.energy + '%' } }))),
@@ -175,7 +175,7 @@ function renderStaff(ui, body) {
       I('role_' + role, 48),
       h('div.grow', h('h3', r.name)),
       h('button.btn.primary.small' + (full || !free.length || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { onclick: () => { ui.subview = { hire: role }; ui.renderPanel(); } }, t('Hire') + ' ', coinPill(r.hire)),
-      h('div.row-full', h('div.muted', note), h('div.meta', t('Wage {w}/day, you have {n}', { w: staffWage(role, 1), n: count })))));
+      h('div.row-full', h('div.muted', note), h('div.meta', t('Wage {w}/round, you have {n}', { w: perRound(staffWage(role, 1)), n: count })))));
   }
   if (full) body.append(h('div.muted', t('All slots are full — reach the next level for more.')));
 }
@@ -315,7 +315,7 @@ function renderMarket(ui, body) {
   body.append(h('div.section-title', t('Ingredients')));
   body.append(h('div.toggle', h('span', t('Auto-restock')), h('button.switch' + (s.settings.autoRestock ? '.on' : ''), { role: 'switch', 'aria-checked': String(!!s.settings.autoRestock), title: t('Auto-restock'), onclick: () => { s.settings.autoRestock = !s.settings.autoRestock; if (s.settings.autoRestock) g.eco.autoRestock(); ui.renderPanel(); } })));
   body.append(h('div.muted', { style: { marginBottom: '6px' } }, s.settings.autoRestock
-    ? t('Packs for the dishes on your menu are bought automatically when they run low: up to {n} coins a day (spent {m} today). A pack makes about {k} servings.', { n: g.eco.restockBudget(), m: s.stats ? s.stats.restocked || 0 : 0, k: SERVINGS_PER_UNIT })
+    ? t('Packs for the dishes on your menu are bought automatically when they run low: up to {n} coins a round (spent {m} this round). A pack makes about {k} servings.', { n: g.eco.restockBudget(), m: s.stats ? s.stats.restocked || 0 : 0, k: SERVINGS_PER_UNIT })
     : t('Restocking is up to you. A pack makes about {k} servings — guests leave if a drink is sold out.', { k: SERVINGS_PER_UNIT })));
   const grid = h('div.grid2');
   for (const i of INGREDIENTS) {
@@ -350,7 +350,6 @@ function renderSettings(ui, body) {
     toggle(t('Café music'), 'music', () => { audio.unlock(); audio.setMusic(!!s.settings.music && s.settings.sound); }),
     h('div.orow', h('span', t('Volume')), vol),
     h('div.section-title', t('Game')),
-    toggle(t('Auto-open next day'), 'autoNextDay'),
     toggle(t('Auto-restock ingredients'), 'autoRestock', () => { if (s.settings.autoRestock) g.eco.autoRestock(); }),
     h('div.btnrow',
       h('button.btn.small', { onclick: () => { cloud.beat(g); ui.toast(save(g) ? t('Saved!') : t('Could not save (storage blocked?)'), 'good'); } }, gl('save', t('Save now'), 15)),
