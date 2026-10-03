@@ -401,4 +401,27 @@ export const ZH_TW = {
   'Staff tire while working; feed them snacks to perk them up. Wages ({w}) and rent ({r}) are paid each round when the café closes. If the till runs short, the team starts the next round tired.':
     '員工工作會累，餵點心可以恢復精神。薪水（{w}）和房租（{r}）在每輪打烊時結算；錢不夠的話，下一輪團隊會精神不濟。',
   'Packs for the dishes on your menu are bought automatically when they run low: up to {n} coins a round (spent {m} this round). A pack makes about {k} servings.': '菜單上用到的食材快用完時會自動採購：每輪最多 {n} 金幣（這輪已花 {m}）。一包大約能做 {k} 份。',
+  // ---------------- Today panel, study vouchers (ui/today.js, Menu → Study)
+  'Today': '今日', 'Study vouchers': '研習券', 'New goals in': '任務重置倒數', 'Opened': '已打開', 'Claim': '領取', 'Claimed': '已領取',
+  'Day {n} of {m} in a row. The 7th gift brings {v} study vouchers.': '連續第 {n} 天（共 {m} 天），第 7 天的禮物附送 {v} 張研習券。',
+  'Opened today (day {n} in a row). Come back tomorrow!': '今天已打開（連續第 {n} 天），明天再來！',
+  "Today's goals": '今日任務', 'New goals arrive at midnight.': '午夜會有新任務。',
+  'The café works on this while you are away': '離線時咖啡廳也會累積進度',
+  'Bonus for all three': '三個任務全部完成獎勵', 'Claimed. See you tomorrow!': '已領取，明天見！',
+  'Every goal claimed. Open your bonus!': '任務都領完了，打開獎勵吧！', '{n} more to claim': '還差 {n} 個任務',
+  'Study vouchers level up your drinks and bakes (Menu → Study). They only come from Today and from café level-ups.': '研習券用來升級飲品和烘焙（菜單 → 研習），只能從「今日」和咖啡廳升級取得。',
+  '+{n} study vouchers': '研習券 +{n}', '+{n} coins': '金幣 +{n}', '+{n} points': '點數 +{n}',
+  "{n} of today's goals finished while you were away.": '你不在時完成了 {n} 個今日任務。',
+  'Feed your staff {n} snacks': '餵員工吃 {n} 份點心', 'Buy {n} packs at the Market': '在市場買 {n} 包食材', 'Cast staff skills {n} times': '施放員工技能 {n} 次',
+  'Goal done: {goal}. Claim it in Today!': '任務完成：{goal}。到「今日」領取獎勵！',
+  'drinks and bakes can be studied up to Lv{n}': '飲品和烘焙可研習到 Lv{n}',
+  'Café level {n} lets dishes reach Lv{m}': '咖啡廳 {n} 級時，餐點最高 Lv{m}',
+  'Not enough study vouchers (need {n})': '研習券不夠（需要 {n} 張）', 'Not enough ingredients in the pantry': '庫存食材不夠',
+  'Day {n} in a row: a bundle of study vouchers!': '連續第 {n} 天：送你一疊研習券！', 'Day {n} of {m} in a row': '連續第 {n} 天（共 {m} 天）',
+  'study vouchers · dishes reach Lv{n} at café level {c}': '張研習券．咖啡廳 {c} 級時餐點最高 Lv{n}', 'Get more': '去領取',
+  'Max level': '已滿級', 'Lv{n} at café level {c}': '咖啡廳 {c} 級可升到 Lv{n}',
+  '{ing}: {n} in pantry, {need} needed': '{ing}：庫存 {n}，需要 {need}', 'Study vouchers: {n} held, {need} needed': '研習券：持有 {n}，需要 {need}',
+  'Use the ingredients and vouchers shown to reach Lv{n}': '用掉上面列出的食材和研習券，升到 Lv{n}', 'Study → Lv{n}': '研習 → Lv{n}',
+  'Study a drink or bake to level it up (Lv1→10): it sells for more and earns more café points. Each level takes its ingredients plus study vouchers from Today, and your café level sets how far dishes can go.':
+    '研習飲品或烘焙就能升級（Lv1→10）：賣價更高，咖啡廳點數也更多。每升一級要用掉食材和研習券（從「今日」取得），咖啡廳等級決定餐點最高能升到幾級。',
 };

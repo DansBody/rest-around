@@ -144,29 +144,18 @@ button.hs:hover { background: var(--fill); }
 #ui { --hb: 46px; --hg: 10px; --ht: calc(72px + var(--sat)); --hl: calc(14px + var(--sal)); --hr: calc(14px + var(--sar)); --hbot: calc(23px + var(--sab)); }
 #questbtn, #friendsbtn, #abtoggle { position: absolute; width: var(--hb); height: var(--hb); min-width: var(--hb); padding: 0; justify-content: center; border-radius: 50%; cursor: pointer; }
 
-/* daily goal: a checklist button with a progress ring; the card pops out beside it */
+/* Today: a checklist button with a ring for the goals claimed; a red count when something waits to be claimed */
 #questbtn { top: var(--ht); left: var(--hl);
   background: radial-gradient(closest-side, #fff 82%, transparent 84%), conic-gradient(var(--ink) var(--p, 0%), var(--fill-2) 0); }
 #questbtn .glyph { color: var(--ink); }
-#questbtn.on { background: var(--ink); }
-#questbtn.on .glyph { color: #fff; }
+#questbtn.active { background: var(--ink); }
+#questbtn.active .glyph { color: #fff; }
 #questbtn.done { background: radial-gradient(closest-side, #fff 82%, transparent 84%), var(--green); }
-#questbtn.on, #questbtn.on.done { background: var(--ink); }
+#questbtn.active, #questbtn.active.done { background: var(--ink); }
 .qb-badge { position: absolute; right: -6px; bottom: -4px; min-width: 22px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--ink); color: #fff;
   font: 700 10px/18px var(--font); text-align: center; box-shadow: 0 0 0 2px #fff; font-variant-numeric: tabular-nums; }
 #questbtn.done .qb-badge { background: var(--green); }
-#quest:not(.show) { visibility: hidden; opacity: 0; transform: translateY(-6px); pointer-events: none; }
-#quest { position: absolute; top: var(--ht); left: calc(var(--hl) + var(--hb) + var(--hg)); width: 236px; display: flex; transition: opacity .18s, transform .18s; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 24px; cursor: default; }
-#quest .q-ico { width: 42px; height: 42px; flex: none; border-radius: 16px; display: grid; place-items: center; background: var(--fill); }
-#quest .q-ico .ico { width: 30px; height: 30px; }
-#quest .q-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-#quest .q-text { font-family: var(--font-display); font-weight: 650; font-size: 13.5px; line-height: 1.15; }
-#quest .q-row { display: flex; align-items: center; gap: 8px; }
-#quest .q-row .pbar { flex: 1; }
-#quest .q-n { font-weight: 700; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-#quest .q-reward { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; font-size: 11.5px; color: var(--ink-soft); }
-#quest.done .q-text { color: var(--green); }
-#quest.done .q-ico { animation: wiggle 1.8s ease-in-out infinite; }
+.qb-badge.alert { background: var(--red); }
 
 /* friends: under the daily goal */
 #friendsbtn { top: calc(var(--ht) + var(--hb) + var(--hg)); left: var(--hl); }
@@ -310,6 +299,35 @@ button.hs:hover { background: var(--fill); }
 .ings { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .ing { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 650; background: var(--surface); border-radius: 99px; padding: 1px 8px 1px 2px; box-shadow: inset 0 0 0 1px var(--line); }
 .ing.done { background: #e7f6ed; color: #17703d; box-shadow: none; }
+.ing.short { color: var(--red); box-shadow: inset 0 0 0 1px #f3c3c4; }
+
+/* ---------- Today panel & study vouchers ---------- */
+.pill.voucher { background: #fff4d1; }
+.pill.claimed { background: #e7f6ed; color: #17703d; gap: 4px; }
+.today-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; margin-bottom: 10px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.today-head .vbal { display: flex; align-items: center; gap: 10px; }
+.today-head .vbal b, .today-head .reset b { display: block; font: 750 22px/1 var(--font-display); font-stretch: var(--narrow); font-variant-numeric: tabular-nums; }
+.today-head small { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.today-head .reset { text-align: right; }
+.today-head .reset small { margin: 0 0 2px; }
+.row.ready { box-shadow: inset 0 0 0 2px var(--yellow); background: #fffaf0; }
+.row.claimed { opacity: .62; }
+.row .g-ico { width: 44px; height: 44px; flex: none; border-radius: 14px; display: grid; place-items: center; background: var(--surface); }
+.row .g-ico .glyph { color: var(--ink); }
+.goal .g-prog { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.goal .g-prog .pbar { flex: 1; }
+.goal .g-n { font-weight: 700; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.goal .g-note { display: block; margin-top: 3px; font-size: 11px; color: var(--ink-faint); }
+.chips.reward { gap: 6px; }
+.streak { display: flex; align-items: center; gap: 6px; padding-top: 4px; }
+.sdot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); }
+.sdot.on { background: var(--ink); box-shadow: none; }
+.sdot.next { box-shadow: inset 0 0 0 2px var(--yellow); }
+.sdot.big { width: 28px; height: 28px; background: #fff4d1; }
+.sdot.big.on { background: var(--yellow); }
+.study-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 8px 12px; margin: 8px 0; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.study-bar b { font: 750 16px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.study-bar .muted { flex: 1; min-width: 140px; font-size: 12px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .tile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 12px 8px; border-radius: 20px; background: var(--cell); }
 .tile b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 650; font-size: 14.5px; }
@@ -571,6 +589,8 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .away-more .away-note { margin: 8px 0 0; padding: 0; background: none; font-size: 12.5px; color: var(--ink-soft); }
 .away-note { margin: 6px 0; padding: 8px 12px; border-radius: 14px; background: var(--fill); font-weight: 500; font-size: 13px; line-height: 1.5; text-align: left; }
 .away-note.warn { background: #fff4e0; color: #7a4a00; }
+.away-note.goals { display: flex; align-items: center; gap: 8px; background: #fffaf0; box-shadow: inset 0 0 0 2px var(--yellow); }
+.away-note.goals span { flex: 1; }
 .away-note .ing { margin: 0 3px; }
 #receipt { position: absolute; bottom: calc(96px + var(--sab, 0px)); right: 12px; width: min(340px, calc(100vw - 24px)); text-align: center; display: none; z-index: 6; }
 #receipt.show { display: block; animation: popin .35s ease-out; }
@@ -660,7 +680,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   .grabber { display: block; width: 40px; height: 5px; border-radius: 9px; background: #d4d4d8; margin: 4px auto 10px; flex: none; }
   .panel-head h2 { font-size: 22px; }
   #ui.has-sheet #scrim { display: block; }
-  #ui.has-sheet #abilities, #ui.has-sheet #abtoggle, #ui.has-sheet #quest, #ui.has-sheet #questbtn, #ui.has-sheet #friendsbtn { display: none; }
+  #ui.has-sheet #abilities, #ui.has-sheet #abtoggle, #ui.has-sheet #questbtn, #ui.has-sheet #friendsbtn { display: none; }
   /* bigger touch targets inside sheets */
   .btn.small { min-height: 44px; }
   .tab { min-height: 44px; }
@@ -678,10 +698,6 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   .hs { padding: 0 9px; gap: 4px; font-size: 14.5px; }
   .hs .ico { width: 17px; height: 17px; }
   .hs + .hs::before { top: 12px; bottom: 12px; }
-  #quest { width: min(220px, calc(100vw - var(--sal) - var(--sar) - 16px - var(--hb) - var(--hg))); padding: 6px 12px 6px 6px; border-radius: 20px; }
-  #quest .q-ico { width: 34px; height: 34px; border-radius: 12px; }
-  #quest .q-ico .ico { width: 24px; height: 24px; }
-  #quest .q-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
   #toasts, #buildbanner { top: calc(60px + var(--sat)); }
   #celebrate { top: calc(60px + var(--sat)); }
   #buildbanner { font-size: 12px; white-space: nowrap; }
@@ -715,7 +731,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   #toasts, #buildbanner, #celebrate { top: calc(58px + var(--sat)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #quest.done .q-ico, .ability.ready { animation: none; }
+  .ability.ready { animation: none; }
 }
 
 /* ---------------- account (settings + sign-in cards) ---------------- */
@@ -740,7 +756,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .avatar-opt.on { box-shadow: 0 0 0 2.5px var(--ink); }
 
 /* ---------------- visiting a friend's café: their banner instead of your HUD and tools ---------------- */
-#ui.visiting #hud, #ui.visiting .rating-tip, #ui.visiting #questbtn, #ui.visiting #quest, #ui.visiting #abilities, #ui.visiting #toolbar,
+#ui.visiting #hud, #ui.visiting .rating-tip, #ui.visiting #questbtn, #ui.visiting #abilities, #ui.visiting #toolbar,
 #ui.visiting #panel, #ui.visiting #info, #ui.visiting #friendsbtn, #ui.visiting #abtoggle, #ui.visiting #scrim, #ui.visiting #buildbar, #ui.visiting #ghostctl, #ui.visiting #buildbanner { display: none !important; }
 #visitbar { position: absolute; top: calc(12px + var(--sat)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px;
   width: min(520px, calc(100vw - 28px)); padding: 10px 12px 12px 10px; border-radius: 24px; }

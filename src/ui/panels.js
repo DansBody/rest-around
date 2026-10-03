@@ -4,7 +4,7 @@ import { assets } from '../assets.js';
 import { portrait, thumb } from '../portrait.js';
 import { ACCESSORIES, roleLook } from '../looks.js';
 import {
-  ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, levelUpCost, MAX_DISH_LEVEL, menuSlots, staffSlots,
+  ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, MAX_DISH_LEVEL, dishCap, menuSlots, staffSlots,
   INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE,
   UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE,
 } from '../data.js';
@@ -13,6 +13,7 @@ import { cloud } from '../cloud.js';
 import { accountSection } from './account.js';
 import { renderFriends } from './friends.js';
 import { renderTraining } from './training.js';
+import { renderToday, tickToday } from './today.js';
 import { audio } from '../audio.js';
 import { gl, glyph } from './icons.js';
 import { t, tt, titledRole, LANGS, getLang } from '../i18n.js';
@@ -95,6 +96,7 @@ export function skillLine(a, role = a.role) {
 
 // =====================================================================================
 export const PANELS = {
+  today: { title: 'Today', icon: 'tool_today', render: renderToday, tick: tickToday },
   staff: { title: 'Staff', icon: 'tool_staff', render: renderStaff, tick: tickStaff },
   menu: { title: 'Menu', icon: 'tool_menu', render: renderMenu },
   train: { title: 'Training', icon: 'tool_train', render: renderTraining },
@@ -270,16 +272,19 @@ function renderMenu(ui, body) {
     if (!g.eco.bakeryReady()) body.append(h('div.row', I('emote_menu', 32), h('div.grow.muted', t('Bakes need a Bread Oven and a Pastry Case (Build → Equipment) and a Baker (Staff → Hire).'))));
   }
   if (slots[cat] === 0) body.append(h('div.muted', { style: { margin: '6px 2px' } }, t('No {cat} slots yet — they open up as you level.', { cat: DISH_CATS.find((c) => c.id === cat).name })));
+  body.append(h('div.study-bar', I('icon_voucher', 22), h('b', fmt(s.vouchers || 0)), h('span.muted', t('study vouchers · dishes reach Lv{n} at café level {c}', { n: dishCap(s.level), c: s.level })),
+    h('button.btn.small', { onclick: () => ui.openPanel('today') }, t('Get more'))));
   for (const d of DISHES.filter((x) => x.cat === cat)) {
     const st = s.dishes[d.id];
     const unlocked = g.eco.dishUnlocked(d.id);
-    const need = levelUpCost(st.lv);
     const maxed = st.lv >= MAX_DISH_LEVEL;
-    const ings = d.ings.map((i) => {
-      const p = st.prog[i] || 0;
-      return h('span.ing' + (p >= need || maxed ? '.done' : ''), { title: t('{ing}: {p}/{need} added · {n} in pantry', { ing: ingById[i].name, p, need, n: s.inv[i] || 0 }) }, I('ing_' + i, 20), maxed ? '✓' : `${p}/${need}`, h('span.muted', ` (${s.inv[i] || 0})`));
-    });
-    const canAdd = unlocked && !maxed && d.ings.some((i) => (s.inv[i] || 0) > 0 && (st.prog[i] || 0) < need);
+    const plan = g.eco.studyPlan(d.id);
+    // what the next level takes: each ingredient (have / need) and the vouchers; short ones are marked
+    const cost = maxed ? [h('span.muted', t('Max level'))] : plan.why === 'cap' ? [h('span.muted', I('icon_lock', 16), ' ' + t('Lv{n} at café level {c}', { n: st.lv + 1, c: (st.lv - 1) * 3 }))] : [
+      ...plan.ings.map((x) => h('span.ing' + (x.have >= x.need ? '.done' : '.short'), { title: t('{ing}: {n} in pantry, {need} needed', { ing: ingById[x.id].name, n: x.have, need: x.need }) }, I('ing_' + x.id, 20), `${x.have}/${x.need}`)),
+      h('span.ing' + (plan.have >= plan.vouchers ? '.done' : '.short'), { title: t('Study vouchers: {n} held, {need} needed', { n: plan.have, need: plan.vouchers }) }, I('icon_voucher', 20), `${plan.have}/${plan.vouchers}`),
+    ];
+    const canStudy = unlocked && !plan.why;
     // name and numbers beside the picture; ingredients, stock and buttons get the full width below
     body.append(h('div.row.split.dish' + (unlocked ? '' : '.locked'),
       I(d.asset, 48),
@@ -287,14 +292,14 @@ function renderMenu(ui, body) {
         h('h3', d.name, ' ', h('span.pill', t('Lv{n}', { n: st.lv }))),
         h('div.chips', coinPill(dishPrice(d, st.lv)), h('span.pill', I('icon_points', 18), dishPoints(d, st.lv)), h('span.pill', '⏱ ' + d.cook + 's'))),
       h('div.row-full.flat',
-        unlocked ? h('div.chips', ings) : h('div.muted', I('icon_lock', 16), ' ' + t('Unlocks at level {n}', { n: d.level })),
+        unlocked ? h('div.chips', cost) : h('div.muted', I('icon_lock', 16), ' ' + t('Unlocks at level {n}', { n: d.level })),
         unlocked ? stockLine(g, d, st) : null,
         unlocked ? h('div.chips.acts',
           h('button.btn.small' + (st.on ? '.primary' : ''), { onclick: () => g.eco.toggleMenu(d.id) }, st.on ? gl('check', t('On menu'), 14) : t('Add to menu')),
-          maxed ? null : h('button.btn.small' + (canAdd ? '' : '.disabled'), { onclick: () => g.eco.contribute(d.id), title: t('Put pantry ingredients toward the next dish level') }, gl('bowl', t('Add ingredients'), 15))) : null)));
+          maxed || plan.why === 'cap' ? null : h('button.btn.small' + (canStudy ? '.primary' : '.disabled'), { onclick: () => g.eco.study(d.id), title: t('Use the ingredients and vouchers shown to reach Lv{n}', { n: st.lv + 1 }) }, gl('level', t('Study → Lv{n}', { n: st.lv + 1 }), 15))) : null)));
   }
   body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Every cup uses up its ingredients — one pack makes about {n} servings of each recipe. Keep the pantry stocked, or let the market top it up for you (Market tab).', { n: SERVINGS_PER_UNIT })));
-  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Collect every ingredient in a recipe to level a drink or bake (Lv1→10): higher price and more café points. Get ingredients from the Market and the daily gift.')));
+  body.append(h('div.muted', { style: { marginTop: '6px' } }, t('Study a drink or bake to level it up (Lv1→10): it sells for more and earns more café points. Each level takes its ingredients plus study vouchers from Today, and your café level sets how far dishes can go.')));
 }
 
 /** What a serving costs in ingredients, the margin on it, and how many the pantry can still make. */
@@ -311,7 +316,6 @@ export function segs(text) {
 // ------------------------------------------------------------------ market
 function renderMarket(ui, body) {
   const g = ui.game, s = g.state;
-  if (g.eco.giftAvailable()) body.append(h('div.row', I('icon_gift', 44), h('div.grow', h('h3', t('Daily gift')), h('div.muted', t('Free ingredients and coins, once per day.'))), h('button.btn.primary.small', { onclick: () => ui.claimGift() }, t('Open!'))));
   body.append(h('div.section-title', t('Ingredients')));
   body.append(h('div.toggle', h('span', t('Auto-restock')), h('button.switch' + (s.settings.autoRestock ? '.on' : ''), { role: 'switch', 'aria-checked': String(!!s.settings.autoRestock), title: t('Auto-restock'), onclick: () => { s.settings.autoRestock = !s.settings.autoRestock; if (s.settings.autoRestock) g.eco.autoRestock(); ui.renderPanel(); } })));
   body.append(h('div.muted', { style: { marginBottom: '6px' } }, s.settings.autoRestock

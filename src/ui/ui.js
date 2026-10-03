@@ -5,7 +5,7 @@ import { assets } from '../assets.js';
 import { portrait } from '../portrait.js';
 import { PANELS, buildTray, skillLine, kitLines, clubLines, confirmBtn } from './panels.js';
 import { RATING_WEIGHTS } from '../rating.js';
-import { DAY, SNACKS, SKILL, ABILITY_UNLOCK_LV, CLUBS, TROUBLE, questById, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
+import { DAILY, DAY, SNACKS, SKILL, ABILITY_UNLOCK_LV, CLUBS, TROUBLE, dishById, furnitureById, ingById, OFFLINE, SELL_RATE, wallDecorById, wallLayout } from '../data.js';
 import { DOOR_Y } from '../world.js';
 import { audio } from '../audio.js';
 import { unlocksFor } from '../economy.js';
@@ -132,20 +132,14 @@ export class UI {
     this.el.ratingTip = h('div.card.rating-tip');
     r.append(this.el.hud, this.el.ratingTip);
 
-    // daily goal: folded into a checklist button (top-left); tapping it opens the goal card
+    // Today (daily goals, the gift and its streak): a checklist button top-left that opens the Today panel;
+    // its badge counts what is waiting to be claimed
     this.el.questBadge = h('span.qb-badge');
-    this.el.questBtn = h('button.chip#questbtn', { title: t('Daily goal'), onclick: () => this.toggleQuest() }, glyph('checklist', 22), this.el.questBadge);
+    this.el.questBtn = h('button.chip#questbtn', { title: t('Today'), 'aria-label': t('Today'), onclick: () => this.onTool('today') }, glyph('checklist', 22), this.el.questBadge);
     r.appendChild(this.el.questBtn);
-    this.el.questIcon = h('div.q-ico');
-    this.el.questText = h('div.q-text');
-    this.el.questBar = h('i');
-    this.el.questN = h('span.q-n');
-    this.el.questReward = h('span.q-reward');
-    this.el.quest = h('div#quest.glass', { onclick: () => this.toggleQuest(false) }, this.el.questIcon, h('div.q-body', this.el.questText, h('div.q-row', h('div.pbar.green', this.el.questBar), this.el.questN), this.el.questReward));
-    r.appendChild(this.el.quest);
 
     // ----- toolbar -----
-    this.toolBtns = {};
+    this.toolBtns = { today: this.el.questBtn };
     // no on-screen camera buttons: drag / pinch / two-finger twist, right-drag or Q / E turn the view
 
     // staff ability dock: one button per staff member (keys 1–9), folded away behind the skills
@@ -215,7 +209,6 @@ export class UI {
     this.root.classList.toggle('has-sheet', !!this.panel || info);
   }
   closeSheets() {
-    this.toggleQuest(false);
     this.closePanel();
     if (this.game.selected) { this.game.selected = null; this.renderInfo(); }
     this.el.ratingTip.classList.remove('show');
@@ -315,7 +308,6 @@ ${k.desc}
     // one window at a time: a panel replaces the character card and the popovers
     if (this.game.selected) { this.game.selected = null; this.renderInfo(); }
     this.el.ratingTip.classList.remove('show');
-    this.toggleQuest(false);
     this.panel = id;
     this.subview = null;
     const p = PANELS[id];
@@ -348,7 +340,6 @@ ${k.desc}
   onBuild(on) {
     this.el.toolbar.style.display = on ? 'none' : '';
     this.root.classList.toggle('building', on);
-    this.toggleQuest(false);
     this.el.buildbar.classList.toggle('open', on);
     this.el.buildBanner.classList.toggle('show', on);
     if (on) { this.closePanel(); this.game.selected = null; this.buildCat = this.buildCat || 'dining'; this.buildOpen = false; }
@@ -433,17 +424,10 @@ ${k.desc}
     if (q) pos(q);
   }
 
-  // ---------------- daily goal ----------------
-  toggleQuest(show = !this.el.quest.classList.contains('show')) {
-    if (show) { this.closePanel(); this.el.ratingTip.classList.remove('show'); if (this.game.selected) { this.game.selected = null; this.renderInfo(); } }
-    this.el.quest.classList.toggle('show', show);
-    this.el.questBtn.classList.toggle('on', show);
-  }
-
   // ---------------- info card ----------------
   select(a) {
     // one window at a time: the character card replaces an open panel (and the rating popover)
-    if (a) { this.closePanel(); this.el.ratingTip.classList.remove('show'); this.toggleQuest(false); }
+    if (a) { this.closePanel(); this.el.ratingTip.classList.remove('show'); }
     this.game.selected = a;
     this.renderInfo(true);
   }
@@ -553,7 +537,6 @@ ${k.desc}
     badge('staff', g.staff.filter((a) => a.napping).length);
     // trouble that can happen now, with nobody trained to handle it
     badge('train', Object.values(CLUBS).filter((c) => s.level >= TROUBLE[c.trouble].level && g.staff.length && !g.staff.some((a) => a.clubLv(c.id) > 0)).length);
-    // the daily gift lives in the Market only: nothing on the main screen points at it
     badge('friends', this.friends && this.friends.data ? this.friends.data.incoming.length : 0);
   }
 
@@ -575,32 +558,22 @@ ${k.desc}
     }));
   }
 
-  /** Daily goal card: icon, text, progress and the reward. */
+  /** The Today button: a ring for the goals claimed, a red count for what is waiting to be claimed. */
   updateQuest() {
-    const g = this.game, q = g.state.quest, el = this.el.quest;
-    const hide = !q || !questById[q.id] || g.build.active;
-    this.el.questBtn.style.display = hide ? 'none' : '';
-    if (hide) { el.style.display = 'none'; return; }
-    el.style.display = '';
-    this.el.questBadge.textContent = q.done ? '✓' : `${q.prog}/${q.target}`;
-    this.el.questBtn.classList.toggle('done', !!q.done);
-    this.el.questBtn.style.setProperty('--p', Math.round(Math.min(1, q.prog / q.target) * 100) + '%');
-    const def = questById[q.id];
-    if (this.questIconId !== q.id) {
-      this.questIconId = q.id;
-      this.el.questIcon.replaceChildren(assets.iconEl({ cups: 'tool_menu', guests: 'tool_staff', bakes: 'dish_croissant', coins: 'icon_coin' }[q.id] || 'icon_coin', 32));
-    }
-    const r = g.eco.questReward();
-    this.el.questText.textContent = q.done ? t('Daily goal complete!') : t(def.text, { n: q.target });
-    this.el.questBar.style.width = (q.prog / q.target * 100) + '%';
-    this.el.questN.textContent = `${q.prog}/${q.target}`;
-    this.el.questReward.textContent = q.done ? '✓' : t('Reward: {c} coins · {p} pts', { c: r.coins, p: r.points });
-    el.classList.toggle('done', !!q.done);
+    const g = this.game, d = g.state.daily, btn = this.el.questBtn;
+    btn.style.display = g.build.active ? 'none' : '';
+    const waiting = g.eco.claimable(), goals = d ? d.goals : [];
+    const claimed = goals.filter((q) => q.claimed).length;
+    const all = goals.length > 0 && claimed === goals.length && d.chest && !g.eco.giftAvailable();
+    this.el.questBadge.textContent = waiting ? String(waiting) : all ? '✓' : `${claimed}/${goals.length}`;
+    this.el.questBadge.classList.toggle('alert', waiting > 0);
+    btn.classList.toggle('done', all);
+    btn.style.setProperty('--p', Math.round((goals.length ? claimed / goals.length : 0) * 100) + '%');
   }
 
   toggleRatingTip() {
     const show = !this.el.ratingTip.classList.contains('show');
-    if (show) { this.closePanel(); this.toggleQuest(false); if (this.game.selected) { this.game.selected = null; this.renderInfo(); } }
+    if (show) { this.closePanel(); if (this.game.selected) { this.game.selected = null; this.renderInfo(); } }
     this.el.ratingTip.classList.toggle('show', show);
     this.renderRatingTip();
   }
@@ -621,7 +594,9 @@ ${k.desc}
       h('div.hero-ico', assets.iconEl('icon_gift', 64)),
       h('div.big-title', t('Daily Gift!')),
       h('div.muted', t('A friendly farmer dropped by with:')),
-      h('div.ings', { style: { justifyContent: 'center', margin: '10px 0' } }, items, h('span.ing', assets.iconEl('icon_coin', 22), '+' + r.coins)),
+      h('div.ings', { style: { justifyContent: 'center', margin: '10px 0' } }, items, h('span.ing', assets.iconEl('icon_coin', 22), '+' + r.coins),
+        r.vouchers ? h('span.ing', assets.iconEl('icon_voucher', 22), '+' + r.vouchers) : null),
+      h('div.muted', { style: { marginBottom: '12px' } }, r.vouchers ? t('Day {n} in a row: a bundle of study vouchers!', { n: r.streak }) : t('Day {n} of {m} in a row', { n: r.streak, m: DAILY.streakDays })),
       h('button.btn.primary', { onclick: () => this.closeModal() }, t('Thank you!'))));
   }
 
@@ -715,6 +690,8 @@ ${k.desc}
         fig('icon_points', t('Café points'), '+' + fmt(r.points))),
       top.length ? h('div.away-top', h('div.away-cap', t('Best sellers')),
         h('div.away-dishes', top.map(([id, n]) => h('span.away-dish', assets.iconEl(dishById[id].asset, 44), h('b', '×' + n))))) : null,
+      r.goalsDone ? h('div.away-note.goals', glyph('checklist', 18), h('span', t('{n} of today\'s goals finished while you were away.', { n: r.goalsDone })),
+        h('button.btn.small', { onclick: () => { this.closeModal(); this.openPanel('today'); } }, t('Claim'))) : null,
       ...warns,
       h('details.away-more',
         h('summary', t('Details')),

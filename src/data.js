@@ -126,6 +126,15 @@ export const DISH_CATS = [
 export const MAX_DISH_LEVEL = 10;
 /** Ingredients (of each kind in the recipe) needed to go from `lv` to `lv+1`. */
 export const levelUpCost = (lv) => lv + 1;
+// Levelling a dish is a study session: the recipe's ingredients plus study vouchers (研習券), paid in one go.
+// Vouchers only come from the daily goals, the 7-day gift streak and café level-ups, never from coins, so a
+// dish climbs at the pace of days played rather than coins earned.
+const STUDY_VOUCHERS = [0, 1, 1, 2, 2, 3, 3, 4, 5, 6];   // index: the level being left (Lv1→2 costs 1 … Lv9→10 costs 6)
+export const studyCost = (lv) => STUDY_VOUCHERS[lv] || 0;
+/** Vouchers that went into a dish to bring it from Lv1 up to `lv`. */
+export const studySpent = (lv) => { let n = 0; for (let l = 1; l < lv; l++) n += studyCost(l); return n; };
+/** How far dishes can be studied at café level `level`: one more level every three café levels. */
+export const dishCap = (level) => Math.min(MAX_DISH_LEVEL, 2 + Math.floor(level / 3));
 export const dishPrice = (d, lv) => Math.round(d.price * (1 + 0.16 * (lv - 1)));
 export const dishPoints = (d, lv) => Math.round(d.points * (1 + 0.2 * (lv - 1)));
 
@@ -177,7 +186,7 @@ export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSecon
 
 // Bump whenever a number here, offline.js or authority.js changes what a save earns. The server and the
 // game must run the same balance (see ONLINE.md): deploy the server first, then the game.
-export const BALANCE_VERSION = 8;
+export const BALANCE_VERSION = 9;
 
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 
@@ -344,13 +353,29 @@ export function skillLevel(xp) {
 }
 
 // ---------------- daily goals ----------------
-// One goal per day, shown top-left. `base + perLevel × level` is the target; the reward is paid on completion.
+// Three goals a day (the player's own calendar day), in the Today panel: two `serve` goals the café also works
+// on while the game is closed (offline.js counts them), and one `act` goal that needs the player. The target is
+// `base + perLevel × level`; each goal, once done, is claimed by hand for its reward (DAILY), and finishing all
+// three opens a bonus chest. `needs` names an Economy check the goal waits for (no bakes without a bakery).
 export const QUESTS = [
-  { id: 'cups', text: 'Brew {n} drinks', base: 4, perLevel: 1, coins: 8, points: 3 },
-  { id: 'guests', text: 'Serve {n} guests', base: 5, perLevel: 1, coins: 7, points: 3 },
-  { id: 'bakes', text: 'Plate {n} bakes', base: 2, perLevel: 0.7, coins: 10, points: 4 },
-  { id: 'coins', text: 'Earn {n} coins', base: 60, perLevel: 25, coins: 6, points: 4 },
+  { id: 'cups', kind: 'serve', text: 'Brew {n} drinks', base: 6, perLevel: 2 },
+  { id: 'guests', kind: 'serve', text: 'Serve {n} guests', base: 5, perLevel: 1.5 },
+  { id: 'bakes', kind: 'serve', text: 'Plate {n} bakes', base: 3, perLevel: 1, needs: 'bakery' },
+  { id: 'coins', kind: 'serve', text: 'Earn {n} coins', base: 80, perLevel: 40 },
+  { id: 'snack', kind: 'act', text: 'Feed your staff {n} snacks', base: 2, perLevel: 0.15 },
+  { id: 'market', kind: 'act', text: 'Buy {n} packs at the Market', base: 3, perLevel: 0.25 },
+  { id: 'cast', kind: 'act', text: 'Cast staff skills {n} times', base: 2, perLevel: 0.1, needs: 'cast' },
 ];
+/** Rewards in the Today panel ([base, per café level] for coins and points). */
+export const DAILY = {
+  goals: 3,
+  goal: { vouchers: 1, coins: [40, 40], points: [6, 3] },
+  chest: { vouchers: 2, coins: [40, 40] },      // all three goals claimed
+  streakDays: 7, streakVouchers: 5,             // the 7th gift in a row brings vouchers, then the streak starts over
+  levelUpVouchers: 2,                           // every café level
+};
+export const dailyCoins = (r, level) => Math.round(r.coins[0] + r.coins[1] * level);
+export const dailyPoints = (r, level) => Math.round(r.points[0] + r.points[1] * level);
 export const questById = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
 
 // ---------------- wall decorations ----------------

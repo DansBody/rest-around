@@ -83,6 +83,7 @@ export class Staff extends Agent {
     this.hop();
     g.sfx('ability');
     this.game.emit('kitCast', this);
+    g.eco.questProgress('cast', 1);
     return true;
   }
   resetKit() { this.kitCd = 0; this.kitT = 0; this.auraT = 0; this.auraMul = 1; this.buffT = 0; this.buffMul = 1; }

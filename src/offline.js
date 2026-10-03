@@ -13,10 +13,10 @@
 // the same file can run in the browser now and on a server later.
 import { CASHIER,
   DAY, OFFLINE, ENERGY, SKILL, skillLevel, KITS, ROLES, DISHES, dishById, furnitureById, floorById, wallById, wallDecorById,
-  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE,
+  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE, DAILY,
 } from './data.js';
 import { RATING_WEIGHTS } from './rating.js';
-import { roundAt, clockAt } from './clock.js';
+import { roundAt, clockAt, localDay } from './clock.js';
 import * as pantry from './pantry.js';
 import { STOCK_BAKE_CHANCE } from './pastry.js';
 
@@ -147,7 +147,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     elapsedSec, usedSec: sec, capped: elapsedSec > capSec, days,
     served: 0, lost: 0, noSeat: 0, soldOut: 0, sales: 0, tips: 0, fees: 0, wages: 0, rent: 0, restock: 0, net: 0, points: 0,
     ratingFrom: st.rating, ratingTo: st.rating, levelFrom: w.level, levelTo: w.level,
-    dishes: {}, phases: Object.fromEntries(DAY.phases.map((p) => [p.id, 0])), ranOut: [], broke: [], snacksUsed: 0, readyCrops: 0,
+    goalsDone: 0, dishes: {}, phases: Object.fromEntries(DAY.phases.map((p) => [p.id, 0])), ranOut: [], broke: [], snacksUsed: 0, readyCrops: 0,
     unpaid: false, restockOff: !restockOn, noStaff: !team.some((s) => s.role === 'waiter') || !team.some((s) => s.role === 'chef'),
   };
   const ranOut = new Set();
@@ -293,6 +293,17 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   }
   st.round = round; st.clock = clock;
   st.totals = { ...(st.totals || {}), served: ((st.totals || {}).served || 0) + rep.served, lost: ((st.totals || {}).lost || 0) + rep.lost, coins: ((st.totals || {}).coins || 0) + rep.sales + rep.tips + rep.fees, rounds: ((st.totals || {}).rounds || 0) + rounds };
+  // the café works on today's serving goals by itself (only while they are still today's; claiming them is the player's)
+  if (st.daily && Array.isArray(st.daily.goals) && st.daily.day === localDay(now, st.tz)) {
+    const bakes = Object.entries(rep.dishes).reduce((a, [id, n]) => a + (dishById[id].cat === EXTRA_CAT ? n : 0), 0);
+    const did = { guests: rep.served, cups: Object.values(rep.dishes).reduce((a, n) => a + n, 0) - bakes, bakes, coins: Math.round(rep.sales + rep.tips + rep.fees) };
+    for (const q of st.daily.goals) {
+      if (!(q.id in did) || q.prog >= q.target) continue;
+      q.prog = Math.min(q.target, q.prog + did[q.id]);
+      if (q.prog >= q.target) rep.goalsDone++;
+    }
+  }
+  st.vouchers = (st.vouchers || 0) + DAILY.levelUpVouchers * Math.max(0, w.level - rep.levelFrom);
   for (const g of st.garden || []) if (g && g.crop && sec >= 600) { g.prog = 1; g.water = 0; rep.readyCrops++; }
   wd.dirty = [];
   const keep = Math.min((wd.trash || []).length, Math.round(trash));

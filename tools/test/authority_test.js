@@ -39,6 +39,19 @@ for (const [name, make] of Object.entries(fx)) {
   n = make(); n.state.giftDay = (prev.state.giftDay || 0) + 1; n.state.coins += 60;
   r = capCheck(prev, n, 45);
   ok(!r.reject && !r.flags.includes('wealth'), `${name}: opening the daily gift is allowed`);
+  // study vouchers: a goal claimed today is fine, a pile of them is taken back, a dish studied for free is rejected
+  n = make(); n.state.daily = { day: 1, goals: [{ id: 'cups', target: 5, prog: 5, claimed: true }], chest: false }; n.state.vouchers = (prev.state.vouchers || 0) + 1; n.state.coins += 80;
+  r = capCheck(prev, n, 45);
+  ok(!r.reject && !r.flags.length, `${name}: claiming a daily goal (1 voucher) passes`);
+  n = make(); n.state.vouchers = (prev.state.vouchers || 0) + 500;
+  r = capCheck(prev, n, 45);
+  ok(!r.reject && r.flags.includes('vouchers') && r.data.state.vouchers === (prev.state.vouchers || 0), `${name}: +500 vouchers are taken back`);
+  n = make(); n.state.dishes.espresso.lv = 9;
+  r = capCheck(prev, n, 45);
+  ok(r.reject && r.flags.includes('vouchers'), `${name}: a dish studied to Lv9 without vouchers is rejected`);
+  n = make(); n.state.vouchers = 3; const n0 = make(); n0.state.vouchers = 3; n.state.dishes.espresso.lv += 1; n.state.vouchers -= 1;
+  r = capCheck(n0, n, 45);
+  ok(!r.flags.includes('vouchers') && !r.reject, `${name}: studying a dish with held vouchers is voucher-neutral`);
   // rating edit
   n = make(); n.state.rating = 5;
   r = capCheck(prev, n, 10);

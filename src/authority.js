@@ -5,9 +5,10 @@
 //
 //   - wealth: coins plus everything coins were turned into (furniture, floors, walls, room size, staff,
 //     ingredients, snacks, dish upgrades, seeds). Buying only moves coins into things, selling loses half,
-//     wages and rent burn coins; so wealth can only grow by trading, the daily goal and gift, the garden
+//     wages and rent burn coins; so wealth can only grow by trading, the daily goals and gift, the garden
 //     and the odd Coin Shower. A crop in the garden counts as far as it has grown. Growth beyond the ceiling is taken back out of the coins.
 //   - points (and so the level), the rating, the round counter and staff skill XP, each against its own ceiling.
+//   - study vouchers: held plus spent on dish levels; they only come from the Today panel and level-ups.
 //
 // The ceiling is a throughput bound, not a replay: guests per second can never exceed what the café's
 // stations, servers and seats could handle at full stretch, nor what walks in at a five-star rating at the
@@ -19,13 +20,14 @@
 import {
   DAY, dishById, furnitureById, floorById, wallById, wallDecorById, EXPANSIONS, ROLES, ingById, ingPrice, snackById,
   SERVINGS_PER_UNIT, levelUpCost, dishPrice, dishPoints, EXTRA_CAT, SEEDS, gardenPlots, staffSlots, KITS, MAX_LEVEL,
+  DAILY, dailyCoins, dailyPoints, studySpent,
 } from './data.js';
 import { MODEL, capacity, levelFor, arrivalsPerHour, SIM_SEC_PER_HOUR } from './offline.js';
 
 export const CAP = {
   tolerance: 1.3,       // headroom on the throughput bound (active skills, rounding, a lucky streak)
   slackGuests: 3,       // plus this many of the dearest guests per upload, for the tiny windows
-  bonusPerDay: { questCoins: [25, 10], giftCoins: [20, 5], giftIngredients: 8, questPoints: [6, 3] },   // [base, per level]
+  gift: { coins: [20, 5], ingredients: 8 },   // the daily gift: [base, per level] coins and up to this many packs (goals: DAILY)
   xpPerGuest: 16,       // order + deliver + clear + cook + drink + sweep + a share of repairs
   ratingRate: 0.007,    // rating.js eases toward its target at this rate per sim second
   timeScale: 1,         // live play runs at 1 sim second per real second (the debug speed-up is off online)
@@ -60,6 +62,13 @@ export function wealth(d) {
   return v;
 }
 
+/** Study vouchers held, plus those that went into dish levels. */
+export function vouchers(d) {
+  let v = d.state.vouchers || 0;
+  for (const x of Object.values(d.state.dishes || {})) if (x) v += studySpent(x.lv || 1);
+  return v;
+}
+
 /** The most guests per sim second this café could serve, and the most one guest can bring in. */
 function throughput(d, level) {
   const w = d.world;
@@ -89,7 +98,7 @@ export function badShape(d) {
   if (!d || typeof d !== 'object' || d.v !== 1) return 'version';
   const s = d.state, w = d.world;
   if (!s || typeof s !== 'object' || !w || typeof w !== 'object') return 'shape';
-  if (!num(s.coins, 0, 1e9) || !num(s.points, 0, 1e9) || !num(s.rating, 0, 5) || !num(s.round || 0, 0, 1e7) || !num(s.tz || 0, -720, 840)) return 'numbers';
+  if (!num(s.coins, 0, 1e9) || !num(s.points, 0, 1e9) || !num(s.rating, 0, 5) || !num(s.round || 0, 0, 1e7) || !num(s.tz || 0, -720, 840) || !num(s.vouchers || 0, 0, 1e6)) return 'numbers';
   if (![8, ...EXPANSIONS.map((e) => e.size)].includes(w.size)) return 'size';
   if (!Array.isArray(w.furniture) || w.furniture.length > w.size * w.size || !Array.isArray(w.floors)) return 'world';
   if (!Array.isArray(d.staff) || d.staff.length > 8) return 'staff';
@@ -125,23 +134,27 @@ export function capCheck(prev, next, wallSec) {
   const rate = Math.max(tp[0].rate, tp[1].rate);
   const perGuest = Math.max(tp[0].coins, tp[1].coins), ptsGuest = Math.max(tp[0].points, tp[1].points);
   const guests = rate * sim * CAP.tolerance + CAP.slackGuests;
-  // the daily goal and the daily gift come once per calendar day: only the ones actually completed / claimed in this window
-  const b = CAP.bonusPerDay, pq = prev.state.quest, nq = next.state.quest;
+  // the daily goals (three and a chest) and the daily gift come once per calendar day: count the days in this
+  // window, plus today's if something was claimed in it
   const days = Math.floor(sim / 86400) + (tzMoved ? 1 : 0);
-  const quests = days + (nq && nq.done && !(pq && pq.done && pq.id === nq.id) ? 1 : 0);
+  const claims = (d) => { const x = d.state.daily; return x ? { day: x.day, n: (x.goals || []).filter((q) => q && q.claimed).length + (x.chest ? 1 : 0) } : { day: 0, n: 0 }; };
+  const pc = claims(prev), nc = claims(next);
+  const claimDays = days + ((nc.day !== pc.day ? nc.n : nc.n - pc.n) > 0 ? 1 : 0);
   const gifts = (next.state.giftDay || 0) !== (prev.state.giftDay || 0) ? days + 1 : 0;
+  const b = CAP.gift;
   const garden = gardenPlots(level) * Math.max(...SEEDS.map((s) => s.yield * ingPrice(ingById[s.crop]) / s.grow)) * sim;
   const coinShower = tp.some((t) => t.magic) ? (Math.floor(sim / KITS.bbaekko.active.cooldown) + 1) * (12 + 5 * level) : 0;
   const maxIng = Math.max(...Object.values(ingById).map(ingPrice));
   const allowedWealth = guests * perGuest + garden + coinShower
-    + quests * (b.questCoins[0] + b.questCoins[1] * level) + gifts * (b.giftCoins[0] + b.giftCoins[1] * level + b.giftIngredients * maxIng);
+    + claimDays * (DAILY.goals * dailyCoins(DAILY.goal, level) + dailyCoins(DAILY.chest, level))
+    + gifts * (b.coins[0] + b.coins[1] * level + b.ingredients * maxIng);
 
   let dishPts = 0;
   for (const [id, x] of Object.entries(next.state.dishes || {})) {
     const from = ((prev.state.dishes || {})[id] || {}).lv || 1;
     for (let lv = from + 1; lv <= ((x && x.lv) || 1); lv++) dishPts += lv * 6;
   }
-  const allowedPoints = guests * ptsGuest + quests * (b.questPoints[0] + b.questPoints[1] * level) + dishPts;
+  const allowedPoints = guests * ptsGuest + claimDays * DAILY.goals * dailyPoints(DAILY.goal, level) + dishPts;
 
   const out = JSON.parse(JSON.stringify(next));
   const st = out.state;
@@ -156,6 +169,18 @@ export function capCheck(prev, next, wallSec) {
   }
   if (claimedPoints > allowedPoints) { st.points = (prev.state.points || 0) + Math.floor(allowedPoints); flags.push('points'); }
   if (claimedPoints < 0) { st.points = prev.state.points || 0; flags.push('points'); }   // points never go down
+
+  // vouchers: the goals and the chest, the 7th gift in a row, and every level gained (by the points allowed above)
+  const levels = Math.max(0, levelFor(st.points || 0) - lvPrev);
+  const allowedVouchers = claimDays * (DAILY.goals * DAILY.goal.vouchers + DAILY.chest.vouchers) + (gifts ? Math.ceil(gifts / DAILY.streakDays) * DAILY.streakVouchers : 0)
+    + levels * DAILY.levelUpVouchers;
+  const claimedVouchers = vouchers(next) - vouchers(prev);
+  if (claimedVouchers > allowedVouchers) {
+    const excess = claimedVouchers - allowedVouchers;
+    if (excess > (st.vouchers || 0)) return reject('vouchers');   // dish levels nobody paid for
+    st.vouchers -= excess;
+    flags.push('vouchers');
+  }
 
   const maxDrift = 5 * (1 - Math.exp(-CAP.ratingRate * sim)) + 0.05;
   const r0 = prev.state.rating || 0;

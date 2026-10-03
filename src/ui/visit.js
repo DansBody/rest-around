@@ -60,7 +60,7 @@ export async function startVisit(ui, f) {
 
   const home = ui.game;
   if (home.build.active) home.build.exit();
-  ui.closePanel(); ui.select(null); ui.toggleQuest(false);
+  ui.closePanel(); ui.select(null);
   visit.game = g;
   visit.friend = { id: f.id, name: r.body.name || f.name, cafe: r.body.cafe || g.state.name, level: r.body.level || g.state.level, avatar: r.body.avatar || f.avatar, hearts: r.body.hearts || f.hearts };
   visit.left = r.body.left;

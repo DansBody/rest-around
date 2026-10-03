@@ -124,9 +124,18 @@ while you play: the settlement for time away does not model it.
 
 **Progression.** Coins buy furniture, staff, training, ingredients and room expansions. Café points
 level you up, which unlocks bigger floor plans, more staff slots, more menu slots, new furniture,
-wall decor and new drinks. Put ingredients from the market (coffee beans, milk, sugar, flour, butter, eggs,
-chocolate, cream, matcha, mint, strawberries, lemons, blueberries) and the daily gift
-into a drink or bake to level it from Lv1 to Lv10 (higher price, more points).
+wall decor and new drinks. **Study** a drink or bake (Menu) to level it from Lv1 to Lv10 (higher price, more
+points): each level uses up its recipe's ingredients (coffee beans, milk, sugar, flour, butter, eggs, chocolate,
+cream, matcha, mint, strawberries, lemons, blueberries) plus **study vouchers** (研習券, 1 → 6 a level, 27 for a
+full climb), paid in one go. Vouchers never come from coins: only from the Today panel and café level-ups (+2
+each), and the café level caps how far dishes go (Lv2 + 1 every 3 café levels). Numbers: `studyCost` / `dishCap`
+in `src/data.js`.
+
+**Today.** The checklist button (top-left) opens the Today panel: the daily gift (ingredients and coins; the
+7th day in a row adds 5 vouchers), three daily goals (two serving goals the café also works on while you are
+away, one for you to do: feed snacks, buy at the Market, cast skills), and a bonus chest for claiming all three.
+Every reward waits behind a Claim button; the button's red badge counts what is waiting. A goal pays 1 voucher
+plus coins and points, the chest 2 vouchers plus coins (`QUESTS` / `DAILY` in `src/data.js`, `src/ui/today.js`).
 
 **Running the café.** Nothing is free. Every cup uses up its ingredients: a pack from the Market makes
 about 2.5 servings of every recipe it belongs to, so the pantry drains as you serve (the Menu panel shows
@@ -153,7 +162,7 @@ facilities (tap the stars for the breakdown). More stars → more guests.
 own time zone. Every 2 hours, on the even hours, a round opens at 08:00 and runs First Brew → Brunch Rush →
 Slow Sips → Tea-Time Rush → Evening Glow until 22:00 (about 108 real minutes), then wages and rent are paid
 (for the part of the round played live), a receipt card shows the round, and a 12-minute night lets the
-team rest until the next round. The daily goal and the daily gift come once per calendar day. When the game
+team rest until the next round. The daily goals and the daily gift come once per calendar day. When the game
 was not running (build mode, a mini-game) it plays that time back quickly; time away is settled offline.
 
 ### Controls

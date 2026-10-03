@@ -7,7 +7,7 @@ import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
 import { saveSlots, loadSlots } from './pastry.js';
-import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, QUESTS, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE } from './data.js';
+import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, SEEDS, questById, DAILY, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
@@ -112,8 +112,9 @@ export function apply(game, data) {
     round: Math.floor(num(s.round, 0, 0, 1e7)),   // saves from before the wall clock have none: the clock snaps to now
     clock: num(s.clock, 0, 0, DAY.round),
     tz: Math.round(num(s.tz, 0, -720, 840)),
-    questDay: Math.floor(num(s.questDay, 0, 0, 1e7)),
     giftDay: Math.floor(num(s.giftDay, 0, 0, 1e7)),
+    streak: { n: Math.floor(num(s.streak && s.streak.n, 0, 0, 7)), day: Math.floor(num(s.streak && s.streak.day, 0, 0, 1e7)) },
+    vouchers: Math.floor(num(s.vouchers, 0, 0, 1e6)),
     totals: { ...d.totals, ...(s.totals || {}) },
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,
@@ -122,12 +123,15 @@ export function apply(game, data) {
   for (const dish of DISHES) {
     const x = s.dishes && s.dishes[dish.id];
     if (!x) continue;
-    const prog = {};
-    for (const i of dish.ings) prog[i] = Math.floor(num(x.prog && x.prog[i], 0, 0, 99));
-    st.dishes[dish.id] = { lv: Math.floor(num(x.lv, 1, 1, MAX_DISH_LEVEL)), prog, on: !!x.on };
+    st.dishes[dish.id] = { lv: Math.floor(num(x.lv, 1, 1, MAX_DISH_LEVEL)), on: !!x.on };
   }
   st.inv = {};
   for (const i of INGREDIENTS) { const n = Math.floor(num(s.inv && s.inv[i.id], 0, 0, 1e6)); if (n) st.inv[i.id] = n; }
+  // dishes used to be levelled by adding ingredients bit by bit: what was put in and not used goes back to the pantry
+  for (const dish of DISHES) {
+    const prog = s.dishes && s.dishes[dish.id] && s.dishes[dish.id].prog;
+    for (const i of dish.ings) { const n = Math.floor(num(prog && prog[i], 0, 0, 99)); if (n) st.inv[i] = (st.inv[i] || 0) + n; }
+  }
   st.opened = {};
   for (const i of INGREDIENTS) { const n = num(s.opened && s.opened[i.id], 0, 0, SERVINGS_PER_UNIT); if (n) st.opened[i.id] = n; }
   st.unpaid = !!s.unpaid;
@@ -140,15 +144,21 @@ export function apply(game, data) {
     if (n) st.inv[seed.crop] = (st.inv[seed.crop] || 0) + n;
   }
   st.garden = [];
-  // wall decorations & the daily goal (saves from before the café opened start with the starter set)
+  // wall decorations & today's goals (saves from before the café opened start with the starter set)
   st.wallDeco = Array.isArray(s.wallDeco) ? s.wallDeco.filter((id, i, a) => wallDecorById[id] && a.indexOf(id) === i) : [...START_WALL_DECOR];
   st.wallPos = {};
   for (const id of st.wallDeco) {
     const p = s.wallPos && s.wallPos[id];
     if (p && ['north', 'west', 'east', 'south'].includes(p.side) && typeof p.a === 'number' && isFinite(p.a)) st.wallPos[id] = { side: p.side, a: clamp(p.a, 0, 100) };
   }
-  const q = s.quest;
-  st.quest = q && QUESTS.some((x) => x.id === q.id) ? { id: q.id, target: Math.max(1, Math.floor(num(q.target, 5, 1, 1e6))), prog: Math.floor(num(q.prog, 0, 0, 1e6)), done: !!q.done } : null;
+  // today's goals (saves from before the Today panel had one goal in `quest`: a new day's three come in its place)
+  const dl = s.daily;
+  const goals = dl && Array.isArray(dl.goals) ? dl.goals.filter((q, i, a) => q && questById[q.id] && a.findIndex((x) => x && x.id === q.id) === i).slice(0, DAILY.goals) : [];
+  st.daily = goals.length ? {
+    day: Math.floor(num(dl.day, 0, 0, 1e7)),
+    goals: goals.map((q) => { const target = Math.max(1, Math.floor(num(q.target, 5, 1, 1e6))); return { id: q.id, target, prog: Math.floor(num(q.prog, 0, 0, target)), claimed: !!q.claimed }; }),
+    chest: !!dl.chest,
+  } : null;
   const stats = s.stats && typeof s.stats === 'object' ? s.stats : null;
   st.stats = { ...game.day.freshStats(), ...(stats || {}) };
 

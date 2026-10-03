@@ -52,6 +52,9 @@ const G = {
   level: [['path', { d: 'M4.2 17.5 3 7.6l5 3.9 4-6 4 6 5-3.9-1.2 9.9z', fill: 'url(#g-violet)', stroke: '#7b4fe0', 'stroke-width': 1.2 }], ['path', { d: 'M4.6 20h14.8', stroke: '#7b4fe0', 'stroke-width': 1.8 }]],
   clock: [['circle', { cx: 12, cy: 12, r: 9, fill: 'rgba(255,255,255,.55)', stroke: 'c' }], ['path', { d: 'M12 7v5.2l3.4 2.1', stroke: 'c' }]],
   gift: [['path', { d: 'M5.2 12.5h13.6v7.3a1 1 0 0 1-1 1H6.2a1 1 0 0 1-1-1z', fill: '#ff6f9c' }], ['rect', { x: 3.6, y: 8.6, width: 16.8, height: 4, rx: 1, fill: '#ff8fb3' }], ['path', { d: 'M12 8.6v12.2', stroke: '#fff', 'stroke-width': 2 }], ['path', { d: 'M12 8.4C10.6 5 6.6 4.6 6.8 7c.2 1.6 3.2 1.6 5.2 1.4zm0 0c1.4-3.4 5.4-3.8 5.2-1.4-.2 1.6-3.2 1.6-5.2 1.4z', fill: 'none', stroke: '#ff4f86', 'stroke-width': 1.6 }]],
+  // study voucher (研習券): a ticket with a tear-off stub
+  voucher: [['path', { d: 'M4 6h16a1.5 1.5 0 0 1 1.5 1.5V10a2 2 0 0 0 0 4v2.5A1.5 1.5 0 0 1 20 18H4a1.5 1.5 0 0 1-1.5-1.5V14a2 2 0 0 0 0-4V7.5A1.5 1.5 0 0 1 4 6z', fill: '#ffc531', stroke: '#17171a', 'stroke-width': 1.3 }],
+    ['path', { d: 'M15.5 7.6v8.8', stroke: '#17171a', 'stroke-width': 1.2, 'stroke-dasharray': '1.3 1.5' }], ['path', { d: 'M9.2 8.6l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1z', fill: '#17171a' }]],
   energy: [['path', { d: 'M13.2 2.6 5 13.4h6.1l-1.3 8 8.2-10.8h-6.1z', fill: 'url(#g-gold)', stroke: '#e39b00', 'stroke-width': 1.1 }]],
   patience: [['path', { d: 'M7 3.5h10M7 20.5h10', stroke: 'c' }], ['path', { d: 'M8 3.5c0 4.6 8 5.3 8 8.5s-8 3.9-8 8.5M16 3.5c0 4.6-8 5.3-8 8.5s8 3.9 8 8.5', stroke: 'c', 'stroke-width': 1.5 }], ['path', { d: 'M9 19.8c.6-2 2-2.8 3-2.8s2.4.8 3 2.8z', fill: '#ffb340' }]],
   rotate: [['path', { d: 'M4.5 12a7.5 7.5 0 1 0 2.3-5.4', stroke: 'c' }], ['path', { d: 'M5.2 3.6v3.6h3.6', stroke: 'c' }]],
@@ -105,7 +108,7 @@ const G = {
 /** Manifest icon ids that have a vector fallback. */
 export const ICON_GLYPHS = {
   icon_coin: 'coin', icon_star: 'star', icon_star_empty: 'star_empty', icon_points: 'points', icon_level: 'level',
-  icon_clock: 'clock', icon_gift: 'gift', icon_energy: 'energy', icon_patience: 'patience', icon_rotate: 'rotate',
+  icon_clock: 'clock', icon_gift: 'gift', icon_voucher: 'voucher', tool_today: 'checklist', icon_energy: 'energy', icon_patience: 'patience', icon_rotate: 'rotate',
   icon_move: 'move', icon_sell: 'sell', icon_lock: 'lock', icon_water: 'water', icon_seed: 'seed', icon_harvest: 'harvest',
   tool_build: 'build', tool_staff: 'staff', tool_menu: 'menu', tool_garden: 'garden', tool_train: 'train', tool_market: 'market', tool_friends: 'friends', tool_settings: 'settings',
   emote_heart: 'heart', emote_angry: 'angry', emote_sad: 'sad', emote_zzz: 'zzz', emote_wait: 'patience',

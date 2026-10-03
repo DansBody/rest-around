@@ -5,6 +5,7 @@ import { SNACKS,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, furnitureById, EXPANSIONS, SKILL, CLUBS, TROUBLE,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
   staffWage, rentFor, ingPrice, UNIQUE_MODELS, UNIQUE_NAMES, ROUND_SCALE, perRound,
+  DAILY, dailyCoins, dailyPoints, studyCost, dishCap,
 } from './data.js';
 import * as pantry from './pantry.js';
 
@@ -26,6 +27,8 @@ export function unlocksFor(level) {
   for (const f of Object.values(furnitureById)) if (f.level === level) unlocks.push(f.name);
   for (const w of WALL_DECOR) if (w.level === level) unlocks.push(w.name);
   for (const e of EXPANSIONS) if (e.level === level) unlocks.push(t('{n}×{n} floor plan', { n: e.size }));
+  if (dishCap(level) > dishCap(prev)) unlocks.push(t('drinks and bakes can be studied up to Lv{n}', { n: dishCap(level) }));
+  unlocks.push(t('+{n} study vouchers', { n: DAILY.levelUpVouchers }));
   return unlocks;
 }
 
@@ -64,44 +67,96 @@ export class Economy {
   levelUp() {
     const s = this.s, g = this.game;
     s.level++;
+    s.vouchers = (s.vouchers || 0) + DAILY.levelUpVouchers;
     this.game.emit('levelUp', { level: s.level, unlocks: unlocksFor(s.level) });
     g.sfx('levelup');
     g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 30, '#ffd86b');
   }
 
-  // ---------------- daily goal ----------------
-  /** A new calendar day (the player's own time zone) brings a new daily goal. */
+  // ---------------- today: daily goals, the gift and its streak ----------------
+  /** A new calendar day (the player's own time zone) brings three new goals. */
   checkDate() {
     const s = this.s, today = this.game.day.today();
-    if (s.questDay === today && s.quest) return;
-    s.questDay = today;
-    this.rollQuest();
+    if (s.daily && s.daily.day === today && s.daily.goals.length) return;
+    this.rollDaily(today);
   }
-  /** A fresh goal for the day (never the same kind twice in a row). */
-  rollQuest() {
-    const s = this.s, prev = s.quest && s.quest.id;
-    const g = this.game, canBake = this.bakeryReady();
-    const q = choice(QUESTS.filter((x) => x.id !== prev && (x.id !== 'bakes' || canBake)));
-    let target = Math.max(2, Math.round(q.base + q.perLevel * s.level));
-    if (q.id === 'coins') target = Math.round(target / 5) * 5;
-    s.quest = { id: q.id, target, prog: 0, done: false };
+  /** Can goal `q` be worked on in this café right now? */
+  questOpen(q) {
+    if (q.needs === 'bakery') return this.bakeryReady();
+    if (q.needs === 'cast') return this.game.staff.some((a) => a.kitUnlocked());
+    return true;
+  }
+  /** Today's goals: two the café also works on while closed, and one for the player (yesterday's kinds last). */
+  rollDaily(day = this.game.day.today()) {
+    const s = this.s, before = new Set(((s.daily && s.daily.goals) || []).map((x) => x.id));
+    const pick = (kind, n) => {
+      const pool = QUESTS.filter((q) => q.kind === kind && this.questOpen(q));
+      const out = [];
+      for (const list of [pool.filter((q) => !before.has(q.id)), pool]) {
+        while (out.length < n) {
+          const left = list.filter((q) => !out.includes(q));
+          if (!left.length) break;
+          out.push(choice(left));
+        }
+      }
+      return out;
+    };
+    const goals = [...pick('serve', DAILY.goals - 1), ...pick('act', 1)].map((q) => {
+      let target = Math.max(1, Math.round(q.base + q.perLevel * s.level));
+      if (q.id === 'coins') target = Math.round(target / 5) * 5;
+      return { id: q.id, target, prog: 0, claimed: false };
+    });
+    s.daily = { day, goals, chest: false };
     this.game.changed('quest');
   }
-  questReward() { return { coins: 25 + this.s.level * 10, points: 6 + this.s.level * 3 }; }
   questProgress(kind, n = 1) {
-    const q = this.s.quest;
-    if (!q || q.done || q.id !== kind || n <= 0) return;
-    q.prog = Math.min(q.target, q.prog + n);
-    this.game.changed('quest');
-    if (q.prog < q.target) return;
-    q.done = true;
-    const r = this.questReward(), g = this.game, s = this.s;
+    const d = this.s.daily;
+    if (!d || n <= 0) return;
+    for (const q of d.goals) {
+      if (q.id !== kind || q.prog >= q.target) continue;
+      q.prog = Math.min(q.target, q.prog + n);
+      this.game.changed('quest');
+      if (q.prog < q.target) continue;
+      this.game.toast(t('Goal done: {goal}. Claim it in Today!', { goal: t(questById[q.id].text, { n: q.target }) }), 'good');
+      this.game.sfx('pop');
+    }
+  }
+  goalReward() { const l = this.s.level, r = DAILY.goal; return { vouchers: r.vouchers, coins: dailyCoins(r, l), points: dailyPoints(r, l) }; }
+  chestReward() { const r = DAILY.chest; return { vouchers: r.vouchers, coins: dailyCoins(r, this.s.level), points: 0 }; }
+  chestReady() { const d = this.s.daily; return !!d && !d.chest && d.goals.length > 0 && d.goals.every((q) => q.claimed); }
+  /** Pay a reward from the Today panel (coins straight to the till: no trade, so no goal counts them). */
+  payReward(r) {
+    const s = this.s, g = this.game;
+    s.vouchers = (s.vouchers || 0) + (r.vouchers || 0);
     s.coins += r.coins; s.stats.coins += r.coins; s.totals.coins += r.coins;
-    g.toast(t('Daily goal complete! +{c} coins, +{p} points', { c: r.coins, p: r.points }), 'good');
     g.sfx('levelup');
     g.fx.sparkle(g.at(g.world.size / 2, g.world.size / 2, 60), 18, '#ffd86b');
-    this.addPoints(r.points);
-    g.changed('coins');
+    if (r.points) this.addPoints(r.points);
+    g.changed('coins'); g.changed('quest');
+    return r;
+  }
+  claimGoal(i) {
+    const q = this.s.daily && this.s.daily.goals[i];
+    if (!q || q.claimed || q.prog < q.target) return null;
+    q.claimed = true;
+    return this.payReward(this.goalReward());
+  }
+  claimChest() {
+    if (!this.chestReady()) return null;
+    this.s.daily.chest = true;
+    return this.payReward(this.chestReward());
+  }
+  /** Things waiting in the Today panel: finished goals, the chest and the gift. */
+  claimable() {
+    const d = this.s.daily;
+    return (d ? d.goals.filter((q) => !q.claimed && q.prog >= q.target).length : 0) + (this.chestReady() ? 1 : 0) + (this.giftAvailable() ? 1 : 0);
+  }
+  /** The gift streak: how many gifts in a row are opened (counting today's, if opened) and which day the next one is. */
+  streak() {
+    const today = this.game.day.today(), k = this.s.streak || { n: 0, day: 0 };
+    const alive = k.day === today || k.day === today - 1;
+    const n = alive ? k.n : 0;
+    return { n, today: k.day === today, next: (n % DAILY.streakDays) + 1 };
   }
 
   // ---------------- wall decorations ----------------
@@ -164,26 +219,37 @@ export class Economy {
     this.game.sfx('click');
     this.game.changed('menu');
   }
-  /** Put ingredients from the pantry into a dish; levels it up when the recipe is complete. */
-  contribute(id) {
+  /**
+   * What studying dish `id` up a level takes and what stands in the way: { ings: [{ id, need, have }], vouchers,
+   * have, cap, why }, `why` null when it can go ahead, else 'locked' | 'max' | 'cap' | 'vouchers' | 'ings'.
+   */
+  studyPlan(id) {
+    const s = this.s, d = dishById[id], st = s.dishes[id];
+    const need = levelUpCost(st.lv), cap = dishCap(s.level);
+    const ings = d.ings.map((i) => ({ id: i, need, have: s.inv[i] || 0 }));
+    const vouchers = studyCost(st.lv), have = s.vouchers || 0;
+    const why = !this.dishUnlocked(id) ? 'locked' : st.lv >= MAX_DISH_LEVEL ? 'max' : st.lv >= cap ? 'cap'
+      : have < vouchers ? 'vouchers' : ings.some((x) => x.have < x.need) ? 'ings' : null;
+    return { ings, vouchers, have, cap, why };
+  }
+  /** Study a dish up one level: the ingredients and the vouchers are used up in one go. */
+  study(id) {
     const s = this.s, d = dishById[id], st = s.dishes[id], g = this.game;
-    if (!this.dishUnlocked(id)) return;
-    if (st.lv >= MAX_DISH_LEVEL) return g.toast(t('{name} is already max level!', { name: d.name }));
-    const need = levelUpCost(st.lv);
-    let moved = 0;
-    for (const ing of d.ings) {
-      const have = s.inv[ing] || 0, cur = st.prog[ing] || 0;
-      const n = Math.min(have, need - cur);
-      if (n > 0) { s.inv[ing] = have - n; st.prog[ing] = cur + n; moved += n; }
+    const p = this.studyPlan(id);
+    if (p.why) {
+      const msg = { max: t('{name} is already max level!', { name: d.name }), cap: t('Café level {n} lets dishes reach Lv{m}', { n: s.level, m: p.cap }),
+        vouchers: t('Not enough study vouchers (need {n})', { n: p.vouchers }), ings: t('Not enough ingredients in the pantry') }[p.why];
+      if (msg) { g.toast(msg, 'bad'); g.sfx('error'); }
+      return false;
     }
-    if (!moved) { g.toast(t('No matching ingredients in the pantry'), 'bad'); g.sfx('error'); return; }
-    if (d.ings.every((i) => (st.prog[i] || 0) >= need)) {
-      st.lv++; st.prog = {};
-      this.addPoints(st.lv * 6);
-      g.toast(t('{name} reached Lv{n}! Price and points up.', { name: d.name, n: st.lv }), 'good');
-      g.sfx('levelup');
-    } else g.sfx('pop');
-    g.changed('menu');
+    for (const x of p.ings) s.inv[x.id] -= x.need;
+    s.vouchers -= p.vouchers;
+    st.lv++;
+    this.addPoints(st.lv * 6);
+    g.toast(t('{name} reached Lv{n}! Price and points up.', { name: d.name, n: st.lv }), 'good');
+    g.sfx('levelup');
+    g.changed('menu'); g.changed('inv');
+    return true;
   }
 
   // ---------------- pantry: ingredients are used up as drinks are made (rules live in pantry.js) ----------------
@@ -235,6 +301,7 @@ export class Economy {
     const cost = this.ingredientPrice(id) * qty;
     if (!this.spend(cost, ingById[id].name)) return;
     this.s.inv[id] = (this.s.inv[id] || 0) + qty;
+    this.questProgress('market', qty);
     this.game.sfx('coin');
     this.game.changed('inv');
   }
@@ -246,21 +313,25 @@ export class Economy {
     this.game.changed('inv');
     return true;
   }
-  /** Once per calendar day (the player's own time zone). */
+  /** Once per calendar day (the player's own time zone). Seven gifts in a row bring study vouchers too. */
   giftAvailable() { return this.s.giftDay !== this.game.day.today(); }
   claimGift() {
     const s = this.s, g = this.game;
     if (!this.giftAvailable()) return null;
-    s.giftDay = this.game.day.today();
+    const today = this.game.day.today(), n = this.streak().next;
+    s.streak = { n, day: today };
+    s.giftDay = today;
     const pool = INGREDIENTS.filter((i) => this.ingredientAvailable(i.id));
     const got = {};
     for (let i = 0; i < 4; i++) { const ing = choice(pool).id; got[ing] = (got[ing] || 0) + randInt(1, 2); }
-    for (const [k, v] of Object.entries(got)) s.inv[k] = (s.inv[k] || 0) + v;
+    for (const [id, v] of Object.entries(got)) s.inv[id] = (s.inv[id] || 0) + v;
     const coins = 20 + s.level * 5;
+    const vouchers = n === DAILY.streakDays ? DAILY.streakVouchers : 0;
     s.coins += coins;
+    s.vouchers = (s.vouchers || 0) + vouchers;
     g.sfx('levelup');
-    g.changed('inv');
-    return { got, coins };
+    g.changed('inv'); g.changed('coins'); g.changed('quest');
+    return { got, coins, vouchers, streak: n };
   }
 
   // ---------------- staff ----------------
@@ -350,6 +421,7 @@ export class Economy {
       if (!this.game.staff.includes(st) || !(this.s.snacks[id] > 0)) continue;
       this.s.snacks[id]--;
       st.feed(snackById[id]);
+      this.questProgress('snack', 1);
     }
     this.game.sfx('eat');
     this.game.changed('staff');
@@ -361,6 +433,7 @@ export class Economy {
     if (!(s.snacks[snackId] > 0)) { if (!this.buySnack(snackId)) return; }
     s.snacks[snackId]--;
     st.feed(sn);
+    this.questProgress('snack', 1);
     this.game.sfx('eat');
     this.game.changed('staff');
   }

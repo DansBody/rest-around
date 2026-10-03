@@ -21,7 +21,7 @@ const SCENE_EVENTS = new Set(['ability', 'kitCast', 'abilityWindup']);
 
 export function defaultState() {
   const dishes = {};
-  for (const d of DISHES) dishes[d.id] = { lv: 1, prog: {}, on: d.id === 'espresso' || d.id === 'americano' };
+  for (const d of DISHES) dishes[d.id] = { lv: 1, on: d.id === 'espresso' || d.id === 'americano' };
   return {
     v: 1,
     name: 'Sunny Café',
@@ -29,14 +29,15 @@ export function defaultState() {
     rating: 2.6, service: [],
     round: 0, clock: 0,  // the round under way and sim seconds into it (both follow the wall clock, see clock.js)
     tz: 0,               // the player's time zone (minutes east of UTC), set from the device
-    questDay: 0,         // the calendar day the daily goal belongs to
     dishes,
     inv: { beans: 6, sugar: 3, milk: 2 },
     opened: {},          // servings left in each ingredient's opened pack (see Economy.consume)
     unpaid: false,       // yesterday's wages could not be paid
     wallDeco: [...START_WALL_DECOR],
     wallPos: {},          // wall decoration id -> { side, a } (where along that wall it hangs)
-    quest: null,
+    daily: null,         // today's goals: { day, goals: [{ id, target, prog, claimed }], chest } (Economy.rollDaily)
+    streak: { n: 0, day: 0 },   // daily gifts opened in a row, the last one on `day`
+    vouchers: 0,         // study vouchers (研習券): spent with ingredients to level a dish
     snacks: { cookie: 1 },
     garden: [],
     giftDay: 0,          // the calendar day the gift was last opened
