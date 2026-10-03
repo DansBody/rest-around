@@ -509,6 +509,7 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 .bb-mini .muted { font-size: 12.5px; margin-top: 2px; }
 .bb-mini .muted.bad { color: #c4262c; font-weight: 600; }
 .bb-mini .btn { flex: none; }
+.bb-mini > .grow { flex: 1; min-width: 0; }
 /* folded tray on phones: Buy and Done are the same size at either end, the tip centred between them */
 .bb-fold { padding: 8px; }
 .bb-fold > .btn { min-width: 96px; min-height: 44px; height: 44px; padding: 0 16px; font-size: 15px; }
