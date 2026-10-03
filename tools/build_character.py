@@ -237,6 +237,30 @@ CHARACTERS = {
         'face': (0.95, 1.4),
         'repairs': [],
     },
+    'bboogyuli': {
+        'name': 'Bboogyuli',
+        # Fan-made tangerine mascot for the user's own testing. gpt-image-bridge three views (with the
+        # artwork attached as reference, tool removed from its hand) -> Meshy 7 multi-image-to-3d
+        # 01a0ff8a-cd09-76f1-81ed-9b33207eb9c8, remesh 01a0ff8c-b0dc-7339-8d4c-cd1b09b86beb.
+        # A round tangerine head on a small body: no cheek band to standardise, and no ears (the leaf
+        # stem stays on the head bone; ear_y sits above the model so the ear bones take nothing).
+        'scale': 1.1, 'face_width': 0, 'smooth_normals': True,
+        'texture_size': 2048, 'texture_subsampling': 0, 'texture_mipmaps': False,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.22, 0)),
+            ('leg_l', 'hips', (0.15, 0.22, 0)), ('leg_r', 'hips', (-0.15, 0.22, 0)),
+            ('chest', 'hips', (0, 0.4, 0)),
+            ('arm_l', 'chest', (0.33, 0.45, 0)), ('hand_l', 'arm_l', (0.48, 0.3, 0.03)),
+            ('arm_r', 'chest', (-0.33, 0.45, 0)), ('hand_r', 'arm_r', (-0.48, 0.3, 0.03)),
+            ('head', 'chest', (0, 0.55, 0)),
+            ('ear_l', 'head', (0.3, 1.7, 0)), ('ear_r', 'head', (-0.3, 1.7, 0)),
+        ],
+        'skin': {'leg': (0.12, 0.22), 'arm_x': (0.32, 0.38), 'arm_y': (0.2, 0.25),
+                 'arm_top': (0.46, 0.52), 'head': (0.5, 0.6), 'chest': (0.22, 0.4),
+                 'ear_y': (2.0, 2.1), 'ear_x': (0.3, 0.4)},
+        'face': (0.8, 1.3),
+        'repairs': [],
+    },
     'guest_b': {
         'name': 'GuestB',
         # the guests' standard chibi body: a plain earless cream animal in a grey tee, recoloured per

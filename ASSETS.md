@@ -62,12 +62,17 @@ drawstrings) uses three views from `gpt-image-bridge` with the figure photo atta
 shape: the floppy ears stick out past the cheeks, so the house face-width standard would squash it.
 The ears hang from bones at the top of the head, with a 2048 px texture and bilinear sampling like RJ.
 Its views and remesh GLB are in `build/character-source/chimmy/` (not committed).
+**BBOOGYULI** (`bboogyuli`, a fan-made round tangerine with a green leaf stem, a red "BOO" badge and
+a wink) follows the same route: `gpt-image-bridge` three views with the artwork as `--ref` (the tool it
+holds in the artwork was left out), Meshy 7 multi-image-to-3d and a 12,433-triangle remesh. It has no
+ears: the leaf stays on the head bone and `ear_y` sits above the model. `face_width: 0` keeps the round
+head. Views and GLB are in `build/character-source/bboogyuli/` (not committed).
 Source task IDs are recorded in `CHARACTERS`; TATA's downloaded GLB and input views are kept locally in
 `build/character-source/heart-character/` (not committed). To
 rebuild after changing a model or a clip: download the remesh GLB and run
 `python tools/build_character.py <id> <remesh.glb>`. They *are* the staff: every staff member is one of
 them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, so the number of staff
-slots tops out at the size of the cast (currently eight). They're never random guests. Guests and passers-by
+slots tops out at the size of the cast (currently nine). They're never random guests. Guests and passers-by
 use **GuestB** (`guest_b`), a plain body recoloured per guest with fur/shirt colours and procedural ears.
 KayKit characters remain in the manifest as legacy assets.
 
@@ -183,7 +188,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (73)
+### 3D models (74)
 
 **Furniture**
 
@@ -288,6 +293,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `tata` | `models/characters/TATA.gltf` | own rig + clips |
 | `rj` | `models/characters/RJ.gltf` | own rig + clips |
 | `chimmy` | `models/characters/Chimmy.gltf` | own rig + clips |
+| `bboogyuli` | `models/characters/Bboogyuli.gltf` | own rig + clips |
 
 ### 2D images (73)
 
