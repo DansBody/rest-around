@@ -38,6 +38,7 @@ export function serialize(game) {
 export function save(game) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(game)));
+    game.savedAt = Date.now();
     return true;
   } catch (e) {
     console.warn('Save failed', e);

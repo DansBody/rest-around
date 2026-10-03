@@ -88,6 +88,7 @@ class Cloud {
     this.incoming = r.body.incoming || [];   // friends' help, already in the save: the game only tells the player
     this.session = r.body.session; this.rev = r.body.rev;
     this.online = true;
+    this.savedAt = Date.now();
     return r.body.created && !mine ? 'new' : 'loaded';
   }
 
@@ -103,6 +104,7 @@ class Cloud {
       const r = await this.call({ op: 'beat', session: this.session, rev: this.rev, save }, final);
       if (r.status === 200) {
         this.rev = r.body.rev;
+        this.savedAt = Date.now();   // the Settings panel says how long ago the café was last saved
         const c = r.body.corrected;
         if (c) this.correct(game, c);
         if (r.body.incoming && r.body.incoming.length) this.receive(game, r.body.incoming);

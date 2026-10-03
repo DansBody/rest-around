@@ -207,6 +207,7 @@ export const ZH_TW = {
   // ---------------- settings
   'Language': '語言', 'Café name': '咖啡廳名稱', 'Sound': '音效', 'Sound effects': '音效', 'Café music': '咖啡廳音樂', 'Volume': '音量', 'Game': '遊戲',
   'Auto-open next day': '自動開始下一天', 'Liquid glass refraction': '液態玻璃折射效果',
+  'Autosave': '存檔', 'Saves automatically': '會自動存檔', 'Saved automatically': '已自動存檔', 'Saved on this device': '已存在這台裝置', '{n} s ago': '{n} 秒前', '{n} min ago': '{n} 分鐘前',
   'Saved!': '已存檔！', 'Could not save (storage blocked?)': '無法存檔（瀏覽器儲存空間被封鎖？）', 'Save now': '立即存檔',
   'Reset game': '重新開始', 'Tap again to erase everything': '再點一次會清除所有進度',
   'Progress autosaves every 10 seconds and when you close the tab.': '每 10 秒和關閉分頁時都會自動存檔。',
