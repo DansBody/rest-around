@@ -20,7 +20,9 @@ plain CSS in `src/ui/style.css`, so it needs no images.
 | [KayKit Furniture Bits](https://kaylousberg.itch.io/furniture-bits) by Kay Lousberg | CC0 | square table, wooden chair, armchair |
 | Refillit's own props, food, drinks and icons | made with Meshy for this game | everything else in the café (see below) |
 | [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg | CC0 | legacy character models and their shared animations; current guests use `GuestB` |
-| Fredoka, Nunito (Google Fonts) | SIL OFL 1.1 | UI fonts (`assets/fonts`, licences alongside) |
+| Fredoka, Nunito (Google Fonts) | SIL OFL 1.1 | start-screen fonts (`assets/fonts`, licences alongside) |
+| [Archivo](https://github.com/Omnibus-Type/Archivo) by Omnibus-Type, via Fontsource | SIL OFL 1.1 | in-game UI font, variable weight and width (`assets/fonts/archivo.woff2`) |
+| [Phosphor Icons](https://phosphoricons.com) (bold) | MIT | one-colour UI glyphs, inlined in `src/ui/icons.js` |
 
 The character files were slimmed for the web: weapons removed, the 15 animations the game uses
 moved into one shared `models/characters/animations.glb` (all five characters share the same rig,

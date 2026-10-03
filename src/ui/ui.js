@@ -30,8 +30,8 @@ const keepTogether = (text, piece) => text.split(KEEP).flatMap((x, i) => (i ? [h
 /** "a + b − c": each term with its sign stays on one line; lines break between terms. */
 const GC_RING = 70;   // px from an item's centre to the buttons around it in build mode
 // where each button goes round the ring, in degrees clockwise from 3 o'clock (by how many there are):
-// 2 = ✓ right, ✕ left; 3 = top left, bottom, top right; 4 = top left, top right, bottom left, bottom right
-const GC_ANGLES = { 2: [0, 180], 3: [210, 90, -30], 4: [225, -45, 135, 45] };
+// 2 = ✓ right, ✕ left; 3 = top left, bottom, top right; 4 = a diamond: left, top, right, bottom (rotate · move · sell · ✓)
+const GC_ANGLES = { 2: [0, 180], 3: [210, 90, -30], 4: [180, 270, 0, 90] };
 const opSegs = (text) => text.split(/\s*(?=[＋－+−])/).map((x) => h('span.seg', x));
 
 export class UI {
@@ -84,15 +84,15 @@ export class UI {
     const before = new Set(r.children);
     const ic = (id, s, cls) => assets.iconEl(id, s, cls);
 
-    // ----- HUD -----
+    // ----- HUD: one row. The café (name, level, a hairline of level progress) on the left, the live numbers on the right -----
     this.el = {};
-    const coin = h('div.chip', { title: t('Coins') }, ic('icon_coin', 30), (this.el.coins = h('span.num', '0')));
-    this.el.lvlNum = h('b', 'Lv 1');
+    this.el.lvlNum = h('b.hb-lv', 'Lv 1');
     this.el.brandName = h('span.bname', this.game.state.name);
-    this.el.lvlTxt = h('span.muted', '0/0');
+    this.el.lvlTxt = h('span');   // level points and the day go in the tooltips, not on screen
+    this.el.day = h('span');
     this.el.lvlBar = h('i');
-    const lvl = h('div.chip.brand', { title: t('Café level & points') }, h('div.badge-c', ic('tool_menu', 28), this.el.lvlNum),
-      h('div.lvl-wrap', h('div.lvl-top', this.el.brandName, this.el.lvlTxt), h('div.pbar', this.el.lvlBar)));
+    const brand = h('div#hudbrand', this.el.brandName, this.el.lvlNum, h('span.hb-xpbar', this.el.lvlBar));
+    // the five-star row is still kept up to date, but the pill shows one star and the number
     this.el.stars = h('span.stars');
     this.starEls = [];
     for (let i = 0; i < 5; i++) {
@@ -102,17 +102,15 @@ export class UI {
       this.starEls.push(full);
       this.el.stars.appendChild(wrap);
     }
-    this.el.ratingNum = h('span.num', { style: { minWidth: '30px', fontSize: '15px' } }, '0.0');
-    // phones have room for one star and the number instead of the row of five
-    const rating = h('div.chip.rating', { title: t('Rating'), onclick: () => this.toggleRatingTip() }, this.el.stars, ic('icon_star', 22, 'ico star-one'), this.el.ratingNum);
-    this.el.time = h('span', '8:00am');
-    this.el.phase = h('small', 'Opening');
-    this.el.day = h('small', 'Day 1');
-    const clock = h('div.chip', { title: t('Day clock') }, ic('icon_clock', 28), h('div.clock', h('span', this.el.day), this.el.time, this.el.phase));
+    this.el.ratingNum = h('span.num', '0.0');
+    const coin = h('span.hs', { title: t('Coins') }, ic('icon_coin', 20), (this.el.coins = h('span.num', '0')));
+    const rating = h('button.hs.rating', { title: t('Rating'), onclick: () => this.toggleRatingTip() }, ic('icon_star', 18), this.el.ratingNum);
+    this.el.time = h('span.num', '8:00am');
+    this.el.phase = h('small', 'Opening');   // the clock's tooltip; not on screen
+    const clock = h('span.hs.clock', { title: t('Day clock') }, this.el.time);
     this.el.speedTxt = h('span', '1×');
-    this.el.speed = h('div.chip', { style: { display: 'none', fontSize: '15px' } }, glyph('fast', 18), this.el.speedTxt);
-    this.el.gift = h('div.chip#gift', { title: t('Daily gift!'), onclick: () => this.claimGift() }, ic('icon_gift', 30));
-    this.el.hud = h('div#hud', coin, lvl, rating, clock, this.el.speed, this.el.gift);
+    this.el.speed = h('span.hs.speed', { style: { display: 'none' } }, glyph('fast', 16), this.el.speedTxt);
+    this.el.hud = h('div#hud', brand, h('div#hudstats', coin, rating, clock, this.el.speed));
     this.el.ratingTip = h('div.card.rating-tip');
     r.append(this.el.hud, this.el.ratingTip);
 
@@ -130,14 +128,7 @@ export class UI {
 
     // ----- toolbar -----
     this.toolBtns = {};
-    // camera controls (the scene is real 3D: rotate in 90deg steps, recenter)
-    // (they turn whichever café is on screen: a friend's while visiting)
-    const shown = () => (this.game.renderer ? this.game.renderer.game : this.game);
-    this.el.camctl = h('div#camctl',
-      h('button.btn.small', { title: t('Rotate left (Q)'), onclick: () => { shown().camera.rotate(-1); shown().sfx('click'); } }, glyph('rotate', 20)),
-      h('button.btn.small', { title: t('Center view'), onclick: () => { shown().camera.fit(shown().world.size); shown().sfx('click'); } }, glyph('recenter', 20)),
-      h('button.btn.small', { title: t('Rotate right (E)'), onclick: () => { shown().camera.rotate(1); shown().sfx('click'); } }, glyph('rotate_r', 20)));
-    r.appendChild(this.el.camctl);
+    // no on-screen camera buttons: drag / pinch / two-finger twist, right-drag or Q / E turn the view
 
     // staff ability dock: one button per staff member (keys 1–9), folded away behind the skills
     // button (bottom-left) until opened; the button glows while something is ready to fire
@@ -162,7 +153,7 @@ export class UI {
 
     // ----- side panel -----
     this.el.panelTitle = h('h2', '');
-    this.el.panelIcon = h('span');
+    this.el.panelIcon = h('span.ph-ico');
     this.el.panelBody = h('div.panel-body');
     this.el.panel = h('div.card#panel', h('div.grabber'),
       h('div.panel-head', this.el.panelIcon, this.el.panelTitle, h('button.btn.small.xbtn', { onclick: () => this.closePanel(), title: t('Close') }, glyph('close', 16))),
@@ -390,6 +381,8 @@ ${k.desc}
       const a = GC_ANGLES[btns.length][i] * Math.PI / 180;
       btn.style.left = Math.round(Math.cos(a) * GC_RING) + 'px';
       btn.style.top = Math.round(Math.sin(a) * GC_RING) + 'px';
+      // the wide Sell pill grows outwards from its spot on the right, so it never covers the item
+      btn.classList.toggle('out-r', btn.classList.contains('sell') && Math.cos(a) > 0.3);
     });
     el.replaceChildren(...(btns ? [label, ...btns] : []));
     el.classList.toggle('show', !!btns);
@@ -404,7 +397,7 @@ ${k.desc}
     const pos = (q) => {
       // keep the whole ring (and the label over it) on screen, clear of the HUD and the folded tray
       const vw = window.innerWidth, vh = window.innerHeight, m = GC_RING + 40;
-      const x = Math.max(m, Math.min(vw - m, q.x));
+      const x = Math.max(m, Math.min(vw - m - 30, q.x));   // the right side holds the wider Sell pill
       const y = Math.max(GC_RING + 96, Math.min(vh - m - 90, q.y));
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
     };
@@ -509,6 +502,7 @@ ${k.desc}
     this.updateQuest();
     this.el.lvlTxt.textContent = s.level >= g.maxLevel() ? t('MAX') : `${fmt(lp.cur)}/${fmt(lp.next)}`;
     this.el.lvlBar.style.width = lp.frac * 100 + '%';
+    this.el.brandName.parentNode.title = `${s.name} · ${this.el.lvlNum.textContent} · ${t('Café level & points')} ${this.el.lvlTxt.textContent}`;
     for (let i = 0; i < 5; i++) {
       const f = clamp(s.rating - i, 0, 1);
       this.starEls[i].style.clipPath = `inset(0 ${100 - f * 100}% 0 0)`;
@@ -517,7 +511,7 @@ ${k.desc}
     this.el.day.textContent = t('Day {n}', { n: s.day });
     this.el.time.textContent = fmtTime(g.day.hour, getLang() !== 'en');
     this.el.phase.textContent = g.paused ? t('Closed') : g.build.active ? t('Paused') : g.day.hour >= 22 ? t('Last guests…') : g.day.phase.name;
-    this.el.gift.style.display = g.eco.giftAvailable() ? '' : 'none';
+    this.el.time.parentNode.title = `${this.el.day.textContent} · ${this.el.phase.textContent}`;
     this.el.speed.style.display = g.timeScale !== 1 ? '' : 'none';
     this.el.speedTxt.textContent = `${g.timeScale}×`;
     if (this.el.ratingTip.classList.contains('show')) this.renderRatingTip();
@@ -538,7 +532,7 @@ ${k.desc}
     badge('staff', g.staff.filter((a) => a.napping).length);
     // trouble that can happen now, with nobody trained to handle it
     badge('train', Object.values(CLUBS).filter((c) => s.level >= TROUBLE[c.trouble].level && g.staff.length && !g.staff.some((a) => a.clubLv(c.id) > 0)).length);
-    badge('market', g.eco.giftAvailable() ? 1 : 0);
+    // the daily gift lives in the Market only: nothing on the main screen points at it
     badge('friends', this.friends && this.friends.data ? this.friends.data.incoming.length : 0);
   }
 
