@@ -96,7 +96,7 @@ was made with Meshy from text prompts (the concept art only set the mood), then 
 
 | What | Models (`assets/models/cafe/`) |
 |---|---|
-| Counter & bar | `espresso_machine` (on `counter_plain` = `m_espresso`, the counter with its till cut off by `tools/strip_till.py`; the stainless `espresso_machine_silver` is a Meshy retexture of it [10]), `grinder` (`m_espresso_deluxe`), `oven` (the baker's bread oven), `pastry_case_empty` (the Pastry Case: empty shelves the game fills from stock, `shelves` in the manifest; the older `pastry_case` has its pastries baked in and is unused), `counter` (cashier) |
+| Counter & bar | `espresso_machine` (Blender, `tools/blender/espresso_red.py`, replaced the Meshy one; on `counter_plain` = `m_espresso`, the counter with its till cut off by `tools/strip_till.py`; the stainless `espresso_machine_silver` is its recolour), `grinder` (`m_espresso_deluxe`), `oven` (the baker's bread oven), `pastry_case_empty` (the Pastry Case: empty shelves the game fills from stock, `shelves` in the manifest; the older `pastry_case` has its pastries baked in and is unused), `counter` (cashier) |
 | Seating, shelves, plants | `sofa`, `bookshelf` (a stray shelf corner repaired by `tools/fix_bookshelf.py`; also the reading nook and `m_library`), `monstera`, `planter`, `flower_box`, `floor_lamp`, `teddy`, `welcome_sign`, `table_plant` (sits on every table) |
 | Hung on the walls | `menu_board`, `wall_frame`, `wall_sconce`, `hanging_plant` |
 | Drinks | `cup_espresso`, `cup_americano`, `cup_latte`, `cup_cappuccino`, `cup_mocha`, `mug_cocoa`, `cup_matcha`, `glass_iced` (iced americano and berry lemonade are tinted copies) |
@@ -119,6 +119,14 @@ Pipeline, with Meshy costs in brackets:
 4. **Build**: `python tools/build_prop.py <name> <remesh.glb> --fit W,D,H` (world units, 1 tile = 2; add
    `--stretch X,Y,Z` for a too-shallow counter, `--rot DEG` if the front isn't +Z, `--tex` for the texture size).
    It writes `models/cafe/<name>.gltf` + `.bin` + a JPG texture.
+   **Seam cracks:** Meshy's atlas packs hundreds of tiny UV islands with no gutter, so thin lines show along
+   the seams, and its remesh leaves slits and folded slivers that crease the shading. Fix a prop with
+   `blender -b --factory-startup -t 2 --python tools/blender/rebake_texture.py -- <prop.gltf> <out> [<variant.jpg>...]`
+   (merges split vertices, fills slits, area-weighted normals, fresh UVs with margins, re-bakes the old
+   texture from each face's inside), then `build_prop.py` on the GLB it writes. Done for `counter_plain` and
+   `counter` (1024 px textures). The espresso machine kept one crack in its geometry, so it was remodelled
+   from code instead: `tools/blender/espresso_red.py` (red + the stainless recolour, flat colours, same size;
+   reference sheet in `design/espresso_red/`, shared helpers in `tools/blender/kit.py`).
 5. **Register**: a manifest model entry (compose with `parts` when it sits on a counter), then
    `node tools/assets-table.mjs`. Reload.
 

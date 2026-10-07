@@ -26,7 +26,7 @@ for (const item of [{ id: 'none' }, ...WEAR.filter((w) => !only || only.includes
   for (const model of chars) {
     const look = { model, scale: 1, wear: item.slot ? { [item.slot]: { id: item.id } } : {}, ...(model === 'guest_b' ? { fur: '#e9c39b', shirt: '#9cc3e6', ears: 'bear' } : {}) };
     const scene = new THREE.Scene();
-    const cv = new CharacterView(scene, { look, x: 0, y: 0, dir: 1, pose: {} });
+    const cv = new CharacterView(scene, { look, x: 0, y: 0, dir: 1, pose: {} }, { shadow: false });
     if (cv.inst.mixer) cv.inst.mixer.update(0.5);
     cv.root.position.set(0, 0, 0); cv.root.rotation.y = yaw;
     const c = renderIcon(cv.root, 220, { pitch: 0.22, pad: 0.55 });

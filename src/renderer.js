@@ -3,8 +3,9 @@
 // name tags and floating numbers on a 2D overlay canvas projected from 3D positions.
 import { THREE, models, TILE } from './models.js';
 import { assets } from './assets.js';
-import { CharacterView } from './charview.js';
+import { CharacterView, RIM } from './charview.js';
 import { AbilityFx } from './abilityfx.js';
+import { Steam } from './steam.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById, wallDecorById, wallLayout } from './data.js';
 import { clamp, easeOutBack, lerp, fmtLeft } from './util.js';
@@ -42,6 +43,9 @@ export class Renderer {
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = this.lowPower ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
+    // a gentle tone curve: the stronger sun no longer clips to white, and colours stay true (Neutral, not ACES)
+    this.gl.toneMapping = THREE.NeutralToneMapping;
+    this.gl.toneMappingExposure = 0.82;
     this.scene = new THREE.Scene();
     this.cam = new THREE.PerspectiveCamera(game.camera.fov, 1, 0.5, 500);
     this.env = assets.manifest.environment || {};
@@ -58,6 +62,7 @@ export class Renderer {
     this.floorKey = '';
     this.buildGroup = new THREE.Group(); this.scene.add(this.buildGroup);
     this.abilityFx = new AbilityFx(this.scene);
+    this.steam = new Steam(this.scene);
     this.debugGroup = new THREE.Group(); this.scene.add(this.debugGroup);
   }
 
@@ -78,9 +83,11 @@ export class Renderer {
 
   setupLights() {
     const s = this.scene;
-    this.hemi = new THREE.HemisphereLight(0xfff6e8, 0xb7a58e, 1.35);
+    // a soft sky fill with a darker bounce from below, and a strong sun: the sun's shadows and the shaded
+    // undersides are what give the scene its depth (an even fill everywhere washes them out)
+    this.hemi = new THREE.HemisphereLight(0xfff6e8, 0x8f7a66, 0.84);
     s.add(this.hemi);
-    this.sun = new THREE.DirectionalLight(0xfff1dc, 2.1);
+    this.sun = new THREE.DirectionalLight(0xfff1dc, 3.05);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(this.lowPower ? 1024 : 2048, this.lowPower ? 1024 : 2048);
     this.sun.shadow.bias = -0.0004;
@@ -184,6 +191,29 @@ export class Renderer {
       seg(north, c, -T / 2, true);
       seg(east, W + T / 2, c, false);
       seg(south, c, W + T / 2, true);
+    }
+    // soft shade on the floor along the foot of each wall (fake ambient occlusion: a few transparent strips)
+    const ao = this.wallShadeMat || (this.wallShadeMat = (() => {
+      const c = document.createElement('canvas'); c.width = 4; c.height = 64;
+      const x = c.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 64);
+      gr.addColorStop(0, 'rgba(60,38,20,0.38)'); gr.addColorStop(0.35, 'rgba(60,38,20,0.14)'); gr.addColorStop(1, 'rgba(60,38,20,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 4, 64);
+      return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false });
+    })());
+    const SHADE = 0.9;
+    const shade = (side, cx, cz, rotY) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(TILE, SHADE), ao);
+      m.rotation.set(-Math.PI / 2, 0, rotY, 'YXZ');
+      m.position.set(cx, 0.014, cz);
+      m.renderOrder = -1;
+      side.add(m);
+    };
+    for (let i = 0; i < n; i++) {
+      const c = i * TILE + TILE / 2;
+      if (i !== DOOR_Y) shade(west, SHADE / 2, c, Math.PI / 2);   // rotY turns the strip's dark edge toward its wall
+      shade(north, c, SHADE / 2, 0);
+      shade(east, W - SHADE / 2, c, -Math.PI / 2);
+      shade(south, c, W - SHADE / 2, Math.PI);
     }
     // corner posts
     for (const [x, z] of [[-T / 2, -T / 2], [W + T / 2, -T / 2], [-T / 2, W + T / 2], [W + T / 2, W + T / 2]]) {
@@ -342,6 +372,8 @@ export class Renderer {
     this.syncTrash();
     this.syncCharacters(realDt);
     this.abilityFx.update(g, this.chars, this.time, realDt);
+    this.steam.resize(this.gl.domElement.height, this.cam.fov);
+    this.steam.update(realDt);
     this.syncBuild();
     this.syncDebug();
     this.gl.render(this.scene, this.cam);
@@ -358,8 +390,10 @@ export class Renderer {
     const eve = clamp((hr - 17) / 3, 0, 1) * (1 - dawn), night = clamp((hr - 20) / 2, 0, 1) * (1 - dawn), morn = Math.max(clamp((10 - hr) / 2, 0, 1), dawn);
     const sunCol = hexMix('#fff4e2', '#ffc58f', eve).lerp(new THREE.Color('#9fb0ff'), night).lerp(new THREE.Color('#ffe6c4'), morn);
     this.sun.color.copy(sunCol);
-    this.sun.intensity = lerp(2.1, 1.3, eve) * lerp(1, 0.45, night);
-    this.hemi.intensity = lerp(1.35, 1.0, eve) * lerp(1, 0.7, night);
+    this.sun.intensity = lerp(3.05, 1.9, eve) * lerp(1, 0.45, night);
+    this.hemi.intensity = lerp(0.84, 0.66, eve) * lerp(1, 1.05, night);   // the fill holds up at night (blue moonlight), or the closed café goes murky
+    RIM.value = lerp(0.42, 0.3, eve) * lerp(1, 0.35, night);
+    this.steam.setLight(1 - night * 0.6);
     this.hemi.color.copy(hexMix('#fff6e8', '#ffd9b5', eve).lerp(new THREE.Color('#aab8ff'), night));
     const sky = hexMix(this.env.background || '#bfe3f2', '#f7c7a5', eve).lerp(new THREE.Color('#44507e'), night);
     this.scene.background.copy(sky); this.scene.fog.color.copy(sky);
@@ -485,19 +519,35 @@ export class Renderer {
         tmpV.set(spec.off[0] * TILE, 0, spec.off[1] * TILE).applyAxisAngle(Y_UP, -o.rotation.y);
         it.position.set(tmpV.x, (def.surfaceHeight || 1) + (spec.wob ? Math.abs(Math.sin(this.time * 10)) * 0.03 : 0), tmpV.z);
       }
-      // steam: over the machine while it brews, over hot drinks on the tables
+      // steam (3D, src/steam.js): wisps from the group heads and the fresh cup while the machine brews, now and
+      // then a hiss from the steam wand (manifest `steam`, in the station's own frame), a curl off hot drinks
       v.steamT = (v.steamT || 0) - dt;
-      if (v.steamT <= 0) {
-        v.steamT = 0.3 + Math.random() * 0.25;
-        const cx = f.x + f.fp[0] / 2, cy = f.y + f.fp[1] / 2;
-        if (f.kind === 'stove' && f.cooking && !f.ready) g.fx.steam(g.at(cx, cy, 98));
-        if (f.kind === 'table' && f.seats) {
-          for (const s of f.seats) {
-            const hot = s.food && dishById[s.food.dish] && ['coffee', 'tea'].includes(dishById[s.food.dish].cat);
-            if (!hot || !s.customer || s.customer.state !== 'eating') continue;
-            const dx = s.chair.x - f.x, dz = s.chair.y - f.y;
-            g.fx.steam(g.at(cx + dx * 0.38, cy + dz * 0.38, 58));
-          }
+      if (f.kind === 'stove' && f.cooking && !f.ready) {
+        const st = def.steam;
+        if (v.steamT <= 0) {
+          v.steamT = 0.12 + Math.random() * 0.1;
+          if (st && st.wisp) this.steam.emit(o.localToWorld(tmpV.set(...st.wisp[Math.floor(Math.random() * st.wisp.length)])), 'wisp');
+          const cup = v.items.get('pan');
+          if (cup && Math.random() < 0.6) { cup.getWorldPosition(tmpV); tmpV.y += 0.18; this.steam.emit(tmpV, 'cup'); }
+          if (!st) { const cx = f.x + f.fp[0] / 2, cy = f.y + f.fp[1] / 2; this.steam.emit(tmpV.set(cx * TILE, 1.9, cy * TILE), 'wisp'); }
+        }
+        v.wandT = (v.wandT ?? 0.8 + Math.random() * 1.5) - dt;
+        if (st && st.wand && v.wandT <= 0) {
+          v.wandT = 2.5 + Math.random() * 2.5;
+          const at = o.localToWorld(tmpV.set(...st.wand)).clone();
+          const dir = new THREE.Vector3(...(st.wandDir || [0, -1, 0])).applyQuaternion(o.getWorldQuaternion(new THREE.Quaternion())).normalize();
+          this.steam.burst(at, dir);
+        }
+      } else v.wandT = null;
+      if (v.steamT <= 0 && f.kind === 'table' && f.seats) {
+        v.steamT = 0.22 + Math.random() * 0.15;
+        for (const s of f.seats) {
+          const hot = s.food && dishById[s.food.dish] && ['coffee', 'tea'].includes(dishById[s.food.dish].cat);
+          if (!hot || !s.customer || s.customer.state !== 'eating') continue;
+          const cup = v.items.get('f' + s.chair.uid + s.food.dish);
+          if (!cup) continue;
+          cup.getWorldPosition(tmpV); tmpV.y += 0.2;
+          this.steam.emit(tmpV, 'cup');
         }
       }
       // evening lamps

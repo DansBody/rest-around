@@ -11,6 +11,39 @@ const SIT_FORWARD = 0.68;
 const SWING = 0.55;   // seconds of a bat swing (staff.swingT counts down from this)
 const GLOW = new THREE.Color('#ffc531');   // setGlow: the UI's one accent (--yellow)
 
+/** Strength of the warm rim light on characters; the renderer turns it down in the evening and at night. */
+export const RIM = { value: 0.42 };
+/** A soft warm edge where a surface turns away from the camera (fresnel), so the plush characters stand out
+ *  from the floor. A few shader instructions per pixel; materials are shared, so each is patched once. */
+function addRim(m) {
+  if (!m || m.userData.rim || !(m.isMeshLambertMaterial || m.isMeshStandardMaterial || m.isMeshPhongMaterial || m.isMeshToonMaterial)) return;
+  m.userData.rim = true;
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.rimK = RIM;
+    sh.fragmentShader = 'uniform float rimK;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
+      'float rimF = 1.0 - saturate(dot(normal, normalize(vViewPosition)));\n\toutgoingLight += vec3(1.0, 0.92, 0.8) * pow(rimF, 2.6) * rimK;\n#include <opaque_fragment>');
+  };
+  m.customProgramCacheKey = () => 'rim';
+  m.needsUpdate = true;
+}
+const rimAll = (root) => root.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) addRim(m); });
+
+// a soft dark disc on the floor under each character (it stays on the floor when they hop or fly)
+let blob = null;
+function contactShadow() {
+  if (!blob) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(40,25,10,0.5)'); gr.addColorStop(0.6, 'rgba(40,25,10,0.2)'); gr.addColorStop(1, 'rgba(40,25,10,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+    const geo = new THREE.PlaneGeometry(1.5, 1.5); geo.rotateX(-Math.PI / 2);
+    blob = { geo, mat: new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }) };
+  }
+  const m = new THREE.Mesh(blob.geo, blob.mat);
+  m.renderOrder = -1;
+  return m;
+}
+
 /** A wooden bat (Baseball Club), made in code: the handle sits at the origin. */
 export function makeBat() {
   const g = new THREE.Group();
@@ -25,7 +58,8 @@ export function makeBat() {
 }
 
 export class CharacterView {
-  constructor(scene, agent) {
+  /** opts.shadow: false leaves out the contact shadow (portraits framed on the character's own bounds). */
+  constructor(scene, agent, opts = {}) {
     this.agent = agent;
     const look = agent.look || {};
     this.modelId = look.model || 'guest_b';
@@ -43,6 +77,9 @@ export class CharacterView {
     this.heldKey = null;
     this.worn = [];
     this.setWear(look.wear);
+    rimAll(this.inst.root);
+    this.shadow = opts.shadow === false ? null : contactShadow();
+    if (this.shadow) { this.shadow.position.y = 0.02; this.root.add(this.shadow); }
     this.play('idle', 0);
   }
 
@@ -70,6 +107,7 @@ export class CharacterView {
       if (!bone) continue;
       const o = models.instance(item.model);
       fitMatrix(item, s, wear[slot]).decompose(o.position, o.quaternion, o.scale);
+      rimAll(o);
       bone.add(o);
       o.userData.slot = slot;
       this.worn.push(o);
@@ -154,6 +192,12 @@ export class CharacterView {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.yaw += d * Math.min(1, dt * 12);
     this.root.position.set(x, y, z);
+    // the contact shadow stays on the floor, and fades as they leave it
+    if (this.shadow) {
+      this.shadow.position.y = 0.02 - y;
+      this.shadow.visible = y < 2;
+      this.shadow.scale.setScalar(1 / (1 + y * 0.6));
+    }
     // a bat swing: wind up (turn away), then whip round through the ball
     let swing = 0;
     if (a.swingT > 0) { const k = 1 - a.swingT / SWING; swing = k < 0.55 ? -0.9 * (k / 0.55) : -0.9 + 3.6 * Math.min(1, (k - 0.55) / 0.25); }
@@ -175,7 +219,7 @@ export class CharacterView {
     this.glow = k;
     this.inst.root.traverse((o) => {
       if (!o.isMesh || !o.material || !o.material.emissive) return;
-      if (!o.userData.ownGlow) { o.material = o.material.clone(); o.userData.ownGlow = true; }
+      if (!o.userData.ownGlow) { o.material = o.material.clone(); o.material.userData = {}; addRim(o.material); o.userData.ownGlow = true; }
       o.material.emissive.copy(GLOW).multiplyScalar(k);
     });
   }
