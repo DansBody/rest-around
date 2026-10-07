@@ -9,6 +9,7 @@
     head  bottom centre (a hat rests on the crown)        face  centre of the front (glasses on the face)
     neck  centre of the back (a bow tie on the chest)     back  centre of the front (a backpack's straps side)
   and the model is scaled so its width (x extent) is 1; the wardrobe fits it to each character.
+    hand  the model's own origin is the grip, and it is scaled so it reaches 1 below that (a cane's tip on the floor).
 * Only base colours are kept (texture and/or factor, plus alpha blending): the game shades with Lambert.
   Textures stay external (see ASSETS.md) and shrink to `--tex` px; PNG when they carry alpha, else JPG.
 
@@ -153,8 +154,8 @@ def build(name, src, slot, rot, tex_size):
     allP = np.vstack([m[1] for m in merged])
     lo, hi = allP.min(axis=0), allP.max(axis=0)
     cx, cy, cz = (lo + hi) / 2
-    origin = {'head': (cx, lo[1], cz), 'face': (cx, cy, hi[2]), 'neck': (cx, cy, lo[2]), 'back': (cx, cy, hi[2])}[slot]
-    scale = 1 / (hi[0] - lo[0])
+    origin = {'head': (cx, lo[1], cz), 'face': (cx, cy, hi[2]), 'neck': (cx, cy, lo[2]), 'back': (cx, cy, hi[2]), 'hand': (0, 0, 0)}[slot]
+    scale = 1 / (-lo[1] if slot == 'hand' else hi[0] - lo[0])
 
     OUT.mkdir(parents=True, exist_ok=True)
     b = Bin()
@@ -206,7 +207,7 @@ def build(name, src, slot, rot, tex_size):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('name'), ap.add_argument('gltf')
-    ap.add_argument('--slot', required=True, choices=['head', 'face', 'neck', 'back'])
+    ap.add_argument('--slot', required=True, choices=['head', 'face', 'neck', 'back', 'hand'])
     ap.add_argument('--rot', default='0,0,0', help='X,Y,Z degrees to turn the model so it faces +Z, +Y up')
     ap.add_argument('--tex', type=int, default=256)
     a = ap.parse_args()

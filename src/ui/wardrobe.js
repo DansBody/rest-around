@@ -13,7 +13,7 @@ import { WEAR, WEAR_SLOTS, WEAR_LIMITS, wearById } from '../data.js';
 import { sanitizeWear } from '../wear.js';
 import { glyph } from './icons.js';
 
-export const SLOT_NAME = { head: 'Head', face: 'Face', neck: 'Neck', back: 'On back' };
+export const SLOT_NAME = { head: 'Head', face: 'Face', neck: 'Neck', back: 'On back', hand: 'In hand' };
 const STEP = 0.02;          // world units per nudge
 const FRONT_YAW = 0.45;     // the preview's resting angle: a little to the side, so depth reads
 

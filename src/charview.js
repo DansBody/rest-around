@@ -3,7 +3,7 @@
 // (tray + dish, broom, wrench, mug) and wardrobe accessories, and smooths facing.
 import { THREE, models, TILE } from './models.js';
 import { addEars } from './ears.js';
-import { shape, fitMatrix, wearBone } from './wear.js';
+import { shape, fitMatrix, wearBone, HAND_SLOTS } from './wear.js';
 import { WEAR_SLOTS, wearById } from './data.js';
 
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
@@ -161,6 +161,9 @@ export class CharacterView {
     this.root.rotation.x = a.fly ? a.fly.spin : 0;
     this.play(anim);
     this.setHeld(p.held);
+    // a cane is only out while standing or walking empty-handed; it's put away to work, carry, sit or play
+    const free = !p.held && (anim === 'idle' || anim === 'walk');
+    for (const o of this.worn) if (HAND_SLOTS.includes(o.userData.slot)) o.visible = free;
     // animations keep pace with sprinting / skilled staff
     if (this.inst.mixer) this.inst.mixer.update(dt * (a.speedMul || 1));
   }

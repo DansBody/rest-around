@@ -2,12 +2,13 @@
 // Nothing is set up per character. Each character's head and body are measured once from their skinned
 // mesh in the bind pose, and every accessory is fitted from that: hats and glasses are sized to the head's
 // width, a hat rests on the top of the head (found along its centre line, so ears and tufts beside it
-// don't lift it), glasses sit on the front of the face, a bow tie under the chin, a backpack on the back. A player only stores a small offset/tilt/size on top (look.wear).
+// don't lift it), glasses sit on the front of the face, a bow tie under the chin, a backpack on the back,
+// a cane in the hand, long enough to reach the floor. A player only stores a small offset/tilt/size on top (look.wear).
 import { THREE } from './models.js';
 import { wearById, WEAR_SLOTS, WEAR_LIMITS } from './data.js';
 
-const BONE = { head: 'head', face: 'head', neck: 'chest', back: 'chest' };
-const shapes = new Map();   // model id -> { head, chest, inv: { head, chest } } | null
+const BONE = { head: 'head', face: 'head', neck: 'chest', back: 'chest', hand: 'hand' };
+const shapes = new Map();   // model id -> { head, chest, hand, inv: { head, chest, hand } } | null
 const V = new THREE.Vector3();
 
 /** A cloud of bind-space points with its box and the top of its centre line. */
@@ -33,7 +34,7 @@ function slice(p, y, tol) {
   return { cx, w, cz: (lo.z + hi.z) / 2, front: Math.max(...zs), back: Math.min(...zs) };
 }
 
-/** Measure a character instance (cached per model): its head and chest as bind-space point clouds. */
+/** Measure a character instance (cached per model): its head and chest as bind-space point clouds, and where its hand is. */
 export function shape(modelId, inst) {
   if (shapes.has(modelId)) return shapes.get(modelId);
   let mesh = null;
@@ -41,7 +42,7 @@ export function shape(modelId, inst) {
   let out = null;
   if (mesh && inst.bones.head) {
     const { skeleton, geometry: g, bindMatrix } = mesh;
-    const idx = { head: skeleton.bones.indexOf(inst.bones.head), chest: skeleton.bones.indexOf(inst.bones.chest) };
+    const idx = { head: skeleton.bones.indexOf(inst.bones.head), chest: skeleton.bones.indexOf(inst.bones.chest), hand: skeleton.bones.indexOf(inst.bones.hand) };
     const pts = { head: [], chest: [] };
     const pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
     for (let i = 0; i < pos.count; i++) {
@@ -54,8 +55,9 @@ export function shape(modelId, inst) {
     }
     const head = part(pts.head);
     if (head) {
-      out = { head, chest: part(pts.chest), inv: {} };
-      for (const k of ['head', 'chest']) if (idx[k] >= 0) out.inv[k] = skeleton.boneInverses[idx[k]];
+      out = { head, chest: part(pts.chest), hand: null, inv: {} };
+      for (const k of ['head', 'chest', 'hand']) if (idx[k] >= 0) out.inv[k] = skeleton.boneInverses[idx[k]];
+      if (out.inv.hand) out.hand = new THREE.Vector3().setFromMatrixPosition(out.inv.hand.clone().invert());
     }
   }
   shapes.set(modelId, out);
@@ -75,6 +77,10 @@ function anchor(item, s) {
     const c = slice(s.head, y, H * 0.05);
     return { pos: new THREE.Vector3(c.cx, y, c.front), scale: W * (item.fit ?? 0.6) };
   }
+  if (item.slot === 'hand') {   // the grip in the hand, scaled to reach the floor (the hand bones stand upright in the bind pose)
+    const at = s.hand || new THREE.Vector3(s.head.box.min.x, bottom * 0.6, s.head.box.max.z * 0.3);
+    return { pos: at.clone(), scale: Math.max(0.2, at.y) * (item.fit ?? 1) };
+  }
   const body = s.chest || s.head;
   if (item.slot === 'neck') {   // under the chin, on whatever is in front there (body, or the head if it overhangs)
     const y = Math.min(bottom, body.box.max.y) - body.size.y * 0.06;
@@ -87,7 +93,7 @@ function anchor(item, s) {
 }
 
 // characters we can't measure (placeholders): rough spots relative to the head/chest bone
-const FALLBACK = { head: [0, 1.1, 0, 0.9], face: [0, 0.6, 0.5, 0.7], neck: [0, 0.6, 0.35, 0.35], back: [0, 0.3, -0.4, 0.7] };
+const FALLBACK = { head: [0, 1.1, 0, 0.9], face: [0, 0.6, 0.5, 0.7], neck: [0, 0.6, 0.35, 0.35], back: [0, 0.3, -0.4, 0.7], hand: [0, 0, 0, 0.7] };
 
 /**
  * The local transform (relative to its bone) of an accessory worn on a character, with the player's
@@ -109,6 +115,8 @@ export function fitMatrix(item, s, t = {}) {
 
 /** The bone an accessory hangs from. */
 export const wearBone = (item, bones) => bones[BONE[item.slot]] || bones.head;
+/** Slots whose accessory is put away while the character's hands are busy or they sit down. */
+export const HAND_SLOTS = ['hand'];
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, +v || 0));
 /** A saved wardrobe made safe: known items in their own slots, offsets within WEAR_LIMITS. */

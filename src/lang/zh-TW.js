@@ -142,7 +142,7 @@ export const ZH_TW = {
   'Current job': '目前職業', 'Retrain': '轉職', 'Needs a Juice Bar to work': '需要果汁吧台才能工作',
   "Staff gain experience by finishing jobs in their current role and keep it in every role they've had. Skill makes them walk and work faster (up to +{n}% as a Master). Retraining costs half the hiring fee — going back to a job they're already {title} or better at is free.":
     '員工完成目前職業的工作會累積經驗，而且每個做過的職業經驗都會保留。技能越高，走路和做事越快（大師最多快 {n}%）。轉職費用是雇用費的一半；回到已經達到{title}以上的職業則免費。',
-  'Accessories': '配件', 'Head': '頭', 'Face': '臉', 'Neck': '頸', 'On back': '背', 'Nothing': '不戴',
+  'Accessories': '配件', 'Head': '頭', 'Face': '臉', 'Neck': '頸', 'On back': '背', 'In hand': '手', 'Nothing': '不戴',
   'Drag to turn': '拖曳旋轉', 'On {name}': '{name} 戴著', '{name} is wearing this. It moves over when you tap Done.': '{name} 正戴著這件，按「完成」後會換到這位身上。',
   'Up': '上', 'Down': '下', 'Toward the face': '往前', 'Toward the back': '往後',
   'Tilt': '傾斜', 'Lean': '前傾', 'Size': '大小', 'Back to the automatic fit': '回到自動位置',
@@ -153,7 +153,7 @@ export const ZH_TW = {
   'More info': '詳細',
   'Nothing for this spot yet.': '這個部位還沒有配件。', 'Shop in the Market': '去市集逛逛',
   'Barista Cap': '咖啡師帽', 'Beret': '貝雷帽', 'Cowboy Hat': '牛仔帽', 'Top Hat': '紳士高帽', 'Wizard Hat': '巫師帽', 'Winter Beanie': '毛線帽',
-  'Golden Crown': '黃金皇冠', 'Laurel Wreath': '月桂冠', 'Dark Glasses': '墨鏡', 'Aviators': '飛行員眼鏡', 'Bow Tie': '領結', 'Backpack': '背包',
+  'Golden Crown': '黃金皇冠', 'Laurel Wreath': '月桂冠', 'Dark Glasses': '墨鏡', 'Aviators': '飛行員眼鏡', 'Bow Tie': '領結', 'Backpack': '背包', 'Latte Cup Hat': '拿鐵杯帽', 'Coffee Cane': '咖啡手杖',
   "{name}'s wardrobe": '{name} 的衣櫃', 'Character': '角色', 'Chef hat': '廚師帽',
   'Staff are our own characters, and take the name of the one they wear.': '員工都是原創角色，名字會跟著他們穿的角色走。',
   'Next to join: {name}': '下一位加入：{name}',

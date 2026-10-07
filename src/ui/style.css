@@ -1003,8 +1003,8 @@ button.pick-row:hover { background: var(--fill-2); }
 .wr-stage:active { cursor: grabbing; }
 .wr-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .wr-hint { position: absolute; left: 12px; bottom: 9px; display: flex; gap: 4px; align-items: center; font-size: 11.5px; font-weight: 600; color: var(--ink-faint); pointer-events: none; }
-.wr-tabs { margin: 12px 0 8px; flex-wrap: nowrap; }
-.wr-tabs .tab { flex: 1; position: relative; padding: 0 8px; }
+.wr-tabs { margin: 12px 0 8px; flex-wrap: nowrap; gap: 4px; }
+.wr-tabs .tab { flex: 1; position: relative; padding: 0 4px; white-space: nowrap; }
 .wr-dot { position: absolute; top: 6px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--yellow); }
 .wr-items { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--fill-2) transparent; }
 .wr-item { flex: none; width: 80px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px 7px; border: 0; border-radius: 16px; background: var(--fill); color: var(--ink); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; scroll-snap-align: start; }

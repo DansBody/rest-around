@@ -239,7 +239,7 @@ export const UNIQUE_NAMES = { mochalatte: 'Mocha Latte', bbaekko: 'Bbaekko', hee
 //   sy   height factor, for a model made for a taller head than our round ones (a beanie)
 //   rot  default tilt in degrees (x, y, z)
 // Bought in the Market (price in coins); each copy dresses one character at a time (state.wardrobe: id -> copies).
-export const WEAR_SLOTS = ['head', 'face', 'neck', 'back'];
+export const WEAR_SLOTS = ['head', 'face', 'neck', 'back', 'hand'];
 export const WEAR = [
   { id: 'cap_barista', name: 'Barista Cap', price: 120, slot: 'head', model: 'm_baristahat', fit: 0.95, sit: 0.1, guest: false },
   { id: 'hat_beret', name: 'Beret', price: 150, slot: 'head', model: 'w_hat_beret', fit: 0.85, sit: 0.12, rot: [0, 0, -10] },
@@ -248,17 +248,19 @@ export const WEAR = [
   { id: 'hat_wizard', name: 'Wizard Hat', price: 280, slot: 'head', model: 'w_hat_wizard', fit: 1.05, sit: 0.26 },
   { id: 'hat_winter', name: 'Winter Beanie', price: 160, slot: 'head', model: 'w_hat_winter', fit: 0.92, sit: 0.4, sy: 0.6 },
   { id: 'crown_gold', name: 'Golden Crown', price: 400, slot: 'head', model: 'w_crown_gold', fit: 0.55, sit: 0.04 },
+  { id: 'cup_latte', name: 'Latte Cup Hat', price: 200, slot: 'head', model: 'w_cup_latte', fit: 0.88, sit: 0.16 },
   { id: 'wreath_laurel', name: 'Laurel Wreath', price: 220, slot: 'head', model: 'w_wreath_laurel', fit: 0.82, sit: 0.24 },
   { id: 'glasses_round', name: 'Dark Glasses', price: 140, slot: 'face', model: 'w_glasses_round', fit: 0.62, at: 0.48 },
   { id: 'glasses_sun', name: 'Aviators', price: 180, slot: 'face', model: 'w_glasses_sun', fit: 0.62, at: 0.48 },
   { id: 'bowtie', name: 'Bow Tie', price: 120, slot: 'neck', model: 'w_bowtie', fit: 0.4 },
   { id: 'backpack', name: 'Backpack', price: 300, slot: 'back', model: 'w_backpack', fit: 0.85 },
+  { id: 'cane_coffee', name: 'Coffee Cane', price: 260, slot: 'hand', model: 'w_cane_coffee', fit: 1.02 },
 ];
 export const wearById = (id) => WEAR.find((w) => w.id === id);
 // what a player may change when placing an accessory: an offset (world units), a tilt (degrees), a size factor
 export const WEAR_LIMITS = { p: 0.6, r: 45, s: [0.5, 1.6] };
-// guests now and then turn up in something (items marked guest: false never): the chance of a hat, of glasses, of a bow tie
-export const GUEST_WEAR = { head: 0.22, face: 0.12, neck: 0.08 };
+// guests now and then turn up in something (items marked guest: false never): the chance of a hat, of glasses, of a bow tie, of a cane
+export const GUEST_WEAR = { head: 0.22, face: 0.12, neck: 0.08, hand: 0.05 };
 
 // Third-party art shown in the game (Settings → Credits). CC BY models must stay credited here.
 export const CREDITS = [
