@@ -519,4 +519,7 @@ export const ZH_TW = {
   'Loyalty stamps': '集點卡', '20% of guests order a second round; tips +15%.': '兩成客人會再點一輪，小費 +15%。',
   'Espresso rush': '濃縮衝刺', 'The team works 20% faster but tires 40% faster.': '店員動作快 20%，但體力消耗 +40%。',
   'Ordering another round': '再點一輪', 'One more!': '再來一杯！',
+  // ---------------- the owner lends a hand (boss.js)
+  'Tip: tap a waiting guest to take their order yourself 🤲': '小提示：點一下等待中的客人，老闆可以親自幫忙點餐 🤲',
+  'Still being made…': '還在做喔⋯', 'Owner took the order!': '老闆親自點餐！', 'Served by the owner!': '老闆親自送餐！',
 };

@@ -529,6 +529,7 @@ ${k.desc}
     if (this.el.brandName.textContent !== s.name) this.el.brandName.textContent = s.name;
     this.updateQuest();
     updateSpecials(this);
+    this.updateBoss();
     this.el.lvlTxt.textContent = s.level >= g.maxLevel() ? t('MAX') : `${fmt(lp.cur)}/${fmt(lp.next)}`;
     this.el.lvlBar.style.strokeDashoffset = String(100 - lp.frac * 100);
     this.el.brandName.parentNode.title = `${s.name} · ${this.el.lvlNum.textContent} · ${t('Café level & points')} ${this.el.lvlTxt.textContent}`;
@@ -668,6 +669,19 @@ ${k.desc}
     if (this.modalTimer) { clearInterval(this.modalTimer); this.modalTimer = null; }
     this.modalOpen = null;
     this.nextModal();
+  }
+
+  /** The first few times a guest waits a while, say the owner can step in (boss.js). */
+  updateBoss() {
+    const g = this.game;
+    if (this.tutorial || this.bossHinted || g.visit || !g.customers.some((c) => c.state === 'waitOrder' && c.patience < 0.7)) return;
+    let n = 0;
+    try { n = +(localStorage.getItem('refillit.bossHint') || 0); } catch {}
+    this.bossHinted = true;
+    if (n < 3) {
+      try { localStorage.setItem('refillit.bossHint', String(n + 1)); } catch {}
+      this.toast(t('Tip: tap a waiting guest to take their order yourself 🤲'), 'good');
+    }
   }
 
   /** The round's receipt at closing time: a card that stays out of the way (the café rolls on into the night). */

@@ -5,6 +5,7 @@
 // around their café (the one the renderer shows) and a tap on their staff or litter offers to help.
 import { audio } from './audio.js';
 import { endVisit, visitTap } from './ui/visit.js';
+import { bossTap } from './boss.js';
 
 const PINCH_TURN = 0.17;   // radians (~10°) of twist before a two-finger gesture starts rotating
 
@@ -102,6 +103,8 @@ export function setupInput(game, canvas, ui, debug) {
         else if (visiting()) visitTap(ui, R(), p.x, p.y);   // help out: their staff, their litter
         else {
           const a = R().pickAgent(p.x, p.y);
+          // the owner lends a hand: a waiting guest, an order that's up, a dirty table, litter (boss.js)
+          if (bossTap(game, a, R().pickTile(p.x, p.y))) { down = null; return; }
           ui.select(a);
           if (a) game.sfx('click');
         }
