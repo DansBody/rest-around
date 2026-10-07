@@ -148,13 +148,13 @@ export const dishPoints = (d, lv) => Math.round(d.points * (1 + 0.2 * (lv - 1)))
 // Café points to reach each level, Lv1–30: the first levels in under two days, then about a day and a half each,
 // then three to four days each, so Lv30 takes a casual player about 67 days. Worked out by tools/curve.mjs from
 // what a café at each level's caps earns a day; re-run it after changing the economy.
-export const LEVEL_POINTS = [0, 0, 90, 260, 560, 1000, 1650, 3300, 5200, 7400, 10050, 13000, 16400, 20650, 25250, 30250, 40250, 50850, 62150, 74750, 88150, 101650, 117150, 133250, 150950, 170450, 190950, 213950, 238450, 264450, 291950];
+export const LEVEL_POINTS = [0, 0, 90, 260, 560, 1000, 1650, 3450, 5500, 7750, 10600, 13650, 17200, 21500, 26250, 31250, 41650, 52250, 63550, 76550, 89950, 103450, 118950, 135050, 152750, 172250, 192750, 215750, 240250, 266250, 293750];
 export const MAX_LEVEL = LEVEL_POINTS.length - 1;
 // What the café level allows, as [from level, value] steps (the last step reached counts). Seats are chairs at a
 // table; the stations are the espresso machines, bread ovens and pastry cases. Decor is never capped.
 const LEVEL_STEPS = {
   staff: [[1, 2], [2, 3], [3, 4], [4, 5], [6, 6], [9, 7], [13, 8], [18, 9], [24, 10]],
-  seats: [[1, 4], [3, 6], [5, 8], [7, 10], [8, 12], [10, 14], [12, 16], [14, 18], [16, 20], [19, 22], [22, 24]],
+  seats: [[1, 6], [2, 8], [3, 10], [5, 12], [7, 14], [9, 16], [12, 18], [15, 20], [18, 22], [22, 24]],
   stove: [[1, 1], [5, 2], [12, 3], [20, 4]],
   oven: [[1, 0], [2, 1], [8, 2], [16, 3]],
   bar: [[1, 0], [2, 1], [12, 2]],
@@ -213,7 +213,14 @@ export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSecon
 
 // Bump whenever a number here, offline.js or authority.js changes what a save earns. The server and the
 // game must run the same balance (see ONLINE.md): deploy the server first, then the game.
-export const BALANCE_VERSION = 10;
+export const BALANCE_VERSION = 11;
+
+/** Guests an hour at this rating, seat count and phase multiplier. Past 4 seats more seats draw more guests (up to 24);
+ *  under 4 the street sends fewer, so a room with one table for two isn't swamped by guests it can't seat. */
+export const arrivalsPerHour = (rating, seats, mult) => {
+  const n = Math.min(Math.max(1, seats), 24);
+  return (0.6 + rating * 0.78) * mult * (0.55 + 0.45 * Math.sqrt(n / 4)) * Math.min(1, (n + 2) / 6);
+};
 
 export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'Figgy', 'Gumdrop', 'Honey', 'Iris', 'Jelly', 'Kumo', 'Lulu', 'Momo', 'Nutmeg', 'Oona', 'Peaches', 'Quill', 'Rolo', 'Sunny', 'Toffee', 'Umi', 'Velvet', 'Waffles', 'Yuzu', 'Ziggy', 'Pudding', 'Biscuit', 'Clementine', 'Dumpling', 'Pickle'];
 
@@ -451,6 +458,21 @@ export const DAILY = {
   streakDays: 7, streakVouchers: 5,             // the 7th gift in a row brings vouchers, then the streak starts over
   levelUpVouchers: 2,                           // every café level
 };
+/**
+ * Getting started: one step at a time in the Today panel after the tour, each claimed by hand. Together with the
+ * guests served along the way the points carry a new café to about Lv3 (LEVEL_POINTS[3]) in its first session.
+ * `kind` is what questProgress counts, except 'seats', which is the seats in the room.
+ */
+export const STARTER = [
+  { kind: 'guests', n: 3, text: 'Serve {n} guests', coins: 30, points: 25 },
+  { kind: 'seats', n: 4, text: 'Set out {n} seats (Build → Tables & Chairs)', coins: 80, points: 30 },
+  { kind: 'cups', n: 10, text: 'Brew {n} drinks', coins: 40, points: 35 },
+  { kind: 'market', n: 1, text: 'Buy {n} packs at the Market', coins: 40, points: 25 },
+  { kind: 'guests', n: 12, text: 'Serve {n} guests', coins: 60, points: 50 },
+  { kind: 'study', n: 1, text: 'Study a drink (Menu → Study)', coins: 60, points: 60 },
+];
+/** Coins and points the starter steps from `from` up to (not including) `to` pay. */
+export const starterPaid = (from, to) => STARTER.slice(Math.max(0, from), Math.max(0, to)).reduce((a, x) => ({ coins: a.coins + x.coins, points: a.points + x.points }), { coins: 0, points: 0 });
 export const dailyCoins = (r, level) => Math.round(r.coins[0] + r.coins[1] * level);
 export const dailyPoints = (r, level) => Math.round(r.points[0] + r.points[1] * level);
 export const questById = Object.fromEntries(QUESTS.map((q) => [q.id, q]));

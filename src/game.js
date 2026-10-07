@@ -40,6 +40,7 @@ export function defaultState() {
     wallDeco: [...START_WALL_DECOR],
     wallPos: {},          // wall decoration id -> { side, a } (where along that wall it hangs)
     daily: null,         // today's goals: { day, goals: [{ id, target, prog, claimed }], chest } (Economy.rollDaily)
+    starter: { i: 0, prog: 0 },   // getting-started step under way (STARTER index; its length when all are claimed) and its count
     streak: { n: 0, day: 0 },   // daily gifts opened in a row, the last one on `day`
     vouchers: 0,         // study vouchers (研習券): spent with ingredients to level a dish
     snacks: { cookie: 1 },
@@ -285,7 +286,10 @@ export class Game {
     this.fx.text(this.at(tileX, tileY, lift), text, icon, color);
   }
   toast(msg, kind) { this.emit('toast', { msg, kind }); }
-  changed(what) { this.emit('changed', what); }
+  changed(what) {
+    this.emit('changed', what);
+    if (what === 'build' && !this.visit && this.eco) this.eco.checkStarterSeats();   // the getting-started step counts the room's seats
+  }
 
   /** A guest appears at one end of the street and walks to the door. */
   /** `fromY`: where along the street they start (default: one end or the other, out of sight). */

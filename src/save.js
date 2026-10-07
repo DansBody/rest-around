@@ -7,7 +7,7 @@ import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
 import { saveSlots, loadSlots } from './pastry.js';
-import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, UNIQUE_MODELS, SEEDS, questById, DAILY, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE, WEAR } from './data.js';
+import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, UNIQUE_MODELS, SEEDS, questById, DAILY, STARTER, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE, WEAR } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
@@ -117,6 +117,10 @@ export function apply(game, data) {
     giftDay: Math.floor(num(s.giftDay, 0, 0, 1e7)),
     streak: { n: Math.floor(num(s.streak && s.streak.n, 0, 0, 7)), day: Math.floor(num(s.streak && s.streak.day, 0, 0, 1e7)) },
     vouchers: Math.floor(num(s.vouchers, 0, 0, 1e6)),
+    // saves from before the getting-started steps: past Lv3 they are done, below it they start from the first
+    starter: s.starter && typeof s.starter === 'object'
+      ? { i: Math.floor(num(s.starter.i, 0, 0, STARTER.length)), prog: Math.floor(num(s.starter.prog, 0, 0, 1e6)) }
+      : { i: num(s.points, 0, 0, 1e9) >= LEVEL_POINTS[3] ? STARTER.length : 0, prog: 0 },
     // a floor plan under construction: only one of the listed sizes, with a sane finish time
     expansion: s.expansion && EXPANSIONS.some((e) => e.size === s.expansion.size) && num(s.expansion.end, 0, 0, 1e14) > 0
       ? { size: s.expansion.size, start: num(s.expansion.start, 0, 0, 1e14), end: num(s.expansion.end, 0, 0, 1e14) } : null,

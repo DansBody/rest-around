@@ -4,13 +4,13 @@
 // Menu to level a dish) plus coins and points; see DAILY and QUESTS in data.js.
 import { h, fmt } from '../util.js';
 import { assets } from '../assets.js';
-import { DAILY, SNACKS, questById } from '../data.js';
+import { DAILY, SNACKS, STARTER, questById } from '../data.js';
 import { wallSec } from '../clock.js';
 import { glyph } from './icons.js';
 import { t } from '../i18n.js';
 
 const I = (id, s = 22) => assets.iconEl(id, s);
-const GOAL_ICON = { cups: 'tool_menu', guests: 'tool_staff', bakes: 'dish_croissant', coins: 'icon_coin', snack: SNACKS[0].asset, market: 'tool_market', cast: 'emote_sparkle' };
+const GOAL_ICON = { cups: 'tool_menu', guests: 'tool_staff', bakes: 'dish_croissant', coins: 'icon_coin', snack: SNACKS[0].asset, market: 'tool_market', cast: 'emote_sparkle', seats: 'tool_build', study: 'icon_voucher' };
 
 /** Reward chips: vouchers first (what the day is really about), then coins and points. */
 function rewardChips(r) {
@@ -36,6 +36,19 @@ export function renderToday(ui, body) {
   body.append(h('div.today-head',
     h('div.vbal', I('icon_voucher', 30), h('div', h('b', fmt(s.vouchers || 0)), h('small', t('Study vouchers')))),
     h('div.reset', h('small', t('New goals in')), h('b.today-reset', untilReset(g)))));
+
+  // getting started: the step under way, until all are claimed
+  const sx = eco.starterStep();
+  if (sx) {
+    body.append(h('div.section-title', t('Getting started · {n}/{m}', { n: sx.i + 1, m: STARTER.length })));
+    body.append(h('div.row.split.goal' + (sx.done ? '.ready' : ''),
+      h('div.g-ico', I(GOAL_ICON[sx.def.kind] || 'icon_points', 30)),
+      h('div.grow',
+        h('h3', t(sx.def.text, { n: fmt(sx.def.n) })),
+        h('div.g-prog', h('div.pbar' + (sx.done ? '.green' : ''), h('i', { style: { width: Math.min(100, sx.prog / sx.def.n * 100) + '%' } })), h('span.g-n', `${fmt(sx.prog)}/${fmt(sx.def.n)}`))),
+      h('button.btn.small' + (sx.done ? '.primary' : '.disabled'), { disabled: !sx.done, onclick: () => claim(ui, eco.claimStarter()) }, t('Claim')),
+      h('div.row-full', rewardChips({ coins: sx.def.coins, points: sx.def.points }))));
+  }
 
   // the gift, with the streak of days it was opened in a row
   const k = eco.streak(), open = eco.giftAvailable();

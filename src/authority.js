@@ -20,7 +20,7 @@
 import {
   DAY, dishById, furnitureById, floorById, wallById, wallDecorById, EXPANSIONS, ROLES, ingById, ingPrice, snackById,
   SERVINGS_PER_UNIT, levelUpCost, dishPrice, dishPoints, EXTRA_CAT, SEEDS, gardenPlots, staffSlots, KITS, MAX_LEVEL,
-  DAILY, dailyCoins, dailyPoints, studySpent, wearById, seatCap, stationCap, STATION_KINDS,
+  DAILY, dailyCoins, dailyPoints, studySpent, wearById, seatCap, stationCap, STATION_KINDS, STARTER, starterPaid, LEVEL_POINTS,
 } from './data.js';
 import { DIRS } from './iso.js';
 import { MODEL, capacity, levelFor, arrivalsPerHour, SIM_SEC_PER_HOUR } from './offline.js';
@@ -173,7 +173,10 @@ export function capCheck(prev, next, wallSec) {
   const garden = gardenPlots(level) * Math.max(...SEEDS.map((s) => s.yield * ingPrice(ingById[s.crop]) / s.grow)) * sim;
   const coinShower = tp.some((t) => t.magic) ? (Math.floor(sim / KITS.bbaekko.active.cooldown) + 1) * (12 + 5 * level) : 0;
   const maxIng = Math.max(...Object.values(ingById).map(ingPrice));
-  const allowedWealth = guests * perGuest + garden + coinShower
+  // getting-started steps claimed in this window (the step never goes back, so each pays once)
+  const si = (d) => { const x = d.state.starter; return x && typeof x === 'object' ? Math.max(0, Math.min(STARTER.length, Math.floor(+x.i || 0))) : (d.state.points || 0) >= LEVEL_POINTS[3] ? STARTER.length : 0; };
+  const s0 = si(prev), starter = starterPaid(s0, Math.max(s0, si(next)));
+  const allowedWealth = guests * perGuest + garden + coinShower + starter.coins
     + claimDays * (DAILY.goals * dailyCoins(DAILY.goal, level) + dailyCoins(DAILY.chest, level))
     + gifts * (b.coins[0] + b.coins[1] * level + b.ingredients * maxIng);
 
@@ -182,10 +185,11 @@ export function capCheck(prev, next, wallSec) {
     const from = ((prev.state.dishes || {})[id] || {}).lv || 1;
     for (let lv = from + 1; lv <= ((x && x.lv) || 1); lv++) dishPts += lv * 6;
   }
-  const allowedPoints = guests * ptsGuest + claimDays * DAILY.goals * dailyPoints(DAILY.goal, level) + dishPts;
+  const allowedPoints = guests * ptsGuest + claimDays * DAILY.goals * dailyPoints(DAILY.goal, level) + dishPts + starter.points;
 
   const out = JSON.parse(JSON.stringify(next));
   const st = out.state;
+  if (si(next) < s0) { st.starter = { i: s0, prog: 0 }; flags.push('starter'); }
   const claimedWealth = wealth(next) - wealth(prev);
   const claimedPoints = (next.state.points || 0) - (prev.state.points || 0);
 

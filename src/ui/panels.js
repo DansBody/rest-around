@@ -6,10 +6,11 @@ import { roleLook } from '../looks.js';
 import { openWardrobe, SLOT_NAME } from './wardrobe.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, MAX_DISH_LEVEL, dishCap, menuSlots, staffSlots,
-  INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE, seatCap, stationCap, EXPANSIONS,
+  INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE, CASHIER, seatCap, stationCap, EXPANSIONS,
   awayHours, UNIQUE_MODELS, UNIQUE_NAMES, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE, CREDITS, WEAR, WEAR_SLOTS, wearById,
 } from '../data.js';
 import { clearSave, serialize } from '../save.js';
+import { CASE_SLOTS } from '../pastry.js';
 import { cloud } from '../cloud.js';
 import { accountSection } from './account.js';
 import { renderFriends } from './friends.js';
@@ -419,6 +420,22 @@ const thumbCache = new Map();
 function cachedThumb(key, make) { if (!thumbCache.has(key)) thumbCache.set(key, make()); return cloneCanvas(thumbCache.get(key)); }
 function cloneCanvas(c) { const n = document.createElement('canvas'); n.width = c.width; n.height = c.height; n.style.cssText = c.style.cssText; n.getContext('2d').drawImage(c, 0, 0); return n; }
 
+/** What a money-making piece does, so the tiers can be compared: `short` fits under a shop card, `long`
+ *  spells it out in the placing bar. Null for pieces with nothing to compare. */
+export function furnStats(f) {
+  if (f.kind === 'stove' || f.kind === 'oven') {
+    const pct = Math.round((f.speed - 1) * 100);
+    return { short: t('Speed ×{n}', { n: f.speed }), long: pct > 0 ? t('Brews {n}% faster than the basic station', { n: pct }) : t('Standard brewing speed') };
+  }
+  if (f.kind === 'bar') return { short: t('{n} shelves', { n: CASE_SLOTS }), long: null };
+  if (f.kind === 'cashier') return { short: t('+{n}% tips', { n: Math.round(CASHIER.tip * 100) }), long: null };
+  if (f.kind === 'toilet' || f.kind === 'arcade') {
+    const [a, b] = f.breakAfter;
+    return { short: t('+{n} a visit', { n: f.fee }), long: t('+{n} coins a visit · needs a fix every {a}–{b} visits', { n: f.fee, a, b }) };
+  }
+  return null;
+}
+
 const TOUCH_SCREEN = matchMedia('(hover: none) and (pointer: coarse)');   // same test as the CSS
 export function buildTray(ui, bar) {
   const g = ui.game, b = g.build, s = g.state;
@@ -442,7 +459,10 @@ export function buildTray(ui, bar) {
   if (['dining', 'kitchen', 'fun', 'decor'].includes(cat)) {
     for (const f of FURNITURE.filter((x) => x.cat === cat)) {
       const sel = b.tool && b.tool.mode === 'place' && b.tool.type === f.id;
-      items.append(card('f:' + f.id, f.name, f.price, f.level, sel, () => b.setTool(sel ? null : { mode: 'place', type: f.id }), () => thumb(f.asset, f.tint)));
+      const c = card('f:' + f.id, f.name, f.price, f.level, sel, () => b.setTool(sel ? null : { mode: 'place', type: f.id }), () => thumb(f.asset, f.tint));
+      const st = furnStats(f);
+      if (st) c.insertBefore(h('span.bstat', st.short), c.lastChild);
+      items.append(c);
     }
   } else if (cat === 'walldeco') {
     // wall pieces are one of a kind: pick one, then tap a wall to hang it; ones already up just get selected
@@ -493,11 +513,13 @@ export function buildTray(ui, bar) {
     const wid = b.wallMode() ? b.movingWall || b.tool.id : null;
     const type = wid || (b.moving ? b.moving.f.type : b.tool.type), cat2 = wid ? wallDecorById[wid] : furnitureById[type];
     const moving = !!(b.moving || b.movingWall);
+    const st = wid ? null : furnStats(cat2), stats = st && (st.long || st.short);
     const tip = b.message ? b.message.text : t(b.locked ? (touch ? 'Tap ✓ to place, or tap another spot' : 'Click ✓ to place, or click another spot')
       : wid ? (touch ? 'Tap a wall where it should hang' : 'Click a wall where it should hang') : touch ? 'Tap the floor where it should go' : 'Click the floor where it should go');
     bar.replaceChildren(h('div.card.bb-mini',
       h('div.thumb-slot', cachedThumb((wid ? 'wd:' : 'f:') + type, () => thumb(cat2.asset, cat2.tint))),
-      h('div.grow', h('b', cat2.name, moving ? '' : ' ', moving ? null : coinPill(cat2.price)), cat2.note && !b.message ? h('div.muted', t(cat2.note)) : null, h('div.muted' + (b.message && b.message.kind === 'bad' ? '.bad' : ''), tip)),
+      h('div.grow', h('b', cat2.name, moving ? '' : ' ', moving ? null : coinPill(cat2.price)), stats && !b.message ? h('div.bstat-line', stats) : null,
+        cat2.note && !b.message ? h('div.muted', t(cat2.note)) : null, h('div.muted' + (b.message && b.message.kind === 'bad' ? '.bad' : ''), tip)),
       h('button.btn.small', { onclick: () => b.cancelPlacing() }, moving ? t('Cancel') : t('Back to items'))));
     return;
   }

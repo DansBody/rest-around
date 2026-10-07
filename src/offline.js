@@ -13,7 +13,7 @@
 // the same file can run in the browser now and on a server later.
 import { CASHIER,
   DAY, OFFLINE, ENERGY, SKILL, skillLevel, KITS, ROLES, DISHES, dishById, furnitureById, floorById, wallById, wallDecorById,
-  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE, DAILY, awayHours,
+  EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE, DAILY, awayHours, arrivalsPerHour, STARTER,
 } from './data.js';
 import { RATING_WEIGHTS } from './rating.js';
 import { roundAt, clockAt, localDay } from './clock.js';
@@ -294,9 +294,12 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   st.round = round; st.clock = clock;
   st.totals = { ...(st.totals || {}), served: ((st.totals || {}).served || 0) + rep.served, lost: ((st.totals || {}).lost || 0) + rep.lost, coins: ((st.totals || {}).coins || 0) + rep.sales + rep.tips + rep.fees, rounds: ((st.totals || {}).rounds || 0) + rounds };
   // the café works on today's serving goals by itself (only while they are still today's; claiming them is the player's)
+  const bakes = Object.entries(rep.dishes).reduce((a, [id, n]) => a + (dishById[id].cat === EXTRA_CAT ? n : 0), 0);
+  const did = { guests: rep.served, cups: Object.values(rep.dishes).reduce((a, n) => a + n, 0) - bakes, bakes, coins: Math.round(rep.sales + rep.tips + rep.fees) };
+  // and on the getting-started step under way, if it is one of those
+  const sx = st.starter && STARTER[st.starter.i];
+  if (sx && sx.kind in did) st.starter = { ...st.starter, prog: Math.min(sx.n, (st.starter.prog || 0) + did[sx.kind]) };
   if (st.daily && Array.isArray(st.daily.goals) && st.daily.day === localDay(now, st.tz)) {
-    const bakes = Object.entries(rep.dishes).reduce((a, [id, n]) => a + (dishById[id].cat === EXTRA_CAT ? n : 0), 0);
-    const did = { guests: rep.served, cups: Object.values(rep.dishes).reduce((a, n) => a + n, 0) - bakes, bakes, coins: Math.round(rep.sales + rep.tips + rep.fees) };
     for (const q of st.daily.goals) {
       if (!(q.id in did) || q.prog >= q.target) continue;
       q.prog = Math.min(q.target, q.prog + did[q.id]);
@@ -335,8 +338,7 @@ function demand(rating, seats, phase, f, efficiency) {
   return arrivalsPerHour(rating, seats, phase.mult) * (phase.to - phase.from) * f * efficiency;
 }
 
-/** Guests per in-game hour walking in (day.js arrivalRate). */
-export const arrivalsPerHour = (rating, seats, mult) => (0.6 + rating * 0.78) * mult * (0.55 + 0.45 * Math.sqrt(Math.min(Math.max(1, seats), 24) / 4));
+export { arrivalsPerHour };   // guests per in-game hour walking in (data.js, shared with day.js arrivalRate)
 
 /** A guest's visit to the restroom or the reading nook after the meal, wearing the facility. */
 function facilities(furn, rng, w, rep, cleaner) {

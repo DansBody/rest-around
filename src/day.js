@@ -2,7 +2,7 @@
 // brunch and tea-time rushes, closes at 22:00 (wages and rent, and a receipt for the round) and has a short
 // night in which the team rests, until the next round opens. Nothing waits for the player: when the game
 // was not running (build mode, a hidden tab, a mini-game) it catches up to the wall clock (Game.catchUp).
-import { DAY, NIGHT, ENERGY, COSTS } from './data.js';
+import { DAY, NIGHT, ENERGY, COSTS, arrivalsPerHour } from './data.js';
 import { clamp } from './util.js';
 import { t } from './i18n.js';
 import { hourAt, roundAt, clockAt, localDay, localTz, wallSec } from './clock.js';
@@ -37,9 +37,7 @@ export class DayCycle {
   /** Expected arrivals per sim second. */
   arrivalRate() {
     const g = this.game;
-    const seats = Math.max(1, g.world.seats.length);
-    const perHour = (0.6 + g.state.rating * 0.78) * this.phase.mult * (0.55 + 0.45 * Math.sqrt(Math.min(seats, 24) / 4));
-    return perHour * g.sp.arrivals / DAY.pace;
+    return arrivalsPerHour(g.state.rating, g.world.seats.length, this.phase.mult) * g.sp.arrivals / DAY.pace;
   }
 
   update(dt) {

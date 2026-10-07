@@ -5,7 +5,7 @@ import { SNACKS,
   snackById, ROLES, DISH_CATS, staffSlots, menuSlots, furnitureById, EXPANSIONS, SKILL, CLUBS, TROUBLE,
   EXTRA_CAT, QUESTS, questById, WALL_DECOR, wallDecorById, wallSlots, wallLayout,
   staffWage, rentFor, ingPrice, UNIQUE_MODELS, UNIQUE_NAMES, ROUND_SCALE, perRound,
-  DAILY, dailyCoins, dailyPoints, studyCost, dishCap, wearById, seatCap, stationCap, STATION_KINDS, awayHours,
+  DAILY, STARTER, dailyCoins, dailyPoints, studyCost, dishCap, wearById, seatCap, stationCap, STATION_KINDS, awayHours,
 } from './data.js';
 import * as pantry from './pantry.js';
 
@@ -114,8 +114,15 @@ export class Economy {
     this.game.changed('quest');
   }
   questProgress(kind, n = 1) {
+    if (n <= 0) return;
+    const sx = this.starterStep();
+    if (sx && sx.def.kind === kind && !sx.done) {
+      this.s.starter.prog = Math.min(sx.def.n, (this.s.starter.prog || 0) + n);
+      this.game.changed('quest');
+      if (this.s.starter.prog >= sx.def.n) this.starterDone(sx.def);
+    }
     const d = this.s.daily;
-    if (!d || n <= 0) return;
+    if (!d) return;
     for (const q of d.goals) {
       if (q.id !== kind || q.prog >= q.target) continue;
       q.prog = Math.min(q.target, q.prog + n);
@@ -150,10 +157,35 @@ export class Economy {
     this.s.daily.chest = true;
     return this.payReward(this.chestReward());
   }
-  /** Things waiting in the Today panel: finished goals, the chest and the gift. */
+  /** Things waiting in the Today panel: finished goals, the chest, the gift and a finished getting-started step. */
   claimable() {
-    const d = this.s.daily;
-    return (d ? d.goals.filter((q) => !q.claimed && q.prog >= q.target).length : 0) + (this.chestReady() ? 1 : 0) + (this.giftAvailable() ? 1 : 0);
+    const d = this.s.daily, sx = this.starterStep();
+    return (d ? d.goals.filter((q) => !q.claimed && q.prog >= q.target).length : 0) + (this.chestReady() ? 1 : 0) + (this.giftAvailable() ? 1 : 0) + (sx && sx.done ? 1 : 0);
+  }
+
+  // ---------------- getting started: a short chain of steps that carries a new café to about Lv3 ----------------
+  /** The step under way: { i, def, prog, done }, or null once all are claimed (or while the tour still runs). */
+  starterStep() {
+    const s = this.s, st = s.starter, def = st && STARTER[st.i];
+    if (!def || !s.tutorialSeen) return null;
+    const prog = def.kind === 'seats' ? Math.min(def.n, this.game.world.seats.length) : Math.min(def.n, st.prog || 0);
+    return { i: st.i, def, prog, done: prog >= def.n };
+  }
+  starterDone(def) {
+    this.game.toast(t('Getting started: {goal} done. Claim it in Today!', { goal: t(def.text, { n: def.n }) }), 'good');
+    this.game.sfx('pop');
+  }
+  /** Seats are counted from the room, so the build calls this after placing or selling a chair. */
+  checkStarterSeats() {
+    const sx = this.starterStep();
+    if (sx && sx.def.kind === 'seats' && sx.done && !this.s.starter.told) { this.s.starter.told = true; this.starterDone(sx.def); }
+    this.game.changed('quest');
+  }
+  claimStarter() {
+    const sx = this.starterStep();
+    if (!sx || !sx.done) return null;
+    this.s.starter = { i: sx.i + 1, prog: 0 };
+    return this.payReward({ vouchers: 0, coins: sx.def.coins, points: sx.def.points });
   }
   /** The gift streak: how many gifts in a row are opened (counting today's, if opened) and which day the next one is. */
   streak() {
@@ -250,6 +282,7 @@ export class Economy {
     s.vouchers -= p.vouchers;
     st.lv++;
     this.addPoints(st.lv * 6);
+    this.questProgress('study', 1);
     g.toast(t('{name} reached Lv{n}! Price and points up.', { name: d.name, n: st.lv }), 'good');
     g.sfx('levelup');
     g.changed('menu'); g.changed('inv');
