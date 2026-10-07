@@ -53,6 +53,8 @@ export class UI {
   }
 
   init() {
+    // the UI layer never scrolls (style.css clips it; this catches browsers without overflow: clip)
+    this.root.addEventListener('scroll', () => { if (this.root.scrollTop || this.root.scrollLeft) this.root.scrollTop = this.root.scrollLeft = 0; });
     this.buildDom();
     bus.on('toast', ({ msg, kind }) => this.toast(msg, kind));
     bus.on('changed', () => { this.dirty = true; });

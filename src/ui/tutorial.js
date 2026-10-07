@@ -76,7 +76,17 @@ function lessonSteps(kind) {
   return [
     { id: kind + '-1', center: true, next: true, text: L.intro },
     { id: kind + '-2', dim: true, panel: 'train', enter: (tu) => { tu.g.eco.freeClub = club.id; },
-      target: (ui) => (ui.panel === 'train' ? ui.el.panelBody.querySelector(`[data-club="${club.id}"] .club-go`) : ui.toolBtns.train),
+      target: (ui, tu) => {
+        if (ui.panel !== 'train') { tu.clubShown = false; return ui.toolBtns.train; }
+        const el = ui.el.panelBody.querySelector(`[data-club="${club.id}"]`);
+        // once, as Training opens: scroll this lesson's club to the top (the other club may be first)
+        if (el && !tu.clubShown) {
+          tu.clubShown = true;
+          const body = ui.el.panelBody;
+          body.scrollTop += el.getBoundingClientRect().top - body.getBoundingClientRect().top - 8;
+        }
+        return el && el.querySelector('.club-go');
+      },
       text: (g, tu, ui) => (ui.panel === 'train' ? t('Pick who goes, then tap the button below. Pass the tryout to learn {skill}.', { skill: club.skill }) : t('Tap Training.')),
       done: trained },
     { id: kind + '-3', center: true, next: true, text: L.done, doneLabel: () => t('Got it') },
@@ -356,6 +366,15 @@ class Tour {
     // inside an open side panel (desktop) with room to its left: sit beside the panel, so the row stays readable
     const P = ui.panel ? ui.el.panel.getBoundingClientRect() : null;
     const room = P ? P.left - root.left - 28 : 0;
+    const inPanel = !!(P && target instanceof Element && ui.el.panel.contains(target));
+    // a phone's bottom sheet holding the target: the card sits above the sheet, clear of the rows the step is
+    // about (the staff to pick, say), and the ring alone marks the target
+    if (inPanel && room < 300) {
+      const cw = Math.min(420, W - 24), hudBottom = ui.el.hud.getBoundingClientRect().bottom - root.top;
+      const top = Math.max(hudBottom + 8, P.top - root.top - gap - ch);
+      Object.assign(c.style, { left: `${(W - cw) / 2}px`, top: `${top}px`, right: 'auto', width: `${cw}px`, maxWidth: 'none' });
+      return;
+    }
     if (P && room >= 300 && r.left >= P.left - root.left - 1) {
       const sw = Math.min(380, room), cy = r.top + r.height / 2;
       const top = Math.max(8, Math.min(H - ch - 8, cy - ch / 2));

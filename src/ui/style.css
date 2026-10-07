@@ -62,7 +62,9 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-
 #overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 #view.dragging { cursor: grabbing; }
 #view.building { cursor: crosshair; }
-#ui { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+/* overflow: clip, not just hidden: a hidden box can still be scrolled (focusing a button that pokes out, scrollIntoView),
+   which slides the whole HUD and the tour's ring off what they point at */
+#ui { position: absolute; inset: 0; overflow: hidden; overflow: clip; pointer-events: none; z-index: 2; }
 #ui > * { pointer-events: auto; }
 .ico { display: inline-block; vertical-align: middle; flex: none; }
 .glyph { overflow: visible; }
