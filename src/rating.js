@@ -36,7 +36,7 @@ export class Rating {
     this.t += dt;
     if (this.t >= 1) { this.t = 0; this.recompute(); }
     const st = this.game.state;
-    st.rating += (this.target - st.rating) * Math.min(1, dt * 0.007);
+    st.rating += (this.target - st.rating) * Math.min(1, dt * 0.007 * this.game.sp.ratingSpeed);
     st.rating = clamp(st.rating, 0, 5);
   }
 }

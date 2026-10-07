@@ -163,6 +163,35 @@ button.hs:hover { background: var(--fill); }
 /* friends: under the daily goal */
 #friendsbtn { top: calc(var(--ht) + var(--hb) + var(--hg)); left: var(--hl); }
 #friendsbtn .glyph { color: var(--ink); }
+/* today's specials: under Friends; the day's theme as the icon, a red dot while a card waits */
+#specialbtn { position: absolute; top: calc(var(--ht) + 2 * (var(--hb) + var(--hg))); left: var(--hl); width: var(--hb); height: var(--hb); min-width: var(--hb);
+  padding: 0; justify-content: center; border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1; }
+#specialbtn .sp-dot { position: absolute; right: 1px; top: 1px; width: 12px; height: 12px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 2px #fff; display: none; }
+#specialbtn.pending .sp-dot { display: block; }
+#specialbtn.pending { animation: sppulse 1.6s ease-in-out infinite; }
+@keyframes sppulse { 50% { transform: scale(1.08); } }
+#modal .card.specials { text-align: left; width: min(440px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.sp-kicker { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.sp-theme { display: flex; gap: 12px; align-items: center; background: var(--fill); border-radius: 20px; padding: 12px 14px; }
+.sp-theme b { display: block; font-size: 18px; }
+.sp-theme span { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+.sp-ticon { font-size: 34px; line-height: 1; }
+.sp-round { font-weight: 800; font-size: 15px; margin-top: 4px; }
+.sp-picks { display: flex; flex-direction: column; gap: 8px; }
+.sp-card { appearance: none; border: 2px solid var(--line); background: #fff; border-radius: 18px; padding: 12px; display: flex; gap: 12px; align-items: center;
+  text-align: left; font: inherit; color: inherit; cursor: pointer; transition: transform .12s, border-color .12s; }
+.sp-card:hover { border-color: var(--ink); }
+.sp-card:active { transform: scale(.98); }
+.sp-cicon { width: 46px; height: 46px; flex: 0 0 auto; border-radius: 14px; background: var(--fill); display: grid; place-items: center; font-size: 24px; }
+.sp-cicon.small { width: 34px; height: 34px; font-size: 18px; border-radius: 10px; }
+.sp-cbody { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sp-cbody b { font-size: 15px; }
+.sp-cbody span { font-size: 13px; color: var(--ink-soft); line-height: 1.35; }
+.sp-sub { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-top: 4px; }
+.sp-list { display: flex; flex-direction: column; gap: 6px; }
+.sp-have { display: flex; gap: 10px; align-items: center; }
+.sp-note { font-size: 13px; }
+#modal .card.specials > .btn { width: 100%; min-height: 48px; }
 #friendsbtn:hover { background: var(--fill); }
 #friendsbtn.active { background: var(--ink); }
 #friendsbtn.active .glyph { color: #fff; }

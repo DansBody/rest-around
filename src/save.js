@@ -11,6 +11,7 @@ import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, R
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
+import { themeById, specialById } from './specials.js';
 
 // Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
 export const SAVE_KEY = 'restAround.save.v1';
@@ -197,6 +198,15 @@ export function apply(game, data) {
   for (let n = Math.min(12, Math.floor(num(wd.extraTrash, 0, 0, 99))), tries = 0; n > 0 && tries < 80; tries++) if (w.addTrash(Math.floor(Math.random() * size), Math.floor(Math.random() * size))) n--;
   for (const [x, y] of Array.isArray(wd.dirty) ? wd.dirty : []) { const ch = w.furnitureAt(x, y); if (ch && ch.seat) ch.seat.dirty = true; }
 
+  // today's specials (specials.js): the day's theme and the cards picked so far
+  const sp = s.specials;
+  st.specials = sp && typeof sp === 'object' && themeById[sp.theme] && Array.isArray(sp.picks) ? {
+    day: Math.floor(num(sp.day, 0, 0, 1e7)), theme: sp.theme, offer: null, later: null,
+    picks: sp.picks.filter((p) => p && specialById[p.id]).slice(0, 24).map((p) => ({
+      id: p.id, dish: typeof p.dish === 'string' && st.dishes[p.dish] ? p.dish : null, round: Math.floor(num(p.round, 0, 0, 1e7)), slot: Math.floor(num(p.slot, 0, 0, 24)),
+    })),
+  } : null;
+  game._sp = null;
   game.state = st;
   game.world = w;
   game.agents = []; game.agentTiles.clear(); game.jobs.clear();

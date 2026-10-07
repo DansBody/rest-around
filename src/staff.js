@@ -57,7 +57,7 @@ export class Staff extends Agent {
   kitReady() { return this.kitUnlocked() && this.kitCd <= 0 && !this.napping && !this.game.paused; }
   /** Speed multiplier from perks and drawbacks: applies to walking and to work. */
   kitMul() {
-    let m = this.auraMul * this.buffMul;
+    let m = this.auraMul * this.buffMul * this.game.sp.staffSpeed;
     const night = this.perk('night'), shy = this.perk('shy');
     if (night && this.game.day.hour >= night.from) m *= night.mul;
     if (shy && shy.roles.includes(this.role)) m *= shy.mul;
@@ -286,7 +286,7 @@ export class Staff extends Agent {
     }
     this.speedMul = this.skillMul * (this.boosted() && this.ability.speed ? this.ability.speed : 1) * this.kitWalkMul() * (this.trouble ? TROUBLE.respond : 1);
     super.update(dt);
-    if (this.job) this.energy = Math.max(0, this.energy - ENERGY.drainPerSec * dt);
+    if (this.job) this.energy = Math.max(0, this.energy - ENERGY.drainPerSec * this.game.sp.energy * dt);
   }
 
   think() {

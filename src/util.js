@@ -4,6 +4,15 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 export const rand = (a, b) => a + Math.random() * (b - a);
 export const randInt = (a, b) => Math.floor(rand(a, b + 1));
 export const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+/** A random item, each as likely as `weight(item)` says (choice() when every weight is the same). */
+export function weighted(arr, weight) {
+  let total = 0;
+  const ws = arr.map((x) => { const w = Math.max(0, weight(x)); total += w; return w; });
+  if (!(total > 0)) return choice(arr);
+  let r = Math.random() * total;
+  for (let i = 0; i < arr.length; i++) { r -= ws[i]; if (r <= 0) return arr[i]; }
+  return arr[arr.length - 1];
+}
 export const chance = (p) => Math.random() < p;
 export const tileKey = (x, y) => x * 1000 + y;
 export const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);

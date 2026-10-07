@@ -39,7 +39,7 @@ export class DayCycle {
     const g = this.game;
     const seats = Math.max(1, g.world.seats.length);
     const perHour = (0.6 + g.state.rating * 0.78) * this.phase.mult * (0.55 + 0.45 * Math.sqrt(Math.min(seats, 24) / 4));
-    return perHour / DAY.pace;
+    return perHour * g.sp.arrivals / DAY.pace;
   }
 
   update(dt) {

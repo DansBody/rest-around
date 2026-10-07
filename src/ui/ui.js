@@ -14,6 +14,7 @@ import { glyph } from './icons.js';
 import { maybeLesson, startWatch } from './tutorial.js';
 import { TILE } from '../models.js';
 import { glassFx } from './glass.js';
+import { specialsButton, updateSpecials } from './specials.js';
 import { t, tt, titledRole, setLang, getLang } from '../i18n.js';
 
 const FOLLOW_DIST = 24;   // following a character zooms in to at most this camera distance
@@ -170,6 +171,9 @@ export class UI {
     // friends: a round button floating on the right, opposite the daily goal (the tab bar is full enough)
     this.toolBtns.friends = this.el.friendsBtn = h('button.chip#friendsbtn', { onclick: () => this.onTool('friends'), title: t('Friends'), 'aria-label': t('Friends') }, glyph('friends', 22));
     r.appendChild(this.el.friendsBtn);
+    // today's specials (behind the debug switch): under Friends
+    this.el.specialBtn = specialsButton(this);
+    r.appendChild(this.el.specialBtn);
 
     // ----- side panel -----
     this.el.panelTitle = h('h2', '');
@@ -524,6 +528,7 @@ ${k.desc}
     this.el.lvlNum.textContent = t('Lv {n}', { n: s.level });
     if (this.el.brandName.textContent !== s.name) this.el.brandName.textContent = s.name;
     this.updateQuest();
+    updateSpecials(this);
     this.el.lvlTxt.textContent = s.level >= g.maxLevel() ? t('MAX') : `${fmt(lp.cur)}/${fmt(lp.next)}`;
     this.el.lvlBar.style.strokeDashoffset = String(100 - lp.frac * 100);
     this.el.brandName.parentNode.title = `${s.name} · ${this.el.lvlNum.textContent} · ${t('Café level & points')} ${this.el.lvlTxt.textContent}`;

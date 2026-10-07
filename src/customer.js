@@ -8,7 +8,7 @@ import { t } from './i18n.js';
 import { furnitureById, dishById, CUSTOMER_NAMES, PATIENCE, SPEED, CASHIER, TROUBLE, dishPrice, dishPoints, EXTRA_CAT } from './data.js';
 import { DOOR_Y } from './world.js';
 import { DIRS } from './iso.js';
-import { choice, chance, rand, manhattan, uid } from './util.js';
+import { choice, weighted, chance, rand, manhattan, uid } from './util.js';
 
 export class Customer extends Agent {
   constructor(game) {
@@ -106,7 +106,7 @@ export class Customer extends Agent {
   queueForSeat() {
     const g = this.game;
     this.state = 'queue'; this.task = 'Waiting for a clean table'; this.mood = 'Waiting';
-    this.patience = 1; this.pRate = 1 / (PATIENCE.seat * (this.hasCashier() ? CASHIER.queuePatience : 1)); this.showPatience = true;
+    this.patience = 1; this.pRate = 1 / (PATIENCE.seat * (this.hasCashier() ? CASHIER.queuePatience : 1) * this.game.sp.patience); this.showPatience = true;
     const e = g.world.entry;
     const t = g.freeTileNear(e.x, e.y, true, (x, y) => !(x === e.x && y === e.y) && manhattan(x, y, e.x, e.y) <= 4);
     if (t) this.walk(t.x, t.y, { onFail: () => {} });
@@ -130,7 +130,7 @@ export class Customer extends Agent {
     this.dir = ch.dir;
     seat.customer = this; seat.reserved = null;
     this.state = 'waitOrder'; this.task = 'Waiting to order'; this.mood = 'Craving coffee';
-    this.patience = 1; this.pRate = 1 / PATIENCE.order; this.showPatience = true;
+    this.patience = 1; this.pRate = 1 / (PATIENCE.order * this.game.sp.patience); this.showPatience = true;
     this.bubble = { icon: 'emote_menu', t0: this.game.renderTime, until: Infinity };
     this.orderJob = this.game.jobs.add('order', { customer: this, seat });
     this.game.sfx('pop');
@@ -153,14 +153,14 @@ export class Customer extends Agent {
       eco.autoRestock();
       return this.leaveUnhappy('lost');
     }
-    const food = choice(foods);
+    const food = weighted(foods, (id) => g.sp.weight(id));
     eco.consume(food);
     // a bake on the side: what they can see in the pastry case tempts them most (it's served straight
     // from the shelf, already paid for); otherwise one off the menu, baked to order
     const stock = stockIn(g.world.byKind('bar'));
     const fromCase = stock.length && chance(STOCK_BAKE_CHANCE) ? choice(stock) : null;
     const canDrink = drinks.length && g.eco.bakeryReady();
-    const drink = fromCase ? fromCase.dish : canDrink && chance(BAKE_CHANCE) ? choice(drinks) : null;
+    const drink = fromCase ? fromCase.dish : canDrink && chance(Math.max(BAKE_CHANCE, g.sp.bake)) ? choice(drinks) : null;
     if (drink && !fromCase) eco.consume(drink);
     this.tickets = [];
     const mk = (dish, kind) => ({ id: uid(), dish, kind, customer: this, seat: this.seat, state: 'queued' });
@@ -175,7 +175,7 @@ export class Customer extends Agent {
     }
     this.bubble = { icon: dishById[food].asset, icon2: drink ? dishById[drink].asset : null, t0: g.renderTime, until: g.simTime + 3 };
     this.state = 'waitFood'; this.task = 'Waiting for their order'; this.mood = 'Excited';
-    this.patience = 1; this.pRate = 1 / PATIENCE.food; this.showPatience = true;
+    this.patience = 1; this.pRate = 1 / (PATIENCE.food * g.sp.patience); this.showPatience = true;
     g.sfx('order');
   }
 
@@ -193,7 +193,7 @@ export class Customer extends Agent {
     this.state = 'eating'; this.task = 'Sipping & nibbling'; this.mood = 'Yum!';
     this.showPatience = false; this.bubble = null;
     this.hop();
-    const t = rand(6, 8.5);
+    const t = rand(6, 8.5) * this.game.sp.stay;
     this.wait(t, 'eat', { every: (dt) => { if (Math.random() < dt * 1.2) { this.game.fx.crumbs(this.game.at(this.x, this.y, 70)); } } });
     this.do(() => this.finishMeal());
   }
@@ -203,10 +203,10 @@ export class Customer extends Agent {
     let coins = 0, points = 0;
     for (const t of this.tickets) {
       const d = dishById[t.dish], lv = g.state.dishes[t.dish].lv;
-      coins += dishPrice(d, lv); points += dishPoints(d, lv);
+      coins += Math.round(dishPrice(d, lv) * g.sp.price(t.dish)); points += dishPoints(d, lv);
     }
     const s = this.sat.length ? this.sat.reduce((a, b) => a + b, 0) / this.sat.length : 0.7;
-    let tip = Math.round(coins * 0.3 * s);
+    let tip = Math.round(coins * 0.3 * s * g.sp.tip);
     const bloom = g.perk('bloom'), spot = g.inSpotlight(this.x, this.y);
     if (bloom && s >= bloom.min) { tip = Math.round(tip * (1 + bloom.tip)); g.fx.petals(g.at(this.x, this.y, 90), 9); }
     if (spot) { tip *= 2; g.fx.sparkle(g.at(this.x, this.y, 90), 8, '#ffe27a'); }
@@ -221,14 +221,25 @@ export class Customer extends Agent {
     const bakes = this.tickets.filter((t) => dishById[t.dish].cat === EXTRA_CAT).length;
     g.eco.questProgress('guests', 1); g.eco.questProgress('cups', this.tickets.length - bakes); g.eco.questProgress('bakes', bakes);
     const seat = this.seat;
-    seat.food = null; seat.drink = null; seat.dirty = true;
-    g.jobs.add('clear', { seat });
+    const again = !this.owed && !this.refilled && g.day.isOpen && chance(g.sp.refill);
+    seat.food = null; seat.drink = null;
+    if (!again) { seat.dirty = true; g.jobs.add('clear', { seat }); }
     this.tickets = [];
     if (s > 0.5) { this.emote('emote_heart', 2); g.fx.hearts(g.at(this.x, this.y, 110)); this.mood = 'Delighted'; }
     else { this.emote('emote_sparkle', 1.6); this.mood = 'Satisfied'; }
     this.hop();
     this.wait(0.6);
-    this.do(() => this.afterMeal());
+    this.do(() => (again ? this.orderAgain() : this.afterMeal()));
+  }
+
+  /** Another round at the same table (today's specials): wave for the server again. */
+  orderAgain() {
+    this.refilled = true;
+    this.state = 'waitOrder'; this.task = 'Ordering another round'; this.mood = 'One more!';
+    this.patience = 1; this.pRate = 1 / (PATIENCE.order * this.game.sp.patience); this.showPatience = true;
+    this.bubble = { icon: 'emote_menu', t0: this.game.renderTime, until: Infinity };
+    this.orderJob = this.game.jobs.add('order', { customer: this, seat: this.seat });
+    this.game.sfx('pop');
   }
 
   standUp() {
@@ -252,7 +263,7 @@ export class Customer extends Agent {
     const g = this.game;
     if (this.owed) return this.dineAndDash();
     this.standUp();
-    if (chance(0.3)) this.do(() => { g.world.addTrash(this.tx, this.ty); });
+    if (chance(0.3 * g.sp.trash)) this.do(() => { g.world.addTrash(this.tx, this.ty); });
     const w = g.world;
     const usable = (kind) => w.byKind(kind).filter((f) => !f.broken && !f.reservedBy && w.accessFor(f).length);
     const till = this.till > 0 && choice(usable('cashier'));

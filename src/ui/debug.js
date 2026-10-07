@@ -2,6 +2,7 @@
 import { h } from '../util.js';
 import { assets } from '../assets.js';
 import { DAY } from '../data.js';
+import { specialsEnabled, setSpecialsEnabled } from '../specials.js';
 
 export class DebugPanel {
   constructor(game, ui, root) {
@@ -40,6 +41,10 @@ export class DebugPanel {
       h('div.btnrow',
         h('button.btn.small', { onclick: () => { g.state.clock = DAY.length - 5; } }, 'Skip to closing'),
         h('button.btn.small', { onclick: () => { for (const a of g.staff) a.energy = 0; } }, 'Drain energy')),
+      h('div.btnrow',
+        h('button.btn.small' + (specialsEnabled() ? '.primary' : ''), { onclick: () => { setSpecialsEnabled(!specialsEnabled()); g._sp = null; this.rerender(); } }, `Specials ${specialsEnabled() ? 'on' : 'off'}`),
+        h('button.btn.small', { onclick: () => { g.state.specials = null; g._sp = null; this.ui.spOffered = null; g.toast('New day of specials'); } }, 'New specials day'),
+        h('button.btn.small', { onclick: () => { const sp = g.state.specials; if (sp) { sp.picks = sp.picks.filter((p) => p.round !== g.state.round); sp.offer = null; g._sp = null; this.ui.spOffered = null; } } }, 'Re-pick')),
       chk('Pathfinding grid', 'grid'),
       chk('Agent state labels', 'labels'),
       chk(`Asset overlay (${placeholders.length} placeholders)`, 'assets'),

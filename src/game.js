@@ -13,6 +13,7 @@ import { Build } from './build.js';
 import { Street } from './ambient.js';
 import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
+import { specialMods } from './specials.js';
 import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, UNIQUE_NAMES, furnitureById } from './data.js';
 
 /** The table for two a café gets when the player never set one up: [type, x, y, dir]. */
@@ -52,6 +53,7 @@ export function defaultState() {
     partner: null,       // the character the player picked to start with (model id): runs the tutorial, can't be fired
     tutorial: [],        // tutorial steps done (ui/tutorial.js)
     tutorialSeen: false, // the tutorial is over (finished or skipped)
+    specials: null,      // today's theme and picked cards (specials.js; behind a debug switch for now)
   };
 }
 
@@ -93,9 +95,12 @@ export class Game {
   get level() { return this.state.level; }
   get staff() { return this.agents.filter((a) => a.kind === 'staff'); }
   get customers() { return this.agents.filter((a) => a.kind === 'customer'); }
+  /** Today's specials, as multipliers the simulation reads (specials.js); cleared to recompute when they change. */
+  get sp() { return this._sp || (this._sp = specialMods(this)); }
 
   newGame() {
     this.state = defaultState();
+    this._sp = null;
     this.state.stats = this.day.freshStats();
     this.world = new World(8);
     this.agents = []; this.agentTiles.clear(); this.jobs.clear();
