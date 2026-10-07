@@ -15,6 +15,7 @@ const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
 const Y_UP = new THREE.Vector3(0, 1, 0);
 const tmpV = new THREE.Vector3();
 const tmpHead = new THREE.Vector3();
+const FOCUS_COLOR = '#ffc531';   // the UI's one accent (--yellow)
 
 function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
 /** A little painted sign (shop sign, OPEN plaque) as a texture. */
@@ -541,6 +542,30 @@ export class Renderer {
       cv.update(dt, g);
     }
     for (const [a, cv] of this.chars) if (!live.has(a)) { cv.dispose(this.scene); this.chars.delete(a); }
+    this.syncFocus();
+  }
+
+  /**
+   * The tour's focus (game.focus, a character): it glows in the accent yellow over a pulsing ring on the floor.
+   * Drawn in the scene itself, so it stays on them however fast the view is dragged.
+   */
+  syncFocus() {
+    const g = this.game, fa = g.focus && !g.focus.gone ? g.focus : null;
+    const pulse = 0.5 + 0.5 * Math.sin(this.time * 4);
+    for (const [a, cv] of this.chars) cv.setGlow(a === fa ? 0.4 + 0.35 * pulse : 0);
+    if (!this.focusRing) {
+      const mat = new THREE.MeshBasicMaterial({ color: FOCUS_COLOR, transparent: true, depthWrite: false });
+      this.focusRing = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.98, 40), mat);
+      this.focusRing.rotation.x = -Math.PI / 2;
+      this.focusRing.renderOrder = 2;
+      this.scene.add(this.focusRing);
+    }
+    const cv = fa && this.chars.get(fa), ring = this.focusRing;
+    ring.visible = !!(cv && cv.root.visible);
+    if (!ring.visible) return;
+    ring.position.set(cv.root.position.x, 0.06, cv.root.position.z);
+    ring.scale.setScalar(1 + 0.15 * pulse);
+    ring.material.opacity = 0.55 + 0.4 * pulse;
   }
 
   // ------------------------------------------------------------------ build mode & debug visuals

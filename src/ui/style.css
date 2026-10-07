@@ -1091,6 +1091,15 @@ button.pick-row:hover { background: var(--fill-2); }
 #spot.dim { box-shadow: 0 0 0 3px var(--yellow), 0 0 0 7px rgba(255, 197, 49, .35), 0 0 0 200vmax rgba(18, 18, 22, .32); }
 #spot.dim.show { animation: none; }
 @keyframes spotpulse { 50% { box-shadow: 0 0 0 3px var(--yellow), 0 0 0 12px rgba(255, 197, 49, .12); } }
+/* a tap on something the step isn't about: the card shakes and the ring flashes, "this first" */
+#coach.nudge { animation: coachnudge .42s ease-in-out; }
+#coach.center.nudge { animation: coachpop .36s ease-out; }   /* centred with translate: it pops instead */
+@keyframes coachpop { 40% { scale: 1.05; } }
+@keyframes coachnudge { 20% { translate: -7px 0; } 45% { translate: 6px 0; } 70% { translate: -3px 0; } }
+#spot.show.nudge { animation: spotnudge .5s ease-out; }
+#spot.dim.show.nudge { animation: spotnudgedim .5s ease-out; }
+@keyframes spotnudge { 30% { box-shadow: 0 0 0 5px var(--yellow), 0 0 0 16px rgba(255, 197, 49, .45); } }
+@keyframes spotnudgedim { 30% { box-shadow: 0 0 0 5px var(--yellow), 0 0 0 16px rgba(255, 197, 49, .45), 0 0 0 200vmax rgba(18, 18, 22, .32); } }
 /* one nudge at a time: during the tour the red badges hide, except on the ringed target */
 #ui.touring .badge:not(.tour-target .badge), #ui.touring .qb-badge.alert:not(.tour-target .qb-badge) { display: none; }
 #ui.visiting #coach, #ui.visiting #spot { display: none; }
@@ -1100,7 +1109,7 @@ button.pick-row:hover { background: var(--fill-2); }
   .starter-grid .pick-tile .portrait { width: 44px; height: 44px; }
   #coach .coach-text { font-size: 13px; }
 }
-@media (prefers-reduced-motion: reduce) { #spot.show { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #spot.show, #coach.nudge, #spot.show.nudge { animation: none; } }
 
 /* ---------- one surface system everywhere ----------
    Every bottom sheet (panels, the character card, the build tray) is the grey sheet, and what sits

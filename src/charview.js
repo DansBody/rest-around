@@ -9,6 +9,7 @@ import { WEAR_SLOTS, wearById } from './data.js';
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
 const SIT_FORWARD = 0.68;
 const SWING = 0.55;   // seconds of a bat swing (staff.swingT counts down from this)
+const GLOW = new THREE.Color('#ffc531');   // setGlow: the UI's one accent (--yellow)
 
 /** A wooden bat (Baseball Club), made in code: the handle sits at the origin. */
 export function makeBat() {
@@ -162,6 +163,18 @@ export class CharacterView {
     this.setHeld(p.held);
     // animations keep pace with sprinting / skilled staff
     if (this.inst.mixer) this.inst.mixer.update(dt * (a.speedMul || 1));
+  }
+
+  /** Light the character up in `GLOW` (0 = off): the tour's focus. Its materials become its own the first time. */
+  setGlow(k) {
+    k = Math.round(k * 20) / 20;
+    if (k === (this.glow || 0)) return;
+    this.glow = k;
+    this.inst.root.traverse((o) => {
+      if (!o.isMesh || !o.material || !o.material.emissive) return;
+      if (!o.userData.ownGlow) { o.material = o.material.clone(); o.userData.ownGlow = true; }
+      o.material.emissive.copy(GLOW).multiplyScalar(k);
+    });
   }
 
   /** World position of the top of the head (for bubbles and name tags). */

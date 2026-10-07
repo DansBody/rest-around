@@ -478,6 +478,12 @@ export const ZH_TW = {
   'Now two {name}s facing the table, any side you like. A table seats two.': '再放兩張「{name}」面向桌子，哪一側都可以。一張桌子坐兩位。',
   'One more {name}!': '再一張「{name}」！',
   'A table for two! Tap Done to open up.': '兩人桌完成！按「完成」開始營業。',
+  'Guests need somewhere to sit. Pick the {name}, then tap the floor to put it down.': '客人需要有地方坐。選「{name}」，再點地板放下去。',
+  'Now tap the floor where it should go.': '點一下地板，選好要放的位置。',
+  'Tap the check mark to put it down (the arrow turns it).': '按打勾就放好了（箭頭可以轉方向）。',
+  "That's the basics! It's late, but tonight we stay open while you settle in. We keep serving while you're away too.": '基本的就是這些！雖然很晚了，今晚我們會延長營業，讓你慢慢熟悉。你不在時我們也會繼續營業。',
+  'Open late tonight while you settle in!': '今晚延長營業，讓你慢慢熟悉！',
+  'Open Late': '延長營業',
   'This table already has two chairs': '這張桌子已經有兩張椅子了', 'Too many chairs around: a table seats two': '周圍椅子太多了：一張桌子只能坐兩位',
   // ---------------- level caps, timed expansions (phase C)
   'Seats are full for level {n} ({m}/{m}): level up for more': '等級 {n} 的座位已滿（{m}/{m}），升級後可以再多放',

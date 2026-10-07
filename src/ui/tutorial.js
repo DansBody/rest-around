@@ -1,14 +1,17 @@
 // First visit: the player picks a starting partner from the whole cast, and that character walks them through
 // the café one thing at a time. The coach card sits next to whatever the step is about (with a little arrow),
-// a yellow ring marks it, and for "tap this" steps the rest of the screen dims a little (it all stays
-// tappable). Each step moves on when the player has actually done it, with a short word of praise; the tour
-// can be skipped any time. While it runs, other nudges wait: red badges are hidden except on the ring's target,
-// cheerful toasts are muted and level-up / receipt cards are held back (UI.notice).
+// a yellow ring marks it, and for "tap this" steps the rest of the screen dims a little. Only what the step is
+// about can be tapped (and the view dragged): anything else just nudges the card (Tour.allows). A character
+// the step is about (the first guest, whoever serves them) glows yellow in the scene itself and the camera keeps
+// them in view, coming back after a drag (game.focus, Camera.letGo). Each step moves on when the player has
+// actually done it, with a short word of praise; the tour can be skipped any time. While it runs, other nudges
+// wait: red badges are hidden except on the ring's target, cheerful toasts are muted and level-up / receipt cards
+// are held back (UI.notice).
 // What is done is kept in state.tutorial (step ids), and state.tutorialSeen once it is over.
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
 import { roleLook } from '../looks.js';
-import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, CLUBS, TROUBLE } from '../data.js';
+import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, CLUBS, TROUBLE, DAY } from '../data.js';
 import { CLUB_FOR } from '../trouble.js';
 import { kitLines } from './panels.js';
 import { glyph } from './icons.js';
@@ -16,26 +19,34 @@ import { TILE } from '../models.js';
 import { t } from '../i18n.js';
 
 /**
- * The steps. `text` is what the partner says, `target` what to ring (an element, or { x, y, r } for a spot in
- * the scene), `dim` darkens everything else (a function: only then), `center` puts the card mid-screen, `ready` holds a step back (the
- * guest waits for the doors to open, the goodbye for everything else), `done` says the player did it, `next`
- * puts a button on the card instead (a function: only then). `enter` runs once as the step comes up, and
- * `panel` names the one panel the step works in (null: none): any other panel open then is closed.
+ * The steps. `text` is what the partner says, `target` the element to ring (the one thing that can be tapped,
+ * plus whatever `allow` lists), `focus` the character in the scene the step is about (they glow, the camera keeps
+ * them in view and the card waits at the bottom), `dim` darkens everything else (a function: only then), `center`
+ * puts the card mid-screen, `ready` holds a step back (the goodbye waits for everything else), `done` says the
+ * player did it, `next` puts a button on the card instead (a function: only then). `enter` runs once as the step
+ * comes up, `panel` names the one panel the step works in (null: none): any other panel open then is closed, and
+ * `scene` lets taps on the scene through (the view can always be dragged).
  */
 const STEPS = [
   { id: 'hello', center: true, next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: partnerName(g) }) },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
   // the room starts bare: a table for two first (the guest needs somewhere to sit)
-  { id: 'seats', panel: null, dim: (ui, tu) => tu.seatStage() !== 'table' && tu.seatStage() !== 'chairs',
-    target: (ui, tu) => ({ hammer: ui.toolBtns.build, table: ui.el.buildbar.querySelector('[data-item="f:table_oak"]'), chairs: ui.el.buildbar.querySelector('[data-item="f:chair_oak"]'), done: ui.el.buildbar.querySelector('.done') })[tu.seatStage()] || null,
+  // build mode opens by itself on the tables tab; the floor takes taps, and so do the buttons round the piece in hand
+  { id: 'seats', panel: null, scene: (g) => g.build.placing(), enter: (tu) => tu.openBuild(), dim: (ui, tu) => tu.seatStage() === 'hammer' || tu.seatStage() === 'done',
+    target: (ui, tu) => ({ hammer: () => ui.toolBtns.build, table: () => tu.buildTarget('f:table_oak'), chairs: () => tu.buildTarget('f:chair_oak'), done: () => tu.buildTarget('done') })[tu.seatStage()](),
+    allow: (ui) => [ui.game.build.placing() ? ui.el.ghostctl : null],
     text: (g, tu) => ({
       hammer: t("Guests need somewhere to sit. Tap the hammer and let's set up a table."),
-      table: t('Pick the {name}, then tap the floor to put it down.', { name: furnitureById.table_oak.name }),
-      chairs: g.world.seats.length ? t('One more {name}!', { name: furnitureById.chair_oak.name }) : t('Now two {name}s facing the table, any side you like. A table seats two.', { name: furnitureById.chair_oak.name }),
+      table: g.build.locked ? t('Tap the check mark to put it down (the arrow turns it).')
+        : g.build.tool ? t('Now tap the floor where it should go.')
+        : t('Guests need somewhere to sit. Pick the {name}, then tap the floor to put it down.', { name: furnitureById.table_oak.name }),
+      chairs: g.build.locked ? t('Tap the check mark to put it down (the arrow turns it).')
+        : g.world.seats.length ? t('One more {name}!', { name: furnitureById.chair_oak.name })
+        : t('Now two {name}s facing the table, any side you like. A table seats two.', { name: furnitureById.chair_oak.name }),
       done: t('A table for two! Tap Done to open up.'),
     })[tu.seatStage()],
     done: (g) => !g.build.active && g.world.seats.length >= 2 },
-  { id: 'guest', panel: null, ready: (g) => !g.day.isNight && g.world.seats.length > 0, enter: (tu) => tu.callGuest(), target: (ui, tu) => tu.guestSpot(),
+  { id: 'guest', panel: null, ready: (g) => g.day.isOpen && g.world.seats.length > 0, enter: (tu) => tu.callGuest(), focus: (tu) => tu.watched().who,
     text: (g, tu) => tu.guestText(),
     done: (g, ui, tu) => !!(tu.guest && tu.guest.served) },   // the guest the tour called, not whoever else was in
   { id: 'staff', dim: true, panel: 'staff',
@@ -48,10 +59,16 @@ const STEPS = [
   { id: 'study', dim: true, panel: 'menu', target: (ui) => (ui.panel === 'menu' ? ui.el.panelBody.querySelector('[data-study="espresso"]') : ui.toolBtns.menu),
     text: (g, tu, ui) => (ui.panel === 'menu' ? t('Study the Espresso: it uses the beans and a voucher, and sells for more at Lv2.') : t('Now the Menu: this is where drinks level up.')),
     done: (g) => Object.values(g.state.dishes).some((d) => d.lv >= 2) },
-  { id: 'bye', center: true, next: true, ready: (g, tu) => STEPS.every((x) => x.id === 'bye' || tu.done.includes(x.id)), enter: (tu) => tu.g.camera.fit(tu.g.world.size),
-    text: () => t("That's the basics! We keep serving while you're away, so come back and see how we did.") },
+  { id: 'bye', center: true, next: true, panel: null, ready: (g, tu) => STEPS.every((x) => x.id === 'bye' || tu.done.includes(x.id)), enter: (tu) => tu.g.camera.fit(tu.g.world.size),
+    text: (g) => (g.day.hour >= DAY.lastCallHour
+      ? t("That's the basics! It's late, but tonight we stay open while you settle in. We keep serving while you're away too.")
+      : t("That's the basics! We keep serving while you're away, so come back and see how we did.")) },
 ];
+// what the tour's guard watches: a tap is a pointerdown and then a click, and both must stop at a blocked control
+const GUARDED = ['pointerdown', 'mousedown', 'click', 'dblclick', 'contextmenu'];
 const PRAISE = ['Nice!', "That's it!", 'Perfect!', 'Great job!'];
+const FOCUS_UP = 90;   // px above the middle of the view where the camera keeps a focus (the card waits below it)
+const FOCUS_DIST = 28;   // and it zooms in to at most this distance, so a far-off view still shows who it is about
 const partnerName = (g) => UNIQUE_NAMES[g.state.partner] || '';
 const partnerId = (g) => { const a = g.staff.find((x) => x.look.model === g.state.partner); return a ? a.id : ''; };
 
@@ -87,6 +104,7 @@ function lessonSteps(kind) {
         }
         return el && el.querySelector('.club-go');
       },
+      allow: (ui) => [ui.panel === 'train' ? ui.el.panelBody.querySelector(`[data-club="${club.id}"]`) : null],   // who goes, and the button
       text: (g, tu, ui) => (ui.panel === 'train' ? t('Pick who goes, then tap the button below. Pass the tryout to learn {skill}.', { skill: club.skill }) : t('Tap Training.')),
       done: trained },
     { id: kind + '-3', center: true, next: true, text: L.done, doneLabel: () => t('Got it') },
@@ -124,9 +142,9 @@ export function startWatch(ui, c, kind) {
     if (tr.over) return c.state === 'flying' ? t('Home run! Out they go.') : t('They stormed off. A trained batter gets there sooner.');
     return by ? t('{by} grabs the bat!', { by: by.name }) : t('A rude guest is pushing the team around!');
   };
-  const step = { id: 'w-' + kind, panel: null, target: (u) => (g.renderer && !c.gone ? g.renderer.agentRing(focus()) : null), text, next: () => !!(c.trouble && c.trouble.over), doneLabel: () => t('Got it') };
+  const step = { id: 'w-' + kind, panel: null, focus: () => (c.gone ? null : focus()), text, next: () => !!(c.trouble && c.trouble.over), doneLabel: () => t('Got it') };
   ui.closePanel();
-  g.camera.follow(() => (ui.tutorial && ui.tutorial.opts.id === id && !c.gone ? { x: focus().x * TILE, z: focus().y * TILE } : null), () => ({ x: 0, y: 70 }));
+  g.camera.follow(() => (ui.tutorial && ui.tutorial.opts.id === id && !c.gone ? { x: focus().x * TILE, z: focus().y * TILE } : null), () => ({ x: 0, y: FOCUS_UP }), FOCUS_DIST, true);
   ui.tutorial = new Tour(ui, [step], { id });
   return true;
 }
@@ -177,10 +195,67 @@ class Tour {
     this.spot = h('div#spot');
     ui.root.append(this.spot, this.card);
     ui.root.classList.add('touring');
-    this.stepId = null; this.praise = null; this.targetEl = null;
+    this.stepId = null; this.praise = null; this.targetEl = null; this.placed = null;
+    // taps on anything the step isn't about are swallowed before they reach it (capture phase)
+    this.guard = (e) => {
+      if (this.allows(e.target)) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (e.type === 'click') this.nudge();
+    };
+    for (const type of GUARDED) document.addEventListener(type, this.guard, true);
     this.update();
   }
   get done() { return this.g.state.tutorial; }
+  /** The step on screen (null between steps, while the praise shows). */
+  get step() { return this.praise ? null : this.steps.find((x) => x.id === this.stepId) || null; }
+
+  /**
+   * May this element be tapped now? The coach card, an open card (the partner pick, a tryout), the debug panel
+   * and the view always; otherwise only the step's target and what it `allow`s.
+   */
+  allows(el) {
+    if (!(el instanceof Element)) return true;
+    const ui = this.ui;
+    if (this.card.contains(el) || el.closest('#modal, #debug, #view')) return true;
+    const st = this.step;
+    if (!st) return false;
+    // the target looked up afresh: panels redraw their buttons, so the ringed one may already be a stale copy
+    const ok = [st.target && !ui.modalOpen ? st.target(ui, this) : null, ...(st.allow ? st.allow(ui, this) : [])];
+    return ok.some((x) => x instanceof Element && x.contains(el));
+  }
+  /** A tap on the scene (not a drag) goes through only on steps that work there. */
+  sceneTap() { const st = this.step; return !!(st && st.scene && st.scene(this.g)); }
+  /** Keys: turning the view always, the piece in hand on steps that work in the scene. */
+  key(k) {
+    if (k === 'q' || k === 'Q' || k === 'e' || k === 'E' || k === '`' || k === '~') return true;
+    return this.sceneTap() && (k === 'r' || k === 'R');
+  }
+  /** Something else was tapped: the card gives a little shake, and the ring a pulse, to say "this first". */
+  nudge() {
+    for (const el of [this.card, this.spot]) { el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); }
+  }
+  /** The table-for-two step: straight into build mode, on the tab with the tables and chairs. */
+  openBuild() {
+    const g = this.g, ui = this.ui;
+    if (!g.build.active) g.build.enter();
+    ui.buildCat = 'dining'; ui.buildOpen = true;   // phones open the tray folded: unfold it
+    ui.renderBuild();
+  }
+  /**
+   * What to tap next in the build tray to get `want` (an item key, or 'done'): the ✓ beside the piece in hand once
+   * it is pinned (nothing while it still follows the pointer: the floor comes first), "Back to items" with
+   * something else in hand, Buy on a folded tray, else the item itself.
+   */
+  buildTarget(want) {
+    const b = this.g.build, bar = this.ui.el.buildbar;
+    if (b.placing()) {
+      if (want !== 'done' && b.tool && 'f:' + b.tool.type === want) return b.locked ? this.ui.el.ghostctl.querySelector('.gc-btn.ok') : null;
+      return bar.querySelector('.bb-mini .btn.small');
+    }
+    const fold = bar.querySelector('.bb-fold');
+    if (fold) return fold.querySelector(want === 'done' ? '.done' : '.btn.primary');
+    return bar.querySelector(want === 'done' ? '.done' : `[data-item="${want}"]`);
+  }
   /** Where the table-for-two step stands: out of build mode, no table yet, chairs to add, or ready to finish. */
   seatStage() {
     const g = this.g, w = g.world;
@@ -209,8 +284,11 @@ class Tour {
       // skipped before the table was set up: guests still need somewhere to sit
       if (!this.g.world.seats.length) { if (this.g.build.active) this.g.build.exit(); this.g.ensureSeats(); }
     }
+    for (const type of GUARDED) document.removeEventListener(type, this.guard, true);
     this.card.remove(); this.spot.remove();
     this.mark(null);
+    this.g.focus = null;
+    if (this.g.camera.sticky) this.g.camera.unfollow(true);
     this.ui.root.classList.remove('touring');
     this.ui.tutorial = null;
   }
@@ -224,10 +302,9 @@ class Tour {
     const c = this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
     c.patient = true;   // never walks out: no free seat or a slow kitchen just means a longer wait
     this.guestAt = now;
-    // the camera keeps them in view, a little above the middle so the card below doesn't cover them (a drag ends it)
     // the camera keeps whoever is busy with them in view (see watched()), a little above the middle so the card
-    // below doesn't cover them; a drag ends it
-    this.g.camera.follow(() => { const a = this.stepId === 'guest' && !c.gone ? this.watched().who : null; return a ? { x: a.x * TILE, z: a.y * TILE } : null; }, () => ({ x: 0, y: 70 }));
+    // below doesn't cover them; after a drag it comes back
+    this.g.camera.follow(() => { const a = this.ui.tutorial === this && this.stepId === 'guest' && !c.gone && !c.served ? this.watched().who : null; return a ? { x: a.x * TILE, z: a.y * TILE } : null; }, () => ({ x: 0, y: FOCUS_UP }), FOCUS_DIST, true);
   }
   /**
    * Who to watch while the tour's guest is served, and why: the guest walking in and finding a seat, the server
@@ -275,20 +352,13 @@ class Tour {
       default: return t('Here comes a guest! Watch the door.');
     }
   }
-  /** Where the guest is on screen (ringed while they come in and get served); the camera keeps them in view. */
-  guestSpot() {
-    const c = this.watched().who, R = this.g.renderer;
-    if (!c || c.gone || !R) return null;
-    return R.agentRing(c);
-  }
-
   /** Called with the UI's update (10 times a second). */
   update() {
     const g = this.g, ui = this.ui;
     if (this.camKey() !== this.cam) this.moved = true;
     this.cam = this.camKey();
     // a moment of praise after a step is done, before the next one comes up
-    if (this.praise && performance.now() < this.praise.until) { this.show('praise', null, this.praise.text, null); return; }
+    if (this.praise && performance.now() < this.praise.until) { g.focus = null; this.show('praise', null, this.praise.text, null); return; }
     this.praise = null;
     let st = this.current();
     while (st && st.done && st.done(g, ui, this)) { this.finish(st.id, true); return this.update(); }
@@ -302,7 +372,16 @@ class Tour {
     // nothing ready yet (only the guest left, and it's night): say when the doors open
     const text = st ? st.text(g, this, ui) : t("We're closed for the night. The doors open at 08:00, see you then!");
     const target = st && st.target && !ui.modalOpen ? st.target(ui, this) : null;
+    g.focus = (st && st.focus && st.focus(this)) || null;
     this.show(st ? st.id : 'wait', st, text, target);
+  }
+  /** Every frame: keep the ring and the card on the target as panels slide and the tray scrolls. */
+  track() {
+    if (!this.placed) return;
+    let [st, target] = this.placed;
+    // the panel redrew under the ring: find the new copy of the target rather than lose it for a moment
+    if (target instanceof Element && !target.isConnected && st && st.target) this.placed[1] = target = st.target(this.ui, this);
+    this.place(st, target);
   }
 
   /** Draw the card (only when what it says changed) and place it, the ring and the dimming around `target`. */
@@ -329,6 +408,7 @@ class Tour {
     this.card.classList.toggle('hidden', !!ui.modalOpen);
     this.card.classList.toggle('center', !!(st && st.center));
     this.place(st, target);
+    this.placed = [st, target];
   }
 
   /** Mark the ringed element (its red badge stays visible while the others are hidden during the tour). */
@@ -337,6 +417,8 @@ class Tour {
     if (this.targetEl) this.targetEl.classList.remove('tour-target');
     if (el) el.classList.add('tour-target');
     this.targetEl = el;
+    // an item further along the build tray: scrolled into view
+    if (el && this.ui.el.buildbar.contains(el)) el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   /** Ring the target and put the card beside it, pointing at it; with no target the card sits at the top. */
@@ -361,8 +443,17 @@ class Tour {
     const c = this.card, W = root.width, H = root.height;
     if (c.classList.contains('center') || c.classList.contains('hidden')) { c.style.cssText = ''; return; }
     c.classList.remove('above', 'below', 'side');
-    if (!r) { c.style.cssText = ''; return; }
     const ch = c.offsetHeight || 110, gap = 16;
+    // a character in the scene: the camera keeps them above the middle, the card waits at the bottom, clear of the toolbar
+    if (!r && this.g.focus) {
+      const cw = Math.min(420, W - 24), tb = ui.el.toolbar.getBoundingClientRect();
+      const floor = tb.height && tb.top - root.top > H / 2 ? tb.top - root.top : H;
+      Object.assign(c.style, { left: `${(W - cw) / 2}px`, top: `${Math.max(8, floor - ch - 12)}px`, right: 'auto', width: `${cw}px`, maxWidth: 'none' });
+      return;
+    }
+    // nothing to point at, or something to tap while building (above the tray or beside the piece in hand the card
+    // would cover the room being furnished): at the top
+    if (!r || ui.el.ghostctl.contains(target) || ui.el.buildbar.contains(target)) { c.style.cssText = ''; return; }
     // inside an open side panel (desktop) with room to its left: sit beside the panel, so the row stays readable
     const P = ui.panel ? ui.el.panel.getBoundingClientRect() : null;
     const room = P ? P.left - root.left - 28 : 0;

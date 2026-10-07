@@ -200,10 +200,10 @@ export class Agent {
     const p = this.planPath(a, true, block);
     // patience: a short way round at once, a longer one the longer we have been standing here
     const budget = 4 + this.blockedT * 4;
-    if (p && p.length && p.length <= (this.path ? this.path.length : 0) + budget) { this.path = p; return true; }
+    if (p && p.length && p.length <= (this.path ? this.path.length : 0) + budget) { this.path = p; a.detours = (a.detours || 0) + 1; return true; }
     if (oncoming && this.yieldsTo(oncoming)) {
       const pocket = this.findPocket(oncoming);
-      if (pocket) { this.path = pocket; a.repath = true; a.holdT = 0.45; return true; }
+      if (pocket) { this.path = pocket; a.repath = true; a.holdT = 0.45; a.detours = (a.detours || 0) + 1; return true; }
     }
     return false;
   }
@@ -271,7 +271,9 @@ export class Agent {
           this.findWayAround(a, next, hardBlock);
         }
         if (this.blockedT > 2.5 && !this.jamEmoted) { this.jamEmoted = true; this.emote('emote_wait', 1.8); }
-        if (this.blockedT > 6 + (this.id % 5) * 0.3) this.ghost = true; // a jam nothing clears: squeeze past rather than deadlock
+        // a jam nothing clears: squeeze past rather than deadlock. Two walkers who keep stepping aside the same
+        // way at once never stand blocked for long, so detouring again and again on one walk counts too
+        if (this.blockedT > 6 + (this.id % 5) * 0.3 || (a.detours || 0) >= 4) this.ghost = true;
         return 'running';
       }
       this.path.shift();

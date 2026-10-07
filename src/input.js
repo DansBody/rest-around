@@ -40,7 +40,7 @@ export function setupInput(game, canvas, ui, debug) {
     }
     down = { x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false, button: e.button };
     const b = game.build;
-    if (b.active && b.tool && b.tool.mode === 'floor' && e.button === 0) {
+    if (b.active && b.tool && b.tool.mode === 'floor' && e.button === 0 && !ui.tutorial) {
       b.painting = true;
       const t = R().pickTile(p.x, p.y); b.click(t.x, t.y);
     }
@@ -76,7 +76,7 @@ export function setupInput(game, canvas, ui, debug) {
     if (!down.moved && Math.hypot(p.x - down.sx, p.y - down.sy) > 6) { down.moved = true; canvas.classList.add('dragging'); }
     if (down.moved) {
       if (down.button === 2 || e.shiftKey) cam.rotateBy(-(p.x - down.x) * 0.008);
-      else { shown().camera.unfollow(false); R().panBetween(down.x, down.y, p.x, p.y); }   // dragging takes the camera back
+      else { shown().camera.letGo(); R().panBetween(down.x, down.y, p.x, p.y); }   // dragging takes the camera back
       down.x = p.x; down.y = p.y;
     }
   });
@@ -87,6 +87,8 @@ export function setupInput(game, canvas, ui, debug) {
     canvas.classList.remove('dragging');
     const b = game.build;
     if (b.painting) { b.painting = false; down = null; return; }
+    // the tour lets taps on the scene through only where its step needs them (placing the first table, say)
+    if (down && !down.moved && ui.tutorial && !ui.tutorial.sceneTap()) { ui.tutorial.nudge(); down = null; return; }
     if (down && !down.moved) {
       if (down.button === 2 && b.active) { if (!b.escape()) b.setTool(null); }
       else if (down.button === 0) {
@@ -118,6 +120,7 @@ export function setupInput(game, canvas, ui, debug) {
 
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if (ui.tutorial && !ui.tutorial.key(e.key)) return;   // the tour's step: only the keys that turn the view (or the piece in hand)
     const b = game.build;
     if (e.key === '`' || e.key === '~') { debug.toggle(); debug.rerender(); e.preventDefault(); return; }
     if (e.key === 'Escape') {

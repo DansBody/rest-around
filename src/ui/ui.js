@@ -516,6 +516,7 @@ ${k.desc}
   // ---------------- per-frame ----------------
   update(dt) {
     this.placeGhostCtl();
+    if (this.tutorial) this.tutorial.track();
     this.acc += dt;
     if (this.acc < 0.1) return;
     this.acc = 0;
@@ -542,7 +543,7 @@ ${k.desc}
     const nth = roundOfDay(s.round), from = nth * 2;
     this.el.day.textContent = t('Round {n} of {m} today ({a}:00–{b}:00). A round lasts 2 hours and opens on the even hours.', { n: nth + 1, m: ROUNDS_PER_DAY, a: String(from).padStart(2, '0'), b: String((from + 2) % 24).padStart(2, '0') });
     this.el.time.textContent = fmtTime(g.day.hour % 24, getLang() !== 'en');
-    this.el.phase.textContent = g.paused ? t('Closed') : g.build.active ? t('Building') : g.day.isNight ? (s.stats && s.stats.closed ? t('Night') : t('Last guests…')) : g.day.hour >= DAY.lastCallHour ? t('Last call') : g.day.phase.name;
+    this.el.phase.textContent = g.paused ? t('Closed') : g.build.active ? t('Building') : g.day.lateHours ? t('Open Late') : g.day.isNight ? (s.stats && s.stats.closed ? t('Night') : t('Last guests…')) : g.day.hour >= DAY.lastCallHour ? t('Last call') : g.day.phase.name;
     this.el.time.parentNode.title = `${this.el.phase.textContent} · ${this.el.day.textContent}`;
     this.el.speed.style.display = g.timeScale !== 1 ? '' : 'none';
     this.el.speedTxt.textContent = `${g.timeScale}×`;

@@ -58,15 +58,20 @@ export class Camera {
    * screen offset in px (+x right, +y up) it should sit at, so a card covering part of the view never hides
    * it. `dist` zooms in to at most that distance; the old one comes back when following ends.
    */
-  follow(fn, off, dist) {
+  follow(fn, off, dist, sticky = false) {
     if (!this.track) { this.zoomBack = this.distTarget; this.zoomed = false; }
-    this.track = fn; this.trackOff = off;
+    this.track = fn; this.trackOff = off; this.sticky = sticky; this.heldT = 0;
     if (dist) this.distTarget = Math.min(this.distTarget, dist);
   }
   /** Stop following; `restore` goes back to the distance from before (if the player didn't zoom meanwhile). */
   unfollow(restore) {
     if (restore && this.track && this.zoomBack != null && !this.zoomed) this.distTarget = this.zoomBack;
-    this.track = null; this.trackOff = null; this.zoomBack = null;
+    this.track = null; this.trackOff = null; this.zoomBack = null; this.sticky = false; this.heldT = 0;
+  }
+  /** The player drags the view: a plain follow ends; a sticky one (the tour's) waits until they let go for a moment. */
+  letGo() {
+    if (this.track && this.sticky) this.heldT = 1.4;
+    else this.unfollow(false);
   }
   rotate(steps) { this.yawTarget += (steps * Math.PI) / 2; }
   rotateBy(rad) { this.yawTarget += rad; this.yaw += rad; }
@@ -84,6 +89,7 @@ export class Camera {
     if (this.track) {
       const p = this.track();
       if (!p) { this.unfollow(true); return; }
+      if (this.heldT > 0) { this.heldT -= dt; return; }   // just dragged away: the camera comes back once they let go
       // the look-at point that puts p `o` pixels off the centre of the view (the inverse of pan())
       const o = this.trackOff ? this.trackOff() : { x: 0, y: 0 };
       const u = this.unitsPerPx(), sy = Math.sin(this.yaw), cy = Math.cos(this.yaw), sp = Math.sin(this.pitch);
