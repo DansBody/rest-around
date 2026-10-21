@@ -50,7 +50,7 @@ export function defaultState() {
     giftDay: 0,          // the calendar day the gift was last opened
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, rounds: 0 },
-    settings: { sound: true, music: true, volume: 0.7, glass: true, autoRestock: true },
+    settings: { sound: true, music: true, volume: 0.7, glass: true, autoRestock: true, pixel: true },
     partner: null,       // the character the player picked to start with (model id): runs the tutorial, can't be fired
     tutorial: [],        // tutorial steps done (ui/tutorial.js)
     tutorialSeen: false, // the tutorial is over (finished or skipped)

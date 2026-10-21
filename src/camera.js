@@ -13,7 +13,7 @@ export class Camera {
     this.pitch = 0.66;                    // ~38deg above the horizon
     this.dist = 34; this.distTarget = 34;
     this.fov = 30;
-    this.minDist = 12; this.maxDist = 80;
+    this.minDist = 20; this.maxDist = 80;   // nearer than 20, a 64-px sprite's pixels (PLAN.md) outgrow the scene's
     this.vw = 800; this.vh = 600;
     this.bounds = { x0: -12, x1: 30, z0: -8, z1: 30 };
     this.room = 8;
@@ -32,8 +32,9 @@ export class Camera {
     const n = size * TILE;
     this.tx = n / 2; this.tz = n / 2;
     const aspect = this.vw / Math.max(1, this.vh);
-    // distance so the room's diagonal fits the view
-    const need = n * 1.45 / Math.min(1, aspect * 0.9);
+    // the height in view: a wide view fits the room with a little ground round it; a tall one (a phone) is framed
+    // on its width, the floor filling it edge to edge with only its far left and right corners running off
+    const need = Math.max(n * 1.16, n / aspect);
     this.dist = this.distTarget = clamp(need / (2 * Math.tan((this.fov * Math.PI) / 360)), this.minDist, this.maxDist);
     this.clamp();
   }

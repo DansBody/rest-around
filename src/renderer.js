@@ -16,7 +16,14 @@ const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
 const Y_UP = new THREE.Vector3(0, 1, 0);
 const tmpV = new THREE.Vector3();
 const tmpHead = new THREE.Vector3();
+const tmpSize = new THREE.Vector2();
+const tmpColor = new THREE.Color();
 const FOCUS_COLOR = '#ffc531';   // the UI's one accent (--yellow)
+// pixel-art mode (design/art-direction/PLAN.md, step 1): the scene is drawn at 1/PIXEL of the view in device px and
+// blown up with nearest sampling, with a 1-px INK outline round everything
+const PIXEL = 2.4;
+const INK = '#1F2A4A';
+const SUN_STEP = 0.25;   // with the shadow map frozen, the sun only moves (and redraws its shadows) in steps this big
 
 function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
 /** A little painted sign (shop sign, OPEN plaque) as a texture. */
@@ -64,6 +71,105 @@ export class Renderer {
     this.abilityFx = new AbilityFx(this.scene);
     this.steam = new Steam(this.scene);
     this.debugGroup = new THREE.Group(); this.scene.add(this.debugGroup);
+    this.pixelArt = game.state.settings.pixel !== false;
+    this.shadowDirty = true;
+    this.applyPixelArt();
+  }
+
+  /** Turn the pixel-art look on or off (Settings → Display). Off is the smooth renderer exactly as it was. */
+  setPixelArt(on) {
+    if (on === this.pixelArt) return;
+    this.pixelArt = on;
+    this.applyPixelArt();
+    this.reset();   // characters, trash and the door get their shadows back (or lose them) as they are rebuilt
+    this.resize();
+  }
+  applyPixelArt() {
+    // pixel art draws the sun's shadows only when the layout or the sun moves: characters (and what they carry, cups
+    // on tables, trash) stop casting into it, they keep their contact shadows
+    this.gl.shadowMap.autoUpdate = !this.pixelArt;
+    this.shadowDirty = true;
+    this.canvas.classList.toggle('pixel', this.pixelArt);
+    if (!this.pixelArt && this.px) { this.px.rt.depthTexture.dispose(); this.px.rt.dispose(); this.px.mat.dispose(); this.px = null; }
+  }
+  /**
+   * The pixel pass (as design/y2k-preview/src/SceneCanvas.tsx): the scene goes to a render target with its depth, then a
+   * full-screen pass inks a pixel when it is opaque and a 4-neighbour is empty or clearly farther (so the line sits
+   * on the nearer object's side), tone maps it and puts it on the (low-res) canvas.
+   */
+  pixelKit(w, h) {
+    if (this.px && this.px.w === w && this.px.h === h) return this.px;
+    if (this.px) { this.px.rt.depthTexture.dispose(); this.px.rt.dispose(); this.px.mat.dispose(); }
+    const depth = new THREE.DepthTexture(w, h);
+    const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, depthTexture: depth, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        tColor: { value: rt.texture },
+        tDepth: { value: depth },
+        texel: { value: new THREE.Vector2(1 / w, 1 / h) },
+        ink: { value: new THREE.Color(INK) },
+        sky: { value: new THREE.Vector3() },
+        near: { value: this.cam.near },
+        far: { value: this.cam.far },
+      },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `
+        uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform vec3 ink; uniform vec3 sky; uniform float near; uniform float far;
+        varying vec2 vUv;
+        float lin(float d) { float z = d * 2.0 - 1.0; return 2.0 * near * far / (far + near - z * (far - near)); }
+        void main() {
+          vec4 c = texture2D(tColor, vUv);
+          // the sky is cleared, not drawn: it shows as the plain background colour, untouched by tone mapping (as before)
+          if (c.a < 0.5) { gl_FragColor = vec4(sky, 1.0); return; }
+          float d = lin(texture2D(tDepth, vUv).x);
+          float edge = 0.0;
+          vec2 o[4];
+          o[0] = vec2(texel.x, 0.0); o[1] = vec2(-texel.x, 0.0); o[2] = vec2(0.0, texel.y); o[3] = vec2(0.0, -texel.y);
+          for (int i = 0; i < 4; i++) {
+            vec4 cn = texture2D(tColor, vUv + o[i]);
+            float dn = lin(texture2D(tDepth, vUv + o[i]).x);
+            if (cn.a < 0.5 || dn - d > 0.006 * d + 0.15) edge = 1.0;
+          }
+          gl_FragColor = vec4(mix(c.rgb, ink, edge), 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`,
+      depthTest: false,
+      depthWrite: false,
+    });
+    if (!this.pxQuad) {
+      this.pxQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+      this.pxQuad.frustumCulled = false;
+      this.pxScene = new THREE.Scene(); this.pxScene.add(this.pxQuad);
+      this.pxCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    }
+    this.pxQuad.material = mat;
+    return (this.px = { w, h, rt, mat });
+  }
+  drawScene() {
+    const gl = this.gl;
+    if (!this.pixelArt) { gl.render(this.scene, this.cam); return; }
+    if (this.shadowDirty) { this.quietShadows(); gl.shadowMap.needsUpdate = true; this.shadowDirty = false; }
+    const size = gl.getDrawingBufferSize(tmpSize);
+    const kit = this.pixelKit(size.x, size.y), u = kit.mat.uniforms;
+    const bg = this.scene.background;
+    tmpColor.copy(bg).convertLinearToSRGB(); u.sky.value.set(tmpColor.r, tmpColor.g, tmpColor.b);
+    u.near.value = this.cam.near; u.far.value = this.cam.far;
+    this.scene.background = null;   // clear to empty, so the outline can find the sky
+    gl.setRenderTarget(kit.rt);
+    gl.setClearColor(0x000000, 0);
+    gl.render(this.scene, this.cam);
+    this.scene.background = bg;
+    gl.setRenderTarget(null);
+    gl.render(this.pxScene, this.pxCam);
+  }
+  /** Everything that moves on its own stops casting into the (frozen) sun shadow map; reset() brings the casts back. */
+  quietShadows() {
+    const off = (o) => o.traverse((m) => { m.castShadow = false; });
+    for (const cv of this.chars.values()) off(cv.root);
+    for (const o of this.trash.values()) off(o);
+    for (const v of this.furn.values()) for (const it of v.items.values()) off(it);
+    if (this.door) off(this.door);
   }
 
   // ------------------------------------------------------------------ setup
@@ -346,7 +452,9 @@ export class Renderer {
   resize() {
     const r = this.canvas.getBoundingClientRect();
     this.dpr = Math.min(this.lowPower ? 1.5 : 2, window.devicePixelRatio || 1);
-    this.gl.setPixelRatio(this.dpr);
+    // pixel art: the canvas itself is the low-res picture, 1/PIXEL of the smooth one in device pixels (as the preview's
+    // 1080-wide frame), and CSS scales it up with image-rendering: pixelated; the overlay keeps the full resolution
+    this.gl.setPixelRatio(this.pixelArt ? this.dpr / PIXEL : this.dpr);
     this.gl.setSize(r.width, r.height, false);
     this.overlay.width = Math.round(r.width * this.dpr);
     this.overlay.height = Math.round(r.height * this.dpr);
@@ -361,7 +469,7 @@ export class Renderer {
     const c = g.camera;
     c.update(realDt);
     this.syncCamera();
-    if (this.roomSize !== g.world.size) { this.buildRoom(g.world.size); g.camera.setRoom(g.world.size); }
+    if (this.roomSize !== g.world.size) { this.buildRoom(g.world.size); g.camera.setRoom(g.world.size); this.shadowDirty = true; }
     this.updateLighting(realDt);
     this.syncFloors();
     this.syncWalls(realDt);
@@ -376,7 +484,7 @@ export class Renderer {
     this.steam.update(realDt);
     this.syncBuild();
     this.syncDebug();
-    this.gl.render(this.scene, this.cam);
+    this.drawScene();
     this.drawOverlay();
   }
 
@@ -398,7 +506,9 @@ export class Renderer {
     const sky = hexMix(this.env.background || '#bfe3f2', '#f7c7a5', eve).lerp(new THREE.Color('#44507e'), night);
     this.scene.background.copy(sky); this.scene.fog.color.copy(sky);
     const cx = n / 2, cz = n / 2;
-    this.sun.position.set(cx - 22, 34 - t * 6, cz + 12 - t * 16);
+    tmpV.set(cx - 22, 34 - t * 6, cz + 12 - t * 16);
+    if (!this.pixelArt) this.sun.position.copy(tmpV);
+    else if (this.shadowDirty || tmpV.distanceTo(this.sun.position) > SUN_STEP) { this.sun.position.copy(tmpV); this.shadowDirty = true; }
     this.sun.target.position.set(cx, 0, cz);
     const r = n / 2 + 16;
     const sc = this.sun.shadow.camera;
@@ -435,6 +545,7 @@ export class Renderer {
       const o = s.userData.outward;
       const front = o.x * v.x + o.z * v.z > 0.25; // wall stands between the camera and the room
       const target = front ? 0.16 : 1;
+      if (Math.abs(target - s.userData.h) > 1e-4) this.shadowDirty = true;   // a wall folding down moves its shadow
       s.userData.h += (target - s.userData.h) * Math.min(1, dt * 6);
       s.scale.y = s.userData.h;
       if (s.userData.deco) s.userData.deco.visible = s.userData.h > 0.92;
@@ -471,10 +582,12 @@ export class Renderer {
         this.scene.add(obj);
         v = { obj, key, f, items: new Map(), base: obj.position.clone() };
         this.furn.set(f.uid, v);
+        this.shadowDirty = true;
       }
       const o = v.obj;
       // placement bounce & broken wobble
       const b = f.bounce || 0;
+      if (b > 0) this.shadowDirty = true;
       o.scale.set(1 + Math.sin(b * Math.PI * 3) * 0.06 * b, 1 - Math.sin(b * Math.PI * 3) * 0.08 * b, 1 + Math.sin(b * Math.PI * 3) * 0.06 * b);
       o.position.x = v.base.x + (f.broken ? Math.sin(this.time * 30) * (Math.sin(this.time * 2) > 0.6 ? 0.04 : 0) : 0);
       if (f.broken && Math.random() < dt * 3) g.fx.puff(g.at(f.x + f.fp[0] / 2, f.y + f.fp[1] / 2, 80), '#b9b2ad');
@@ -558,7 +671,7 @@ export class Renderer {
       }
       if (f.kind === 'arcade') o.traverse((m) => { if (m.userData && m.userData.glow) m.material.color.setHSL((this.time * 0.15) % 1, 0.6, f.broken ? 0.25 : 0.72); });
     }
-    for (const [uid, v] of this.furn) if (!live.has(uid)) { this.scene.remove(v.obj); this.furn.delete(uid); }
+    for (const [uid, v] of this.furn) if (!live.has(uid)) { this.scene.remove(v.obj); this.furn.delete(uid); this.shadowDirty = true; }
   }
 
   dishModel(dishId) { return dishById[dishId] ? dishById[dishId].asset : 'm_plate'; }
@@ -801,6 +914,7 @@ export class Renderer {
     const key = x && x.size > g.world.size ? g.world.size + '>' + x.size : '';
     if (key === this.siteKey) return;
     this.siteKey = key;
+    this.shadowDirty = true;
     if (this.site) { this.scene.remove(this.site); this.site.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); this.site = null; }
     if (!key) return;
     const W0 = g.world.size * TILE, W1 = x.size * TILE, grp = new THREE.Group();

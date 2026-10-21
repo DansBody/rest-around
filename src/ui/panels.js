@@ -383,6 +383,8 @@ function renderSettings(ui, body) {
     toggle(t('Sound effects'), 'sound', () => { audio.enabled = s.settings.sound; audio.unlock(); g.sfx('click'); if (!s.settings.sound) audio.stopMusic(); else audio.setMusic(s.settings.music !== false); }),
     toggle(t('Café music'), 'music', () => { audio.unlock(); audio.setMusic(!!s.settings.music && s.settings.sound); }),
     h('div.orow', h('span', t('Volume')), vol),
+    h('div.section-title', t('Display')),
+    toggle(t('Pixel art'), 'pixel', () => g.renderer.setPixelArt(!!s.settings.pixel)),
     h('div.section-title', t('Game')),
     toggle(t('Auto-restock ingredients'), 'autoRestock', () => { if (s.settings.autoRestock) g.eco.autoRestock(); }),
     h('div.orow', h('span', t('Autosave')), h('span.muted.autosave', autosaveText(g))),
