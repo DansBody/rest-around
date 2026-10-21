@@ -6,24 +6,19 @@
 import { h } from '../util.js';
 
 const FRAME = 1000 / 30;   // one frame of the reference video
+// openings play at twice the reference's pace (the user wants time to see them): about a second each
+const PACE = 2, F = FRAME * PACE;
 const quiet = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const EASE = 'cubic-bezier(.62,.02,.34,1)';
 const OUT = 'cubic-bezier(.2,.8,.3,1)', IN = 'cubic-bezier(.6,0,.8,.3)';
-
-/** A ragged edge for the torn paper: a polygon down the right side and back up the left, `n` teeth each. */
-function torn(n = 14) {
-  const pts = [];
-  for (let i = 0; i <= n; i++) pts.push(`${92 + Math.random() * 8}% ${(i / n) * 100}%`);
-  for (let i = n; i >= 0; i--) pts.push(`${Math.random() * 8}% ${(i / n) * 100}%`);
-  return `polygon(${pts.join(',')})`;
-}
 
 /** Opening `win` (its rows in `body`) with one of the café's openings, each carried by one big shape:
  *  'paper' a torn denim sheet sweeps across and the window drops in behind it;
  *  'pour'  coffee (ink, with a peach crema line) is poured in from a grey kettle until it fills the window, then drains
  *          away downwards and leaves the window behind;
  *  'oven'  a grey loaf comes up out of the window's foot and the window rises behind it like dough, then the loaf slides off;
- *  'latte' an espresso spreads over the window, a foam heart is poured into it and opens up onto the window;
+ *  'latte' a real latte (grey photo) swirls open over the window, then its foam heart opens onto the window and the
+ *          view dives into it;
  *  'beans' a curtain of grey coffee beans rains down through the window, which is there above the curtain;
  *  'steam' puffs of steam roll up over the window and drift apart.
  *  The title slides in last and the rows come in one frame apart, whatever the opening. */
@@ -35,22 +30,24 @@ export function wipeIn(win, body, kind = 'paper') {
   const box = { left: r.left - hr.left, top: r.top - hr.top, width: r.width, height: r.height };
   const done = (OPENINGS[kind] || OPENINGS.paper)(win, host, box);
   const title = win.querySelector('.panel-head h2');
-  if (title) title.animate([{ translate: '-40px 0' }, { translate: '3px 0', offset: 0.7 }, { translate: '0 0' }], { duration: 6 * FRAME, delay: 9 * FRAME, easing: 'ease-out', fill: 'backwards' });
-  // rows one frame apart, from the left, a little past their place and back
+  if (title) title.animate([{ translate: '-40px 0' }, { translate: '3px 0', offset: 0.7 }, { translate: '0 0' }], { duration: 8 * FRAME, delay: 9 * F, easing: 'ease-out', fill: 'backwards' });
+  // rows a frame and a half apart once the window is mostly there, from the left, a little past their place and back
   [...(body || win).children].slice(0, 14).forEach((row, i) => row.animate(
     [{ transform: 'translateX(-110%)' }, { transform: 'translateX(5px)', offset: 0.75 }, { transform: 'none' }],
-    { duration: 6 * FRAME, delay: (7 + i) * FRAME, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }));
+    { duration: 9 * FRAME, delay: 8 * F + i * 1.5 * FRAME, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }));
   return done;
 }
 
 const px = (b) => ({ left: b.left + 'px', top: b.top + 'px', width: b.width + 'px', height: b.height + 'px' });
 const gone = (an, el) => an.finished.catch(() => {}).then(() => el.remove());
 let uid = 0;
+// the foam heart in latte.webp, as fractions of the photo: the point the heart path is drawn round, and its width
+const LATTE = { x: 0.502, y: 0.515, w: 0.53 };
 
 const OPENINGS = {
   paper(win, host, b) {
-    const W = b.width, PW = Math.max(110, Math.min(260, W * 0.6)), D = 13 * FRAME;
-    const paper = h('div.tr-paper', { 'aria-hidden': 'true', style: { left: b.left + 'px', top: b.top - 14 + 'px', width: PW + 'px', height: b.height + 28 + 'px', clipPath: torn() } });
+    const W = b.width, PW = Math.max(110, Math.min(260, W * 0.6)), D = 13 * F;
+    const paper = h('div.tr-paper', { 'aria-hidden': 'true', style: { left: b.left + 'px', top: b.top - 14 + 'px', width: PW + 'px', height: b.height + 28 + 'px' } });   // a real torn strip, dyed denim (os.css)
     host.appendChild(paper);
     const span = W + PW + 40, e0 = (PW + 20) / span, e1 = (W + PW + 20) / span;
     const sweep = paper.animate([{ transform: `translateX(${-PW - 20}px) rotate(-2deg)` }, { transform: `translateX(${W + 20}px) rotate(-2deg)` }], { duration: D, easing: EASE });
@@ -58,11 +55,11 @@ const OPENINGS = {
     win.animate([{ clipPath: 'inset(-40px 100% -40px 0)' }, { clipPath: 'inset(-40px 100% -40px 0)', offset: e0 }, { clipPath: 'inset(-40px 0 -40px 0)', offset: e1 }, { clipPath: 'inset(-40px 0 -40px 0)' }],
       { duration: D, easing: EASE });
     win.animate([{ transform: 'translateY(-10px) rotate(-1.4deg) scale(1.025)' }, { transform: 'translateY(2px) rotate(.4deg)', offset: 0.6 }, { transform: 'none' }],
-      { duration: 8 * FRAME, delay: 4 * FRAME, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'backwards' });
+      { duration: 8 * F, delay: 4 * F, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'backwards' });
     return gone(sweep, paper);
   },
   pour(win, host, b) {
-    const D = 15 * FRAME, full = 0.5;   // filled at half time, drained by the end
+    const D = 15 * F, full = 0.5;   // filled at half time, drained by the end
     const cup = h('div.tr-pour', { 'aria-hidden': 'true', style: px(b) }, h('i.tr-coffee'));
     // the kettle's spout sits just over the window's middle; its stream (CSS) falls into the coffee
     const kw = Math.min(160, b.width * 0.42), kh = kw * 0.87;
@@ -78,7 +75,7 @@ const OPENINGS = {
     const fill = coffee.animate([{ transform: 'translateY(100%)' }, { transform: 'translateY(100%)', offset: 0.16, easing: 'cubic-bezier(.4,0,.6,1)' },
       { transform: 'translateY(-3%)', offset: full * 0.88, easing: 'ease-in-out' }, { transform: 'translateY(0)', offset: full },
       { transform: 'translateY(0)', offset: full + 0.06, easing: IN }, { transform: 'translateY(104%)' }], { duration: D });
-    coffee.animate([{ backgroundPositionX: '0px' }, { backgroundPositionX: '-120px' }], { duration: D, easing: 'linear' });   // the crema line rolls
+    coffee.animate([{ translate: '0 0' }, { translate: '-6px 0', offset: 0.3 }, { translate: '4px 0', offset: 0.6 }, { translate: '0 0' }], { duration: D, easing: 'ease-in-out' });   // a slosh
     kettle.animate([{ transform: 'translate(60px, -80px) rotate(14deg)', easing: OUT }, { transform: 'none', offset: 0.16 }, { transform: 'rotate(-2deg)', offset: full + 0.06, easing: IN },
       { transform: 'translate(70px, -110px) rotate(16deg)' }], { duration: D });
     // the window waits behind the full cup, then is simply there as the coffee drains off it
@@ -87,7 +84,7 @@ const OPENINGS = {
     return gone(fill, kettle);
   },
   oven(win, host, b) {
-    const D = 14 * FRAME, w = Math.min(220, b.width * 0.62);
+    const D = 14 * F, w = Math.min(220, b.width * 0.62);
     const loaf = h('i.tr-bread', { 'aria-hidden': 'true', style: { left: b.left + (b.width - w) / 2 + 'px', top: b.top + b.height - w * 0.42 + 'px', width: w + 'px', height: w * 0.56 + 'px' } });
     host.appendChild(loaf);
     // the loaf comes up out of the window's foot, hops, then slides off to the right
@@ -99,41 +96,35 @@ const OPENINGS = {
     return gone(pop, loaf);
   },
   latte(win, host, b) {
-    // an espresso spreads over the window, a foam heart is poured into it, then the heart opens as a window onto the
-    // panel and keeps growing until the coffee is gone; flecks of foam fly off its rim
-    const D = 16 * FRAME, W = b.width, H = b.height, cx = W / 2, cy = H * 0.44, s = Math.min(W, H) * 0.42, id = 'tr-latte-' + (++uid);
-    const R = Math.hypot(W, H), big = (R * 2.6) / s;   // heart scale that clears the whole window
+    // a real latte (grey halftone photo, assets/ui/collage/latte.webp) swirls open over the window and holds a beat to
+    // show its heart; then the heart itself opens onto the window and the view dives into it until the coffee is gone
+    const D = 18 * F, W = b.width, H = b.height, id = 'tr-latte-' + (++uid);
+    const P = Math.max(W, H) * 1.2, x0 = (W - P) / 2, y0 = H * 0.42 - P / 2;   // the photo, square, covering the window
+    const hx = x0 + LATTE.x * P, hy = y0 + LATTE.y * P, hw = LATTE.w * P;      // its heart, in the window's pixels
+    const R = Math.hypot(Math.max(hx, W - hx), Math.max(hy, H - hy)), sh = (hw / 1.2) * 0.9;   // the hole sits just inside the foam
+    const big = (R * 2.4) / (hw * 0.9);
     const HEART = 'M0 .42C-.62 .02-.58-.58 0-.26C.58-.58.62 .02 0 .42Z';
-    const at = (k) => `translate(${cx}px, ${cy}px) scale(${k * s})`;   // k in heart sizes
-    const flecks = Array.from({ length: 10 }, (_, i) => {
-      const a = (i / 10) * Math.PI * 2 + Math.random() * 0.4;
-      return `<circle class="fleck" cx="${cx}" cy="${cy}" r="${3 + Math.random() * 5}" data-dx="${Math.cos(a) * (s * 0.9 + Math.random() * s)}" data-dy="${Math.sin(a) * (s * 0.9 + Math.random() * s)}"/>`;
-    }).join('');
     const svg = h('div.tr-latte', { 'aria-hidden': 'true', style: px(b), html:
       `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">` +
-      `<rect width="${W}" height="${H}" fill="#fff"/><path class="hole" d="${HEART}" fill="#000"/></mask></defs>` +
-      `<rect class="espresso" width="${W}" height="${H}" mask="url(#${id})"/>` +
-      // the foam is cut by the same heart-shaped hole (masked on a group, so the mask stays in the picture's space), so
-      // once the hole opens the foam is only a rim round it
-      `<g mask="url(#${id})"><path class="foam" d="${HEART}"/><path class="pull" pathLength="1" d="M${cx} ${cy - s * 0.5}L${cx} ${cy + s * 0.5}"/></g>${flecks}</svg>` });
+      `<circle class="spread" cx="${hx}" cy="${hy}" r="${R}" fill="#fff"/><g class="zoom"><path class="hole" d="${HEART}" fill="#000"/></g></mask></defs>` +
+      `<g mask="url(#${id})"><g class="zoom"><g class="swirl"><image href="assets/ui/collage/latte.webp" x="${x0}" y="${y0}" width="${P}" height="${P}"/></g></g></g></svg>` });
     host.appendChild(svg);
-    const q = (sel) => svg.querySelector(sel);
-    const cup = q('.espresso').animate([{ clipPath: `circle(0px at ${cx}px ${cy}px)`, easing: OUT }, { clipPath: `circle(${R}px at ${cx}px ${cy}px)`, offset: 0.22 }, { clipPath: `circle(${R}px at ${cx}px ${cy}px)` }], { duration: D });
-    // the pour: the foam swells in two pulses, the pull-through draws down it, then it opens with the hole
-    q('.foam').animate([{ transform: at(0) }, { transform: at(0), offset: 0.16, easing: OUT }, { transform: at(0.55), offset: 0.3, easing: OUT }, { transform: at(1), offset: 0.44 },
-      { transform: at(1), offset: 0.52, easing: IN }, { transform: at(big * 1.1) }], { duration: D });
-    q('.pull').animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 1, offset: 0.4 }, { strokeDashoffset: 0, offset: 0.5 }, { strokeDashoffset: 0, offset: 0.55 }, { strokeDashoffset: -1 }], { duration: D });
-    q('.hole').animate([{ transform: at(0) }, { transform: at(0), offset: 0.54, easing: IN }, { transform: at(big) }], { duration: D });
-    for (const f of svg.querySelectorAll('.fleck')) {
-      f.animate([{ transform: 'scale(0)' }, { transform: 'scale(0)', offset: 0.52, easing: OUT }, { transform: `translate(${f.dataset.dx}px, ${f.dataset.dy}px) scale(1)`, offset: 0.85 },
-        { transform: `translate(${f.dataset.dx * 1.2}px, ${f.dataset.dy * 1.2}px) scale(0)` }], { duration: D });
-    }
-    win.animate([{ visibility: 'hidden' }, { visibility: 'hidden', offset: 0.22 }, { visibility: 'visible', offset: 0.22 }, { visibility: 'visible' }], { duration: D });
-    return gone(cup, svg);
+    for (const g of svg.querySelectorAll('.zoom, .swirl')) g.style.transformOrigin = `${hx}px ${hy}px`;
+    const all = (sel, frames, timing) => [...svg.querySelectorAll(sel)].map((el) => el.animate(frames, { duration: D, ...timing }));
+    // swirl open: the cup's surface spreads from the heart, turning as it comes
+    const spread = all('.spread', [{ transform: 'scale(0)', easing: OUT }, { transform: 'scale(1)', offset: 0.3 }, { transform: 'scale(1)' }])[0];
+    all('.swirl', [{ transform: 'rotate(-80deg) scale(1.25)', easing: OUT }, { transform: 'rotate(0) scale(1)', offset: 0.34 }, { transform: 'rotate(0) scale(1)' }]);
+    // the beat to look at it, then the heart opens (the hole stays just inside the foam heart of the photo)
+    const hole = (k) => `translate(${hx}px, ${hy}px) scale(${k * sh})`;
+    all('.hole', [{ transform: hole(0) }, { transform: hole(0), offset: 0.56, easing: OUT }, { transform: hole(1), offset: 0.66 }, { transform: hole(1) }]);
+    // and the view dives into the heart, the photo and its hole together
+    all('.zoom', [{ transform: 'scale(1)' }, { transform: 'scale(1)', offset: 0.62, easing: IN }, { transform: `scale(${big})` }]);
+    win.animate([{ visibility: 'hidden' }, { visibility: 'hidden', offset: 0.3 }, { visibility: 'visible', offset: 0.3 }, { visibility: 'visible' }], { duration: D });
+    return gone(spread, svg);
   },
   beans(win, host, b) {
     // a curtain of grey beans rains down through the window; the window is there above the curtain, the beans fall on out
-    const D = 16 * FRAME, W = b.width, H = b.height, n = Math.round(W / 12), t0 = 0.08, t1 = 0.78;
+    const D = 16 * F, W = b.width, H = b.height, n = Math.round(W / 12), t0 = 0.08, t1 = 0.78;
     const rain = h('div.tr-beans', { 'aria-hidden': 'true', style: px(b) });
     host.appendChild(rain);
     const ends = [];
@@ -151,15 +142,15 @@ const OPENINGS = {
   },
   steam(win, host, b) {
     // puffs of steam roll up from the window's foot until they cover it, then drift apart upwards and shrink away
-    const D = 16 * FRAME, W = b.width, H = b.height, c = W / 2.6, cols = 3, rows = Math.ceil(H / c) + 1, full = 0.46;
+    const D = 16 * F, W = b.width, H = b.height, c = W / 2.6, cols = 3, rows = Math.ceil(H / c) + 1, full = 0.46;
     const cloud = h('div.tr-steam', { 'aria-hidden': 'true', style: px(b) });
     host.appendChild(cloud);
     const all = [];
     for (let row = rows - 1; row >= 0; row--) {
       for (let col = 0; col < cols; col++) {
-        const d = c * (1.3 + Math.random() * 0.3), gx = (col + 0.5) * (W / cols) + (Math.random() - 0.5) * 20, gy = row * c + (Math.random() - 0.5) * 20;
+        const d = c * (1.7 + Math.random() * 0.4), gx = (col + 0.5) * (W / cols) + (Math.random() - 0.5) * 20, gy = row * c + (Math.random() - 0.5) * 20;
         const late = ((rows - 1 - row) / rows) * 0.12;   // the lower rows come first
-        const puff = h('i.tr-puff', { style: { left: gx - d / 2 + 'px', top: gy - d / 2 + 'px', width: d + 'px', height: d + 'px' } });
+        const puff = h('i.tr-puff', { style: { left: gx - d / 2 + 'px', top: gy - d / 2 + 'px', width: d + 'px', height: d + 'px', rotate: Math.random() * 360 + 'deg', scale: Math.random() < 0.5 ? '-1 1' : '1 1' } });
         cloud.appendChild(puff);
         const from = `translate(${(W / 2 - gx) * 0.3}px, ${H - gy + d * 0.4}px) scale(.2)`, drift = `translate(${(gx - W / 2) * 0.7}px, ${-H * 0.45 - Math.random() * 60}px) scale(0)`;
         all.push(puff.animate([{ transform: from }, { transform: from, offset: late, easing: OUT }, { transform: 'translate(0, 0) scale(1)', offset: full },
@@ -176,7 +167,7 @@ export function wipeOut(win) {
   if (quiet() || !win.isConnected || !win.classList.contains('open')) return Promise.resolve();
   const host = win.parentNode, hr = host.getBoundingClientRect(), r = win.getBoundingClientRect();
   if (!r.width) return Promise.resolve();
-  const N = 4, D = 7 * FRAME, done = [];
+  const N = 4, D = 10 * FRAME, done = [];
   for (let i = 0; i < N; i++) {
     const a = (i / N) * 100, b = 100 - ((i + 1) / N) * 100, dx = (i % 2 ? 1 : -1) * (24 + Math.random() * 40);
     const s = win.cloneNode(true);
@@ -192,16 +183,18 @@ export function wipeOut(win) {
   return Promise.all(done);
 }
 
-/** An event (P3R's iris, in coral): an ink circle grows from (x, y) in `host` until it covers the screen, then a hole
+/** An event (P3R's iris, in coral): a real ink blot, dyed coral, grows from (x, y) in `host` until it covers the screen, then a hole
  *  bursts open from the same point and throws the coral out as a ring. 14 frames. The hole needs `--hole` registered
  *  with @property (os.css); without it the coral simply drops away at the half. */
 export function iris(host, x, y) {
   if (quiet() || !host.isConnected) return Promise.resolve();
   const r = host.getBoundingClientRect(), R = Math.hypot(Math.max(x, r.width - x), Math.max(y, r.height - y)) + 24;
-  const at = `${Math.round(x)}px ${Math.round(y)}px`, D = 14 * FRAME;
-  const el = h('div.tr-iris', { 'aria-hidden': 'true', style: { '--at': at } });
+  const at = `${Math.round(x)}px ${Math.round(y)}px`, D = 14 * F;
+  const blot = h('i.tr-blot', { style: { left: x - R + 'px', top: y - R + 'px', width: 2 * R + 'px', height: 2 * R + 'px', rotate: Math.random() * 360 + 'deg' } });
+  const el = h('div.tr-iris', { 'aria-hidden': 'true', style: { '--at': at } }, blot);
   host.appendChild(el);
-  el.animate([{ clipPath: `circle(0px at ${at})` }, { clipPath: `circle(${R}px at ${at})`, offset: 0.45 }, { clipPath: `circle(${R}px at ${at})` }], { duration: D, easing: 'cubic-bezier(.55,0,.25,1)' });
+  // the blot spreads past the screen's corners (its ragged rim and splatter lead the way)
+  blot.animate([{ transform: 'scale(0)' }, { transform: 'scale(1.5)', offset: 0.45 }, { transform: 'scale(1.5)' }], { duration: D, easing: 'cubic-bezier(.55,0,.25,1)' });
   const out = el.animate([{ '--hole': '0px' }, { '--hole': '0px', offset: 0.5 }, { '--hole': `${R}px` }], { duration: D, easing: 'cubic-bezier(.5,0,.3,1)' });
   return out.finished.catch(() => {}).then(() => el.remove());
 }
@@ -212,7 +205,7 @@ export function slamFrom(el, x, y) {
   const r = el.getBoundingClientRect(), u = (el.closest('#ui') || document.body).getBoundingClientRect();
   const dx = x - (r.left - u.left + r.width / 2), dy = y - (r.top - u.top + r.height / 2);
   el.animate([{ transform: `translate(${dx}px, ${dy}px) scale(.2) rotate(-14deg)` }, { transform: 'translate(0, 0) scale(1.08) rotate(3deg)', offset: 0.7 }, { transform: 'none' }],
-    { duration: 9 * FRAME, delay: 6 * FRAME, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' });
+    { duration: 9 * F, delay: 6 * F, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' });
 }
 
 /** A Control Strip module pressed: its pixel icon hops. */

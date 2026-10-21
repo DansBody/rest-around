@@ -3,6 +3,8 @@
 #   python tools/collage_cutout.py hand_cup.png assets/ui/collage/hand_cup.webp 420 246 7 5
 #   python tools/collage_cutout.py bust.png assets/ui/collage/bust.webp 440 244 7 5
 #   python tools/collage_cutout.py moka.png assets/ui/collage/moka.webp 300 240 6 4
+# A threshold of 0 keeps the whole picture (no cut-out, no edge), for full-bleed photos:
+#   python tools/collage_cutout.py latte.png assets/ui/collage/latte.webp 640 0 0 4
 import sys
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
@@ -17,7 +19,7 @@ im = im.resize((W, round(im.height * W / im.width)), Image.LANCZOS)
 g = np.asarray(im).astype(np.float32)
 
 # background = near-white pixels connected to the border (flood fill on a padded mask)
-bgc = g >= thr
+bgc = g >= thr if thr > 0 else np.zeros(g.shape, bool)
 from collections import deque
 h, w = bgc.shape
 seen = np.zeros_like(bgc)
@@ -55,10 +57,13 @@ out = tone * (1 - 0.55 * screen)                            # dots printed over 
 grey = (out * 255).astype(np.uint8)
 
 # white sticker edge round the object
-edge_m = Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(edge * 2 + 1)).filter(ImageFilter.GaussianBlur(0.8))
+edge_m = Image.fromarray((m * 255).astype(np.uint8))
+if edge > 0:   # (a 1-px rank filter crashes Pillow)
+    edge_m = edge_m.filter(ImageFilter.MaxFilter(edge * 2 + 1)).filter(ImageFilter.GaussianBlur(0.8))
 alpha = np.asarray(edge_m)
 rgb = np.where(m[..., None], np.repeat(grey[..., None], 3, 2), 255).astype(np.uint8)
 res = Image.fromarray(np.dstack([rgb, alpha]), 'RGBA')
-bb = res.getbbox(); res = res.crop(bb)
+if thr > 0:
+    bb = res.getbbox(); res = res.crop(bb)
 res.save(dst, 'WEBP', quality=82, method=6)
 print(dst, res.size)
