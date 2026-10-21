@@ -175,6 +175,32 @@ The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in t
    Render the new character next to the others, front and back, plus a few clips (Walk, Cheer, Sit,
    Nap, Talk, Carry). Check that nothing pokes out or tears (collars, wings, bows).
 
+### Pixel sprites (pixel-art mode)
+
+With Settings → Display → Pixel art on, a character whose manifest entry has a `sprite` field is drawn as a
+baked 64-px sprite on a card (`src/spriteview.js`) instead of its 3D model; the rest stay 3D. Only
+**Mocha Latte** has one so far (`assets/sprites/mochalatte/`). To bake one (or re-bake after changing a
+model or a clip), from the repo root:
+
+```
+node tools/sprites/bake.mjs <id>
+```
+
+It needs Node, Chrome or Edge (or `CHROME=<path>`), and Python 3 with numpy, scipy and Pillow; it takes
+about 20 seconds. `tools/sprites/bake.html` renders every clip the manifest's `animations` map uses, in two
+directions (`f` front-diagonal, `b` back-diagonal; the game mirrors them for the left), at 10× on the fixed
+grid of `tools/sprites/schedule.json` (64-px cell, 24 px per unit, feet on row 58, 18° elevation, body
+turned 0.5 rad, toon shading under the preview's lights and Neutral tone mapping). `tools/sprites/pixelize.py`
+turns the frames into pixels (one 11-colour k-means palette per character, majority vote per block, 1-px
+`#1F2A4A` outline, no white edge) and writes `<id>.png` (indexed, every frame in a 16-wide grid) and
+`<id>.json`: the grid, the palette, and per clip its frame count, `fps` (frames over the clip's length, so it
+plays at the 3D speed), the frame rects per direction and per-frame anchors measured from the bones: `head`,
+`hand` and `tray` as `[x, y, d]` (sprite px in the cell, and world units out toward the camera; negative is
+behind the body) and `top`, the first filled row, for bubbles. Frame counts per clip are in `schedule.json`.
+`--keep` leaves the raw frames and a 4× `<id>_preview.png` in `%TEMP%/refillit-bake/`; opening
+`tools/sprites/bake.html?c=<id>` from the dev server shows the raw frames. Then add
+`"sprite": "sprites/<id>/<id>.json"` to the character's manifest entry.
+
 ## Conventions for models
 
 | Rule | Value |

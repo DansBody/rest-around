@@ -1,0 +1,97 @@
+<!doctype html>
+<!-- Sprite bake, render half (design/art-direction/PLAN.md, step 2): one character's clips from its own glTF, every
+     frame on the fixed ortho grid of schedule.json at SUPER× size, lit and tone-mapped as the y2k preview settled
+     (design/y2k-preview/src/Bake.tsx). Bone anchors (head, right hand, tray) are measured per frame on the same grid.
+     Run by tools/sprites/bake.mjs (headless, posts the frames back); opened by hand it just shows them:
+       tools/sprites/bake.html?c=mochalatte -->
+<meta charset="utf-8">
+<title>Sprite bake</title>
+<style>html,body{margin:0;background:#f4efe6;font:12px monospace}img{width:96px;image-rendering:pixelated;border:1px solid #ddd}</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three/three.module.min.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../../vendor/three/addons/loaders/GLTFLoader.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('c') || 'mochalatte';
+const S = await (await fetch('schedule.json')).json();
+const manifest = await (await fetch('../../assets/manifest.json')).json();
+const def = manifest.models.find((m) => m.id === id);
+if (!def) throw new Error('no model ' + id);
+const gltf = await new GLTFLoader().loadAsync('../../assets/' + def.file);
+
+const size = S.canvas * S.super;
+const gl = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+gl.setPixelRatio(1);
+gl.setSize(size, size, false);
+gl.outputColorSpace = THREE.SRGBColorSpace;
+gl.toneMapping = THREE.NeutralToneMapping;   // as the preview: the colours the palette was picked from
+gl.setClearColor(0x000000, 0);
+document.body.appendChild(gl.domElement);
+
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight('#FFF8EC', '#B7A9C9', 1.7));
+const sun = new THREE.DirectionalLight('#ffffff', 2.0); sun.position.set(-3, 6, 6); scene.add(sun);
+
+// fixed grid: S.ppu sprite px per world unit, the feet (origin) on row S.ground
+const e = S.elev * Math.PI / 180;
+const cam = new THREE.OrthographicCamera(-S.canvas / 2 / S.ppu, S.canvas / 2 / S.ppu, S.ground / S.ppu, -(S.canvas - S.ground) / S.ppu, 0.1, 50);
+cam.position.set(0, 10 * Math.sin(e), 10 * Math.cos(e));
+cam.lookAt(0, 0, 0);
+cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+
+// three flat steps of light; the cool tint of the shadows comes from the hemisphere's ground colour
+const ramp = new THREE.DataTexture(new Uint8Array([120, 120, 120, 255, 205, 205, 205, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
+ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
+const root = gltf.scene;
+root.traverse((o) => {
+  if (!o.isMesh) return;
+  o.material = new THREE.MeshToonMaterial({ map: o.material.map, color: o.material.color, gradientMap: ramp });
+});
+if (def.scale) root.scale.setScalar(def.scale);
+const holder = new THREE.Group(); holder.add(root); scene.add(holder);
+const mixer = new THREE.AnimationMixer(root);
+const bone = (n) => root.getObjectByName(n);
+const head = bone(def.head || 'head'), hand = bone(def.hand || 'handslot.r');
+const trayPos = new THREE.Vector3(...(def.trayPos || [0, 1.05, 0.55]));
+
+// the clips the game plays for this character, in schedule order (any extra ones get 6 frames)
+const used = new Set(Object.values(def.animations || {}));
+const names = [...Object.keys(S.clips).filter((c) => used.has(c)), ...[...used].filter((c) => !(c in S.clips))];
+const clips = names.map((n) => gltf.animations.find((a) => a.name === n)).filter(Boolean);
+
+// an anchor: [x, y] in sprite px within the cell, and how far it stands out toward the camera from the feet (world
+// units, negative = behind the body), so the game can put a held thing in front of the card or behind it
+const v = new THREE.Vector3(), feet = cam.position.length();
+const px = (w) => {
+  const d = v.copy(w).applyMatrix4(cam.matrixWorldInverse).z + feet;
+  v.copy(w).project(cam);
+  return [+((v.x + 1) / 2 * S.canvas).toFixed(2), +((1 - v.y) / 2 * S.canvas).toFixed(2), +d.toFixed(3)];
+};
+const cells = [];
+for (const dir of S.dirs) for (const clip of clips) {
+  const n = S.clips[clip.name] || 6;
+  for (let k = 0; k < n; k++) {
+    holder.rotation.y = dir === 'f' ? S.turn : Math.PI - S.turn;
+    mixer.stopAllAction();
+    mixer.clipAction(clip).play();
+    mixer.setTime((k / n) * clip.duration);
+    scene.updateMatrixWorld(true);
+    const a = {};
+    if (head) { a.head = px(head.getWorldPosition(new THREE.Vector3())); a.headY = +head.getWorldPosition(new THREE.Vector3()).y.toFixed(3); }
+    if (hand) a.hand = px(hand.getWorldPosition(new THREE.Vector3()));
+    a.tray = px(trayPos.clone().applyMatrix4(holder.matrixWorld));
+    gl.render(scene, cam);
+    cells.push({ dir, clip: clip.name, k, n, duration: clip.duration, anchors: a, png: gl.domElement.toDataURL('image/png') });
+  }
+}
+
+if (q.has('post')) {
+  const r = await fetch('/bake-out', { method: 'POST', body: JSON.stringify({ id, cells }) });
+  document.title = r.ok ? 'posted' : 'post failed';
+} else {
+  gl.domElement.remove();
+  for (const c of cells) { const i = new Image(); i.src = c.png; i.title = `${c.clip}_${c.dir} ${c.k}`; document.body.appendChild(i); }
+  document.title = `baked ${cells.length}`;
+}
+</script>

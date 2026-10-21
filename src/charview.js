@@ -6,10 +6,10 @@ import { addEars } from './ears.js';
 import { shape, fitMatrix, wearBone, HAND_SLOTS } from './wear.js';
 import { WEAR_SLOTS, wearById } from './data.js';
 
-const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
-const SIT_FORWARD = 0.68;
-const SWING = 0.55;   // seconds of a bat swing (staff.swingT counts down from this)
-const GLOW = new THREE.Color('#ffc531');   // setGlow: the UI's one accent (--yellow)
+export const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
+export const SIT_FORWARD = 0.68;
+export const SWING = 0.55;   // seconds of a bat swing (staff.swingT counts down from this)
+export const GLOW = new THREE.Color('#ffc531');   // setGlow: the UI's one accent (--yellow)
 
 /** Strength of the warm rim light on characters; the renderer turns it down in the evening and at night. */
 export const RIM = { value: 0.42 };
@@ -30,7 +30,7 @@ const rimAll = (root) => root.traverse((o) => { if (o.isMesh) for (const m of []
 
 // a soft dark disc on the floor under each character (it stays on the floor when they hop or fly)
 let blob = null;
-function contactShadow() {
+export function contactShadow() {
   if (!blob) {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);

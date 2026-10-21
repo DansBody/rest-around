@@ -1,0 +1,29 @@
+{
+  "canvas": 64,
+  "ppu": 24,
+  "ground": 58,
+  "elev": 18,
+  "turn": 0.5,
+  "super": 10,
+  "colors": 11,
+  "ink": "#1F2A4A",
+  "cols": 16,
+  "dirs": ["f", "b"],
+  "clips": {
+    "Idle": 8,
+    "Walk": 8,
+    "Carry": 8,
+    "Sit": 4,
+    "Eat": 6,
+    "Wait": 6,
+    "Work": 8,
+    "Talk": 6,
+    "Sweep": 8,
+    "Shake": 6,
+    "Repair": 6,
+    "Nap": 4,
+    "Cheer": 8,
+    "Hit": 6,
+    "Pickup": 6
+  }
+}

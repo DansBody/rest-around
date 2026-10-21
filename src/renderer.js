@@ -4,6 +4,7 @@
 import { THREE, models, TILE } from './models.js';
 import { assets } from './assets.js';
 import { CharacterView, RIM } from './charview.js';
+import { SpriteView, SPRITE_LIGHT, spriteSheet } from './spriteview.js';
 import { AbilityFx } from './abilityfx.js';
 import { Steam } from './steam.js';
 import { DOOR_Y, World } from './world.js';
@@ -19,11 +20,13 @@ const tmpHead = new THREE.Vector3();
 const tmpSize = new THREE.Vector2();
 const tmpColor = new THREE.Color();
 const FOCUS_COLOR = '#ffc531';   // the UI's one accent (--yellow)
-// pixel-art mode (design/art-direction/PLAN.md, step 1): the scene is drawn at 1/PIXEL of the view in device px and
-// blown up with nearest sampling, with a 1-px INK outline round everything
-const PIXEL = 2.4;
+// pixel-art mode (design/art-direction/PLAN.md, steps 1 and 3): the scene is drawn at PPU pixels per world unit where
+// the camera looks (the baked sprites' grid, so their pixels and the scene's are one size) and blown up with nearest
+// sampling, with a 1-px INK outline round everything
+const PPU = 24;
 const INK = '#1F2A4A';
 const SUN_STEP = 0.25;   // with the shadow map frozen, the sun only moves (and redraws its shadows) in steps this big
+const SPRITE_NOON = new THREE.Color('#fff6e8').multiplyScalar(0.84).add(new THREE.Color('#fff4e2').multiplyScalar(3.05 * 0.4));   // updateLighting's sky + sun at noon
 
 function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
 /** A little painted sign (shop sign, OPEN plaque) as a texture. */
@@ -130,8 +133,11 @@ export class Renderer {
             float dn = lin(texture2D(tDepth, vUv + o[i]).x);
             if (cn.a < 0.5 || dn - d > 0.006 * d + 0.15) edge = 1.0;
           }
-          gl_FragColor = vec4(mix(c.rgb, ink, edge), 1.0);
+          vec3 rgb = mix(c.rgb, ink, edge);
+          gl_FragColor = vec4(rgb, 1.0);
           #include <tonemapping_fragment>
+          // a sprite card (src/spriteview.js, alpha 0.7) was tone mapped when it was baked: its palette shows as it is
+          if (abs(c.a - 0.7) < 0.03) gl_FragColor.rgb = rgb;
           #include <colorspace_fragment>
         }`,
       depthTest: false,
@@ -452,9 +458,12 @@ export class Renderer {
   resize() {
     const r = this.canvas.getBoundingClientRect();
     this.dpr = Math.min(this.lowPower ? 1.5 : 2, window.devicePixelRatio || 1);
-    // pixel art: the canvas itself is the low-res picture, 1/PIXEL of the smooth one in device pixels (as the preview's
-    // 1080-wide frame), and CSS scales it up with image-rendering: pixelated; the overlay keeps the full resolution
-    this.gl.setPixelRatio(this.pixelArt ? this.dpr / PIXEL : this.dpr);
+    // pixel art: the canvas itself is the low-res picture, PPU pixels to a world unit at the look-at point (zooming in
+    // makes the pixels bigger, as in the preview), and CSS scales it up with image-rendering: pixelated; the overlay
+    // keeps the full resolution
+    const c = this.game.camera;
+    this.pxDist = c.dist;
+    this.gl.setPixelRatio(this.pixelArt ? clamp(2 * PPU * c.dist * Math.tan((c.fov * Math.PI) / 360) / Math.max(1, r.height), 0.2, this.dpr) : this.dpr);
     this.gl.setSize(r.width, r.height, false);
     this.overlay.width = Math.round(r.width * this.dpr);
     this.overlay.height = Math.round(r.height * this.dpr);
@@ -468,6 +477,9 @@ export class Renderer {
     this.time += realDt;
     const c = g.camera;
     c.update(realDt);
+    // pixel art keeps PPU at the look-at point: the canvas is resized once a zoom comes to rest (not on every frame of it)
+    if (this.pixelArt && Math.abs(c.dist - this.pxDist) > this.pxDist * 0.004 && Math.abs(c.dist - this.prevDist) < c.dist * 1e-4) this.resize();
+    this.prevDist = c.dist;
     this.syncCamera();
     if (this.roomSize !== g.world.size) { this.buildRoom(g.world.size); g.camera.setRoom(g.world.size); this.shadowDirty = true; }
     this.updateLighting(realDt);
@@ -503,6 +515,9 @@ export class Renderer {
     RIM.value = lerp(0.42, 0.3, eve) * lerp(1, 0.35, night);
     this.steam.setLight(1 - night * 0.6);
     this.hemi.color.copy(hexMix('#fff6e8', '#ffd9b5', eve).lerp(new THREE.Color('#aab8ff'), night));
+    // the sprites were baked in noon light: they take the change of the sun and the sky from noon
+    const sl = SPRITE_LIGHT.value.copy(this.hemi.color).multiplyScalar(this.hemi.intensity).add(tmpColor.copy(sunCol).multiplyScalar(this.sun.intensity * 0.4));
+    sl.r = clamp(sl.r / SPRITE_NOON.r, 0.4, 1.05); sl.g = clamp(sl.g / SPRITE_NOON.g, 0.4, 1.05); sl.b = clamp(sl.b / SPRITE_NOON.b, 0.4, 1.05);
     const sky = hexMix(this.env.background || '#bfe3f2', '#f7c7a5', eve).lerp(new THREE.Color('#44507e'), night);
     this.scene.background.copy(sky); this.scene.fog.color.copy(sky);
     const cx = n / 2, cz = n / 2;
@@ -699,7 +714,10 @@ export class Renderer {
     const live = new Set(list);
     for (const a of list) {
       let cv = this.chars.get(a);
-      if (!cv) { cv = new CharacterView(this.scene, a); this.chars.set(a, cv); }
+      // pixel art: a baked sprite where the character has one (loaded the first time it is wanted), else the model
+      const sprite = this.pixelArt && !!spriteSheet((a.look && a.look.model) || 'guest_b');
+      if (cv && !!cv.sprite !== sprite) { cv.dispose(this.scene); cv = null; }
+      if (!cv) { cv = sprite ? new SpriteView(this.scene, a) : new CharacterView(this.scene, a); this.chars.set(a, cv); }
       if (!a.pose) a.pose = {};
       cv.root.visible = a.visible !== false;
       cv.update(dt, g);
