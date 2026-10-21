@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Refillit 戰鬥草圖</title>
+<!-- 殺戮尖塔輕量版 × 丹寧拼貼, phone portrait (390×844). A static mock for discussion: the real sprites, the UI fonts,
+     grey halftone monsters from tools/collage_cutout.py. Served from the repo root (tools/devserver.py). -->
+<style>
+@font-face { font-family: 'Refillit Pixel'; src: url('../../assets/fonts/pixel.woff2') format('woff2'); }
+@font-face { font-family: 'Refillit LCD'; src: url('../../assets/fonts/lcd.woff2') format('woff2'); }
+@font-face { font-family: 'Refillit Type'; src: url('../../assets/fonts/mono.woff2') format('woff2'); }
+:root {
+  --denim: #3F5DAA; --denim-deep: #2A3F7A; --denim-2: #6A84C8; --coral: #E5664A; --peach: #F6CDBF;
+  --paper: #F4EFE6; --ink: #1F2A4A; --grey: #9A9590; --frame: #E6ECF5; --field: #fff;
+  --caramel: #C8894E; --wood: #B27A4A; --crema: #E2B26A;
+  --font: 'Refillit Pixel', 'Microsoft JhengHei', 'PingFang TC', monospace;
+  --lcd: 'Refillit LCD', 'Refillit Pixel', monospace;
+  --type: 'Refillit Type', 'Courier New', monospace;
+  --halftone: radial-gradient(rgba(63, 93, 170, .11) 28%, transparent 31%) 0 0 / 8px 8px;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { background: #D9DEE8; color: var(--ink); font-family: var(--font); }
+body { min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; gap: 40px; padding: 24px 16px; }
+
+/* ---------- the phone ---------- */
+.phone { position: relative; flex: none; width: 390px; height: 844px; overflow: hidden; isolation: isolate;
+  background: var(--halftone), var(--paper); box-shadow: 0 0 0 10px var(--ink), 14px 16px 0 10px rgba(31, 42, 74, .25); border-radius: 6px; }
+@media (max-width: 500px) { body { padding: 0; } .phone { width: 100vw; height: 100dvh; min-height: 700px; box-shadow: none; border-radius: 0; } .notes { display: none; } }
+.layer { position: absolute; inset: 0; pointer-events: none; }
+.plate { position: absolute; }
+
+/* ---------- the grey world: orbit lines, a disc with a white star, black × discs, glitch slices ---------- */
+.geo svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.slice { position: absolute; height: 9px; background: var(--denim); }
+
+/* ---------- top bar: commission title, route, turn ---------- */
+.top { position: absolute; left: 0; right: 0; top: 0; height: 96px; z-index: 5; }
+.back { position: absolute; left: 12px; top: 16px; width: 34px; height: 30px; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 18px;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); transform: rotate(-6deg); }
+.title { position: absolute; left: 50px; top: 10px; transform: rotate(-4deg); filter: drop-shadow(3px 3px 0 var(--ink)); }
+.title .k { display: inline-block; padding: 2px 10px; background: var(--ink); color: #fff; font-size: 11px; clip-path: polygon(0 0, 100% 0, calc(100% - 5px) 100%, 0 100%); }
+.title h1 { margin-top: -2px; padding: 5px 22px 6px 12px; background: var(--denim); color: #fff; font-size: 22px; line-height: 1.1; font-weight: 400;
+  clip-path: polygon(0 4px, 100% 0, calc(100% - 14px) 100%, 6px 100%); }
+.turn { position: absolute; right: 12px; top: 14px; padding: 2px 9px 0; background: var(--field); font: 26px/1 var(--lcd); transform: rotate(6deg);
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); box-shadow: inset 0 0 0 2px var(--ink); }
+.turn small { font: 11px var(--font); }
+.route { position: absolute; left: 58px; top: 70px; display: flex; align-items: center; gap: 0; transform: rotate(-2deg); }
+.route i { width: 18px; height: 18px; display: grid; place-items: center; font-style: normal; font-size: 10px; background: var(--field); color: var(--ink); border: 2px solid var(--ink); }
+.route i.done { background: var(--ink); color: #fff; }
+.route i.now { width: 24px; height: 24px; background: var(--denim); color: #fff; transform: rotate(8deg); font-size: 12px; }
+.route i.boss { width: 24px; height: 24px; border-radius: 50%; background: var(--grey); color: #fff; }
+.route b { width: 12px; height: 2px; background: var(--ink); }
+.route span { margin-left: 8px; font: 11px var(--type); }
+
+/* ---------- monsters: grey halftone cut-outs + geometric parts ---------- */
+.foe { position: absolute; z-index: 3; }
+.foe img { display: block; width: 100%; filter: drop-shadow(4px 5px 0 rgba(31, 42, 74, .3)); }
+.eye { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px #fff; display: grid; place-items: center; color: #fff; font: 15px/1 var(--font); }
+.intent { position: absolute; z-index: 4; white-space: nowrap; padding: 3px 10px 4px 8px; font-size: 12px; color: #fff; background: var(--ink); filter: drop-shadow(2px 2px 0 rgba(31, 42, 74, .35));
+  clip-path: polygon(0 3px, 100% 0, calc(100% - 8px) 100%, 4px 100%); }
+.intent b { font: 18px/1 var(--lcd); font-weight: 400; vertical-align: -2px; margin-left: 3px; }
+.intent.alert { background: var(--coral); }
+.intent.ghost { background: var(--field); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); font-size: 10px; opacity: .9; }
+.hp { position: absolute; z-index: 4; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.hp .n { padding: 1px 5px 0; background: var(--field); font: 16px/1 var(--lcd); box-shadow: inset 0 0 0 2px var(--ink); }
+/* 褪色條: pips that refill with the café's warm colours as the colour comes back */
+.fade { display: flex; gap: 2px; transform: skewX(-18deg); }
+.fade i { width: 9px; height: 10px; background: #fff; box-shadow: inset 0 0 0 2px var(--ink); }
+.fade i.c { background: var(--caramel); }
+.fade i.c:nth-child(3n+2) { background: var(--crema); }
+.fade i.c:nth-child(3n) { background: var(--peach); }
+.name { position: absolute; z-index: 4; white-space: nowrap; font: 11px var(--type); background: var(--paper); padding: 0 4px; }
+.badge { position: absolute; padding: 1px 5px 0; background: var(--coral); color: #fff; font: 16px/1 var(--lcd); box-shadow: 0 0 0 2px var(--ink); transform: rotate(8deg); }
+.aim { position: absolute; z-index: 4; }
+
+/* ---------- our side: the one warm place, a strip of café floor ---------- */
+.floor { position: absolute; left: -20px; right: -20px; top: 452px; height: 70px; z-index: 1;
+  background: repeating-linear-gradient(90deg, var(--wood) 0 46px, #A06C40 46px 48px), var(--wood);
+  clip-path: polygon(0 18px, 100% 0, 100% 100%, 0 calc(100% - 8px)); }
+.floor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 220, 170, .35), transparent 60%); }
+.crew { position: absolute; left: 0; right: 0; top: 356px; height: 166px; z-index: 3; }
+.mate { position: absolute; bottom: 0; }
+.mate canvas { display: block; image-rendering: pixelated; }
+.mate .tag { position: absolute; left: 50%; bottom: -12px; translate: -50% 0; white-space: nowrap; padding: 1px 6px; background: var(--ink); color: #fff; font-size: 10px; transform: rotate(-3deg); }
+.mate.cast .tag { background: var(--denim); }
+.buff { position: absolute; top: 18px; padding: 1px 4px; background: var(--field); font-size: 9px; box-shadow: inset 0 0 0 2px var(--ink); white-space: nowrap; }
+
+/* ---------- status row: team chill, foam (block), energy beans, drinks ---------- */
+.status { position: absolute; left: 0; right: 0; top: 540px; height: 46px; z-index: 5; }
+.chill { position: absolute; left: 12px; top: 4px; width: 176px; transform: rotate(-2deg); }
+.chill .lab { font-size: 11px; }
+.chill .lab b { font: 20px/1 var(--lcd); font-weight: 400; margin-left: 4px; }
+.chill .bar { position: relative; height: 12px; margin-top: 2px; background: var(--field); box-shadow: inset 0 0 0 2px var(--ink); padding: 2px; }
+.chill .bar i { display: block; height: 100%; width: 70%; background: linear-gradient(180deg, var(--denim-2) 0 40%, var(--denim) 40%); }
+.foam { position: absolute; left: 194px; top: 2px; width: 40px; height: 36px; display: grid; place-items: center; background: #fff; color: var(--ink);
+  border-radius: 50% 50% 46% 54% / 60% 60% 40% 40%; box-shadow: inset 0 0 0 2px var(--ink), 2px 2px 0 var(--ink); font: 20px/1 var(--lcd); }
+.foam small { position: absolute; bottom: -13px; padding: 0 3px; background: var(--paper); font: 9px var(--font); white-space: nowrap; }
+.drinks { position: absolute; right: 12px; top: 0; display: flex; gap: 6px; }
+.drink { position: relative; overflow: visible; width: 36px; height: 34px; background: var(--field); box-shadow: inset 0 0 0 2px var(--ink), 2px 2px 0 var(--ink); display: grid; place-items: center; transform: skewX(-6deg); }
+.drink small { position: absolute; top: 37px; padding: 0 3px; background: var(--paper); left: 50%; translate: -50% 0; font-size: 9px; white-space: nowrap; }
+
+/* ---------- the hand: three cut-paper cards ---------- */
+.hand { position: absolute; left: 0; right: 0; top: 598px; height: 186px; z-index: 6; }
+.energy { position: absolute; left: 10px; top: 54px; width: 62px; height: 62px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center;
+  box-shadow: 3px 3px 0 var(--denim); z-index: 2; }
+.energy b { font: 30px/1 var(--lcd); font-weight: 400; margin-top: 6px; }
+.energy .beans { position: absolute; top: -12px; display: flex; gap: 2px; }
+.energy small { position: absolute; bottom: 7px; font-size: 9px; }
+.card { position: absolute; top: 18px; width: 98px; height: 150px; isolation: isolate; padding: 30px 8px 8px; }
+.card::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--halftone), var(--paper); box-shadow: inset 0 0 0 2px var(--ink);
+  clip-path: polygon(0 8px, 100% 0, 100% calc(100% - 10px), calc(100% - 12px) 100%, 0 100%); }
+.card::after { content: ''; position: absolute; inset: 0; z-index: -2; background: var(--ink); translate: 4px 5px; clip-path: polygon(0 8px, 100% 0, 100% calc(100% - 10px), calc(100% - 12px) 100%, 0 100%); }
+.card .cost { position: absolute; left: -8px; top: -6px; width: 30px; height: 30px; border-radius: 50%; background: var(--denim); color: #fff; display: grid; place-items: center;
+  font: 22px/1 var(--lcd); box-shadow: 0 0 0 2px var(--ink); padding-top: 3px; }
+.card .who { position: absolute; z-index: 2; right: 4px; top: -8px; display: flex; align-items: center; gap: 3px; font-size: 9px; }
+.card .who canvas { width: 40px; height: 34px; image-rendering: pixelated; }
+.card h3 { margin: 4px -8px 6px -10px; padding: 3px 8px 4px 10px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 400; line-height: 1.15; transform: rotate(-3deg);
+  clip-path: polygon(0 2px, 100% 0, calc(100% - 6px) 100%, 0 100%); }
+.card p { font-size: 11px; line-height: 1.4; }
+.card p em { font-style: normal; background: var(--peach); padding: 0 2px; }
+.card .kind { position: absolute; left: 8px; bottom: 8px; font: 9px var(--type); color: var(--denim-deep); }
+.card.pick { z-index: 3; }
+.card.pick::before { background: var(--halftone), #fff; box-shadow: inset 0 0 0 3px var(--denim); }
+.card.pick h3 { background: var(--denim); }
+.card.gamble .cost { background: var(--ink); }
+.piles { position: absolute; right: 10px; bottom: 6px; display: flex; gap: 6px; font-size: 10px; }
+.piles span { padding: 2px 6px; background: var(--field); box-shadow: inset 0 0 0 2px var(--ink); }
+.piles b { font: 15px/1 var(--lcd); font-weight: 400; margin-left: 2px; }
+
+/* ---------- end turn ---------- */
+.end { position: absolute; right: 14px; bottom: 16px; z-index: 6; padding: 10px 26px 11px 20px; background: var(--denim); color: #fff; font-size: 18px;
+  clip-path: polygon(0 5px, 100% 0, calc(100% - 12px) 100%, 6px 100%); filter: drop-shadow(4px 4px 0 var(--ink)); transform: rotate(-3deg); }
+.auto { position: absolute; left: 14px; bottom: 22px; z-index: 6; display: flex; gap: 0; font-size: 11px; transform: rotate(2deg); }
+.auto span { padding: 5px 9px; background: var(--field); box-shadow: inset 0 0 0 2px var(--ink); }
+.auto span.on { background: var(--ink); color: #fff; }
+.hint { position: absolute; left: 16px; top: 724px; z-index: 6; font: 10px var(--type); color: var(--denim-deep); }
+
+/* ---------- notes beside the phone (desktop only) ---------- */
+.notes { width: 360px; padding-top: 6px; font-size: 13px; line-height: 1.6; }
+.notes h2 { display: inline-block; padding: 4px 18px 5px 10px; background: var(--denim); color: #fff; font-size: 20px; font-weight: 400; transform: rotate(-2deg);
+  clip-path: polygon(0 3px, 100% 0, calc(100% - 10px) 100%, 4px 100%); margin-bottom: 14px; }
+.notes ol { padding-left: 0; list-style: none; counter-reset: n; }
+.notes li { counter-increment: n; position: relative; padding: 8px 10px 8px 40px; margin-bottom: 8px; background: var(--paper); box-shadow: 3px 3px 0 var(--ink); }
+.notes li::before { content: counter(n); position: absolute; left: 8px; top: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font: 16px/1 var(--lcd); padding-top: 2px; }
+.notes b { font-weight: 400; background: var(--peach); padding: 0 3px; }
+.notes .rule { margin-top: 14px; font: 12px var(--type); color: #4A5677; }
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+
+  <!-- the grey world behind everything -->
+  <div class="layer geo">
+    <svg viewBox="0 0 390 844" preserveAspectRatio="none" aria-hidden="true">
+      <ellipse cx="200" cy="250" rx="250" ry="70" fill="none" stroke="#1F2A4A" stroke-width="1.5" transform="rotate(-12 200 250)"/>
+      <ellipse cx="200" cy="250" rx="190" ry="120" fill="none" stroke="#1F2A4A" stroke-width="1" stroke-dasharray="3 5" transform="rotate(18 200 250)"/>
+      <circle cx="205" cy="232" r="96" fill="#BDB8B2"/>
+      <path d="M205 168 l9 38 38 9 -38 9 -9 38 -9 -38 -38 -9 38 -9z" fill="#fff"/>
+      <circle cx="40" cy="378" r="15" fill="#1F2A4A"/><path d="M33 371 l14 14 M47 371 l-14 14" stroke="#fff" stroke-width="3"/>
+      <circle cx="356" cy="122" r="9" fill="#1F2A4A"/>
+      <circle cx="330" cy="352" r="24" fill="none" stroke="#1F2A4A" stroke-width="2"/>
+      <rect x="0" y="590" width="390" height="254" fill="#E6ECF5"/>
+      <path d="M0 590 L390 572 L390 600 L0 604z" fill="#1F2A4A"/>
+    </svg>
+    <i class="slice" style="left:-10px; top:150px; width:110px; transform:rotate(-12deg)"></i>
+    <i class="slice" style="right:-6px; top:378px; width:80px; height:6px; background:var(--ink)"></i>
+    <i class="slice" style="right:30px; top:390px; width:46px; height:4px"></i>
+  </div>
+
+  <!-- top bar -->
+  <div class="top">
+    <div class="back">‹</div>
+    <div class="title"><span class="k">討伐委託 · 睡不飽的貓頭鷹</span><h1>讓鬧鐘閉嘴</h1></div>
+    <div class="turn"><small>回合</small> 02</div>
+    <div class="route" title="委託路線">
+      <i class="done">⚔</i><b></b><i class="done">?</i><b></b><i class="now">⚔</i><b></b><i>☕</i><b></b><i class="boss">✦</i>
+      <span>3 / 5 · 雨天：水屬性 +20%</span>
+    </div>
+  </div>
+
+  <!-- monsters -->
+  <div class="foe" id="f-phone" style="left:16px; top:166px; width:76px; transform:rotate(-8deg)">
+    <img src="monsters/phone.webp" alt="未讀通知">
+    <i class="eye" style="left:18px; top:52px; width:15px; height:15px; font-size:11px">×</i>
+    <i class="eye" style="left:40px; top:50px; width:15px; height:15px; font-size:11px">×</i>
+    <span class="badge" style="right:-4px; top:2px">99+</span>
+  </div>
+  <div class="intent" style="left:6px; top:134px; transform:rotate(-5deg)">干擾 · 費用 <b>+1</b></div>
+  <div class="hp" style="left:12px; top:318px"><span class="n">14</span><span class="fade"><i class="c"></i><i class="c"></i><i></i><i></i><i></i></span></div>
+  <div class="name" style="left:12px; top:336px">未讀通知</div>
+
+  <div class="foe" id="f-clock" style="left:124px; top:128px; width:142px; transform:rotate(4deg)">
+    <img src="monsters/clock.webp" alt="鬧鐘獸">
+    <i class="eye" style="left:42px; top:84px">×</i>
+    <i class="eye" style="left:80px; top:81px">×</i>
+  </div>
+  <div class="intent alert" style="left:112px; top:100px; transform:rotate(-3deg)">⚠ 蓄力 · 刺耳鈴聲 全體 <b>18</b></div>
+  <div class="intent ghost" style="left:186px; top:126px; transform:rotate(5deg)">讀心 · 下回合：睡回籠覺</div>
+  <div class="hp" style="left:134px; top:318px"><span class="n">46</span><span class="fade"><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i></i><i></i><i></i><i></i></span></div>
+  <div class="name" style="left:134px; top:336px">鬧鐘獸</div>
+
+  <div class="foe" id="f-bill" style="right:14px; top:172px; width:82px; transform:rotate(10deg)">
+    <img src="monsters/bill.webp" alt="帳單">
+    <i class="eye" style="left:30px; top:32px; width:17px; height:17px; font-size:12px">×</i>
+  </div>
+  <div class="intent alert" style="right:8px; top:150px; transform:rotate(4deg)">偷 <b>12</b> 金幣</div>
+  <div class="hp" style="right:12px; top:318px"><span class="n">9</span><span class="fade"><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i></i></span></div>
+  <div class="name" style="right:12px; top:336px">月底帳單 · 快恢復顏色</div>
+
+  <!-- the aim line from the chosen card to the alarm clock -->
+  <svg class="aim" viewBox="0 0 390 844" style="inset:0; width:100%; height:100%" aria-hidden="true">
+    <path d="M140 606 C 120 500, 186 400, 194 262" fill="none" stroke="#3F5DAA" stroke-width="3" stroke-dasharray="7 6"/>
+    <path d="M185 276 L194 260 L203 276" fill="none" stroke="#3F5DAA" stroke-width="3"/>
+  </svg>
+
+  <!-- our side -->
+  <div class="floor"></div>
+  <div class="crew">
+    <div class="mate" style="left:-4px; bottom:12px"><canvas data-who="heehee" data-clip="Idle"></canvas><span class="tag">Hee Hee</span><span class="buff" style="left:18px">聚光燈</span></div>
+    <div class="mate cast" style="left:88px; bottom:-2px"><canvas data-who="mochalatte" data-clip="Work"></canvas><span class="tag">Mocha Latte</span></div>
+    <div class="mate" style="left:186px; bottom:14px"><canvas data-who="cheetie" data-clip="Idle"></canvas><span class="tag">Cheetie</span><span class="buff" style="left:14px">讀心</span></div>
+    <div class="mate" style="left:284px; bottom:2px"><canvas data-who="bbaekko" data-clip="Idle"></canvas><span class="tag">Bbaekko</span></div>
+  </div>
+
+  <!-- status row -->
+  <div class="status">
+    <div class="chill"><div class="lab">CHILL 值<b>42</b> / 60</div><div class="bar"><i></i></div></div>
+    <div class="foam">6<small>奶泡護盾</small></div>
+    <div class="drinks">
+      <div class="drink" title="濃縮咖啡"><svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges"><path d="M2 4h6v4H2z" fill="#1F2A4A"/><path d="M3 5h4v2H3z" fill="#7a4a2a"/><path d="M8 5h2v2H8z" fill="#1F2A4A"/><path d="M1 9h8v1H1z" fill="#1F2A4A"/></svg><small>濃縮</small></div>
+      <div class="drink" title="熱可可"><svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges"><path d="M2 3h6v6H2z" fill="#1F2A4A"/><path d="M3 4h4v1H3z" fill="#F6CDBF"/><path d="M3 5h4v3H3z" fill="#fff"/><path d="M8 4h2v3H8z" fill="#1F2A4A"/><path d="M4 1h1v1H4zM6 0h1v2H6z" fill="#9A9590"/></svg><small>熱可可</small></div>
+    </div>
+  </div>
+
+  <!-- the hand -->
+  <div class="hand">
+    <div class="energy"><span class="beans" id="beans"></span><b>3</b><small>能量</small></div>
+    <div class="card pick" style="left:80px; top:0; transform:rotate(-4deg)">
+      <span class="cost">2</span><span class="who"><canvas data-head="mochalatte"></canvas></span>
+      <h3>時間暫停</h3>
+      <p>敵人這回合的意圖<em>作廢</em>。</p>
+      <span class="kind">技能 · 控場</span>
+    </div>
+    <div class="card" style="left:184px; transform:rotate(2deg)">
+      <span class="cost">1</span><span class="who"><canvas data-head="cheetie"></canvas></span>
+      <h3>衝刺連擊</h3>
+      <p>造成 4 傷害<em>×2</em>。<br>褪色 +1</p>
+      <span class="kind">攻擊</span>
+    </div>
+    <div class="card gamble" style="left:284px; top:24px; transform:rotate(6deg)">
+      <span class="cost">1</span><span class="who"><canvas data-head="bbaekko"></canvas></span>
+      <h3>念錯咒語</h3>
+      <p>隨機生成一張卡。<br>可能很強，<em>也可能很怪</em>。</p>
+      <span class="kind">技能 · 賭博</span>
+    </div>
+  </div>
+
+  <div class="auto"><span class="on">手動</span><span>自動</span><span>2×</span></div>
+  <div class="hint">牌堆 7<br>棄牌 2</div>
+  <div class="end">結束回合</div>
+</div>
+
+<div class="notes">
+  <h2>殺戮尖塔輕量版 · 草圖</h2>
+  <ol>
+    <li><b>委託路線</b>：上方一排小格，就是這張委託的地圖（戰鬥 → 事件 → 戰鬥 → 休息 → Boss）。環境修正寫在旁邊。</li>
+    <li><b>敵人意圖</b>永遠看得到。一般意圖用墨色，蓄力大招和偷錢用珊瑚色。Cheetie 的讀心可以多看一回合（白色那塊）。</li>
+    <li><b>褪色條</b>：打滿之後敵人恢復顏色、暈一回合，那回合出牌效果加倍。格子填的是咖啡廳的暖色。</li>
+    <li><b>CHILL 值</b>是全隊共用一條血。<b>奶泡護盾</b>就是殺戮尖塔的格擋。</li>
+    <li><b>飲料</b>＝藥水，出門前在店裡先做好帶著。</li>
+    <li><b>手牌 3 張、能量 3 點</b>。這回合有一個明顯的好選擇（時停擋掉 18 傷害），和一個賭博選擇（念錯咒語）。</li>
+    <li>回合制會等你，可以隨時放下手機。想放空就切<b>自動</b>或 2×。</li>
+  </ol>
+  <p class="rule">丹寧拼貼：灰色世界＝半調照片＋幾何。我方站在唯一有顏色的木頭地板上。</p>
+</div>
+
+<script>
+// pixel sprites from the game's own sheets: an idle loop per character, a head crop for each card
+const S = 1.6;
+const sheets = {};
+function sheet(id) {
+  return sheets[id] ||= (async () => {
+    const meta = await (await fetch(`../../assets/sprites/${id}/${id}.json`)).json();
+    const img = new Image(); img.src = `../../assets/sprites/${id}/${meta.image}`; await img.decode();
+    return { meta, img };
+  })();
+}
+const mates = [];
+for (const c of document.querySelectorAll('canvas[data-who]')) {
+  sheet(c.dataset.who).then(({ meta, img }) => {
+    const clip = meta.clips[c.dataset.clip] || meta.clips.Idle;
+    c.width = 64; c.height = 80; c.style.width = 64 * S * 1.0 + 'px'; c.style.height = 80 * S + 'px';
+    mates.push({ c, ctx: c.getContext('2d'), img, clip, t0: Math.random() * 2 });
+  });
+}
+for (const c of document.querySelectorAll('canvas[data-head]')) {
+  sheet(c.dataset.head).then(({ meta, img }) => {
+    const [x, y] = meta.clips.Idle.frames.f[0], top = meta.clips.Idle.anchors.f[0].top;
+    c.width = 40; c.height = 34;
+    c.getContext('2d').drawImage(img, x + 12, y + top - 2, 40, 34, 0, 0, 40, 34);
+  });
+}
+function tick(now) {
+  for (const m of mates) {
+    const f = m.clip.frames.f, i = Math.floor((now / 1000 + m.t0) * m.clip.fps) % f.length, [x, y, w, h] = f[i];
+    m.ctx.clearRect(0, 0, 64, 80); m.ctx.drawImage(m.img, x, y, w, h, 0, 0, w, h);
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+// three energy beans over the energy disc
+document.getElementById('beans').innerHTML = [0, 1, 2].map(() =>
+  '<svg width="14" height="16" viewBox="0 0 7 8" shape-rendering="crispEdges"><path d="M2 0h3v1h1v6H5v1H2V7H1V1h1z" fill="#C8894E"/><path d="M3 1h1v2H3zM4 3h1v2H4zM3 5h1v2H3z" fill="#1F2A4A"/></svg>').join('');
+</script>
+</body>
+</html>

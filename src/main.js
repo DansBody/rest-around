@@ -20,6 +20,7 @@ import { t, localizeData } from './i18n.js';
 import { h } from './util.js';
 import { OFFLINE } from './data.js';
 import { lockPageZoom } from './nozoom.js';
+import { openBattle } from './ui/battle.js';
 
 const loading = document.getElementById('loading');
 const bar = loading.querySelector('.load-bar i');
@@ -154,6 +155,7 @@ async function boot() {
   requestAnimationFrame(frame);
   loading.classList.add('hide');
   setTimeout(() => loading.remove(), 500);
+  if (new URLSearchParams(location.search).has('battle')) openBattle(game);   // the battle prototype (design/combat/DESIGN.md)
 }
 lockPageZoom();
 boot();
