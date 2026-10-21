@@ -18,6 +18,29 @@
   font-stretch: 62% 125%;
   font-display: swap;
 }
+/* Refillit OS (os.css): Cubic 11 (俐方體11號, pixel, Traditional Chinese, subset to the game's own text),
+   VT323 for the LCD digits, Courier Prime for typed notes. All SIL OFL 1.1, licences beside the files. */
+@font-face {
+  font-family: 'Refillit Pixel';
+  src: url('../../assets/fonts/pixel.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Refillit LCD';
+  src: url('../../assets/fonts/lcd.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Refillit Type';
+  src: url('../../assets/fonts/mono.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
 @font-face {
   font-family: 'Refillit Display';
   src: url('../../assets/fonts/display.woff2') format('woff2');
@@ -52,6 +75,32 @@
   --sat: env(safe-area-inset-top, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  /* ---- Refillit OS × denim / coral collage (design/art-direction/PLAN.md). Denim carries everything ordinary;
+     coral only says "something happened": events, alerts, money coming in. Never coral for decoration. ---- */
+  --os-denim: #3F5DAA;      /* main ink: frames' accents, chosen tabs, bars, the default button */
+  --os-denim-deep: #2A3F7A;
+  --os-denim-2: #6A84C8;    /* the lighter stripe in bars */
+  --os-coral: #E5664A;      /* events, alerts, money */
+  --os-coral-2: #F2B7A8;
+  --os-peach: #F6CDBF;      /* decoration's second colour */
+  --os-paper: #F4EFE6;
+  --os-ink: #1F2A4A;        /* every outline */
+  --os-grey: #9A9590;
+  --os-frame: #E6ECF5;      /* window frame (Iced Latte) */
+  --os-hi: #FFFFFF;         /* bevel light */
+  --os-lo: #9AABC9;         /* bevel shade */
+  --os-stripe-a: #FFFFFF;   /* title bar pinstripes */
+  --os-stripe-b: #C9D4E8;
+  --os-body: #F6F8FC;
+  --os-field: #FFFFFF;
+  --os-b: 2px;              /* one UI pixel: outlines and bevels */
+  --os-bevel: inset var(--os-b) var(--os-b) 0 var(--os-hi), inset calc(-1 * var(--os-b)) calc(-1 * var(--os-b)) 0 var(--os-lo);
+  --os-sunk: inset var(--os-b) var(--os-b) 0 var(--os-lo), inset calc(-1 * var(--os-b)) calc(-1 * var(--os-b)) 0 var(--os-hi);
+  --os-drop: 4px 5px 0 rgba(31, 42, 74, .26);   /* hard window shadow */
+  --os-stripes: repeating-linear-gradient(0deg, var(--os-stripe-a) 0 2px, var(--os-stripe-b) 2px 4px);
+  --os-font: 'Refillit Pixel', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', monospace;
+  --os-lcd: 'Refillit LCD', 'Refillit Pixel', monospace;
+  --os-type: 'Refillit Type', 'Courier New', 'Refillit Pixel', monospace;
 }
 * { box-sizing: border-box; }
 /* touch-action: the page scrolls panels but never zooms (pinch or double-tap); see nozoom.js for iOS */

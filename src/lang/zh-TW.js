@@ -534,4 +534,7 @@ export const ZH_TW = {
   // ---------------- the owner lends a hand (boss.js)
   'Tip: tap a waiting guest to take their order yourself 🤲': '小提示：點一下等待中的客人，老闆可以親自幫忙點餐 🤲',
   'Still being made…': '還在做喔⋯', 'Owner took the order!': '老闆親自點餐！', 'Served by the owner!': '老闆親自送餐！',
+  // ---------------- Refillit OS (the HUD windows, the trouble flag, the typed strip)
+  'Status': '狀態', 'Next level {n}%': '下一級 {n}%', 'Trouble!': '出事了！',
+  'all is brewing well, the bar is still warm…': '一切順利，吧台還暖著…',
 };

@@ -11,6 +11,8 @@ import { audio } from '../audio.js';
 import { unlocksFor } from '../economy.js';
 import { roundOfDay, ROUNDS_PER_DAY } from '../clock.js';
 import { glyph } from './icons.js';
+import { pixIcon } from './os.js';
+import { collage, wipeIn, wipeOut, bump, iris, slamFrom } from './transition.js';
 import { maybeLesson, startWatch } from './tutorial.js';
 import { TILE } from '../models.js';
 import { glassFx } from './glass.js';
@@ -18,9 +20,13 @@ import { specialsButton, updateSpecials } from './specials.js';
 import { t, tt, titledRole, setLang, getLang } from '../i18n.js';
 
 const FOLLOW_DIST = 24;   // following a character zooms in to at most this camera distance
-const HUD_TOP = 70;       // px under the top bar; a followed character is centred between it and a bottom sheet
+const HUD_TOP = 70;       // px under the HUD strip; a followed character is centred between it and a bottom sheet
 
-// the tab bar uses monochrome line glyphs so it reads as one clean black capsule
+// how each window opens (transition.js): coffee poured into the menu and the friends' list, bread out of the oven for
+// the market and the day's goals, latte art for the staff, beans for training, steam for settings
+const OPENING = { menu: 'pour', friends: 'pour', market: 'oven', today: 'oven', staff: 'latte', train: 'beans', settings: 'steam' };
+
+// the Control Strip along the bottom: one module per tool, a pixel icon each (os.js), no labels
 const TOOLS = [
   { id: 'build', label: 'Build', glyph: 'build' },
   { id: 'staff', label: 'Staff', glyph: 'staff' },
@@ -54,6 +60,7 @@ export class UI {
   }
 
   init() {
+    this.bornAt = performance.now();
     // the UI layer never scrolls (style.css clips it; this catches browsers without overflow: clip)
     this.root.addEventListener('scroll', () => { if (this.root.scrollTop || this.root.scrollLeft) this.root.scrollTop = this.root.scrollLeft = 0; });
     this.buildDom();
@@ -94,31 +101,18 @@ export class UI {
     const before = new Set(r.children);
     const ic = (id, s, cls) => assets.iconEl(id, s, cls);
 
-    // ----- HUD: one row. The café (name, level, a hairline of level progress) on the left, the live numbers on the right -----
+    // ----- HUD: two Refillit OS windows rolled up to their title bars (Mac OS "windowshade"), so the top stays light:
+    // the café (its name on a flag, the level, a hairline bar to the next one) and the live numbers in LCD fields -----
     this.el = {};
+    // the collage around the screen edges, under everything else (never over the café's middle)
+    r.appendChild(collage());
     this.el.lvlNum = h('b.hb-lv', 'Lv 1');
     this.el.brandName = h('span.bname', this.game.state.name);
     this.el.lvlTxt = h('span');   // level points and the day go in the tooltips, not on screen
     this.el.day = h('span');
-    // level progress: a ring round the café pill, filling clockwise from the top centre
-    const NS = 'http://www.w3.org/2000/svg';
-    const ring = document.createElementNS(NS, 'svg');
-    ring.setAttribute('class', 'hb-ring'); ring.setAttribute('aria-hidden', 'true');
-    const track = document.createElementNS(NS, 'path'), fill = document.createElementNS(NS, 'path');
-    track.setAttribute('class', 'hb-ring-track'); fill.setAttribute('class', 'hb-ring-fill');
-    for (const p of [track, fill]) { p.setAttribute('pathLength', '100'); ring.appendChild(p); }
-    this.el.lvlBar = fill;
-    const brand = h('div#hudbrand', this.el.brandName, this.el.lvlNum, ring);
-    // the pill is as wide as the name: redraw its outline whenever it changes size
-    if (this.hudRO) this.hudRO.disconnect();
-    this.hudRO = new ResizeObserver(() => {
-      const w = brand.offsetWidth, ht = brand.offsetHeight, sw = 3, r = ht / 2 - sw / 2;
-      if (!w) return;
-      const d = `M${w / 2} ${sw / 2}H${w - ht / 2}A${r} ${r} 0 0 1 ${w - ht / 2} ${ht - sw / 2}H${ht / 2}A${r} ${r} 0 0 1 ${ht / 2} ${sw / 2}Z`;
-      ring.setAttribute('viewBox', `0 0 ${w} ${ht}`);
-      track.setAttribute('d', d); fill.setAttribute('d', d);
-    });
-    this.hudRO.observe(brand);
+    this.el.lvlPct = h('span');   // "Next level 42%": in the tooltip
+    this.el.lvlBar = h('i');
+    const brand = this.el.brand = h('div#hudbrand.oswin', h('span.os-knob'), h('div.os-flag', this.el.brandName), this.el.lvlNum, h('div.os-bar', this.el.lvlBar));
     // the five-star row is still kept up to date, but the pill shows one star and the number
     this.el.stars = h('span.stars');
     this.starEls = [];
@@ -130,21 +124,33 @@ export class UI {
       this.el.stars.appendChild(wrap);
     }
     this.el.ratingNum = h('span.num', '0.0');
-    const coin = h('span.hs', { title: t('Coins') }, ic('icon_coin', 20), (this.el.coins = h('span.num', '0')));
-    const rating = h('button.hs.rating', { title: t('Rating'), onclick: () => this.toggleRatingTip() }, ic('icon_star', 18), this.el.ratingNum);
+    // the numbers sit in sunken fields in LCD digits
+    const coin = h('span.hs.coin', { title: t('Coins') }, pixIcon('coin'), (this.el.coins = h('span.num', '0')));
+    const rating = h('button.hs.rating', { title: t('Rating'), onclick: () => this.toggleRatingTip() }, pixIcon('star'), this.el.ratingNum);
     this.el.time = h('span.num', '8:00am');
     this.el.phase = h('small', 'Opening');   // the clock's tooltip; not on screen
-    const clock = h('span.hs.clock', { title: t('Café clock') }, this.el.time);
-    this.el.speedTxt = h('span', '1×');
-    this.el.speed = h('span.hs.speed', { style: { display: 'none' } }, glyph('fast', 16), this.el.speedTxt);
-    this.el.hud = h('div#hud', brand, h('div#hudstats', coin, rating, clock, this.el.speed));
+    const clock = h('span.hs.clock', { title: t('Café clock') }, pixIcon('clock'), this.el.time);
+    this.el.speedTxt = h('span.num', '1×');
+    this.el.speed = h('span.hs.speed', { style: { display: 'none' } }, pixIcon('fast'), this.el.speedTxt);
+    // the collage threads through the windows: the typed strip under Status, and the plaster hand reaching out from
+    // behind Status, over the strip, its espresso cup dipping in front of an open panel (z-order in os.css)
+    this.el.hud = h('div#hud', brand, h('div.hs-wrap', h('div#hudstats.oswin', { title: t('Status') }, coin, rating, clock, this.el.speed),
+      h('div.cl-strip', { 'aria-hidden': 'true' }, t('all is brewing well, the bar is still warm…')), h('i.cl-photo.p-hand', { 'aria-hidden': 'true' })));
     this.el.ratingTip = h('div.card.rating-tip');
     r.append(this.el.hud, this.el.ratingTip);
+    // the HUD wraps to a second row when the name and numbers don't fit (text is never cut): what hangs under it
+    // (left column, alerts, toasts) starts from its real foot
+    if (this.hudRO) this.hudRO.disconnect();
+    this.hudRO = new ResizeObserver(() => {
+      const foot = this.el.hud.getBoundingClientRect().bottom - r.getBoundingClientRect().top;
+      if (foot > 0) r.style.setProperty('--ht', Math.ceil(foot + 30) + 'px');   // + the typed strip hanging under Status
+    });
+    this.hudRO.observe(this.el.hud);
 
     // Today (daily goals, the gift and its streak): a checklist button top-left that opens the Today panel;
     // its badge counts what is waiting to be claimed
     this.el.questBadge = h('span.qb-badge');
-    this.el.questBtn = h('button.chip#questbtn', { title: t('Today'), 'aria-label': t('Today'), onclick: () => this.onTool('today') }, glyph('checklist', 22), this.el.questBadge);
+    this.el.questBtn = h('button.chip#questbtn', { title: t('Today'), 'aria-label': t('Today'), onclick: () => this.onTool('today') }, pixIcon('today'), this.el.questBadge);
     r.appendChild(this.el.questBtn);
 
     // ----- toolbar -----
@@ -155,7 +161,7 @@ export class UI {
     // button (bottom-left) until opened; the button glows while something is ready to fire
     try { this.abOpen = localStorage.getItem('refillit.skillsOpen') === '1'; } catch { this.abOpen = false; }
     this.el.abilities = h('div#abilities' + (this.abOpen ? '.open' : ''));
-    this.el.abToggle = h('button.chip#abtoggle' + (this.abOpen ? '.open' : ''), { onclick: () => this.toggleSkills(), title: t('Staff skills'), 'aria-label': t('Staff skills'), 'aria-expanded': String(this.abOpen) }, glyph('sparkles', 22));
+    this.el.abToggle = h('button.chip#abtoggle' + (this.abOpen ? '.open' : ''), { onclick: () => this.toggleSkills(), title: t('Staff skills'), 'aria-label': t('Staff skills'), 'aria-expanded': String(this.abOpen) }, pixIcon('skills'));
     r.append(this.el.abilities, this.el.abToggle);
 
     this.el.cutin = h('div#cutin');
@@ -166,10 +172,10 @@ export class UI {
     r.appendChild(this.el.alerts);
     this.alertKey = null;
 
-    this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label), 'aria-label': t(tool.label) }, glyph(tool.glyph, 24)))));
+    this.el.toolbar = h('div#toolbar', TOOLS.map((tool) => (this.toolBtns[tool.id] = h('button.btn.tool', { onclick: () => this.onTool(tool.id), title: t(tool.label), 'aria-label': t(tool.label) }, pixIcon(tool.id, 2)))));
     r.appendChild(this.el.toolbar);
     // friends: a round button floating on the right, opposite the daily goal (the tab bar is full enough)
-    this.toolBtns.friends = this.el.friendsBtn = h('button.chip#friendsbtn', { onclick: () => this.onTool('friends'), title: t('Friends'), 'aria-label': t('Friends') }, glyph('friends', 22));
+    this.toolBtns.friends = this.el.friendsBtn = h('button.chip#friendsbtn', { onclick: () => this.onTool('friends'), title: t('Friends'), 'aria-label': t('Friends') }, pixIcon('friends'));
     r.appendChild(this.el.friendsBtn);
     // today's specials (behind the debug switch): under Friends
     this.el.specialBtn = specialsButton(this);
@@ -179,7 +185,8 @@ export class UI {
     this.el.panelTitle = h('h2', '');
     this.el.panelIcon = h('span.ph-ico');
     this.el.panelBody = h('div.panel-body');
-    this.el.panel = h('div.card#panel', h('div.grabber'),
+    // a moka pot stands behind every window, peeking over its edge
+    this.el.panel = h('div.card#panel', h('i.cl-photo.p-moka', { 'aria-hidden': 'true' }), h('div.grabber'),
       h('div.panel-head', this.el.panelIcon, this.el.panelTitle, h('button.btn.small.xbtn', { onclick: () => this.closePanel(), title: t('Close') }, glyph('close', 16))),
       this.el.panelBody);
     this.el.panel.addEventListener('pointerdown', () => { this.pointerInPanel = true; });
@@ -314,12 +321,14 @@ ${k.desc}
       return;
     }
     if (this.panel === id) return this.closePanel();
+    bump(this.toolBtns[id]);
     this.openPanel(id);
   }
   openPanel(id) {
     // one window at a time: a panel replaces the character card and the popovers
     if (this.game.selected) { this.game.selected = null; this.renderInfo(); }
     this.el.ratingTip.classList.remove('show');
+    const was = this.panel;
     this.panel = id;
     this.subview = null;
     const p = PANELS[id];
@@ -330,8 +339,10 @@ ${k.desc}
     this.el.panelBody.scrollTop = 0;
     this.renderPanel();
     this.syncSheets();
+    if (was !== id) wipeIn(this.el.panel, this.el.panelBody, OPENING[id]);
   }
   closePanel() {
+    if (this.panel) wipeOut(this.el.panel);
     this.panel = null;
     this.el.panel.classList.remove('open');
     for (const b of Object.values(this.toolBtns)) b.classList.remove('active');
@@ -532,8 +543,9 @@ ${k.desc}
     updateSpecials(this);
     this.updateBoss();
     this.el.lvlTxt.textContent = s.level >= g.maxLevel() ? t('MAX') : `${fmt(lp.cur)}/${fmt(lp.next)}`;
-    this.el.lvlBar.style.strokeDashoffset = String(100 - lp.frac * 100);
-    this.el.brandName.parentNode.title = `${s.name} · ${this.el.lvlNum.textContent} · ${t('Café level & points')} ${this.el.lvlTxt.textContent}`;
+    this.el.lvlBar.style.width = (s.level >= g.maxLevel() ? 100 : lp.frac * 100) + '%';
+    this.el.lvlPct.textContent = s.level >= g.maxLevel() ? t('MAX') : t('Next level {n}%', { n: Math.floor(lp.frac * 100) });
+    this.el.brand.title = `${s.name} · ${this.el.lvlNum.textContent} · ${this.el.lvlPct.textContent} · ${t('Café level & points')} ${this.el.lvlTxt.textContent}`;
     for (let i = 0; i < 5; i++) {
       const f = clamp(s.rating - i, 0, 1);
       this.starEls[i].style.clipPath = `inset(0 ${100 - f * 100}% 0 0)`;
@@ -576,14 +588,25 @@ ${k.desc}
     const key = list.map((c) => c.id + ':' + c.trouble.kind + ':' + (c.trouble.by ? c.trouble.by.id : '')).join(',') + '|' + Object.values(CLUBS).map(trained).join();
     if (key === this.alertKey) return;
     this.alertKey = key;
+    const seen = this.alertSeen || (this.alertSeen = new Set()), fresh = [];
     this.el.alerts.replaceChildren(...list.map((c) => {
       const tr = c.trouble, club = CLUBS[tr.kind === 'rude' ? 'baseball' : 'track'], can = trained(club);
       const what = tr.kind === 'rude' ? t('Rude guest!') : t('{name} is running off without paying!', { name: c.name });
       const sub = tr.by ? t('{name} is on it!', { name: tr.by.name }) : can ? t('Sending help…') : t('Nobody can stop them: tap to train someone at the {club}', { club: club.name });
-      return h('button.alert' + (tr.by ? '.sent' : ''), { style: { '--c': club.color }, onclick: () => { if (!can) this.openPanel('train'); } },
+      const el = h('button.alert' + (tr.by ? '.sent' : ''), { style: { '--c': club.color }, 'data-flag': t('Trouble!'), onclick: () => { if (!can) this.openPanel('train'); } },
         h('span.al-ico', glyph(tr.by ? club.glyph : 'angry', 18)),
         h('span.al-text', h('b', what), h('small', sub)));
+      if (!seen.has(c.id)) fresh.push([c, el]);
+      return el;
     }));
+    // something just happened: a coral ink circle grows from the troublemaker and the alert slams out of it
+    for (const [c, el] of fresh) {
+      seen.add(c.id);
+      // (not for trouble already there when the game opens: the screen isn't swamped coral on arrival)
+      const q = this.game.visit || this.tutorial || performance.now() - this.bornAt < 4000 ? null : this.game.renderer.project(c.x, c.y, 1.4);
+      if (q) { iris(this.root, q.x, q.y); slamFrom(el, q.x, q.y); }
+    }
+    for (const id of seen) if (!list.some((c) => c.id === id)) seen.delete(id);
   }
 
   /** The Today button: a ring for the goals claimed, a red count for what is waiting to be claimed. */
@@ -618,7 +641,7 @@ ${k.desc}
     const r = this.game.eco.claimGift();
     if (!r) return;
     const items = Object.entries(r.got).map(([k, v]) => h('span.ing', assets.iconEl('ing_' + k, 22), '×' + v));
-    this.queueModal(() => h('div.card',
+    this.queueModal(() => h('div.card', { 'data-opening': 'oven' },
       h('div.hero-ico', assets.iconEl('icon_gift', 64)),
       h('div.big-title', t('Daily Gift!')),
       h('div.muted', t('A friendly farmer dropped by with:')),
@@ -631,7 +654,9 @@ ${k.desc}
   // ---------------- toasts & modals ----------------
   toast(msg, kind = '') {
     if (this.tutorial && kind !== 'bad') return;   // the tour speaks for itself; only trouble gets through
-    const t = h('div.toast' + (kind ? '.' + kind : ''), msg);
+    // a small system dialog; trouble and money coming in ("Sold … (+40)") are the coral ones
+    const money = kind === 'good' && /\(\+\d/.test(msg);
+    const t = h('div.toast' + (kind ? '.' + kind : '') + (money ? '.money' : ''), pixIcon(kind === 'bad' ? 'alert' : money ? 'coin' : 'cup'), h('span', msg));
     this.el.toasts.appendChild(t);
     while (this.el.toasts.children.length > 4) this.el.toasts.firstChild.remove();
     setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 350); }, 2800);
@@ -665,6 +690,9 @@ ${k.desc}
     this.modalOpen = fn;
     this.el.modal.replaceChildren(fn());
     this.el.modal.classList.add('show');
+    // popups open in the café's ways too: the gift comes out of the oven, the recaps are poured, the rest is torn paper
+    const card = this.el.modal.firstElementChild;
+    if (card) wipeIn(card, card, card.dataset.opening || (card.matches('.away, .recap') ? 'pour' : 'paper'));
   }
   closeModal() {
     if (this.modalTimer) { clearInterval(this.modalTimer); this.modalTimer = null; }
@@ -719,6 +747,7 @@ ${k.desc}
         h('div.recap-note-sm', t('The next round opens at the next even hour.'))),
       h('button.btn.primary', { onclick: hide }, t('Good night'))));
     this.el.receipt.classList.add('show');
+    if (this.el.receipt.firstElementChild) wipeIn(this.el.receipt.firstElementChild, this.el.receipt.firstElementChild, 'pour');
     clearTimeout(this.receiptTimer);
     this.receiptTimer = setTimeout(hide, 30000);
   }
@@ -784,6 +813,7 @@ ${k.desc}
       h('div', { style: { margin: '8px 0', fontWeight: 900, lineHeight: 1.5, maxHeight: '40vh', overflow: 'auto' } }, acc.unlocks.length ? acc.unlocks.map((u) => h('div', { style: { display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center' } }, glyph('sparkles', 16), u)) : t('More café glory!')),
       h('button.btn.primary', { onclick: hide }, t('Yay!'))));
     this.el.celebrate.classList.add('show');
+    wipeIn(this.el.celebrate.firstElementChild, this.el.celebrate.firstElementChild, 'oven');   // a new level, fresh out of the oven
     clearTimeout(this.celebrateTimer);
     this.celebrateTimer = setTimeout(hide, 9000);
   }
