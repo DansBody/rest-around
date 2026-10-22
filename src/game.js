@@ -14,7 +14,7 @@ import { Street } from './ambient.js';
 import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
 import { specialMods } from './specials.js';
-import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, UNIQUE_NAMES, furnitureById } from './data.js';
+import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, OUTING } from './data.js';
 
 /** The table for two a café gets when the player never set one up: [type, x, y, dir]. */
 const STARTER_SEATS = [['table_oak', 3, 4, 1], ['chair_oak', 2, 4, 0], ['chair_oak', 4, 4, 2]];
@@ -55,6 +55,8 @@ export function defaultState() {
     tutorial: [],        // tutorial steps done (ui/tutorial.js)
     tutorialSeen: false, // the tutorial is over (finished or skipped)
     specials: null,      // today's theme and picked cards (specials.js; behind a debug switch for now)
+    tickets: { n: OUTING.perDay, day: null },   // outing tickets (outing.js): how many, and the calendar day they were last counted
+    outing: null,        // the last outing: { from, until } on the wall clock (outing.js), the café shut in between
   };
 }
 

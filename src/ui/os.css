@@ -364,6 +364,8 @@
 #ui .hs, #ui .hs.speed { height: 28px; padding: 0 10px; border: 0; box-shadow: none; clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
 #ui .hs.coin { height: 34px; font-size: 30px; transform: rotate(-4deg); z-index: 1; }
 #ui .hs.rating { margin: 9px 0 0 -6px; background: var(--os-frame); transform: rotate(5deg); }
+#ui .hs.clock .hs-out { margin-left: 6px; padding: 0 5px; background: var(--os-denim); color: #fff; font: inherit; white-space: nowrap; }
+#ui .hs.clock .hs-out:empty { display: none; }
 #ui .hs.clock { margin: 1px 0 0 -6px; background: var(--os-ink); color: #fff; transform: rotate(-2deg); --pi-ink: #fff; --pi-fill: var(--os-peach); }
 #ui .hs.speed { margin: 12px 0 0 -6px; background: var(--os-peach); }
 #ui button.hs:active { box-shadow: none; translate: 1px 1px; }

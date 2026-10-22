@@ -129,7 +129,8 @@ export class UI {
     const rating = h('button.hs.rating', { title: t('Rating'), onclick: () => this.toggleRatingTip() }, pixIcon('star'), this.el.ratingNum);
     this.el.time = h('span.num', '8:00am');
     this.el.phase = h('small', 'Opening');   // the clock's tooltip; not on screen
-    const clock = h('span.hs.clock', { title: t('Café clock') }, pixIcon('clock'), this.el.time);
+    this.el.out = h('b.hs-out');   // the team out on a commission (outing.js): when they are back
+    const clock = h('span.hs.clock', { title: t('Café clock') }, pixIcon('clock'), this.el.time, this.el.out);
     this.el.speedTxt = h('span.num', '1×');
     this.el.speed = h('span.hs.speed', { style: { display: 'none' } }, pixIcon('fast'), this.el.speedTxt);
     // the collage threads through the windows: the typed strip under Status, and the plaster hand reaching out from
@@ -555,8 +556,10 @@ ${k.desc}
     const nth = roundOfDay(s.round), from = nth * 2;
     this.el.day.textContent = t('Round {n} of {m} today ({a}:00–{b}:00). A round lasts 2 hours and opens on the even hours.', { n: nth + 1, m: ROUNDS_PER_DAY, a: String(from).padStart(2, '0'), b: String((from + 2) % 24).padStart(2, '0') });
     this.el.time.textContent = fmtTime(g.day.hour % 24, getLang() !== 'en');
-    this.el.phase.textContent = g.paused ? t('Closed') : g.build.active ? t('Building') : g.day.lateHours ? t('Open Late') : g.day.isNight ? (s.stats && s.stats.closed ? t('Night') : t('Last guests…')) : g.day.hour >= DAY.lastCallHour ? t('Last call') : g.day.phase.name;
+    const out = g.day.shutLeft, back = `${Math.floor(out / 3600)}:${String(Math.floor(out / 60) % 60).padStart(2, '0')}`;   // the team out on a commission
+    this.el.phase.textContent = g.paused ? t('Closed') : g.build.active ? t('Building') : out ? t('Out · back in {t}', { t: back }) : g.day.lateHours ? t('Open Late') : g.day.isNight ? (s.stats && s.stats.closed ? t('Night') : t('Last guests…')) : g.day.hour >= DAY.lastCallHour ? t('Last call') : g.day.phase.name;
     this.el.time.parentNode.title = `${this.el.phase.textContent} · ${this.el.day.textContent}`;
+    this.el.out.textContent = out ? t('Out {t}', { t: back }) : '';
     this.el.speed.style.display = g.timeScale !== 1 ? '' : 'none';
     this.el.speedTxt.textContent = `${g.timeScale}×`;
     if (this.el.ratingTip.classList.contains('show')) this.renderRatingTip();
@@ -719,7 +722,8 @@ ${k.desc}
     const hide = () => this.el.receipt.classList.remove('show');
     const costs = (sm.wages || 0) + (sm.rent || 0), stock = sm.restocked || 0, profit = sm.coins - costs - stock;
     const sign = (n) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
-    const note = sm.owed ? t('The till ran short, so some wages went unpaid — the team will start tired.')
+    const note = sm.shut ? t('The team went out on a commission this round: nobody new came in while they were away, and only the rent was due for those hours.')
+      : sm.owed ? t('The till ran short, so some wages went unpaid — the team will start tired.')
       : sm.soldOut ? t('{n} guest(s) left because a drink was sold out — keep the pantry stocked!', { n: sm.soldOut })
         : sm.dashed ? t('{n} guest(s) ran off without paying — someone from the Track Club could have caught them.', { n: sm.dashed })
         : sm.noSeat ? t('{n} guest(s) left because every seat was taken — more tables would help!', { n: sm.noSeat })
@@ -774,6 +778,7 @@ ${k.desc}
     }
     if (r.snacksUsed) quiet.push(h('div.away-note', t('The team shared {n} snack(s) from the pantry to keep going.', { n: r.snacksUsed })));
     if (r.capped) quiet.push(h('div.away-note', t('Trading is counted for up to {n} hours while you are away.', { n: Math.round(r.usedSec / 3600) })));
+    if (r.shutSec) quiet.push(h('div.away-note', t('The café was shut for {n} min while the team was out on a commission: only the rent was due.', { n: Math.round(r.shutSec / 60) })));
     const fig = (icon, label, v) => h('div.recap-fig', assets.iconEl(icon, 30), h('b', v), h('span', label));
     const line = (label, v) => h('div.recap-line', h('span', label), h('b', v));
     return h('div.card.away',

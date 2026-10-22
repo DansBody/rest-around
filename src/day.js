@@ -8,6 +8,7 @@ import { DAY, NIGHT, ENERGY, COSTS, STARTER, arrivalsPerHour } from './data.js';
 import { clamp } from './util.js';
 import { t } from './i18n.js';
 import { hourAt, roundAt, clockAt, localDay, localTz, wallSec } from './clock.js';
+import { outingAt, shutAt } from './outing.js';
 
 // the hours past last call while a new café stays open (openLate): a quiet evening trade
 const LATE = { id: 'late', name: 'Open Late', from: DAY.endHour, mult: 0.7 };
@@ -21,7 +22,7 @@ export class DayCycle {
 
   freshStats() {
     const s = this.game.state;
-    return { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: s.rating, levelStart: s.level, spent: 0, restocked: 0, wages: 0, rent: 0, soldOut: 0, dashed: 0, closed: false, open: 0 };
+    return { served: 0, lost: 0, noSeat: 0, coins: 0, points: 0, ratingStart: s.rating, levelStart: s.level, spent: 0, restocked: 0, wages: 0, rent: 0, soldOut: 0, dashed: 0, closed: false, open: 0, shut: 0 };
   }
 
   get hour() { return hourAt(this.game.state.clock); }
@@ -32,7 +33,11 @@ export class DayCycle {
     for (const ph of DAY.phases) if (h >= ph.from) p = ph;
     return p;
   }
-  get isOpen() { return this.hour < DAY.lastCallHour || this.openLate; }
+  get isOpen() { return (this.hour < DAY.lastCallHour || this.openLate) && !this.shut; }
+  /** Shut for an outing: the team is out on a commission (outing.js), nobody new walks in. */
+  get shut() { return !this.game.visit && shutAt(this.game.state.outing, this.pos()); }
+  /** Seconds until the team is back (0 when nobody is out). */
+  get shutLeft() { const o = this.game.state.outing; return this.shut ? o.until - this.pos() : 0; }
   get isNight() { return this.game.state.clock >= DAY.length && !this.openLate; }
   /** Past last call with the doors still open, because the café is new (openLate). */
   get lateHours() { return this.openLate && this.hour >= DAY.lastCallHour; }
@@ -61,7 +66,8 @@ export class DayCycle {
   update(dt) {
     const g = this.game, s = g.state;
     s.clock += dt;
-    if (s.clock < DAY.length) s.stats.open = (s.stats.open || 0) + dt;   // opening hours traded live: what payday charges for
+    // opening hours traded live: what payday charges wages for (hours shut for an outing: only the rent)
+    if (s.clock < DAY.length) { if (this.shut) s.stats.shut = (s.stats.shut || 0) + dt; else s.stats.open = (s.stats.open || 0) + dt; }
     if (this.lateHours && this.lateRound !== s.round) {   // staying open late for the first time this round
       this.lateRound = s.round;
       if (s.tutorialSeen) g.toast(t('Open late tonight while you settle in!'), 'good');
@@ -85,7 +91,7 @@ export class DayCycle {
       this.lingerT += dt;
       if (!g.customers.length || this.lingerT > 90) this.closeRound();
     }
-    if (this.isNight) for (const st of g.staff) {   // the team rests through the night
+    if (this.isNight || this.shut) for (const st of g.staff) {   // the team rests through the night (and is away on an outing)
       st.energy = Math.min(100, st.energy + ENERGY.napRegen * dt);
       if (st.napping && st.energy >= 100) { st.clearQueue(); st.wake(); }
     } else {
@@ -104,7 +110,8 @@ export class DayCycle {
       for (const c of g.customers) { c.cancelOrders(); c.gone = true; c.releaseAll(); }
       g.agents = g.agents.filter((a) => !a.gone);
     }
-    g.eco.payDay(Math.min(1, (s.stats.open || 0) / DAY.length));
+    const open = s.stats.open || 0, shut = s.stats.shut || 0;
+    g.eco.payDay(Math.min(1, open / DAY.length), Math.min(1, (open + shut) / DAY.length));
     s.stats.closed = true;
     const summary = { round: s.round, ...s.stats, ratingEnd: s.rating, levelEnd: s.level, owed: s.unpaid };
     s.totals.rounds = (s.totals.rounds || 0) + 1;
@@ -164,6 +171,20 @@ export class DayCycle {
     this.lingerT = 0;
     this.nextSpawn = 3;
     g.changed('day');
+  }
+
+  /**
+   * Head out on a commission (design/combat/DESIGN.md §3): spends a ticket and shuts the café for one round's
+   * length of wall clock from now. The guests already in finish their visit. False when it can't (no ticket, a
+   * friend's café, already out).
+   */
+  startOuting() {
+    const g = this.game, s = g.state;
+    if (g.visit || this.shut || !(s.tickets.n >= 1)) return false;
+    s.tickets = { ...s.tickets, n: s.tickets.n - 1 };
+    s.outing = outingAt(this.pos());
+    g.changed('tickets'); g.changed('day');
+    return true;
   }
 
   /** The player's calendar day now (for the daily goal and gift). */

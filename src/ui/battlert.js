@@ -7,6 +7,8 @@ import { h } from '../util.js';
 import { t } from '../i18n.js';
 import { audio } from '../audio.js';
 import { CARDS, RT, COMMISSION, TEAM, DRINKS } from '../battle/data.js';
+import { OUTING } from '../data.js';
+import { cloud } from '../cloud.js';
 import { Run } from '../battle/engine.js';
 import { RtBattle, autoMoveRt, rtCost } from '../battle/realtime.js';
 import { ULTS, playUlt } from './ultimate.js';
@@ -14,6 +16,7 @@ import { BattleScreen, Mate, NAMES, MATES, cardLines, intentWords } from './batt
 import { styleOf, shoot, dash, spark, struck, staggered, rush, shockwave, impactSound } from './hitfx.js';
 
 const ROLE = { Tank: 'Tank', Striker: 'Striker', Support: 'Support', Caster: 'Caster' };
+const LOCAL = new URLSearchParams(location.search).has('offline');   // local testing without the server (main.js)
 const SLOW = 0.3;   // time runs this fast while a card or a drink is picked up
 const ASK = 3;      // auto picks a move every 3 ticks
 
@@ -30,13 +33,31 @@ class RtScreen extends BattleScreen {
   }
   open() { super.open(); this.root.classList.add('rt'); }
 
-  /** The brief: each member's row and role under their passive. */
+  /** The brief: each member's row and role under their passive, and the outing tickets (outing.js): heading out
+   *  spends one and shuts the café for a round, unless the team is already out (then it carries on). */
   brief() {
     super.brief();
     this.frame.querySelectorAll('.bt-mates > div').forEach((el, i) => {
       const r = RT.members[TEAM[i]];
       if (r) el.appendChild(h('em.bt-role', t(r.row === 'front' ? 'Front row' : 'Back row') + ' · ' + t(ROLE[r.role])));
     });
+    const g = this.game, day = g && g.day;
+    if (!day || g.visit) return;
+    const go = this.frame.querySelector('.bt-acts .bt-btn.go'), out = day.shutLeft, n = g.state.tickets.n;
+    const row = h('div.bt-row', h('span.bt-lab', t('Outing tickets · one a day, up to {n}', { n: OUTING.max })),
+      h('span.bt-pill' + (n ? '' : '.coral'), t('{n} / {m}', { n, m: OUTING.max })),
+      out ? h('span.bt-pill', t('Out · back in {t}', { t: `${Math.floor(out / 3600)}:${String(Math.floor(out / 60) % 60).padStart(2, '0')}` })) : null);
+    go.parentNode.before(row, h('div.bt-plea', out ? t('The café is shut while the team is out: carry on with the commission.')
+      : t('Heading out shuts the café for two hours: no guests and no wages for that time, the rent is still due.')));
+    if (out) { go.textContent = t('Carry on'); return; }
+    if (!n) { go.disabled = true; go.textContent = t('No tickets left: one more tomorrow'); return; }
+    go.textContent = t('Spend a ticket and head out');
+    go.onclick = () => {
+      if (!cloud.online && !LOCAL) { g.toast(t('Heading out needs a connection to the server.'), 'bad'); return; }
+      if (!day.startOuting()) return;
+      audio.play('open');
+      this.startNode();
+    };
   }
   topBar() {
     const el = super.topBar();

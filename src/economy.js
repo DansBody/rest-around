@@ -13,6 +13,7 @@ const FEED_SLACK = 15;   // feeding the whole team skips anyone this close to fu
 import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
 import { t } from './i18n.js';
+import { topUp } from './outing.js';
 import { choice, randInt, clamp } from './util.js';
 
 /** What reaching `level` opens up, as readable lines (also used by the welcome-back report). */
@@ -81,6 +82,8 @@ export class Economy {
   /** A new calendar day (the player's own time zone) brings three new goals. */
   checkDate() {
     const s = this.s, today = this.game.day.today();
+    const tk = topUp(s.tickets, today);   // and an outing ticket for each day gone by
+    if (tk !== s.tickets) { s.tickets = tk; this.game.changed('tickets'); }
     if (s.daily && s.daily.day === today && s.daily.goals.length) return;
     this.rollDaily(today);
   }
@@ -317,10 +320,11 @@ export class Economy {
   dailyRent() { return perRound(rentFor(this.game.world.size)); }
   /**
    * Close the books for the round: pay the team and the landlord as far as the till allows. `share` is the
-   * part of the opening hours the café traded live (the rest was settled offline, or the game opened late).
+   * part of the opening hours the café traded live (the rest was settled offline, or the game opened late);
+   * `rentShare` adds the hours it stood shut for an outing, which the landlord still charges for.
    */
-  payDay(share = 1) {
-    const s = this.s, wages = Math.round(this.dailyWages() * share), rent = Math.round(this.dailyRent() * share);
+  payDay(share = 1, rentShare = share) {
+    const s = this.s, wages = Math.round(this.dailyWages() * share), rent = Math.round(this.dailyRent() * rentShare);
     const w = Math.min(s.coins, wages);
     const r = Math.min(s.coins - w, rent);
     s.coins -= w + r;

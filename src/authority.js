@@ -9,6 +9,8 @@
 //     and the odd Coin Shower. A crop in the garden counts as far as it has grown. Growth beyond the ceiling is taken back out of the coins.
 //   - points (and so the level), the rating, the round counter and staff skill XP, each against its own ceiling.
 //   - study vouchers: held plus spent on dish levels; they only come from the Today panel and level-ups.
+//   - outing tickets (outing.js): one a calendar day up to the cap, one spent on each outing started, and an
+//     outing can only start between the last accepted save and now.
 //
 // The ceiling is a throughput bound, not a replay: guests per second can never exceed what the café's
 // stations, servers and seats could handle at full stretch, nor what walks in at a five-star rating at the
@@ -20,10 +22,12 @@
 import {
   DAY, dishById, furnitureById, floorById, wallById, wallDecorById, EXPANSIONS, ROLES, ingById, ingPrice, snackById,
   SERVINGS_PER_UNIT, levelUpCost, dishPrice, dishPoints, EXTRA_CAT, SEEDS, gardenPlots, staffSlots, KITS, MAX_LEVEL,
-  DAILY, dailyCoins, dailyPoints, studySpent, wearById, seatCap, stationCap, STATION_KINDS, STARTER, starterPaid, LEVEL_POINTS,
+  DAILY, dailyCoins, dailyPoints, studySpent, wearById, seatCap, stationCap, STATION_KINDS, STARTER, starterPaid, LEVEL_POINTS, OUTING,
 } from './data.js';
 import { DIRS } from './iso.js';
 import { MODEL, capacity, levelFor, arrivalsPerHour, SIM_SEC_PER_HOUR } from './offline.js';
+import { cleanTickets, cleanOuting } from './outing.js';
+import { wallSec as wallClock, localDay } from './clock.js';   // (capCheck's own wallSec is the seconds between uploads)
 
 export const CAP = {
   tolerance: 1.3,       // headroom on the throughput bound (active skills, rounding, a lucky streak)
@@ -115,6 +119,8 @@ export function badShape(d) {
   if (!Array.isArray(w.furniture) || w.furniture.length > w.size * w.size || !Array.isArray(w.floors)) return 'world';
   if (!Array.isArray(d.staff) || d.staff.length > 8) return 'staff';
   for (const o of [s.inv, s.opened, s.snacks]) if (o && Object.values(o).some((n) => !num(n, 0, 1e6))) return 'inventory';
+  if (s.tickets != null && (typeof s.tickets !== 'object' || !num(s.tickets.n, 0, OUTING.max) || (s.tickets.day != null && !num(s.tickets.day, 0, 1e7)))) return 'tickets';
+  if (s.outing != null && !cleanOuting(s.outing)) return 'outing';
   return null;
 }
 
@@ -213,6 +219,19 @@ export function capCheck(prev, next, wallSec) {
     st.vouchers -= excess;
     flags.push('vouchers');
   }
+
+  // outing tickets: a new outing has to start inside this window and spend a ticket; tickets come one a
+  // calendar day (counted from the day the last accepted save had), up to the cap
+  const tkPrev = cleanTickets(prev.state.tickets), tkNext = cleanTickets(next.state.tickets);
+  const op = cleanOuting(prev.state.outing), on = cleanOuting(next.state.outing);
+  const started = on && !(op && op.from === on.from) ? 1 : 0;
+  const tz = next.state.tz || 0;
+  if (started && (on.from < wallClock(prevAt, tz) - slack / 1000 || on.from > wallClock(nowAt, tz) + slack / 1000)) return reject('outing');
+  if (tkNext.day != null && tkNext.day > localDay(nowAt, tz) + 1) return reject('tickets');
+  const granted = tkPrev.day == null || tkNext.day == null ? 0 : Math.min(Math.max(0, tkNext.day - tkPrev.day), days + 1) * OUTING.perDay;
+  const ticketsAllowed = Math.min(OUTING.max, tkPrev.n - started + granted);
+  if (ticketsAllowed < 0) return reject('outing');   // went out without a ticket
+  if (tkNext.n > ticketsAllowed) { st.tickets = { n: ticketsAllowed, day: tkNext.day }; flags.push('tickets'); }
 
   const maxDrift = 5 * (1 - Math.exp(-CAP.ratingRate * sim)) + 0.05;
   const r0 = prev.state.rating || 0;

@@ -213,7 +213,7 @@ export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSecon
 
 // Bump whenever a number here, offline.js or authority.js changes what a save earns. The server and the
 // game must run the same balance (see ONLINE.md): deploy the server first, then the game.
-export const BALANCE_VERSION = 11;
+export const BALANCE_VERSION = 12;
 
 /** Guests an hour at this rating, seat count and phase multiplier. Past 4 seats more seats draw more guests (up to 24);
  *  under 4 the street sends fewer, so a room with one table for two isn't swamped by guests it can't seat. */
@@ -316,6 +316,9 @@ export const NIGHT = { id: 'night', name: 'Night', from: 22, mult: 0 };
 /** Costs that come round once per round (wages, rent, the market budget, the trouble allowance) were set for
  *  the old 8-minute day; a round's opening hours are this many of those, so per real minute nothing changes. */
 export const ROUND_SCALE = 6480 / 480;
+/** Outing days (design/combat/DESIGN.md §3): a ticket a calendar day, banked up to max; heading out shuts the café
+ *  for one round's length of wall clock from that moment: no guests, no wages for that time, the rent still due. */
+export const OUTING = { perDay: 1, max: 3, length: DAY.round };
 export const perRound = (n) => Math.round(n * ROUND_SCALE);
 export const PATIENCE = { seat: 24, order: 38, food: 60 };
 // A cashier counter: guests stop to pay on the way out and add `tip` × the bill (× satisfaction) on top of

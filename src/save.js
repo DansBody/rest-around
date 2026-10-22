@@ -12,6 +12,7 @@ import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
 import { themeById, specialById } from './specials.js';
+import { cleanTickets, cleanOuting } from './outing.js';
 
 // Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
 export const SAVE_KEY = 'restAround.save.v1';
@@ -128,6 +129,8 @@ export function apply(game, data) {
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,
     partner: UNIQUE_MODELS.includes(s.partner) ? s.partner : null,
+    tickets: cleanTickets(s.tickets),
+    outing: cleanOuting(s.outing),
     tutorial: Array.isArray(s.tutorial) ? s.tutorial.filter((x, i, a) => typeof x === 'string' && x.length < 16 && a.indexOf(x) === i).slice(0, 48) : [],
   };
   while (st.level < MAX_LEVEL && st.points >= LEVEL_POINTS[st.level + 1]) st.level++;

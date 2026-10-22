@@ -16,7 +16,8 @@ import { CASHIER,
   EXTRA_CAT, LEVEL_POINTS, MAX_LEVEL, snackById, SNACKS, staffWage, rentFor, dishPrice, dishPoints, COSTS, SEEDS, ROUND_SCALE, DAILY, awayHours, arrivalsPerHour, STARTER,
 } from './data.js';
 import { RATING_WEIGHTS } from './rating.js';
-import { roundAt, clockAt, localDay } from './clock.js';
+import { roundAt, clockAt, localDay, wallSec } from './clock.js';
+import { cleanOuting, shutWithin } from './outing.js';
 import * as pantry from './pantry.js';
 import { STOCK_BAKE_CHANCE } from './pastry.js';
 
@@ -126,7 +127,9 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   const st = out.state, wd = out.world;
   const capSec = (opts.capHours ?? awayHours(levelFor(st.points || 0))) * 3600;   // a bigger café counts more hours away
   const sec = Math.min(elapsedSec, capSec);
-  const days = sec / (O.hoursPerDay * 3600);
+  // the hours an outing kept the café shut (outing.js) earn nothing; the landlord still wants them paid
+  const end = wallSec(now, st.tz), shutSec = Math.min(sec, shutWithin(cleanOuting(st.outing), end - elapsedSec, end));
+  const days = (sec - shutSec) / (O.hoursPerDay * 3600);
   const rng = rngFrom(((opts.seedBase ?? data.savedAt ?? 0) ^ Math.floor(sec)) >>> 0);
 
   // ----- the working copy of the café -----
@@ -144,7 +147,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   const till = furn.some((x) => furnitureById[x.type].kind === 'cashier');   // guests pay at the counter and tip extra
 
   const rep = {
-    elapsedSec, usedSec: sec, capped: elapsedSec > capSec, days,
+    elapsedSec, usedSec: sec, capped: elapsedSec > capSec, days, shutSec,
     served: 0, lost: 0, noSeat: 0, soldOut: 0, sales: 0, tips: 0, fees: 0, wages: 0, rent: 0, restock: 0, net: 0, points: 0,
     ratingFrom: st.rating, ratingTo: st.rating, levelFrom: w.level, levelTo: w.level,
     goalsDone: 0, dishes: {}, phases: Object.fromEntries(DAY.phases.map((p) => [p.id, 0])), ranOut: [], broke: [], snacksUsed: 0, readyCrops: 0,
@@ -267,6 +270,11 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     rep.parts = partsNow(service, trash + (cleaners.length ? 0.04 * servedDay : 0));
     target = ratingTarget(rep.parts);
     w.rating += (target - w.rating) * (1 - Math.exp(-0.007 * MODEL_DAY * f));
+  }
+
+  if (shutSec) {   // rent for the hours shut (wages too: nobody was in to pay)
+    const rent = Math.round(rentFor(wd.size) * shutSec / (O.hoursPerDay * 3600)), paid = Math.min(w.coins, rent);
+    w.coins -= paid; rep.rent += paid;
   }
 
   // ----- write the result back into the save -----

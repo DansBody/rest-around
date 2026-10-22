@@ -585,5 +585,13 @@ export const ZH_TW = {
   'The team fights on its own. Play a card when you have the energy.': '隊伍會自己打。能量夠了就出牌。',
   'Tank': '坦', 'Striker': '突擊', 'Support': '輔助', 'Caster': '法師', 'Front row': '前排', 'Back row': '後排',
   '{who} is too blue to go on': '{who} 太藍了，先休息', 'Look at me!': '看這邊！', 'Engage!': '開戰！', 'Cleared!': '打贏了！', 'Focus here': '集中攻擊這隻', 'Grey again': '又變灰了',
+  // ---------------- outing days (outing.js)
+  'Out · back in {t}': '外出中 · {t} 後回來', 'Out {t}': '外出中 {t}', 'Outing tickets · one a day, up to {n}': '外出券 · 每天發 1 張，最多存 {n} 張', '{n} / {m}': '{n} / {m}',
+  'The café is shut while the team is out: carry on with the commission.': '隊伍外出中，咖啡廳公休。繼續完成委託吧。',
+  'Heading out shuts the café for two hours: no guests and no wages for that time, the rent is still due.': '出門後咖啡廳會公休兩小時：這段時間沒有客人、不發薪水，房租照付。',
+  'Carry on': '繼續委託', 'No tickets left: one more tomorrow': '外出券用完了，明天會再發一張', 'Spend a ticket and head out': '用一張外出券出發',
+  'Heading out needs a connection to the server.': '出門需要連上伺服器。',
+  'The team went out on a commission this round: nobody new came in while they were away, and only the rent was due for those hours.': '這輪隊伍出門接委託：外出期間沒有新客人，那段時間只付了房租。',
+  'The café was shut for {n} min while the team was out on a commission: only the rent was due.': '隊伍出門接委託，咖啡廳公休了 {n} 分鐘，那段時間只付了房租。', 'Focus here': '集中攻擊這隻', 'Grey again': '又變灰了',
   'A Sleepy Owl': '睡不飽的貓頭鷹', 'Make the Alarm Shut Up': '讓鬧鐘閉嘴', 'It rings every morning and never stops. Please, just one quiet morning.': '它每天早上都響個不停。拜託，讓我安靜睡一個早上就好。',
 };
