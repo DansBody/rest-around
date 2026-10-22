@@ -579,5 +579,11 @@ export const ZH_TW = {
   '+15% coins from the commission.': '委託金幣 +15%。', 'Its cards deal 20% less after 7 pm.': '晚上 7 點後，它的卡傷害 −20%。',
   'Shh. Let time stand still for a moment.': '噓——讓時間先停一下。',
   'Test ultimate': '測試大絕', 'Plays the cut-in without changing the fight': '只播大絕演出，不影響戰鬥',
+  'Time': '時間', 'A foe loses its charge and freezes {n} s.': '敵人的蓄力歸零，凍住 {n} 秒。', 'Energy +{n} in {s} s': '{s} 秒後能量 +{n}',
+  'Cannot be played. Unties itself in {n} s.': '不能打出，{n} 秒後自己解開。', 'Colour back: double damage': '恢復顏色：受到雙倍傷害',
+  'Slowed down · tap a foe or the card again': '時間變慢 · 點敵人，或再點一次卡片', 'Slowed down · tap the card again': '時間變慢 · 再點一次卡片就打出',
+  'The team fights on its own. Play a card when you have the energy.': '隊伍會自己打。能量夠了就出牌。',
+  'Tank': '坦', 'Striker': '突擊', 'Support': '輔助', 'Caster': '法師', 'Front row': '前排', 'Back row': '後排',
+  '{who} is too blue to go on': '{who} 太藍了，先休息', 'Look at me!': '看這邊！', 'Engage!': '開戰！', 'Cleared!': '打贏了！', 'Focus here': '集中攻擊這隻', 'Grey again': '又變灰了',
   'A Sleepy Owl': '睡不飽的貓頭鷹', 'Make the Alarm Shut Up': '讓鬧鐘閉嘴', 'It rings every morning and never stops. Please, just one quiet morning.': '它每天早上都響個不停。拜託，讓我安靜睡一個早上就好。',
 };

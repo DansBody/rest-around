@@ -224,11 +224,12 @@ export class Battle {
 
 /** A commission played node by node: the deck, chill and drinks carry over between fights. */
 export class Run {
-  constructor(commission, { seed = Date.now() % 1e9, team = TEAM, night = false } = {}) {
-    this.c = commission; this.seed = seed; this.team = team; this.night = night;
+  /** Fight: the kind of fight its nodes play (Battle, or battle/realtime.js RtBattle). */
+  constructor(commission, { seed = Date.now() % 1e9, team = TEAM, night = false, Fight = Battle } = {}) {
+    this.c = commission; this.seed = seed; this.team = team; this.night = night; this.Fight = Fight;
     this.rand = rng(seed ^ 0x5eed);
     this.deck = Object.entries(CARDS).filter(([, d]) => d.starter && team.includes(d.who)).map(([id]) => makeCard(id));
-    this.chill = RULES.chill; this.chillMax = RULES.chill;
+    this.chill = RULES.chill; this.chillMax = RULES.chill; this.hp = null;
     this.drinks = commission.drinks.slice(0, RULES.drinks);
     this.node = 0;
     this.coins = 0; this.lost = 0; this.colored = []; this.picked = [];
@@ -236,14 +237,15 @@ export class Run {
   }
   get here() { return this.c.nodes[this.node]; }
   fight() {
-    this.battle = new Battle({ deck: this.deck, foes: this.here.foes, team: this.team, seed: Math.floor(this.rand() * 1e9), night: this.night,
-      chill: this.chill, chillMax: this.chillMax, drinks: this.drinks });
+    this.battle = new this.Fight({ deck: this.deck, foes: this.here.foes, team: this.team, seed: Math.floor(this.rand() * 1e9), night: this.night,
+      chill: this.chill, chillMax: this.chillMax, drinks: this.drinks, hp: this.hp });
     return this.battle;
   }
   /** After a fight: carry chill and drinks over, count the coins and what got its colour back. */
   settle() {
     const b = this.battle;
-    this.chill = b.chill; this.drinks = b.drinks.slice();
+    this.chill = b.chill; this.chillMax = b.chillMax; this.drinks = b.drinks.slice();
+    if (b.members) this.hp = Object.fromEntries(b.members.map((m) => [m.id, m.hp]));   // real time: each member's own
     this.coins += b.coins(); this.lost += b.lost;
     for (const f of b.foes) if (!f.alive && !f.fled) this.colored.push(f.id);
   }
@@ -256,7 +258,15 @@ export class Run {
     return out;
   }
   pick(id) { if (id) { this.deck.push(makeCard(id)); this.picked.push(id); } }
-  rest() { const n = Math.min(this.here.heal, this.chillMax - this.chill); this.chill += n; return n; }
+  rest() {
+    if (this.battle && this.battle.members) {   // real time: everyone gets the coffee, and it brings the fallen back
+      for (const m of this.battle.members) this.hp[m.id] = Math.min(m.max, this.hp[m.id] + this.here.heal);
+      const was = this.chill;
+      this.chill = this.battle.members.reduce((s, m) => s + this.hp[m.id], 0);
+      return this.chill - was;
+    }
+    const n = Math.min(this.here.heal, this.chillMax - this.chill); this.chill += n; return n;
+  }
   next() { this.node++; return this.node < this.c.nodes.length; }
   /** Total coins: Hee Hee's tips on top. */
   payout() { return Math.round(this.coins * (this.team.includes('heehee') ? 1.15 : 1)); }

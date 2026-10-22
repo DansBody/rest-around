@@ -4,6 +4,7 @@ import { assets } from '../assets.js';
 import { DAY } from '../data.js';
 import { specialsEnabled, setSpecialsEnabled } from '../specials.js';
 import { openBattle } from './battle.js';
+import { openBattleRt } from './battlert.js';
 
 export class DebugPanel {
   constructor(game, ui, root) {
@@ -43,7 +44,8 @@ export class DebugPanel {
         h('button.btn.small', { onclick: () => { g.state.clock = DAY.length - 5; } }, 'Skip to closing'),
         h('button.btn.small', { onclick: () => { for (const a of g.staff) a.energy = 0; } }, 'Drain energy')),
       h('div.btnrow',
-        h('button.btn.small', { onclick: () => { this.toggle(); openBattle(g); } }, 'Battle prototype')),
+        h('button.btn.small', { onclick: () => { this.toggle(); openBattle(g); } }, 'Battle prototype'),
+        h('button.btn.small', { onclick: () => { this.toggle(); openBattleRt(g); } }, 'Battle (real time)')),
       h('div.btnrow',
         h('button.btn.small' + (specialsEnabled() ? '.primary' : ''), { onclick: () => { setSpecialsEnabled(!specialsEnabled()); g._sp = null; this.rerender(); } }, `Specials ${specialsEnabled() ? 'on' : 'off'}`),
         h('button.btn.small', { onclick: () => { g.state.specials = null; g._sp = null; this.ui.spOffered = null; g.toast('New day of specials'); } }, 'New specials day'),

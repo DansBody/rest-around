@@ -8,7 +8,8 @@ export const RULES = { chill: 60, hand: 3, handMax: 5, energy: 3, drinks: 2, kno
 /** Cards. fx keys:
  *  dmg (per hit) · hits · all (every foe) · rnd [lo, hi] (damage rolled) · random (a random foe) · fade (colour back)
  *  foam (block) · heal (chill) · draw · energy · cancel (the target's intent this turn) · boost (+dmg on the next attack)
- *  conjure (a random 0-cost card; sometimes a knot) · recall (the last card played comes back) · nextEnergy.
+ *  conjure (a random 0-cost card; sometimes a knot) · recall (the last card played comes back) · nextEnergy
+ *  · taunt (real time only: every hit goes to the one who played it, for n s).
  *  target: 'foe' needs a foe tapped, 'none' plays at once. starter: in the deck from the start; the rest are rewards. */
 export const CARDS = {
   // Mocha Latte: time control
@@ -24,7 +25,7 @@ export const CARDS = {
   pounce: { who: 'cheetie', name: 'Pounce', cost: 2, type: 'attack', target: 'foe', fx: { dmg: 12, fade: 3 } },
   zoomies: { who: 'cheetie', name: 'Zoomies', cost: 1, type: 'attack', target: 'none', fx: { dmg: 3, all: true, fade: 1 } },
   // Hee Hee: spotlight and blooming
-  spotlight: { who: 'heehee', name: 'Spotlight', cost: 1, type: 'skill', target: 'none', starter: true, fx: { foam: 10 } },
+  spotlight: { who: 'heehee', name: 'Spotlight', cost: 1, type: 'skill', target: 'none', starter: true, fx: { foam: 10, taunt: 6 } },
   bloom: { who: 'heehee', name: 'Bloom', cost: 1, type: 'skill', target: 'none', starter: true, fx: { heal: 5, foam: 2 } },
   curtain: { who: 'heehee', name: 'Curtain Call', cost: 2, type: 'attack', target: 'none', starter: true, fx: { dmg: 5, all: true, fade: 1 } },
   encore: { who: 'heehee', name: 'Encore', cost: 1, type: 'skill', target: 'none', fx: { recall: true } },
@@ -48,16 +49,33 @@ export const PASSIVES = {
 };
 
 /** Intent kinds: hit (dmg) · wind (winding up, does nothing) · ring (a big hit, dmg) · nap · jam (next card costs +n)
- *  · call (brings in a foe) · steal (coins) · flee (leaves with what it stole). Patterns loop. */
+ *  · call (brings in a foe) · steal (coins) · flee (leaves with what it stole). Patterns loop.
+ *  aim (real time only, where each member has their own chill): 'front' (default) · 'back' · 'all'. */
 export const FOES = {
   clock: { name: 'Alarm Beast', img: 'clock', w: 112, hp: 76, fade: 10, coins: 30, boss: true,
-    pattern: [{ k: 'hit', dmg: 12 }, { k: 'hit', dmg: 8 }, { k: 'wind' }, { k: 'ring', dmg: 30 }] },
+    pattern: [{ k: 'hit', dmg: 12 }, { k: 'hit', dmg: 8 }, { k: 'wind' }, { k: 'ring', dmg: 30, aim: 'all' }] },
   phone: { name: 'Unread Pings', img: 'phone', w: 60, hp: 24, fade: 5, coins: 10, badge: '99+',
     pattern: [{ k: 'jam', n: 1 }, { k: 'hit', dmg: 8 }, { k: 'call', foe: 'ping' }] },
   ping: { name: 'Ping', img: 'phone', w: 36, hp: 6, fade: 2, coins: 2,
-    pattern: [{ k: 'hit', dmg: 5 }] },
+    pattern: [{ k: 'hit', dmg: 5, aim: 'back' }] },
   bill: { name: 'Month-end Bill', img: 'bill', w: 60, hp: 26, fade: 5, coins: 12,
     pattern: [{ k: 'steal', n: 12 }, { k: 'hit', dmg: 8 }, { k: 'steal', n: 12 }, { k: 'flee' }] },
+};
+
+/** The real-time variant (battle/realtime.js, ?battle&rt): Blue Archive's flow with this deck. The team hits on its
+ *  own, cost refills on a clock, the hand refills to 3 as cards are played, and each foe's intent is a charge bar.
+ *  Times are seconds; the engine runs on 10 ticks a second. A card costs rtCost, or twice its turn cost (at least 1). */
+export const RT = {
+  tps: 10, regen: 1.5, energyMax: 10, energyStart: 4, foamDecay: 1, colourFor: 4, freezeFor: 2.5, knotFor: 5, nextEnergyIn: 3,
+  hpMul: 2.1, chargeMul: 2, allMul: 0.5,   // foes are tougher than in the turn-based fight (a fight should last about a minute); charge pace
+  // each member's own chill and row: the front row takes the hits, the back row only what aims at it ('all' hits
+  // land on everyone at allMul). A member at 0 sits out: no swings, their cards leave the deck for this fight.
+  members: { heehee: { row: 'front', hp: 26, role: 'Tank' }, cheetie: { row: 'front', hp: 20, role: 'Striker' },
+    mochalatte: { row: 'back', hp: 17, role: 'Support' }, bbaekko: { row: 'back', hp: 13, role: 'Caster' } },
+  // auto attacks: [seconds between swings, damage]
+  swing: { mochalatte: [2.4, 2], cheetie: [1.6, 1], heehee: [3, 1], bbaekko: [3, [1, 3]] },
+  // how long each intent takes to charge before it goes off
+  charge: { hit: 4, ring: 6, wind: 2.5, nap: 3, jam: 3.5, call: 5, steal: 4, flee: 5 },
 };
 
 export const DRINKS = {

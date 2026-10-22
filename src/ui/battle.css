@@ -250,3 +250,79 @@
 .bt-foe.paused .bt-body img { filter: sepia(.35) hue-rotate(180deg) saturate(2.2) brightness(1.02) drop-shadow(4px 5px 0 rgba(31, 42, 74, .3)); }
 .bt-foe.paused .bt-body::after { content: ''; position: absolute; left: 50%; top: 50%; width: 120%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 3px dashed var(--os-denim); pointer-events: none; }
 .bt-shard { position: absolute; z-index: 9; pointer-events: none; }
+
+/* ---------- the real-time variant (ui/battlert.js, ?battle&rt) ---------- */
+/* energy: the circle fills round its edge towards the next point; a bar of ten in the thumb zone, where End turn was */
+.rt .bt-energy { background: conic-gradient(var(--os-denim-2) calc(var(--p, 0) * 1turn), var(--os-ink) 0); }
+.rt .bt-energy::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--os-ink); }
+.rt .bt-energy b { position: relative; }
+.rt .bt-energy .beans { display: none; }
+.bt-cost { position: absolute; right: 14px; bottom: 20px; z-index: 6; display: flex; align-items: center; gap: 2px; padding: 7px 10px 7px 12px; background: var(--os-ink);
+  clip-path: polygon(0 4px, 100% 0, calc(100% - 8px) 100%, 4px 100%); transform: rotate(-3deg); filter: drop-shadow(3px 3px 0 var(--os-denim)); }
+.bt-cost i { position: relative; width: 13px; height: 18px; overflow: hidden; background: rgba(255, 255, 255, .16); transform: skewX(-14deg); }
+.bt-cost i::after { content: ''; position: absolute; inset: 0; background: var(--os-denim-2); transform-origin: left; transform: scaleX(var(--f, 0)); }
+.bt-cost i.on::after { background: #fff; transform: none; }
+.bt-cost b { margin-left: 8px; color: #fff; font: 24px/1 var(--os-lcd); min-width: 22px; text-align: right; }
+.rt .bt-dev { left: 12px; bottom: auto; top: 104px; }
+.rt .bt-devmenu { left: 12px; bottom: auto; top: 134px; }
+/* a card that just became affordable bumps its cost */
+.bt-card.ready .cost { animation: bt-ready .36s cubic-bezier(.2, .8, .3, 1.4); }
+@keyframes bt-ready { 40% { transform: scale(1.35); } }
+/* a foe's move charging up; coral for the big ones, denim while it is frozen or coloured; it blinks just before */
+.bt-charge { width: 78px; height: 8px; margin: 2px 0 0 4px; padding: 2px; background: var(--os-field); box-shadow: inset 0 0 0 2px var(--os-ink); transform: skewX(-18deg); }
+.bt-charge i { display: block; height: 100%; background: var(--os-ink); }
+.bt-charge.alert i { background: var(--os-coral); }
+.bt-charge.held i { background: var(--os-denim); }
+.bt-charge.near { animation: bt-near .3s steps(2, end) infinite; }
+@keyframes bt-near { 50% { box-shadow: inset 0 0 0 2px var(--os-coral), 0 0 0 2px var(--os-coral); } }
+.bt-foe.right .bt-charge { margin: 2px 4px 0 0; }
+/* the foe the team is swinging at */
+.bt-foe.focus .bt-name { background: var(--os-denim); color: #fff; }
+.bt-foe.focus .bt-name::before { content: '▸ '; }
+/* the team's own swings: a lunge towards the foes, a denim dash across, small numbers */
+.bt-mate.swing canvas { animation: bt-swing .3s cubic-bezier(.2, .8, .3, 1); }
+@keyframes bt-swing { 35% { translate: 18px -8px; scale: 1.08 .94; } }
+.bt-streak { position: absolute; height: 5px; margin-top: -2px; transform-origin: 0 50%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--os-denim) 55%, #fff 90%); box-shadow: 0 0 0 1px rgba(31, 42, 74, .25); }
+/* foes breathe while they charge, tremble just before the move goes off, and stand still when frozen */
+.rt .bt-foe:not(.hurt):not(.lunge):not(.aim):not(.paused) .bt-body { animation: bt-bob 1.8s ease-in-out infinite; }
+.rt .bt-foe.near:not(.hurt):not(.lunge):not(.aim):not(.paused) .bt-body { animation: bt-tremble .12s steps(2, end) infinite; }
+@keyframes bt-bob { 50% { translate: 0 -5px; } }
+@keyframes bt-tremble { 50% { translate: 2px -1px; } }
+.bt-pop.small { font-size: 17px; }
+/* holding a card: time slows, the frame goes denim at the edges */
+.rt .bt-frame::before { content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .15s;
+  box-shadow: inset 0 0 0 5px var(--os-denim), inset 0 0 70px rgba(63, 93, 170, .5); }
+.rt .bt-frame.slow::before { opacity: 1; }
+/* each member's own chill under their name tag; coral when low, grey and napping once they sit out. The passives'
+   labels stay in the brief: the stage is busy enough in real time */
+.rt .bt-mate .buff { display: none; }
+.bt-mhp { position: absolute; left: 50%; bottom: -22px; translate: -50% 0; z-index: 1; }
+.bt-mhp b { display: block; width: 52px; height: 8px; padding: 2px; background: var(--os-field); box-shadow: inset 0 0 0 2px var(--os-ink); transform: skewX(-14deg); }
+.bt-mhp b i { display: block; height: 100%; background: var(--os-denim); transition: width .2s steps(4, end); }
+.bt-mate.low .bt-mhp b i { background: var(--os-coral); }
+.bt-mate.ko canvas { filter: grayscale(1) opacity(.75); }
+.bt-mate.ko .tag { background: var(--os-grey); }
+.bt-mate.ko .bt-mhp { opacity: .45; }
+/* Spotlight: a warm cone on Hee Hee while she draws every hit */
+.bt-mate.taunt::before { content: ''; position: absolute; left: 50%; top: -50px; width: 104px; height: 168px; translate: -50% 0; pointer-events: none;
+  background: linear-gradient(rgba(255, 236, 190, 0), rgba(255, 236, 190, .75)); clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%); }
+.bt-sheet .bt-mates em.bt-role { color: var(--os-denim); }
+/* hit feel (ui/hitfx.js): shots, sparks and bits on the effects layer; a hit-stop pauses the stage's own loops */
+.hx { position: absolute; pointer-events: none; z-index: 9; }
+.hx svg { display: block; }
+.hx.shot { margin: -6px 0 0 -9px; }
+.hx.star, .hx.ring { transform: translate(-50%, -50%); }
+.hx.claw { width: 5px; border-radius: 3px; background: #fff; box-shadow: 0 0 0 2px var(--os-ink); transform: rotate(28deg); }
+.hx.drop { width: 7px; height: 7px; border-radius: 50%; background: #7A4A2A; box-shadow: 0 0 0 1.5px var(--os-ink); }
+.hx.petal { width: 10px; height: 7px; border-radius: 50% 50% 50% 0; background: #F6A6B8; box-shadow: 0 0 0 1.5px var(--os-ink); }
+.hx.mote { width: 6px; height: 6px; background: var(--os-denim); box-shadow: 0 0 0 1.5px #fff; }
+.hx.chip { width: 5px; height: 5px; background: #fff; box-shadow: 0 0 0 1.5px var(--os-ink); }
+.bt-frame.hitstop .bt-foe .bt-body, .bt-frame.hitstop .bt-mate canvas, .bt-frame.hitstop .bt-charge { animation-play-state: paused; }
+/* real time: each foe's HP as a bar over its number; the light trail behind shows what the last blows took */
+.bt-fhp { display: block; position: relative; height: 10px; margin-top: 4px; background: var(--os-field); box-shadow: inset 0 0 0 2px var(--os-ink); transform: skewX(-18deg); }
+.bt-fhp.boss { height: 13px; }
+.bt-fhp i { position: absolute; left: 2px; top: 2px; bottom: 2px; }
+.bt-fhp .trail { background: var(--os-peach); transition: width .45s ease-in .3s; }
+.bt-fhp .fill { background: var(--os-ink); transition: width .06s; }
+.bt-foe.colored .bt-fhp .fill { background: #C8894E; }

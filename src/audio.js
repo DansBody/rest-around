@@ -149,6 +149,15 @@ class Audio {
       case 'click': T(900, 0.04, { type: 'triangle', vol: 0.12 }); break;
       case 'bat': this.noise(0.09, { vol: 0.32, freq: 2600, q: 0.9 }); T(1250, 0.07, { type: 'square', vol: 0.08 }); T(620, 0.12, { type: 'triangle', vol: 0.12, at: 0.02, slide: -200 }); break;
       case 'step': T(240, 0.035, { type: 'triangle', vol: 0.1, slide: -60 }); break;
+      // battle impacts, one per member's way of attacking (ui/hitfx.js); '-s' is the quieter auto-attack version
+      case 'bean': T(380, 0.08, { type: 'triangle', vol: 0.24, slide: -170 }); this.noise(0.13, { vol: 0.16, freq: 1700, q: 1.2 }); T(940, 0.05, { vol: 0.08, at: 0.02 }); break;
+      case 'bean-s': T(420, 0.06, { type: 'triangle', vol: 0.11, slide: -150 }); this.noise(0.07, { vol: 0.06, freq: 1800, q: 1.2 }); break;
+      case 'claw': this.noise(0.06, { vol: 0.24, freq: 5200, q: 1.4 }); this.noise(0.07, { vol: 0.22, at: 0.065, freq: 4300, q: 1.4 }); T(1400, 0.04, { type: 'square', vol: 0.05 }); break;
+      case 'claw-s': this.noise(0.05, { vol: 0.1, freq: 5000, q: 1.4 }); break;
+      case 'bash': T(110, 0.18, { vol: 0.5, slide: -50 }); this.noise(0.12, { vol: 0.2, freq: 420, q: 0.7, type: 'lowpass' }); T(1568, 0.28, { vol: 0.06, at: 0.04 }); break;
+      case 'bash-s': T(130, 0.1, { vol: 0.24, slide: -40 }); this.noise(0.06, { vol: 0.08, freq: 420, q: 0.7, type: 'lowpass' }); break;
+      case 'zap': T(520, 0.16, { vol: 0.17, slide: 900 }); T(1319, 0.22, { type: 'triangle', vol: 0.08, at: 0.05 }); this.noise(0.15, { vol: 0.06, at: 0.03, freq: 6000, type: 'highpass' }); break;
+      case 'zap-s': T(620, 0.09, { vol: 0.08, slide: 600 }); break;
       case 'error': T(200, 0.14, { type: 'square', vol: 0.07 }); T(160, 0.18, { type: 'square', vol: 0.07, at: 0.12 }); break;
       case 'water': this.noise(0.5, { vol: 0.1, freq: 2500, q: 1.5 }); break;
       case 'eat': T(400, 0.06, { vol: 0.15 }); T(460, 0.06, { vol: 0.15, at: 0.1 }); break;

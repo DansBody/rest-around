@@ -19,6 +19,7 @@ import { THREE, models } from '../models.js';
 import { CharacterView } from '../charview.js';
 import { staffLook } from '../looks.js';
 import { GLTFLoader } from '../../vendor/three/addons/loaders/GLTFLoader.js';
+import { makePhone } from './foes3d.js';
 
 /** Cards that get a cut-in, and what they show.
  *  T: the beats in ms at speed 1 (hit = the big moment: time stops / the blow lands).
@@ -148,9 +149,18 @@ function bend(bone, x = 0, y = 0, z = 0) {
 }
 
 // ------------------------------------------------------------------ foes in 3D: grey halftone until their colour returns
-/** The foe models: file (tools/build_prop.py output), height and place in performer heights (x to the performer's
- *  right as the camera sees it, z behind), and which way it faces. */
-const FOE_ART = { clock: { file: 'assets/battle/models/foe_clock.gltf', height: 0.8, x: 1.7, z: -1.0, yaw: -0.45 } };
+/** The foe models: a file (tools/build_prop.py output) or a builder in code (ui/foes3d.js); height and place in
+ *  performer heights (x to the performer's right as the camera sees it, z behind); which way it faces; and its idle
+ *  motion until time stops or the blow lands — idle(foe, ms, H) returns { x, y, rz } offsets. */
+const FOE_ART = {
+  clock: { file: 'assets/battle/models/foe_clock.gltf', height: 0.8, x: 1.7, z: -1.0, yaw: -0.45,
+    idle: (f, ms, H) => ({ x: 0, y: Math.abs(Math.sin(ms * 0.045)) * 0.05 * H, rz: Math.sin(ms * 0.09) * 0.09 }) },   // ringing
+  phone: { build: makePhone, height: 0.85, x: 1.7, z: -1.0, yaw: 0.1,   // flat: faced between both ults' camera angles
+    idle: (f, ms, H) => {   // buzzing on its edge, its pings bobbing round it
+      for (const [i, c] of (f.root.userData.floaters || []).entries()) c.position.y = c.userData.home.y + Math.sin(ms * 0.006 + i * 2.1) * 0.04;
+      return { x: Math.sin(ms * 0.35) * 0.012 * H, y: 0, rz: Math.sin(ms * 0.21) * 0.035 };
+    } },
+};
 const foeModels = {};
 /** Load the foe models and make the 3D stage ahead of the first cut-in (the battle calls this when it opens). */
 export function preloadUlts() {
@@ -158,6 +168,7 @@ export function preloadUlts() {
   for (const [id, art] of Object.entries(FOE_ART)) {
     if (foeModels[id] !== undefined) continue;
     foeModels[id] = null;
+    if (art.build) { foeModels[id] = greyFoe(art.build()); continue; }
     new GLTFLoader().load(art.file, (g) => { foeModels[id] = greyFoe(g.scene); }, undefined, (e) => console.warn('No 3D foe', id, e));
   }
 }
@@ -168,7 +179,10 @@ function greyFoe(root) {
   const u = { uColour: { value: 0 }, uIce: { value: 0 }, uHit: { value: new THREE.Vector3() }, uRadius: { value: 0 } };
   root.traverse((o) => {
     if (!o.isMesh) return;
-    const m = new THREE.MeshLambertMaterial({ map: o.material.map || null, color: 0xffffff });
+    const src = o.material;   // its own colour, texture and glow (code-built foes), or just the texture (Meshy)
+    const m = new THREE.MeshLambertMaterial({ map: src.map || null, color: src.color ? src.color.clone() : 0xffffff,
+      emissive: src.emissive ? src.emissive.clone() : 0x000000, emissiveMap: src.emissiveMap || null, emissiveIntensity: src.emissiveIntensity ?? 1,
+      transparent: !!src.transparent, alphaTest: src.alphaTest || 0, side: src.side ?? THREE.FrontSide });
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, u);
       sh.vertexShader = 'varying vec3 vWorldP;\n' + sh.vertexShader.replace('#include <project_vertex>',
@@ -193,7 +207,7 @@ function greyFoe(root) {
   const box = new THREE.Box3().setFromObject(root);
   const group = new THREE.Group();
   group.add(root);
-  return { group, u, height: Math.max(0.01, box.max.y - box.min.y), base: box.min.y };
+  return { group, root, u, height: Math.max(0.01, box.max.y - box.min.y), base: box.min.y };
 }
 
 /** The render onto the shown canvas as pixel art, the way tools/sprites/pixelize.py makes the sprites: each pixel
@@ -454,20 +468,21 @@ export function playUlt(frame, id, speed = 1, opts = {}) {
     if (hit) hitAt = hit;
     mateAt.set(live.cv.root.position.x, 0, live.cv.root.position.z);
     if (foe) {
+      // its idle motion until time stops or the blow lands (and stopped mid-shake)
+      const art = FOE_ART[target], H = live.height, idle = art.idle(foe, Math.min(ms, T.hit), H);
       if (u.foeFx === 'ice') {
-        // ringing until time stops (and stopped mid-shake), then frosting over once the camera is on it
-        const f = Math.min(ms, T.hit);
-        foe.group.rotation.set(0, FOE_ART[target].yaw, Math.sin(f * 0.09) * 0.09);
-        foe.group.position.y = foeAt.y + Math.abs(Math.sin(f * 0.045)) * 0.05 * live.height;
+        // time stopped: frosting over once the camera is on it
+        foe.group.rotation.set(0, art.yaw, idle.rz);
+        foe.group.position.set(foeAt.x + idle.x, foeAt.y + idle.y, foeAt.z);
         foe.u.uIce.value = smooth(span(ms, T.fx, T.fx + 260));
       } else {
-        // ringing until struck; knocked back, wobbling, its colour splashing out from the hit
-        const f = Math.min(ms, T.hit), after = Math.max(0, ms - T.hit - 120), w = Math.exp(-after / 380);
+        // struck: knocked back, wobbling, its colour splashing out from the hit
+        const after = Math.max(0, ms - T.hit - 120), w = Math.exp(-after / 380);
         const knock = ms >= T.hit ? (1 - Math.exp(-(ms - T.hit) / 90)) : 0;
-        foe.group.rotation.set(-0.38 * knock * w - 0.06 * knock, FOE_ART[target].yaw + 0.12 * knock, Math.sin(f * 0.09) * 0.08 * (1 - knock) + Math.sin(after * 0.03) * 0.12 * w * knock);
-        foe.group.position.set(foeAt.x + 0.16 * live.height * knock, foeAt.y, foeAt.z - 0.1 * live.height * knock);
+        foe.group.rotation.set(-0.38 * knock * w - 0.06 * knock, art.yaw + 0.12 * knock, idle.rz * (1 - knock) + Math.sin(after * 0.03) * 0.12 * w * knock);
+        foe.group.position.set(foeAt.x + idle.x * (1 - knock) + 0.16 * H * knock, foeAt.y + idle.y * (1 - knock), foeAt.z - 0.1 * H * knock);
         if (hitAt) foe.u.uHit.value.copy(hitAt);
-        foe.u.uRadius.value = ms < T.hit ? 0 : live.height * 0.72 * (1 - Math.exp(-(ms - T.hit) / 260));
+        foe.u.uRadius.value = ms < T.hit ? 0 : H * 0.72 * (1 - Math.exp(-(ms - T.hit) / 260));
       }
     }
     cameraAt(shots, ms, subject, st.cam);

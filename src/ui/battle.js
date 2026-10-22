@@ -12,9 +12,9 @@ import { Run, autoMove } from '../battle/engine.js';
 import { ULTS, playUlt, preloadUlts } from './ultimate.js';
 
 const W = 390, H = 844;
-const NAMES = { mochalatte: 'Mocha Latte', cheetie: 'Cheetie', heehee: 'Hee Hee', bbaekko: 'Bbaekko' };
+export const NAMES = { mochalatte: 'Mocha Latte', cheetie: 'Cheetie', heehee: 'Hee Hee', bbaekko: 'Bbaekko' };
 // where each team member stands on the board (left, top of a 1.4× sprite)
-const MATES = { bbaekko: [2, 236], cheetie: [90, 266], mochalatte: [-2, 326], heehee: [92, 372] };
+export const MATES = { bbaekko: [2, 236], cheetie: [90, 266], mochalatte: [-2, 326], heehee: [92, 372] };
 // foe spots along the road: the first comes centre stage, then near right, far right, and low centre
 const SLOTS = [{ left: 172, top: 146 }, { left: 266, top: 304, right: true }, { left: 266, top: 100, right: true }, { left: 186, top: 378 }];
 // the cut-outs: height per width, and where the × eyes sit (fractions of width / height)
@@ -31,19 +31,24 @@ function sheet(id) {
     return { meta, img };
   });
 }
-/** A team member on screen: an idle loop, or a clip for a moment. */
-class Mate {
+/** A team member on screen: a resting loop (Idle, or Nap once they sit out), or a clip for a moment. */
+export class Mate {
   constructor(id, scale = 1.4) {
-    this.id = id; this.clip = 'Idle'; this.until = 0; this.t0 = Math.random() * 2;
+    this.id = id; this.clip = 'Idle'; this.rest = 'Idle'; this.until = 0; this.t0 = Math.random() * 2;
     this.canvas = h('canvas', { width: 64, height: 80, style: { width: 64 * scale + 'px', height: 80 * scale + 'px' } });
     sheet(id).then((s) => { this.s = s; }).catch(() => {});
   }
-  play(clip, sec) { this.clip = clip; this.until = performance.now() + sec * 1000; }
+  /** A clip for sec seconds (its own length when not given), from its first frame. */
+  play(clip, sec) {
+    const c = this.s && this.s.meta.clips[clip];
+    this.clip = clip; this.from = performance.now(); this.until = this.from + (sec ?? (c ? c.duration : 0.6)) * 1000;
+  }
   draw(now) {
     if (!this.s) return;
-    if (this.until && now > this.until) { this.clip = 'Idle'; this.until = 0; }
+    if (this.until && now > this.until) { this.clip = this.rest; this.until = 0; }
     const clip = this.s.meta.clips[this.clip] || this.s.meta.clips.Idle, f = clip.frames.f;
-    const [x, y, w, hh] = f[Math.floor((now / 1000 + this.t0) * clip.fps) % f.length];
+    const sec = this.until ? Math.max(0, now - this.from) / 1000 : now / 1000 + this.t0;   // a frame's time can be a hair before from
+    const [x, y, w, hh] = f[Math.floor(sec * clip.fps) % f.length];
     const g = this.canvas.getContext('2d');
     g.clearRect(0, 0, 64, 80);
     g.drawImage(this.s.img, x, y, w, hh, 0, 0, w, hh);
@@ -60,7 +65,7 @@ function face(id) {
 }
 
 // ------------------------------------------------------------------ words
-function cardLines(id) {
+export function cardLines(id) {
   const d = CARDS[id], fx = d.fx, out = [];
   if (d.type === 'junk') return [t('Cannot be played. Gone at the end of the turn.')];
   if (fx.cancel) out.push(t('A foe skips its move this turn.'));
@@ -80,7 +85,7 @@ function cardLines(id) {
   return out;
 }
 const KIND = { attack: 'Attack', skill: 'Skill', junk: 'Knot' };
-function intentWords(it) {
+export function intentWords(it) {
   switch (it.k) {
     case 'hit': return [t('Attack {n}', { n: it.dmg }), ''];
     case 'ring': return [t('Ringing Blast {n}', { n: it.dmg }), 'alert'];
@@ -101,7 +106,7 @@ export function openBattle(game) {
   new BattleScreen(game).open();
 }
 
-class BattleScreen {
+export class BattleScreen {
   constructor(game) {
     this.game = game;
     this.night = isNight();
@@ -317,7 +322,7 @@ class BattleScreen {
       return h('button.bt-drink' + (this.selDrink === i ? '.sel' : ''), { title: t(DRINKS[id].name), onclick: (e) => { e.stopPropagation(); this.tapDrink(i); } },
         drinkIcon(id), h('small', t(DRINKS[id].name)));
     }));
-    this.endBtn.disabled = this.busy || !!b.over || this.auto;
+    if (this.endBtn) this.endBtn.disabled = this.busy || !!b.over || this.auto;
     if (this.devBtn) this.devBtn.disabled = this.busy || !!b.over || this.auto;
   }
   drawHand() {
@@ -339,15 +344,18 @@ class BattleScreen {
   }
   /** A card as drawn in the hand or offered after a fight (b given: the live cost and whether it can be played). */
   cardEl(c, b) {
-    const d = CARDS[c.id], cost = b ? b.cost(c) : d.cost;
+    const d = CARDS[c.id], cost = b ? b.cost(c) : this.cardCost(c.id);
     const off = b && !b.canPlay(c);
     return h('button.bt-card' + (c.temp ? '.temp' : '') + (d.type === 'junk' ? '.junk' : '') + (off ? '.off' : '') + (b && this.sel === c ? '.sel' : ''), { 'data-uid': c.uid },
       h('span.cost' + (b && b.jam && !c.free ? '.up' : ''), String(cost)),
       h('span.who', face(d.who)),
       h('h3', t(d.name)),
-      h('p', cardLines(c.id).map((l, i) => [i ? h('br') : null, l])),
+      h('p', this.lines(c.id).map((l, i) => [i ? h('br') : null, l])),
       h('span.kind', t(KIND[d.type])));
   }
+  /** A card's rules text and cost outside a fight (the real-time screen has its own). */
+  lines(id) { return cardLines(id); }
+  cardCost(id) { return CARDS[id].cost; }
   drawHint() {
     const b = this.b;
     let s = '';
@@ -404,22 +412,22 @@ class BattleScreen {
     if (this.auto) this.autoStep();
   }
 
-  /** Development: pick a cut-in and play it on the spot, aimed at the 3D alarm clock (the fight itself is untouched). */
+  /** Development: pick a cut-in and a 3D foe and play it on the spot (the fight itself is untouched). */
   devMenu() {
     if (this.busy || !this.b || this.b.over) return;
     const old = this.frame.querySelector('.bt-devmenu');
     if (old) return old.remove();
-    const menu = h('div.bt-devmenu', Object.entries(ULTS).map(([id, u]) =>
-      h('button', { onclick: (e) => { e.stopPropagation(); menu.remove(); this.devUlt(id, u.who); } }, t(u.title) + ' · ' + NAMES[u.who])));
+    const menu = h('div.bt-devmenu', Object.entries(ULTS).flatMap(([id, u]) => ['clock', 'phone'].map((foe) =>
+      h('button', { onclick: (e) => { e.stopPropagation(); menu.remove(); this.devUlt(id, u.who, foe); } }, t(u.title) + ' → ' + t(FOES[foe].name)))));
     this.frame.appendChild(menu);
   }
-  async devUlt(id, who) {
+  async devUlt(id, who, foe = 'clock') {
     if (this.busy || !this.b || this.b.over) return;
     this.busy = true;
     this.drawStatus(); this.drawHint();
     audio.unlock();
     this.mateAct(who, 'Work');
-    await playUlt(this.frame, id, this.speed, { foe: 'clock' });
+    await playUlt(this.frame, id, this.speed, { foe });
     const v = [...this.fv.values()].find((x) => x.f.alive);
     if (v && id === 'timestop') { this.shatter(v); await this.wait(500); this.drawFoe(v); }
     this.busy = false;
@@ -691,7 +699,7 @@ class BattleScreen {
       h('div.bt-row', h('span.bt-lab', 'CHILL'), h('span.bt-pill', run.chill + ' / ' + run.chillMax)),
       h('div.bt-row', h('span.bt-lab', t('Prototype: nothing is paid into the café yet.'))),
       h('div.bt-acts',
-        h('button.bt-btn', { onclick: () => { this.close(); openBattle(this.game); } }, t('Play again')),
+        h('button.bt-btn', { onclick: () => { this.close(); new this.constructor(this.game).open(); } }, t('Play again')),
         h('button.bt-btn.go', { onclick: () => this.close() }, t('Back to the café')))));
   }
 }
