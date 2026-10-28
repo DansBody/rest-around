@@ -8,6 +8,8 @@ import { cloud } from '../cloud.js';
 import { t } from '../i18n.js';
 import { glyph } from './icons.js';
 import { errText } from './account.js';
+import { startTap } from './fullscreen.js';
+
 
 /**
  * Ask how to start. Resolves when the player went in as a guest or signed in by email; signing in with
@@ -26,6 +28,7 @@ export function chooseStart(loading, o = {}) {
 
   return new Promise((resolve) => {
     const done = () => {
+      startTap();   // the tap into the game is the gesture fullscreen needs (ui/fullscreen.js)
       loading.classList.remove('choosing');
       pane.remove();
       for (const el of keep) el.hidden = false;

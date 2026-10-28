@@ -7,6 +7,8 @@ import { CharacterView, RIM } from './charview.js';
 import { SpriteView, SPRITE_LIGHT, spriteSheet } from './spriteview.js';
 import { AbilityFx } from './abilityfx.js';
 import { Steam } from './steam.js';
+import { StreetView } from './streetview.js';
+import { DEPTH } from './street.js';
 import { DOOR_Y, World } from './world.js';
 import { furnitureById, dishById, wallDecorById, wallLayout } from './data.js';
 import { clamp, easeOutBack, lerp, fmtLeft } from './util.js';
@@ -25,8 +27,29 @@ const FOCUS_COLOR = '#ffc531';   // the UI's one accent (--yellow)
 // sampling, with a 1-px INK outline round everything
 const PPU = 24;
 const INK = '#1F2A4A';
+const INK_SOFT = '#7E879E';   // the outline round the street's grey print (streetview.js): softer, so the café stays the focus
 const SUN_STEP = 0.25;   // with the shadow map frozen, the sun only moves (and redraws its shadows) in steps this big
 const SPRITE_NOON = new THREE.Color('#fff6e8').multiplyScalar(0.84).add(new THREE.Color('#fff4e2').multiplyScalar(3.05 * 0.4));   // updateLighting's sky + sun at noon
+
+// pixel art: furniture (and what rests on it) lit in the sprites' three flat steps (the ramp tools/sprites/bake.html
+// bakes the characters with) instead of smooth shading, so the room and the sprites read as one drawing
+const TOON_RAMP = new THREE.DataTexture(new Uint8Array([120, 120, 120, 255, 205, 205, 205, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
+TOON_RAMP.minFilter = TOON_RAMP.magFilter = THREE.NearestFilter; TOON_RAMP.needsUpdate = true;
+const toonTwins = new WeakMap();   // smooth material -> its toon twin, shared like the smooth ones are
+function toonOf(m) {
+  if (!m || m.isMeshToonMaterial || m.isMeshBasicMaterial || m.isShaderMaterial) return m;
+  let t = toonTwins.get(m);
+  if (!t) {
+    t = new THREE.MeshToonMaterial({ map: m.map, color: m.color, gradientMap: TOON_RAMP, transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest });
+    toonTwins.set(m, t);
+  }
+  return t;
+}
+/** A fresh furniture instance (or a thing on it) in toon light. */
+function toonize(root) {
+  root.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(toonOf) : toonOf(o.material); });
+  return root;
+}
 
 function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
 /** A little painted sign (shop sign, OPEN plaque) as a texture. */
@@ -68,6 +91,7 @@ export class Renderer {
     this.raycaster = new THREE.Raycaster();
     this.setupLights();
     this.buildOutdoors();
+    this.streetView = new StreetView(this.scene, TOON_RAMP);
     this.roomSize = 0;
     this.floorKey = '';
     this.buildGroup = new THREE.Group(); this.scene.add(this.buildGroup);
@@ -93,7 +117,7 @@ export class Renderer {
     this.gl.shadowMap.autoUpdate = !this.pixelArt;
     this.shadowDirty = true;
     this.canvas.classList.toggle('pixel', this.pixelArt);
-    if (!this.pixelArt && this.px) { this.px.rt.depthTexture.dispose(); this.px.rt.dispose(); this.px.mat.dispose(); this.px = null; }
+    if (!this.pixelArt && this.px) { this.px.rt.depthTexture.dispose(); this.px.rt.dispose(); this.px.mask.dispose(); this.px.mat.dispose(); this.px = null; }
   }
   /**
    * The pixel pass (as design/y2k-preview/src/SceneCanvas.tsx): the scene goes to a render target with its depth, then a
@@ -102,42 +126,63 @@ export class Renderer {
    */
   pixelKit(w, h) {
     if (this.px && this.px.w === w && this.px.h === h) return this.px;
-    if (this.px) { this.px.rt.depthTexture.dispose(); this.px.rt.dispose(); this.px.mat.dispose(); }
+    if (this.px) { this.px.rt.depthTexture.dispose(); this.px.rt.dispose(); this.px.mask.dispose(); this.px.mat.dispose(); }
     const depth = new THREE.DepthTexture(w, h);
     const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, depthTexture: depth, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+    // the street's glitch mask (streetview.js): the lots being recovered, red = how hard they tear; drawn only while one does
+    const mask = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
     const mat = new THREE.ShaderMaterial({
       uniforms: {
         tColor: { value: rt.texture },
         tDepth: { value: depth },
         texel: { value: new THREE.Vector2(1 / w, 1 / h) },
         ink: { value: new THREE.Color(INK) },
+        inkSoft: { value: new THREE.Color(INK_SOFT) },
         sky: { value: new THREE.Vector3() },
+        tMask: { value: mask.texture },
+        uSeed: { value: 0 },
+        uGlitch: { value: 0 },
         near: { value: this.cam.near },
         far: { value: this.cam.far },
       },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: `
-        uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform vec3 ink; uniform vec3 sky; uniform float near; uniform float far;
+        uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform vec3 ink; uniform vec3 inkSoft; uniform vec3 sky; uniform float near; uniform float far;
+        uniform sampler2D tMask; uniform float uSeed; uniform float uGlitch;
         varying vec2 vUv;
         float lin(float d) { float z = d * 2.0 - 1.0; return 2.0 * near * far / (far + near - z * (far - near)); }
+        float hash(float n) { return fract(sin(n * 78.233 + uSeed * 12.9898) * 43758.5453); }
         void main() {
-          vec4 c = texture2D(tColor, vUv);
+          // glitch (the street's lots being recovered): rows in bands of 3 px; a band slides sideways where it crosses the mask
+          vec2 uv = vUv;
+          bool tear = false;
+          if (uGlitch > 0.5) {
+            float band = floor(vUv.y / texel.y / 3.0);
+            float sh = floor((hash(band) - 0.5) * 28.0) * texel.x;
+            float m = max(texture2D(tMask, vUv).r, texture2D(tMask, vUv - vec2(sh, 0.0)).r);
+            tear = m > 0.02 && hash(band + 31.0) < m * 0.55;
+            if (tear) uv.x += sh;
+          }
+          vec4 c = texture2D(tColor, uv);
+          if (tear) c.r = texture2D(tColor, uv + vec2(2.0 * texel.x, 0.0)).r;
           // the sky is cleared, not drawn: it shows as the plain background colour, untouched by tone mapping (as before)
           if (c.a < 0.5) { gl_FragColor = vec4(sky, 1.0); return; }
-          float d = lin(texture2D(tDepth, vUv).x);
+          float d = lin(texture2D(tDepth, uv).x);
           float edge = 0.0;
           vec2 o[4];
           o[0] = vec2(texel.x, 0.0); o[1] = vec2(-texel.x, 0.0); o[2] = vec2(0.0, texel.y); o[3] = vec2(0.0, -texel.y);
           for (int i = 0; i < 4; i++) {
-            vec4 cn = texture2D(tColor, vUv + o[i]);
-            float dn = lin(texture2D(tDepth, vUv + o[i]).x);
+            vec4 cn = texture2D(tColor, uv + o[i]);
+            float dn = lin(texture2D(tDepth, uv + o[i]).x);
             if (cn.a < 0.5 || dn - d > 0.006 * d + 0.15) edge = 1.0;
           }
-          vec3 rgb = mix(c.rgb, ink, edge);
+          bool print = abs(c.a - 0.8) < 0.03;   // the street's grey print (alpha 0.8): inked softer
+          vec3 rgb = mix(c.rgb, print ? inkSoft : ink, edge);
           gl_FragColor = vec4(rgb, 1.0);
           #include <tonemapping_fragment>
-          // a sprite card (src/spriteview.js, alpha 0.7) was tone mapped when it was baked: its palette shows as it is
-          if (abs(c.a - 0.7) < 0.03) gl_FragColor.rgb = rgb;
+          // a sprite card (src/spriteview.js, alpha 0.7) was tone mapped when it was baked: its palette shows as it is;
+          // so do the street's flat states (streetview.js: 0.7 line-art, 0.8 grey print)
+          if (abs(c.a - 0.7) < 0.03 || print) gl_FragColor.rgb = rgb;
           #include <colorspace_fragment>
         }`,
       depthTest: false,
@@ -150,7 +195,7 @@ export class Renderer {
       this.pxCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     }
     this.pxQuad.material = mat;
-    return (this.px = { w, h, rt, mat });
+    return (this.px = { w, h, rt, mask, mat });
   }
   drawScene() {
     const gl = this.gl;
@@ -162,6 +207,14 @@ export class Renderer {
     tmpColor.copy(bg).convertLinearToSRGB(); u.sky.value.set(tmpColor.r, tmpColor.g, tmpColor.b);
     u.near.value = this.cam.near; u.far.value = this.cam.far;
     this.scene.background = null;   // clear to empty, so the outline can find the sky
+    u.uGlitch.value = this.streetTear ? 1 : 0;
+    if (this.streetTear) {
+      u.uSeed.value = Math.floor(this.time * 10) % 97;   // the slices jump about ten times a second
+      gl.setRenderTarget(kit.mask);
+      gl.setClearColor(0x000000, 1);
+      gl.clear();
+      this.streetView.drawMask(gl, this.scene, this.cam);
+    }
     gl.setRenderTarget(kit.rt);
     gl.setClearColor(0x000000, 0);
     gl.render(this.scene, this.cam);
@@ -216,25 +269,7 @@ export class Renderer {
   buildOutdoors() {
     const g = new THREE.Group();
     this.scene.add(g);
-    // lawn
-    const grass = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), lam('#ffffff', { map: this.tex('tex_grass', 65) }));
-    grass.rotation.x = -Math.PI / 2; grass.position.set(20, -0.02, 20); grass.receiveShadow = true;
-    g.add(grass);
-    // street behind the door-side wall: sidewalk (x -6..-2), road (-12..-6), far sidewalk (-14..-12)
-    const strip = (x0, x1, texId, y, rep) => {
-      const w = x1 - x0, L = 200;
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, L), lam('#ffffff', { map: this.tex(texId, 1) }));
-      m.material.map = m.material.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(w / rep, L / rep);
-      m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, 20); m.receiveShadow = true;
-      g.add(m);
-    };
-    strip(-6, -2, 'tex_path', 0.01, 2);
-    strip(-12, -6, 'tex_road', 0.005, 4);
-    strip(-14, -12, 'tex_path', 0.01, 2);
-    const curb = lam('#e9e2d6');
-    for (const x of [-6, -12]) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.14, 200), curb); c.position.set(x, 0.07, 20); c.receiveShadow = true; g.add(c); }
-    const dash = lam('#fbf8ef');
-    for (let z = -80; z < 120; z += 4) { const d = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, 1.8), dash); d.position.set(-9, 0.02, z); g.add(d); }
+    // the ground (roads, the café's block and the eight lots round it) is the street's: streetview.js, built with the room
     // door path
     const path = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), lam('#ffffff', { map: this.tex('tex_path', 1) }));
     path.rotation.x = -Math.PI / 2; path.position.set(-1, 0.012, (DOOR_Y + 0.5) * TILE); path.receiveShadow = true;
@@ -339,9 +374,11 @@ export class Renderer {
     this.door.position.set(-T / 2, 0, DOOR_Y * TILE + 0.37);
     room.add(this.door);
     this.buildDressing(room, W, T);
-    // trees around this room size
+    // the street round the café moves out with the room; the café's own trees stand on its sidewalk (not on the door
+    // side, where the passers-by walk)
+    this.streetView.build(n, this.pixelArt);
     this.treeGroup.clear();
-    const trees = [[-17, -8, 1.3], [-17, 8, 1.1], [-16.5, 30, 1.4], [W + 9, -5, 1.2], [W + 12, W * 0.7, 1.4], [W + 7, W + 9, 1.1], [W * 0.3, W + 10, 1.3], [-3, W + 9, 1.0], [W * 0.7, -9, 1.25], [4, -10, 1.1]];
+    const trees = [[W + 3.2, -3.2, 1.15], [W * 0.62, -3.4, 1.0], [W + 3.3, W * 0.45, 1.2], [W + 3.1, W + 3.2, 1.05], [W * 0.3, W + 3.3, 1.15]];
     trees.forEach(([x, z, s], i) => this.treeGroup.add(this.tree(x, z, s, i)));
     this.roomSize = n;
   }
@@ -477,11 +514,17 @@ export class Renderer {
     this.time += realDt;
     const c = g.camera;
     c.update(realDt);
-    // pixel art keeps PPU at the look-at point: the canvas is resized once a zoom comes to rest (not on every frame of it)
-    if (this.pixelArt && Math.abs(c.dist - this.pxDist) > this.pxDist * 0.004 && Math.abs(c.dist - this.prevDist) < c.dist * 1e-4) this.resize();
-    this.prevDist = c.dist;
+    // pixel art keeps PPU at the look-at point all through a zoom (the canvas follows every 1% of distance): waiting for
+    // the zoom to settle left the scene at the old resolution meanwhile, so the sprites drifted off their size, then popped
+    if (this.pixelArt && Math.abs(c.dist - this.pxDist) > this.pxDist * 0.01) this.resize();
     this.syncCamera();
-    if (this.roomSize !== g.world.size) { this.buildRoom(g.world.size); g.camera.setRoom(g.world.size); this.shadowDirty = true; }
+    if (this.roomSize !== g.world.size) {
+      this.buildRoom(g.world.size);
+      // the view may roam out to the middle of the street's lots (the street map flies there)
+      const e = this.streetView.layout.ext;
+      g.camera.setRoom(g.world.size, { x0: e.x0 + DEPTH / 2, x1: e.x1 - DEPTH / 2, z0: e.z0 + DEPTH / 2, z1: e.z1 - DEPTH / 2 });
+      this.shadowDirty = true;
+    }
     this.updateLighting(realDt);
     this.syncFloors();
     this.syncWalls(realDt);
@@ -496,6 +539,10 @@ export class Renderer {
     this.steam.update(realDt);
     this.syncBuild();
     this.syncDebug();
+    g.street.tick(realDt);
+    this.cam.updateMatrixWorld();
+    const buf = this.gl.getDrawingBufferSize(tmpSize);
+    this.streetTear = this.streetView.update(g, this.cam, buf.x, buf.y, realDt) && this.pixelArt;
     this.drawScene();
     this.drawOverlay();
   }
@@ -593,6 +640,7 @@ export class Renderer {
       if (!v || v.key !== key) {
         if (v) this.scene.remove(v.obj);
         const obj = models.instance(cat.asset, cat.tint);
+        if (this.pixelArt) toonize(obj);   // setPixelArt's reset() rebuilds the furniture, so this follows the setting
         this.placeFurniture(obj, f);
         this.scene.add(obj);
         v = { obj, key, f, items: new Map(), base: obj.position.clone() };
@@ -638,6 +686,7 @@ export class Renderer {
         if (!it) {
           const id = spec.id || this.dishModel(spec.dish);
           it = models.instance(id);
+          if (this.pixelArt) toonize(it);
           it.scale.setScalar(spec.scale);
           o.add(it);
           v.items.set(k, it);

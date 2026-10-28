@@ -12,6 +12,8 @@ import { unlocksFor } from '../economy.js';
 import { roundOfDay, ROUNDS_PER_DAY } from '../clock.js';
 import { glyph } from './icons.js';
 import { pixIcon } from './os.js';
+import { StreetUI } from './street.js';
+import { armFullscreen, homeScreenHint } from './fullscreen.js';
 import { collage, wipeIn, wipeOut, bump, iris, slamFrom } from './transition.js';
 import { maybeLesson, startWatch } from './tutorial.js';
 import { TILE } from '../models.js';
@@ -65,6 +67,7 @@ export class UI {
     this.root.addEventListener('scroll', () => { if (this.root.scrollTop || this.root.scrollLeft) this.root.scrollTop = this.root.scrollLeft = 0; });
     this.buildDom();
     bus.on('toast', ({ msg, kind }) => this.toast(msg, kind));
+    armFullscreen(this.game);
     bus.on('changed', () => { this.dirty = true; });
     bus.on('build', (on) => this.onBuild(on));
     bus.on('buildChanged', () => { this.renderBuild(); this.renderGhostCtl(); });
@@ -181,6 +184,8 @@ export class UI {
     // today's specials (behind the debug switch): under Friends
     this.el.specialBtn = specialsButton(this);
     r.appendChild(this.el.specialBtn);
+    // the street round the café: its map, and the dialog while a lot is recovered (street.js)
+    (this.street || (this.street = new StreetUI(this))).mount(r);
 
     // ----- side panel -----
     this.el.panelTitle = h('h2', '');
@@ -528,6 +533,7 @@ ${k.desc}
   // ---------------- per-frame ----------------
   update(dt) {
     this.placeGhostCtl();
+    this.street.update();
     if (this.tutorial) this.tutorial.track();
     this.acc += dt;
     if (this.acc < 0.1) return;
@@ -543,6 +549,8 @@ ${k.desc}
     this.updateQuest();
     updateSpecials(this);
     this.updateBoss();
+    // iPhone Safari: once the tour is over and the café has had a moment, how to add it to the Home Screen (once)
+    if (!this.homeHinted && s.tutorialSeen && !this.tutorial && !this.modalOpen && !this.panel && !g.visit && performance.now() - this.bornAt > 20000) this.homeHinted = homeScreenHint(this) || true;
     this.el.lvlTxt.textContent = s.level >= g.maxLevel() ? t('MAX') : `${fmt(lp.cur)}/${fmt(lp.next)}`;
     this.el.lvlBar.style.width = (s.level >= g.maxLevel() ? 100 : lp.frac * 100) + '%';
     this.el.lvlPct.textContent = s.level >= g.maxLevel() ? t('MAX') : t('Next level {n}%', { n: Math.floor(lp.frac * 100) });

@@ -591,3 +591,10 @@
 @media (min-width: 761px) {
   .p-bust { width: 104px; height: 135px; right: auto; left: calc(380px + var(--sal)); bottom: calc(28px + var(--sab)); }
 }
+
+/* ---- the Home Screen hint (ui/fullscreen.js, iPhone / iPad Safari only) ---- */
+#ui .a2hs .hero-ico { margin: 4px 0 6px; }
+#ui .a2hs-hero { display: inline-grid; place-items: center; width: 72px; height: 72px; background: var(--os-denim); --pi-ink: #fff; --pi-fill: var(--os-peach); clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
+#ui .a2hs-share { display: inline-grid; place-items: center; vertical-align: -6px; width: 28px; height: 28px; background: var(--os-denim); --pi-ink: #fff; --pi-fill: var(--os-peach); }
+#ui .a2hs .muted { margin-top: 8px; }
+#ui .a2hs .btnrow { margin-top: 14px; }

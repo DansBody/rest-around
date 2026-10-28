@@ -5,6 +5,7 @@ import { DAY } from '../data.js';
 import { specialsEnabled, setSpecialsEnabled } from '../specials.js';
 import { openBattle } from './battle.js';
 import { openBattleRt } from './battlert.js';
+import { restoreNext } from '../street.js';
 
 export class DebugPanel {
   constructor(game, ui, root) {
@@ -49,6 +50,9 @@ export class DebugPanel {
       h('div.btnrow', h('span.muted', 'Outing'),
         h('button.btn.small', { onclick: () => { g.state.tickets = { ...g.state.tickets, n: Math.min(3, g.state.tickets.n + 1) }; g.toast(`Tickets: ${g.state.tickets.n}`); } }, '+1 ticket'),
         h('button.btn.small', { onclick: () => { g.state.outing = null; g.changed('day'); g.toast('Team back'); } }, 'Call the team back')),
+      h('div.btnrow', h('span.muted', 'Street'),
+        h('button.btn.small', { onclick: () => { this.toggle(); restoreNext(g); } }, 'Restore next lot'),
+        h('button.btn.small', { onclick: () => { g.street.reset(); g.toast('Street reset'); } }, 'Reset street')),
       h('div.btnrow',
         h('button.btn.small' + (specialsEnabled() ? '.primary' : ''), { onclick: () => { setSpecialsEnabled(!specialsEnabled()); g._sp = null; this.rerender(); } }, `Specials ${specialsEnabled() ? 'on' : 'off'}`),
         h('button.btn.small', { onclick: () => { g.state.specials = null; g._sp = null; this.ui.spOffered = null; g.toast('New day of specials'); } }, 'New specials day'),

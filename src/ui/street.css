@@ -1,0 +1,74 @@
+/* The street round the café (src/ui/street.js): the left column's map button, the street map window, and the
+   "recovering <shop>.dat … RESTORED ✦" dialog. Refillit OS kit (os.css); coral only for RESTORED, an event. */
+
+/* ---------- the map button: third in the left column (today's specials, behind a debug switch, moves under it) ---------- */
+#ui #streetbtn { position: absolute; top: calc(var(--ht) + 2 * (var(--hb) + var(--hg))); left: var(--hl); width: var(--hb); height: var(--hb); min-width: var(--hb); padding: 0;
+  display: grid; place-items: center; cursor: pointer; pointer-events: auto; border-radius: 4px; border: var(--os-b) solid var(--os-ink); background: var(--os-frame);
+  box-shadow: var(--os-bevel), 2px 3px 0 rgba(31, 42, 74, .24); color: var(--os-ink); }
+#ui #streetbtn:hover { background: #F3F6FB; }
+#ui #streetbtn:active { box-shadow: var(--os-sunk); }
+#ui #streetbtn.active { background: var(--os-denim); box-shadow: var(--os-sunk); --pi-ink: #fff; --pi-fill: var(--os-peach); }
+#ui #streetbtn .pix { width: 24px; height: 24px; }
+#ui #specialbtn { top: calc(var(--ht) + 3 * (var(--hb) + var(--hg))); }
+#ui.building #streetbtn, #ui.building #streetmap { display: none; }
+
+/* ---------- the map: a small window beside the column, the ring drawn as a 3 × 3 board turned with the camera ---------- */
+#ui #streetmap { position: absolute; z-index: 4; top: var(--ht); left: calc(var(--hl) + var(--hb) + 14px); width: 272px; padding: 4px; display: none; pointer-events: auto; transform: rotate(-1deg); }
+#ui #streetmap.open { display: block; }
+#streetmap .sm-head { position: relative; display: flex; align-items: center; justify-content: center; height: 20px; background: var(--os-stripes); border: var(--os-b) solid var(--os-ink); }
+#streetmap .sm-head b { padding: 0 8px; background: var(--os-frame); font-size: 12px; line-height: 16px; }
+#streetmap .sm-x { position: absolute; left: 4px; top: 1px; width: 14px; height: 14px; padding: 0; border: var(--os-b) solid var(--os-ink); border-radius: 0; background: var(--os-frame); box-shadow: var(--os-bevel); cursor: pointer; }
+#streetmap .sm-x::before { content: ''; position: absolute; inset: -12px; }
+#streetmap .sm-x:active { background: var(--os-ink); }
+#streetmap .sm-map { position: relative; height: 254px; margin: 4px 0; overflow: hidden; border: var(--os-b) solid var(--os-ink); box-shadow: var(--os-sunk);
+  background: #DCDDE1 repeating-linear-gradient(0deg, transparent 0 9px, rgba(31, 42, 74, .06) 9px 10px), #DCDDE1; }
+#streetmap .sm-grid { --yaw: 0.785rad; position: absolute; left: 50%; top: 50%; width: 174px; height: 174px; margin: -87px 0 0 -87px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 7px;
+  transform: rotate(var(--yaw)); }
+/* a block: grey halftone print (not restored), paper line-art (loading next), its own colours (restored); text stays upright */
+#streetmap .sm-lot { position: relative; padding: 0; border: var(--os-b) solid var(--os-ink); border-radius: 0; cursor: pointer; color: var(--os-ink); overflow: visible;
+  background: #E6E7EA radial-gradient(circle, #A9AFBD 0 1px, transparent 1.5px) 0 0 / 5px 5px; box-shadow: 2px 2px 0 rgba(31, 42, 74, .22); }
+#streetmap .sm-lot.s0 { border-color: #7E879E; color: #5C6680; }
+#streetmap .sm-lot.s1 { background: #F4F1EA; border-style: dashed; animation: sm-blink 5s steps(1) infinite; }
+#streetmap .sm-lot.s2 { background: var(--c); border-color: var(--t); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5), 2px 2px 0 rgba(31, 42, 74, .22); }
+#streetmap .sm-lot.cafe { background: #E9C9A0 linear-gradient(135deg, #C98B57 0 30%, transparent 30%); border-color: var(--os-ink); }
+#streetmap .sm-lot:hover { outline: 2px solid var(--os-denim); outline-offset: 1px; }
+#streetmap .sm-lot:active { transform: translate(1px, 1px); box-shadow: none; }
+#streetmap .sm-in { position: absolute; left: 50%; top: 50%; width: 72px; display: flex; flex-direction: column; align-items: center; gap: 1px; transform: translate(-50%, -50%) rotate(calc(-1 * var(--yaw))); pointer-events: none; }
+#streetmap .sm-name { max-width: 72px; padding: 0 2px; font-size: 12px; line-height: 13px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(255, 255, 255, .75); }
+#streetmap .sm-lot.s0 .sm-name { background: rgba(230, 231, 234, .85); }
+#streetmap .sm-st { font: 14px/12px var(--os-lcd); }
+#streetmap .sm-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 2px 1px; }
+#streetmap .sm-count { font: 18px/1 var(--os-lcd); }
+@keyframes sm-blink { 0%, 96% { filter: none; } 97% { filter: contrast(1.4); transform: translateX(2px); } 98% { transform: translateX(-2px); } }
+
+/* ---------- the recovery dialog: low in the middle, over the scene ---------- */
+#ui #recover { position: absolute; z-index: 6; left: 50%; bottom: calc(var(--hbot) + 18px); width: min(390px, calc(100vw - 28px)); margin-left: calc(min(390px, calc(100vw - 28px)) / -2); padding: 4px 4px 10px;
+  display: none; pointer-events: none; transform: rotate(-2deg); }
+#ui #recover.open { display: block; }
+#recover .rc-head { position: relative; height: 20px; display: flex; align-items: center; justify-content: center; background: var(--os-stripes); border: var(--os-b) solid var(--os-ink); }
+#recover .rc-head span { padding: 0 8px; background: var(--os-frame); font-size: 12px; line-height: 16px; }
+/* RESTORED is an event: a coral flag that sticks up out of the title bar */
+#recover .rc-flag { position: absolute; left: 10px; top: -15px; display: none; height: 24px; padding: 0 16px 0 9px; align-items: center; background: var(--os-coral); color: #fff; font-size: 12px;
+  border: var(--os-b) solid var(--os-ink); transform: rotate(-3deg); box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .4), inset -2px -2px 0 rgba(0, 0, 0, .25);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 50%, 100% 100%, 0 100%); }
+#recover.done .rc-flag { display: flex; animation: rc-slam .28s cubic-bezier(.3, 1.6, .5, 1) both; }
+#recover .rc-msg { margin: 9px 10px 7px; font: 15px/1.2 var(--os-type); color: var(--os-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#recover .rc-row { display: flex; align-items: center; gap: 8px; margin: 0 10px; }
+#recover .rc-bar { flex: 1; display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; padding: 3px; border: var(--os-b) solid var(--os-ink); background: var(--os-field); }
+#recover .rc-bar i { height: 12px; background: rgba(31, 42, 74, .08); }
+#recover .rc-bar i.on { background: var(--os-denim); }
+#recover.done .rc-bar i.on { background: var(--os-coral); }
+#recover .rc-pct { min-width: 44px; text-align: right; font: 22px/1 var(--os-lcd); color: var(--os-ink); }
+@keyframes rc-slam { from { transform: translateY(-14px) rotate(-12deg) scale(1.3); } to { transform: rotate(-3deg); } }
+
+@media (max-width: 760px) {
+  #ui.has-sheet #streetbtn, #ui.has-sheet #streetmap { display: none; }
+  #ui #streetmap { width: 244px; }
+  #streetmap .sm-map { height: 226px; }
+  #streetmap .sm-grid { width: 153px; height: 153px; margin: -76px 0 0 -76px; gap: 6px; }
+  #streetmap .sm-in, #streetmap .sm-name { width: 60px; max-width: 60px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #streetmap .sm-lot.s1 { animation: none; }
+  #recover.done .rc-flag { animation: none; }
+}

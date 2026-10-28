@@ -8,8 +8,15 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/icon-192.png">
   <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+  <!-- installable: the manifest opens it fullscreen (Android, desktop); iOS reads the apple-* tags from the Home Screen -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Refillit">
   <link rel="stylesheet" href="src/ui/style.css">
   <link rel="stylesheet" href="src/ui/os.css">
+  <link rel="stylesheet" href="src/ui/street.css">
   <link rel="stylesheet" href="src/ui/battle.css">
 </head>
 <body>

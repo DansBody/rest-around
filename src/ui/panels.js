@@ -13,6 +13,7 @@ import { clearSave, serialize } from '../save.js';
 import { CASE_SLOTS } from '../pastry.js';
 import { cloud } from '../cloud.js';
 import { accountSection } from './account.js';
+import { canFullscreen, setFullscreen } from './fullscreen.js';
 import { renderFriends } from './friends.js';
 import { renderTraining } from './training.js';
 import { renderToday, tickToday } from './today.js';
@@ -385,6 +386,7 @@ function renderSettings(ui, body) {
     h('div.orow', h('span', t('Volume')), vol),
     h('div.section-title', t('Display')),
     toggle(t('Pixel art'), 'pixel', () => g.renderer.setPixelArt(!!s.settings.pixel)),
+    canFullscreen() ? toggle(t('Fullscreen'), 'fullscreen', () => setFullscreen(s.settings.fullscreen !== false)) : null,
     h('div.section-title', t('Game')),
     toggle(t('Auto-restock ingredients'), 'autoRestock', () => { if (s.settings.autoRestock) g.eco.autoRestock(); }),
     h('div.orow', h('span', t('Autosave')), h('span.muted.autosave', autosaveText(g))),

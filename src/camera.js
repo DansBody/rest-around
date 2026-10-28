@@ -20,23 +20,28 @@ export class Camera {
     this.track = null;                    // follow(): () => ground point | null, and where on screen it should sit
     this.trackOff = null;
     this.zoomBack = null;                 // the distance to return to when following ends (unless the player zoomed)
+    this.fly = null;                      // flyTo(): a ground point the look-at point eases to, once
   }
   setViewport(w, h) { this.vw = w; this.vh = h; }
-  setRoom(size) {
+  /** `roam`: how far the view may wander past the room, e.g. to the lots of the street round it (street.js). */
+  setRoom(size, roam) {
     this.room = size;
-    const n = size * TILE;
-    this.bounds = { x0: -10, x1: n + 8, z0: -6, z1: n + 8 };
+    const n = size * TILE, r = roam || { x0: -10, x1: n + 8, z0: -6, z1: n + 8 };
+    this.bounds = { x0: Math.min(-10, r.x0), x1: Math.max(n + 8, r.x1), z0: Math.min(-6, r.z0), z1: Math.max(n + 8, r.z1) };
     this.clamp();
   }
   fit(size) {
     const n = size * TILE;
     this.tx = n / 2; this.tz = n / 2;
-    const aspect = this.vw / Math.max(1, this.vh);
-    // the height in view: a wide view fits the room with a little ground round it; a tall one (a phone) is framed
-    // on its width, the floor filling it edge to edge with only its far left and right corners running off
-    const need = Math.max(n * 1.16, n / aspect);
-    this.dist = this.distTarget = clamp(need / (2 * Math.tan((this.fov * Math.PI) / 360)), this.minDist, this.maxDist);
+    this.dist = this.distTarget = this.fitDist(size);
     this.clamp();
+  }
+  /** The distance that frames the room: a wide view fits it with a little ground round it; a tall one (a phone) is
+   *  framed on its width, the floor filling it edge to edge with only its far left and right corners running off. */
+  fitDist(size) {
+    const n = size * TILE, aspect = this.vw / Math.max(1, this.vh);
+    const need = Math.max(n * 1.16, n / aspect);
+    return clamp(need / (2 * Math.tan((this.fov * Math.PI) / 360)), this.minDist, this.maxDist);
   }
   /** world units per screen pixel at the target distance */
   unitsPerPx() { return (2 * this.dist * Math.tan((this.fov * Math.PI) / 360)) / Math.max(1, this.vh); }
@@ -71,13 +76,23 @@ export class Camera {
   }
   /** The player drags the view: a plain follow ends; a sticky one (the tour's) waits until they let go for a moment. */
   letGo() {
+    this.fly = null;
     if (this.track && this.sticky) this.heldT = 1.4;
     else this.unfollow(false);
+  }
+  /** Ease the look-at point to (x, z) once (the street map, a lot's recovery); `yaw` / `dist` turn and zoom on the way.
+   *  Dragging the view ends it. */
+  flyTo(x, z, o = {}) {
+    this.unfollow(false);
+    const b = this.bounds;
+    this.fly = { x: clamp(x, b.x0, b.x1), z: clamp(z, b.z0, b.z1) };
+    if (o.yaw != null) this.yawTarget = o.yaw;
+    if (o.dist) this.distTarget = clamp(o.dist, this.minDist, this.maxDist);
   }
   rotate(steps) { this.yawTarget += (steps * Math.PI) / 2; }
   rotateBy(rad) { this.yawTarget += rad; this.yaw += rad; }
   /** Still turning or zooming toward where it was sent, or following something. */
-  settling() { return !!this.track || Math.abs(this.yawTarget - this.yaw) > 1e-3 || Math.abs(this.distTarget - this.dist) > 1e-2; }
+  settling() { return !!this.track || !!this.fly || Math.abs(this.yawTarget - this.yaw) > 1e-3 || Math.abs(this.distTarget - this.dist) > 1e-2; }
   clamp() {
     const b = this.bounds;
     this.tx = clamp(this.tx, b.x0, b.x1);
@@ -87,6 +102,12 @@ export class Camera {
     const k = Math.min(1, dt * 8);
     this.yaw += (this.yawTarget - this.yaw) * k;
     this.dist += (this.distTarget - this.dist) * k;
+    if (this.fly) {
+      const f = 1 - Math.exp(-dt * 3.2), dx = this.fly.x - this.tx, dz = this.fly.z - this.tz;
+      this.tx += dx * f; this.tz += dz * f;
+      if (Math.hypot(dx, dz) < 0.04) { this.tx = this.fly.x; this.tz = this.fly.z; this.fly = null; }
+      this.clamp();
+    }
     if (this.track) {
       const p = this.track();
       if (!p) { this.unfollow(true); return; }

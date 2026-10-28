@@ -537,6 +537,9 @@ export const ZH_TW = {
   // ---------------- Refillit OS (the HUD windows, the trouble flag, the typed strip)
   'Status': '狀態', 'Next level {n}%': '下一級 {n}%', 'Trouble!': '出事了！',
   'all is brewing well, the bar is still warm…': '一切順利，吧台還暖著…',
+  // ---------------- fullscreen and the Home Screen (ui/fullscreen.js)
+  'Fullscreen': '全螢幕', 'Add Refillit to your Home Screen': '把 Refillit 加入主畫面', 'In Safari, tap Share': '在 Safari 點「分享」',
+  'then “Add to Home Screen”.': '再選「加入主畫面」。', 'Refillit then opens full screen, like an app.': '之後從主畫面打開，Refillit 就會像 App 一樣全螢幕。', 'Not now': '不用了',
   // ---------------- battle prototype (ui/battle.js, battle/data.js)
   'Cannot be played. Gone at the end of the turn.': '不能打出，回合結束就消失。',
   'A foe skips its move this turn.': '一個敵人這回合的意圖作廢。',
@@ -584,7 +587,7 @@ export const ZH_TW = {
   'Slowed down · tap a foe or the card again': '時間變慢 · 點敵人，或再點一次卡片', 'Slowed down · tap the card again': '時間變慢 · 再點一次卡片就打出',
   'The team fights on its own. Play a card when you have the energy.': '隊伍會自己打。能量夠了就出牌。',
   'Tank': '坦', 'Striker': '突擊', 'Support': '輔助', 'Caster': '法師', 'Front row': '前排', 'Back row': '後排',
-  '{who} is too blue to go on': '{who} 太藍了，先休息', 'Look at me!': '看這邊！', 'Engage!': '開戰！', 'Cleared!': '打贏了！', 'Focus here': '集中攻擊這隻', 'Grey again': '又變灰了',
+  '{who} is too blue to go on': '{who} 太藍了，先休息', 'Look at me!': '看這邊！', 'Engage!': '開戰！', 'Cleared!': '打贏了！',
   // ---------------- outing days (outing.js)
   'Out · back in {t}': '外出中 · {t} 後回來', 'Out {t}': '外出中 {t}', 'Outing tickets · one a day, up to {n}': '外出券 · 每天發 1 張，最多存 {n} 張', '{n} / {m}': '{n} / {m}',
   'The café is shut while the team is out: carry on with the commission.': '隊伍外出中，咖啡廳公休。繼續完成委託吧。',
@@ -593,5 +596,9 @@ export const ZH_TW = {
   'Heading out needs a connection to the server.': '出門需要連上伺服器。',
   'The team went out on a commission this round: nobody new came in while they were away, and only the rent was due for those hours.': '這輪隊伍出門接委託：外出期間沒有新客人，那段時間只付了房租。',
   'The café was shut for {n} min while the team was out on a commission: only the rent was due.': '隊伍出門接委託，咖啡廳公休了 {n} 分鐘，那段時間只付了房租。', 'Focus here': '集中攻擊這隻', 'Grey again': '又變灰了',
+  // ---------------- the street round the café (street.js, ui/street.js)
+  'Street': '街區', 'Back to café': '回咖啡廳', '{n}/{m} restored': '已修復 {n}/{m}', 'loading…': '讀取中…', 'RESTORED ✦': '修復完成 ✦',
+  'recovering {file} …': '正在修復 {file} …', '{file} — open for business': '{file} — 重新開張', 'The whole street is back': '整條街都恢復了',
+  'Bread shop': '麵包店', 'Flower shop': '花店', 'Bookshop': '書店', 'Record shop': '唱片行', 'Laundromat': '自助洗衣', 'Tailor': '裁縫店', 'Greengrocer': '蔬果店', 'Bike repair': '單車行',
   'A Sleepy Owl': '睡不飽的貓頭鷹', 'Make the Alarm Shut Up': '讓鬧鐘閉嘴', 'It rings every morning and never stops. Please, just one quiet morning.': '它每天早上都響個不停。拜託，讓我安靜睡一個早上就好。',
 };

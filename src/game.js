@@ -10,7 +10,7 @@ import { DayCycle } from './day.js';
 import { Rating } from './rating.js';
 import { Economy } from './economy.js';
 import { Build } from './build.js';
-import { Street } from './ambient.js';
+import { Street } from './street.js';
 import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
 import { specialMods } from './specials.js';
@@ -50,11 +50,12 @@ export function defaultState() {
     giftDay: 0,          // the calendar day the gift was last opened
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, rounds: 0 },
-    settings: { sound: true, music: true, volume: 0.7, glass: true, autoRestock: true, pixel: true },
+    settings: { sound: true, music: true, volume: 0.7, glass: true, autoRestock: true, pixel: true, fullscreen: true },
     partner: null,       // the character the player picked to start with (model id): runs the tutorial, can't be fired
     tutorial: [],        // tutorial steps done (ui/tutorial.js)
     tutorialSeen: false, // the tutorial is over (finished or skipped)
     specials: null,      // today's theme and picked cards (specials.js; behind a debug switch for now)
+    street: { restored: [], next: 'n' },   // the street round the café (street.js): lots restored, and the one loading next
     tickets: { n: OUTING.perDay, day: null },   // outing tickets (outing.js): how many, and the calendar day they were last counted
     outing: null,        // the last outing: { from, until } on the wall clock (outing.js), the café shut in between
   };

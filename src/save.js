@@ -12,6 +12,7 @@ import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
 import { themeById, specialById } from './specials.js';
+import { cleanStreet } from './street.js';
 import { cleanTickets, cleanOuting } from './outing.js';
 
 // Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
@@ -129,6 +130,7 @@ export function apply(game, data) {
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,
     partner: UNIQUE_MODELS.includes(s.partner) ? s.partner : null,
+    street: cleanStreet(s.street),   // cosmetic: which of the street's lots are restored (street.js)
     tickets: cleanTickets(s.tickets),
     outing: cleanOuting(s.outing),
     tutorial: Array.isArray(s.tutorial) ? s.tutorial.filter((x, i, a) => typeof x === 'string' && x.length < 16 && a.indexOf(x) === i).slice(0, 48) : [],
