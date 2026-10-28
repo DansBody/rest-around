@@ -6,6 +6,7 @@ import { TileClaims } from './agent.js';
 import { Jobs } from './jobs.js';
 import { Customer } from './customer.js';
 import { makeStaff } from './staff.js';
+import { withCoat } from './looks.js';
 import { DayCycle } from './day.js';
 import { Rating } from './rating.js';
 import { Economy } from './economy.js';
@@ -14,7 +15,7 @@ import { Street } from './street.js';
 import { Troubles } from './trouble.js';
 import { audio } from './audio.js';
 import { specialMods } from './specials.js';
-import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, OUTING, starterRole, roleFits } from './data.js';
+import { DISHES, MAX_LEVEL, START_WALL_DECOR, DAY, UNIQUE_MODELS, furnitureById, OUTING, starterRole, roleFits } from './data.js';
 
 /** The table for two a café gets when the player never set one up: [type, x, y, dir]. */
 const STARTER_SEATS = [['table_oak', 3, 4, 1], ['chair_oak', 2, 4, 0], ['chair_oak', 4, 4, 2]];
@@ -56,6 +57,7 @@ export function defaultState() {
     tutorialSeen: false, // the tutorial is over (finished or skipped)
     specials: null,      // today's theme and picked cards (specials.js; behind a debug switch for now)
     street: { restored: [], next: 'n' },   // the street round the café (street.js): lots restored, and the one loading next
+    dyes: [],                              // dyes found for the staff palette (palette.js)
     tickets: { n: OUTING.perDay, day: null },   // outing tickets (outing.js): how many, and the calendar day they were last counted
     outing: null,        // the last outing: { from, until } on the wall clock (outing.js), the café shut in between
   };
@@ -143,17 +145,18 @@ export class Game {
   /**
    * The new player's pick: `model` becomes the partner and starts as the Server (the Barista when serving would
    * hold them back, see starterRole); another character, picked at random from those the other job suits, takes
-   * it. Only for a brand-new café (the two starter staff swap who they are).
+   * it. Only for a brand-new café (the two starter staff swap who they are). `nick` and `coat` are the name and
+   * colours the player gave the partner (the other one keeps its own until changed in the Staff panel).
    */
-  setStarter(model) {
+  setStarter(model, nick, coat) {
     if (!UNIQUE_MODELS.includes(model)) return;
     const waiter = this.staff.find((a) => a.role === 'waiter'), chef = this.staff.find((a) => a.role === 'chef');
     const [mine, theirs] = starterRole(model) === 'waiter' ? [waiter, chef] : [chef, waiter];
     const other = choice(UNIQUE_MODELS.filter((m) => m !== model && roleFits(m, theirs ? theirs.role : 'chef')));
     for (const [a, m] of [[mine, model], [theirs, other]]) {
       if (!a) continue;
-      a.look.model = m;
-      a.name = UNIQUE_NAMES[m];
+      a.look = withCoat({ ...a.look, model: m }, { fur: null, light: null, shirt: null, ...(m === model ? coat : {}) });
+      a.setNick(m === model ? nick : null);
       this.refreshCharacter(a);
     }
     this.state.partner = model;

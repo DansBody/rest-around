@@ -13,15 +13,28 @@ import { DIRS, dirFromDelta } from './iso.js';
 import { rand, randInt, manhattan, uid } from './util.js';
 import { t, titledRole } from './i18n.js';
 
-/** A new staff member: `model` (or the next original character nobody wears), named after it. Null when the cast is used up. */
-export function makeStaff(game, role, model) {
+/** The name a character goes by until the player names them: what they are ("Hamster"). */
+export const defaultName = (model) => t(UNIQUE_NAMES[model] || model);
+export const NICK_MAX = 12;
+/** A player-given name, tidied; null when there is none (the default name shows). */
+export function cleanNick(v) {
+  const s = typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, NICK_MAX) : '';
+  return s || null;
+}
+
+/** A new staff member: `model` (or the next original character nobody wears), named `nick` or after what they are. Null when the cast is used up. */
+export function makeStaff(game, role, model, nick) {
   model = model || nextCast(new Set(game.staff.map((s) => s.look.model)));
-  return model ? new Staff(game, role, UNIQUE_NAMES[model], staffLook(model)) : null;
+  if (!model) return null;
+  const st = new Staff(game, role, defaultName(model), staffLook(model));
+  st.setNick(nick);
+  return st;
 }
 
 export class Staff extends Agent {
   constructor(game, role, name, look) {
     super(game, 'staff', name, look);
+    this.nick = null;    // the name the player gave them, if any (see setNick)
     this.role = role;
     this.energy = 100;
     this.speed = SPEED.staff * rand(0.95, 1.05);
@@ -43,6 +56,12 @@ export class Staff extends Agent {
     this.trouble = null; // { kind: 'chase' | 'bat', target }: dealing with a troublemaker
     this.stunT = 0;      // shoved by a rude guest: shaken up for a moment
     this.swingT = 0;     // the bat swing (visual)
+  }
+
+  /** Name them (or clear it back to the default name with an empty value). */
+  setNick(v) {
+    this.nick = cleanNick(v);
+    this.name = this.nick || defaultName(this.look.model);
   }
 
   // ---------------- character kit (perks + a castable skill, see KITS) ----------------

@@ -444,6 +444,14 @@ export const ZH_TW = {
   'Pick your partner': '選一位夥伴', 'They run the café with you from day one, and show you how it all works.': '夥伴從第一天起就和你一起顧店，也會帶你熟悉咖啡廳的一切。',
   'Starts as your Server: takes orders, serves drinks and clears tables.': '從服務生做起：點餐、送飲料、收桌子。', 'No special skills yet: a steady pair of hands.': '目前沒有特殊技能，是個穩穩的好幫手。',
   'Starts as your Barista: brews every drink at the espresso machine.': '從咖啡師做起：在咖啡機前沖每一杯飲料。',
+  'Give them a name': '幫牠取個名字', 'Name': '名字',
+  'Fur': '毛色', 'Belly': '肚子', 'Clothes': '衣服', 'Original': '原色', 'Colours': '顏色',
+  // the staff palette (palette.js): wells named for the street's shops, dyes from commissions and outings
+  'House': '本店色', 'Wheat': '小麥', 'Petal': '花瓣', 'Denim': '丹寧', 'Vinyl': '黑膠', 'Suds': '泡泡', 'Cloth': '布料', 'Garden': '菜園', 'Bell': '車鈴',
+  'Dyes': '染料', 'Found on commissions and outings': '在委託和外出時找到', 'Restore the {shop} to fill this well': '復原{shop}就能填滿這一格',
+  'New dye: {name}': '找到新染料：{name}', 'Latte Foam': '拿鐵奶泡', 'Espresso': '濃縮咖啡', 'Night Shift': '夜班藍', 'Chrome': '鉻銀', 'Crema Gold': '克立瑪金', 'Mint Chip': '薄荷巧克力',
+  // the cast's default names until the player names them (UNIQUE_NAMES)
+  'Hamster': '倉鼠', 'Bunny': '兔子', 'Sheep': '綿羊', 'Fox': '狐狸', 'Calico': '三花貓', 'Puppy': '小狗', 'Penguin': '企鵝', 'Raccoon': '浣熊', 'Bear': '熊', 'Owl': '貓頭鷹',
   'Start with {name}': '和 {name} 一起開店', "Let's go!": '開始吧！', 'Next': '下一步', 'Skip tour': '跳過導覽', 'Partner': '夥伴',
   '{name} is your partner and stays with the café.': '{name} 是你的夥伴，會一直留在店裡。',
   "Hi, I'm {name}! This café is ours now. Let me show you around.": '嗨，我是 {name}！這間咖啡廳現在是我們的了，我帶你逛逛。',

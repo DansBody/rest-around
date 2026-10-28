@@ -128,9 +128,9 @@ export class SpriteView {
     this.tumble.position.y = PIVOT;
     this.H = G.height || G.canvas;
     let pal;
-    if (meta.keys) {   // a guest: its own palette
-      const ref = this.def.recolor || {};
-      pal = this.ownPal = guestPalette(sheet, { fur: look.fur || hexOf(ref.fur || [200, 200, 200]), shirt: look.shirt || hexOf(ref.shirt || [150, 150, 150]) });
+    if (meta.keys) {   // a guest, or one of the cast: its own palette (the texture's own colours where it has none)
+      const ref = this.def.recolor || {}, grey = { fur: [200, 200, 200], shirt: [150, 150, 150], light: [240, 240, 240] };
+      pal = this.ownPal = guestPalette(sheet, Object.fromEntries(Object.keys(meta.keys).map((k) => [k, look[k] || hexOf(ref[k] || grey[k])])));
     } else {
       pal = palettes.get(this.modelId);
       if (!pal) palettes.set(this.modelId, (pal = paletteTexture(sheet.pal)));

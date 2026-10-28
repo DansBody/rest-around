@@ -7,12 +7,13 @@ import { Staff } from './staff.js';
 import { sanitizeLook } from './looks.js';
 import { defaultState } from './game.js';
 import { saveSlots, loadSlots } from './pastry.js';
-import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_NAMES, UNIQUE_MODELS, SEEDS, questById, DAILY, STARTER, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE, WEAR } from './data.js';
+import { DAY, furnitureById, floorById, wallById, DISHES, INGREDIENTS, SNACKS, ROLES, MAX_LEVEL, MAX_DISH_LEVEL, EXPANSIONS, ENERGY, LEVEL_POINTS, UNIQUE_MODELS, SEEDS, questById, DAILY, STARTER, CLUBS, wallDecorById, START_WALL_DECOR, SERVINGS_PER_UNIT, OFFLINE, WEAR } from './data.js';
 import { bumpUid, clamp } from './util.js';
 import { settleOffline } from './offline.js';
 import { localTz } from './clock.js';
 import { themeById, specialById } from './specials.js';
 import { cleanStreet } from './street.js';
+import { cleanDyes } from './palette.js';
 import { cleanTickets, cleanOuting } from './outing.js';
 
 // Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
@@ -34,7 +35,7 @@ export function serialize(game) {
       dirty: w.seats.filter((st) => st.dirty).map((st) => [st.chair.x, st.chair.y]),
     },
     meta: { seats: w.seats.filter((st) => w.accessFor(st.chair).length).length },   // what the offline settlement needs but cannot derive without the 3D footprints
-    staff: game.staff.map((a) => ({ name: a.name, role: a.role, look: a.look, energy: Math.round(a.energy), skills: a.skills, clubs: a.clubs, x: a.tx, y: a.ty })),
+    staff: game.staff.map((a) => ({ name: a.name, nick: a.nick || undefined, role: a.role, look: a.look, energy: Math.round(a.energy), skills: a.skills, clubs: a.clubs, x: a.tx, y: a.ty })),
   };
 }
 
@@ -131,6 +132,7 @@ export function apply(game, data) {
     tutorialSeen: !!s.tutorialSeen,
     partner: UNIQUE_MODELS.includes(s.partner) ? s.partner : null,
     street: cleanStreet(s.street),   // cosmetic: which of the street's lots are restored (street.js)
+    dyes: cleanDyes(s.dyes),         // cosmetic: the dyes found for the staff palette (palette.js)
     tickets: cleanTickets(s.tickets),
     outing: cleanOuting(s.outing),
     tutorial: Array.isArray(s.tutorial) ? s.tutorial.filter((x, i, a) => typeof x === 'string' && x.length < 16 && a.indexOf(x) === i).slice(0, 48) : [],
@@ -226,7 +228,8 @@ export function apply(game, data) {
     const look = sanitizeLook(sd.look, sd.role, worn);
     if (!look) continue;
     worn.add(look.model);
-    const a = new Staff(game, sd.role, UNIQUE_NAMES[look.model], look);
+    const a = new Staff(game, sd.role, '', look);
+    a.setNick(sd.nick);   // `name` in older saves is the old cast's name, so only a player-given `nick` is kept
     a.energy = num(sd.energy, 100, 0, 100);
     if (sd.skills && typeof sd.skills === 'object') for (const r of Object.keys(ROLES)) { const xp = num(sd.skills[r], 0, 0, 1e7); if (xp) a.skills[r] = Math.floor(xp); }
     if (sd.clubs && typeof sd.clubs === 'object') for (const c of Object.keys(CLUBS)) { const lv = Math.floor(num(sd.clubs[c], 0, 0, 1)); if (lv) a.clubs[c] = lv; }

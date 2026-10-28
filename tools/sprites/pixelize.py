@@ -47,11 +47,13 @@ def nearest(px, pal):
     return ((px[:, None, :] - pal[None]) ** 2).sum(-1).argmin(-1)
 
 
-def classes(mask):
-    """Per pixel of a mask render: 0 other, 1 fur, 2 shirt."""
+def classes(mask, light=False):
+    """Per pixel of a mask render: 0 other, 1 fur, 2 shirt and, with `light` (the cast's region maps), 3 light."""
     cl = np.zeros(mask.shape[:2], np.int64)
     cl[(mask[..., 0] > 127) & (mask[..., 0] >= mask[..., 1])] = 1
     cl[(mask[..., 1] > 127) & (mask[..., 1] > mask[..., 0])] = 2
+    if light:
+        cl[(mask[..., 2] > 127) & (mask[..., 2] > mask[..., 0]) & (mask[..., 2] > mask[..., 1])] = 3
     return cl
 
 
@@ -103,28 +105,36 @@ def main():
     earimgs = [(load(f"ear_{i:02d}.png"), load(f"ear_{i:02d}_mask.png")) for i in range(len(ears))]
     every = frames + earimgs
 
+    # the key regions this body has: a manifest `recolor` names them (the cast may add light, or lack a shirt)
+    light = "regions" in mdef
+    active = [(r, k) for r, k in ((1, "fur"), (2, "shirt"), (3, "light")) if k in mdef.get("recolor", {})] if keyed else []
+    lut = np.zeros(4, np.int64)               # mask class -> its region's place in `regions` (0: other)
+    for j, (r, _) in enumerate(active):
+        lut[r] = j + 1
+    cls = lambda mk: lut[classes(mk, light)]
+
     def sample(region):
         parts = []
         for im, mk in every:
             sel = im[..., 3] > 200
             if mk is not None:
-                sel &= classes(mk) == region
+                sel &= cls(mk) == region
             parts.append(im[sel][::37 if region == 0 else 7, :3])
         return np.concatenate(parts).astype(np.float32)
 
     keep = np.array([[int(h[i:i + 2], 16) for i in (1, 3, 5)] for h in mdef.get("spriteKeep", [])], np.float32).reshape(-1, 3)
-    n_other = mdef.get("spriteColors", S["colors"]) - (2 * STEPS if keyed else 0) - len(keep)   # a busier outfit may ask for more
+    n_other = mdef.get("spriteColors", S["colors"]) - STEPS * len(active) - len(keep)   # a busier outfit may ask for more
     other = np.concatenate([kmeans(sample(0), n_other), keep])
     other = other[np.argsort(other @ LUMA)]   # dark to light, so the sheet's palette reads in order
     regions = [(other, 1)]
     keys = {}
-    if keyed:
-        for r, name in ((1, "fur"), (2, "shirt")):
-            ramp = kmeans(sample(r), STEPS)
-            ramp = ramp[np.argsort(ramp @ LUMA)]
-            regions.append((ramp, 1 + len(other) + (r - 1) * STEPS))
-            keys[name] = {"first": regions[-1][1], "mark": [[255, 0, b] if r == 1 else [0, 255, b] for b in MARK_B],
-                          "ramp": [[round(float(v) / KEY, 3) for v in c] for c in ramp]}
+    MARK = {"fur": (255, 0), "shirt": (0, 255), "light": (128, 255)}   # marker colours (r, g, + MARK_B blue) of the key slots
+    for j, (r, name) in enumerate(active):
+        ramp = kmeans(sample(j + 1), STEPS)
+        ramp = ramp[np.argsort(ramp @ LUMA)]
+        regions.append((ramp, 1 + len(other) + j * STEPS))
+        keys[name] = {"first": regions[-1][1], "mark": [[*MARK[name], b] for b in MARK_B],
+                      "ramp": [[round(float(v) / KEY, 3) for v in c] for c in ramp]}
     n = 1 + sum(len(p) for p, _ in regions)   # transparent + every slot; the ink comes after
     ink = n
 
@@ -132,7 +142,7 @@ def main():
     atlas = np.zeros((rows * HEIGHT, COLS * CANVAS), np.uint8)
     clips = {}
     for i, (c, (im, mk)) in enumerate(zip(cells, frames)):
-        idx = outline(pixelize(im, indices(im, regions, classes(mk) if keyed else None), n), ink)
+        idx = outline(pixelize(im, indices(im, regions, cls(mk) if keyed else None), n), ink)
         x, y = (i % COLS) * CANVAS, (i // COLS) * HEIGHT
         atlas[y:y + HEIGHT, x:x + CANVAS] = idx
         filled = np.nonzero((idx > 0).any(1))[0]
@@ -146,7 +156,7 @@ def main():
     if ears:
         crops = []
         for e, (im, mk) in zip(ears, earimgs):
-            idx = outline(pixelize(im, indices(im, regions, classes(mk)), n), ink)
+            idx = outline(pixelize(im, indices(im, regions, cls(mk)), n), ink)
             ys, xs = np.nonzero(idx)
             y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
             crops.append((e, idx[y0:y1, x0:x1], x0, y0))
@@ -168,7 +178,7 @@ def main():
     os.makedirs(dst, exist_ok=True)
     colors = [(0, 0, 0)] + [tuple(int(round(v)) for v in p) for p in other]
     if keyed:
-        colors += [tuple(m) for k in ("fur", "shirt") for m in keys[k]["mark"]]
+        colors += [tuple(m) for k in keys for m in keys[k]["mark"]]
     colors.append(INK)
     im = Image.fromarray(atlas, "P")
     im.putpalette([v for p in colors for v in p])

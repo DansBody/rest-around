@@ -12,6 +12,7 @@ import * as pantry from './pantry.js';
 const FEED_SLACK = 15;   // feeding the whole team skips anyone this close to full energy
 import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
+import { withCoat } from './looks.js';
 import { t } from './i18n.js';
 import { topUp } from './outing.js';
 import { choice, randInt, clamp } from './util.js';
@@ -386,13 +387,14 @@ export class Economy {
   }
 
   // ---------------- staff ----------------
-  /** Hire `model` (one of our own characters nobody on the team wears) as a `role`. */
-  hire(role, model) {
+  /** Hire `model` (one of our own characters nobody on the team wears) as a `role`, named `nick` and in the `coat` colours the player picked. */
+  hire(role, model, nick, coat) {
     const g = this.game, s = this.s;
     if (g.staff.length >= staffSlots(s.level)) return g.toast(t('All staff slots are full — level up for more'), 'bad');
-    if (!UNIQUE_MODELS.includes(model) || g.staff.some((a) => a.look.model === model)) return g.toast(t('{name} is already on the team', { name: UNIQUE_NAMES[model] || model }), 'bad');
+    if (!UNIQUE_MODELS.includes(model) || g.staff.some((a) => a.look.model === model)) return g.toast(t('{name} is already on the team', { name: t(UNIQUE_NAMES[model] || model) }), 'bad');
     if (!this.spend(ROLES[role].hire, t('hiring'))) return;
-    const st = makeStaff(g, role, model);
+    const st = makeStaff(g, role, model, nick);
+    if (coat) st.look = withCoat(st.look, coat);
     const e = g.world.entry;
     const spot = g.freeTileNear(e.x + 1, e.y) || e;
     g.addStaff(st, spot.x, spot.y);

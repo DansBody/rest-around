@@ -28,7 +28,7 @@ export function helpedCard(ui, list) {
     for (const d of ds.filter((x) => x.kind === 'snack' && snackById[x.snack])) {
       const sn = snackById[d.snack];
       lines.push(line(assets.iconEl(sn.asset, 20), d.staff
-        ? t('Gave {staff} a {snack} (+{n} energy)', { staff: UNIQUE_NAMES[d.staff] || d.staff, snack: sn.name, n: d.energy })
+        ? t('Gave {staff} a {snack} (+{n} energy)', { staff: t(UNIQUE_NAMES[d.staff] || d.staff), snack: sn.name, n: d.energy })
         : t('Left a {snack} in your pantry', { snack: sn.name })));
     }
     const items = {};
@@ -174,7 +174,7 @@ function renderProfile(ui, body) {
     h('div.section-title', t('Nickname')), nick,
     h('div.muted.small', { style: { marginTop: '4px' } }, t('Shown to your friends. Leave it empty to show the café name.')),
     h('div.section-title', t('Character')),
-    h('div.avatar-pick', AVATAR.models.map((m) => h('button.avatar-opt' + (draft.avatar.model === m ? '.on' : ''), { title: UNIQUE_NAMES[m], onclick: () => { draft.avatar.model = m; ui.renderPanel(); } }, avatarEl({ model: m, bg: draft.avatar.bg }, 52)))),
+    h('div.avatar-pick', AVATAR.models.map((m) => h('button.avatar-opt' + (draft.avatar.model === m ? '.on' : ''), { title: t(UNIQUE_NAMES[m]), onclick: () => { draft.avatar.model = m; ui.renderPanel(); } }, avatarEl({ model: m, bg: draft.avatar.bg }, 52)))),
     h('div.section-title', t('Background')),
     h('div.swatches', AVATAR.bgs.map((c) => h('div.sw' + (draft.avatar.bg === c ? '.on' : ''), { style: { background: c }, onclick: () => { draft.avatar.bg = c; ui.renderPanel(); } }))),
     h('button.btn.primary', { style: { width: '100%', marginTop: '16px' }, onclick: () => act(ui, 'profile_set', { nickname: draft.nickname, avatar: draft.avatar }, (b) => {

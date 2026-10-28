@@ -307,6 +307,306 @@ CHARACTERS = {
         'face': (1.0, 1.35),
         'repairs': [],
     },
+    'cast_base': {
+        'name': 'CastBase',
+        # the shared body of the original cast (design/cast/CAST.md): a chunkier earless bean with a stub
+        # tail; head types, colours and signature accessories are layered on top. Flat-colour regions
+        # (grey fur, white muzzle/belly/soles, blue tee) so each can become a recolour mask.
+        # gpt-image-2 views design/cast/meshy_views/base_*.png -> multi-image-to-3d (meshy-7.1, remesh 12k)
+        # 01a1825d-033e-7383-bd49-c4b6e6f36f49
+        'scale': 1.1, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.28, 0)),
+            ('leg_l', 'hips', (0.22, 0.26, 0)), ('leg_r', 'hips', (-0.22, 0.26, 0)),
+            ('chest', 'hips', (0, 0.55, 0)),
+            ('arm_l', 'chest', (0.62, 0.8, 0)), ('hand_l', 'arm_l', (0.8, 0.52, 0.05)),
+            ('arm_r', 'chest', (-0.62, 0.8, 0)), ('hand_r', 'arm_r', (-0.8, 0.52, 0.05)),
+            ('head', 'chest', (0, 0.95, 0)),
+            ('tail', 'hips', (0, 0.36, -0.6)),
+            # no ears on the mesh: the bones are where ear accessories hang (ear_y is above the head)
+            ('ear_l', 'head', (0.42, 1.68, -0.02)), ('ear_r', 'head', (-0.42, 1.68, -0.02)),
+            # unskinned anchors for the head-type parts of src/ears.js: front of the muzzle, top of the head
+            ('face', 'head', (0, 1.12, 0.77)), ('crown', 'head', (0, 1.9, 0)),
+        ],
+        'skin': {'leg': (0.14, 0.26), 'arm_x': (0.6, 0.68), 'arm_y': (0.42, 0.5), 'arm_top': (0.8, 0.9),
+                 'head': (0.9, 1.0), 'chest': (0.4, 0.55), 'ear_y': (2.0, 2.1), 'ear_x': (0.3, 0.4),
+                 'tail_z': (-0.55, -0.64), 'tail_x': (0.2, 0.14), 'tail_y': (0.18, 0.24, 0.5, 0.56)},
+        'face': (1.0, 1.35),
+        'repairs': [],
+    },
+    'cast_hamster': {
+        'name': 'CastHamster',
+        # original cast #1, the golden hamster (design/cast/CAST.md): its own model, drawn without its
+        # clock clip (that is a separate accessory). Flat colour regions (apricot fur, white face/belly,
+        # denim tee) so it can be recoloured.
+        # gpt-image-2 views design/cast/meshy_views/hamster_*.png -> multi-image-to-3d (meshy-7.1, remesh 12k)
+        # 01a1826f-031f-7013-b6ad-10ec56de1b01
+        'scale': 1.1, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)), ('hips', 'root', (0, 0.28, 0)),
+            ('leg_l', 'hips', (0.22, 0.26, 0)), ('leg_r', 'hips', (-0.22, 0.26, 0)),
+            ('chest', 'hips', (0, 0.55, 0)),
+            ('arm_l', 'chest', (0.6, 0.78, 0)), ('hand_l', 'arm_l', (0.78, 0.52, 0.05)),
+            ('arm_r', 'chest', (-0.6, 0.78, 0)), ('hand_r', 'arm_r', (-0.78, 0.52, 0.05)),
+            ('head', 'chest', (0, 0.88, 0)),
+            ('tail', 'hips', (0, 0.34, -0.6)),
+            ('ear_l', 'head', (0.52, 1.62, 0)), ('ear_r', 'head', (-0.52, 1.62, 0)),
+            ('face', 'head', (0, 1.2, 0.71)), ('crown', 'head', (0, 1.86, 0)),
+        ],
+        'skin': {'leg': (0.14, 0.26), 'arm_x': (0.6, 0.68), 'arm_y': (0.42, 0.5), 'arm_top': (0.78, 0.86),
+                 'head': (0.84, 0.94), 'chest': (0.4, 0.55), 'ear_y': (1.6, 1.68), 'ear_x': (0.42, 0.5),
+                 'tail_z': (-0.56, -0.64), 'tail_x': (0.22, 0.16), 'tail_y': (0.14, 0.2, 0.46, 0.52)},
+        'face': (1.0, 1.35),
+        'repairs': [],
+    },
+    'cast_fox': {
+        'name': 'CastFox',
+        # original cast #2 the fox (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/fox_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-bf62-76e2-b275-6fd1b7c77783
+        'scale': 1.279, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.24, 0)),
+            ('leg_l', 'hips', (0.19, 0.22, 0)),
+            ('leg_r', 'hips', (-0.19, 0.22, 0)),
+            ('chest', 'hips', (0, 0.47, 0)),
+            ('arm_l', 'chest', (0.5, 0.71, 0)),
+            ('hand_l', 'arm_l', (0.64, 0.47, 0.05)),
+            ('arm_r', 'chest', (-0.5, 0.71, 0)),
+            ('hand_r', 'arm_r', (-0.64, 0.47, 0.05)),
+            ('head', 'chest', (0, 0.79, 0)),
+            ('tail', 'hips', (0, 0.29, -0.56)),
+            ('ear_l', 'head', (0.4, 1.52, 0.12)),
+            ('ear_r', 'head', (-0.4, 1.52, 0.12)),
+            ('face', 'head', (0, 1.09, 0.76)),
+            ('crown', 'head', (0, 1.6, 0)),
+        ],
+        'skin': {'leg': (0.12, 0.22), 'arm_x': (0.49, 0.57), 'arm_y': (0.35, 0.43), 'arm_top': (0.69, 0.77), 'head': (0.74, 0.84), 'chest': (0.34, 0.47), 'ear_y': (1.48, 1.56), 'ear_x': (0.16, 0.24), 'tail_z': (-0.56, -0.63), 'tail_x': (0.24, 0.17), 'tail_y': (0.05, 0.1, 0.6, 0.67)},
+        'face': (0.94, 1.29),
+        'repairs': [],
+    },
+    'cast_sheep': {
+        'name': 'CastSheep',
+        # original cast #3 the sheep (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/sheep_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-c80e-73fe-98c8-3ee413ab1867
+        'scale': 1.088, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.28, 0)),
+            ('leg_l', 'hips', (0.2, 0.26, 0)),
+            ('leg_r', 'hips', (-0.2, 0.26, 0)),
+            ('chest', 'hips', (0, 0.56, 0)),
+            ('arm_l', 'chest', (0.52, 0.76, 0)),
+            ('hand_l', 'arm_l', (0.67, 0.54, 0.05)),
+            ('arm_r', 'chest', (-0.52, 0.76, 0)),
+            ('hand_r', 'arm_r', (-0.67, 0.54, 0.05)),
+            ('head', 'chest', (0, 0.82, 0)),
+            ('tail', 'hips', (0, 0.34, -0.53)),
+            ('ear_l', 'head', (0.4, 1.73, 0)),
+            ('ear_r', 'head', (-0.4, 1.73, 0)),
+            ('face', 'head', (0, 1.07, 0.61)),
+            ('crown', 'head', (0, 1.88, 0)),
+        ],
+        'skin': {'leg': (0.14, 0.26), 'arm_x': (0.51, 0.59), 'arm_y': (0.42, 0.5), 'arm_top': (0.74, 0.82), 'head': (0.77, 0.87), 'chest': (0.4, 0.56), 'ear_y': (2.0, 2.1), 'ear_x': (0.3, 0.4), 'tail_z': (-0.53, -0.6), 'tail_x': (0.24, 0.17), 'tail_y': (0.06, 0.12, 0.71, 0.79)},
+        'face': (0.92, 1.27),
+        'repairs': [],
+    },
+    'cast_rabbit': {
+        'name': 'CastRabbit',
+        # original cast #4 the matcha rabbit (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/rabbit_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-cf8b-70fd-a26b-895012a5fa41
+        'scale': 1.419, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.2, 0)),
+            ('leg_l', 'hips', (0.14, 0.18, 0)),
+            ('leg_r', 'hips', (-0.14, 0.18, 0)),
+            ('chest', 'hips', (0, 0.38, 0)),
+            ('arm_l', 'chest', (0.37, 0.56, 0)),
+            ('hand_l', 'arm_l', (0.47, 0.42, 0.05)),
+            ('arm_r', 'chest', (-0.37, 0.56, 0)),
+            ('hand_r', 'arm_r', (-0.47, 0.42, 0.05)),
+            ('head', 'chest', (0, 0.64, 0)),
+            ('tail', 'hips', (0, 0.24, -0.36)),
+            ('ear_l', 'head', (0.25, 1.3, -0.04)),
+            ('ear_r', 'head', (-0.25, 1.3, -0.04)),
+            ('face', 'head', (0, 0.86, 0.44)),
+            ('crown', 'head', (0, 1.3, 0)),
+        ],
+        'skin': {'leg': (0.1, 0.18), 'arm_x': (0.36, 0.44), 'arm_y': (0.3, 0.38), 'arm_top': (0.54, 0.62), 'head': (0.59, 0.69), 'chest': (0.28, 0.38), 'ear_y': (1.26, 1.34), 'ear_x': (0.08, 0.16), 'tail_z': (-0.36, -0.43), 'tail_x': (0.24, 0.17), 'tail_y': (0.04, 0.08, 0.49, 0.55)},
+        'face': (0.71, 1.06),
+        'repairs': [],
+    },
+    'cast_calico': {
+        'name': 'CastCalico',
+        # original cast #5 the calico cat (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/calico_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-226d-7160-a00e-bf31539b3351
+        'scale': 1.24, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.25, 0)),
+            ('leg_l', 'hips', (0.19, 0.23, 0)),
+            ('leg_r', 'hips', (-0.19, 0.23, 0)),
+            ('chest', 'hips', (0, 0.49, 0)),
+            ('arm_l', 'chest', (0.51, 0.8, 0)),
+            ('hand_l', 'arm_l', (0.66, 0.56, 0.05)),
+            ('arm_r', 'chest', (-0.51, 0.8, 0)),
+            ('hand_r', 'arm_r', (-0.66, 0.56, 0.05)),
+            ('head', 'chest', (0, 0.86, 0)),
+            ('tail', 'hips', (0, 0.3, -0.54)),
+            ('ear_l', 'head', (0.44, 1.6, 0.05)),
+            ('ear_r', 'head', (-0.44, 1.6, 0.05)),
+            ('face', 'head', (0, 1.14, 0.66)),
+            ('crown', 'head', (0, 1.65, 0)),
+        ],
+        'skin': {'leg': (0.12, 0.23), 'arm_x': (0.5, 0.58), 'arm_y': (0.44, 0.52), 'arm_top': (0.78, 0.86), 'head': (0.81, 0.91), 'chest': (0.35, 0.49), 'ear_y': (1.56, 1.64), 'ear_x': (0.24, 0.32), 'tail_z': (-0.54, -0.61), 'tail_x': (0.24, 0.17), 'tail_y': (0.05, 0.11, 0.62, 0.69)},
+        'face': (0.99, 1.34),
+        'repairs': [],
+    },
+    'cast_dog': {
+        'name': 'CastDog',
+        # original cast #6 the puppy (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/dog_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-2b11-763a-ae66-19373a9ba029
+        'scale': 1.1, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.28, 0)),
+            ('leg_l', 'hips', (0.23, 0.26, 0)),
+            ('leg_r', 'hips', (-0.23, 0.26, 0)),
+            ('chest', 'hips', (0, 0.55, 0)),
+            ('arm_l', 'chest', (0.61, 0.82, 0)),
+            ('hand_l', 'arm_l', (0.82, 0.56, 0.05)),
+            ('arm_r', 'chest', (-0.61, 0.82, 0)),
+            ('hand_r', 'arm_r', (-0.82, 0.56, 0.05)),
+            ('head', 'chest', (0, 0.9, 0)),
+            ('ear_l', 'head', (0.6, 1.52, 0.0)),
+            ('ear_r', 'head', (-0.6, 1.52, 0.0)),
+            ('face', 'head', (0, 1.19, 0.7)),
+            ('crown', 'head', (0, 1.86, 0)),
+        ],
+        'skin': {'leg': (0.14, 0.26), 'arm_x': (0.6, 0.68), 'arm_y': (0.44, 0.52), 'arm_top': (0.8, 0.88), 'head': (0.85, 0.95), 'chest': (0.4, 0.55), 'ear_y': (0.9, 1.0), 'ear_x': (0.58, 0.66)},
+        'face': (1.04, 1.39),
+        'repairs': [],
+    },
+    'cast_penguin': {
+        'name': 'CastPenguin',
+        # original cast #7 the penguin (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/penguin_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-3226-75ce-85dd-24152d7d1739
+        'scale': 1.088, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.28, 0)),
+            ('leg_l', 'hips', (0.24, 0.26, 0)),
+            ('leg_r', 'hips', (-0.24, 0.26, 0)),
+            ('chest', 'hips', (0, 0.56, 0)),
+            ('arm_l', 'chest', (0.64, 0.82, 0)),
+            ('hand_l', 'arm_l', (0.8, 0.52, 0.05)),
+            ('arm_r', 'chest', (-0.64, 0.82, 0)),
+            ('hand_r', 'arm_r', (-0.8, 0.52, 0.05)),
+            ('head', 'chest', (0, 0.92, 0)),
+            ('ear_l', 'head', (0.4, 1.73, 0)),
+            ('ear_r', 'head', (-0.4, 1.73, 0)),
+            ('face', 'head', (0, 1.17, 0.7)),
+            ('crown', 'head', (0, 1.88, 0)),
+        ],
+        'skin': {'leg': (0.14, 0.26), 'arm_x': (0.63, 0.71), 'arm_y': (0.4, 0.48), 'arm_top': (0.8, 0.88), 'head': (0.87, 0.97), 'chest': (0.4, 0.56), 'ear_y': (2.0, 2.1), 'ear_x': (0.3, 0.4)},
+        'face': (1.02, 1.37),
+        'repairs': [],
+    },
+    'cast_raccoon': {
+        'name': 'CastRaccoon',
+        # original cast #8 the raccoon (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/raccoon_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-dabd-74a8-a4ac-6682089af7bb
+        'scale': 1.169, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.26, 0)),
+            ('leg_l', 'hips', (0.22, 0.24, 0)),
+            ('leg_r', 'hips', (-0.22, 0.24, 0)),
+            ('chest', 'hips', (0, 0.52, 0)),
+            ('arm_l', 'chest', (0.57, 0.79, 0)),
+            ('hand_l', 'arm_l', (0.7, 0.57, 0.05)),
+            ('arm_r', 'chest', (-0.57, 0.79, 0)),
+            ('hand_r', 'arm_r', (-0.7, 0.57, 0.05)),
+            ('head', 'chest', (0, 0.91, 0)),
+            ('tail', 'hips', (0, 0.32, -0.58)),
+            ('ear_l', 'head', (0.48, 1.7, -0.04)),
+            ('ear_r', 'head', (-0.48, 1.7, -0.04)),
+            ('face', 'head', (0, 1.25, 0.77)),
+            ('crown', 'head', (0, 1.75, 0)),
+        ],
+        'skin': {'leg': (0.13, 0.24), 'arm_x': (0.56, 0.64), 'arm_y': (0.45, 0.53), 'arm_top': (0.77, 0.85), 'head': (0.86, 0.96), 'chest': (0.38, 0.52), 'ear_y': (1.66, 1.74), 'ear_x': (0.3, 0.38), 'tail_z': (-0.58, -0.65), 'tail_x': (0.24, 0.17), 'tail_y': (0.06, 0.11, 0.66, 0.73)},
+        'face': (1.1, 1.45),
+        'repairs': [],
+    },
+    'cast_bear': {
+        'name': 'CastBear',
+        # original cast #9 the powder-blue bear (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/bear_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-e5bf-701b-bfad-8eaa2cbbe397
+        'scale': 1.112, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.28, 0)),
+            ('leg_l', 'hips', (0.21, 0.26, 0)),
+            ('leg_r', 'hips', (-0.21, 0.26, 0)),
+            ('chest', 'hips', (0, 0.54, 0)),
+            ('arm_l', 'chest', (0.55, 0.8, 0)),
+            ('hand_l', 'arm_l', (0.74, 0.5, 0.05)),
+            ('arm_r', 'chest', (-0.55, 0.8, 0)),
+            ('hand_r', 'arm_r', (-0.74, 0.5, 0.05)),
+            ('head', 'chest', (0, 0.86, 0)),
+            ('ear_l', 'head', (0.55, 1.62, 0.0)),
+            ('ear_r', 'head', (-0.55, 1.62, 0.0)),
+            ('face', 'head', (0, 1.24, 0.64)),
+            ('crown', 'head', (0, 1.84, 0)),
+        ],
+        'skin': {'leg': (0.14, 0.26), 'arm_x': (0.54, 0.62), 'arm_y': (0.38, 0.46), 'arm_top': (0.78, 0.86), 'head': (0.81, 0.91), 'chest': (0.4, 0.54), 'ear_y': (1.58, 1.66), 'ear_x': (0.38, 0.46)},
+        'face': (1.09, 1.44),
+        'repairs': [],
+    },
+    'cast_owl': {
+        'name': 'CastOwl',
+        # original cast #10 the owl (design/cast/CAST.md), drawn without its signature accessory; flat colour regions
+        # for recolouring. Bones/bands from design/cast/prompts/derive.py; scale keeps the head top level with the
+        # hamster's (ears and tufts stand above it). gpt-image-2 views design/cast/meshy_views/owl_*.png ->
+        # multi-image-to-3d (meshy-7.1, remesh 12k) 01a18278-efa5-77da-a4fc-f19101b0766b
+        'scale': 1.19, 'face_width': 0, 'smooth_normals': True,
+        'bones': [
+            ('root', None, (0, 0, 0)),
+            ('hips', 'root', (0, 0.26, 0)),
+            ('leg_l', 'hips', (0.22, 0.24, 0)),
+            ('leg_r', 'hips', (-0.22, 0.24, 0)),
+            ('chest', 'hips', (0, 0.51, 0)),
+            ('arm_l', 'chest', (0.57, 0.78, 0)),
+            ('hand_l', 'arm_l', (0.73, 0.44, 0.05)),
+            ('arm_r', 'chest', (-0.57, 0.78, 0)),
+            ('hand_r', 'arm_r', (-0.73, 0.44, 0.05)),
+            ('head', 'chest', (0, 0.82, 0)),
+            ('ear_l', 'head', (0.48, 1.68, -0.08)),
+            ('ear_r', 'head', (-0.48, 1.68, -0.08)),
+            ('face', 'head', (0, 1.04, 0.62)),
+            ('crown', 'head', (0, 1.72, 0)),
+        ],
+        'skin': {'leg': (0.13, 0.24), 'arm_x': (0.56, 0.64), 'arm_y': (0.32, 0.4), 'arm_top': (0.76, 0.84), 'head': (0.77, 0.87), 'chest': (0.37, 0.51), 'ear_y': (1.64, 1.72), 'ear_x': (0.3, 0.38)},
+        'face': (0.89, 1.24),
+        'repairs': [],
+    },
 }
 C = None   # the character being built (set by build)
 BONES, BI = [], {}

@@ -226,9 +226,10 @@ export const CUSTOMER_NAMES = ['Aster', 'Bramble', 'Cocoa', 'Daisy', 'Ember', 'F
 
 // Guests and passers-by: our own plain chibi bodies, recoloured per guest (fur + shirt, see GUEST_FUR).
 export const CHARACTER_MODELS = ['guest_b'];
-// Staff are always one of our own characters (one staff member each, named after the character).
+// Staff are always one of our own characters (one staff member each). The player names them; until then they go by
+// what they are (UNIQUE_NAMES, translated). The ids are the old cast's, kept so saves and kits carry over.
 export const UNIQUE_MODELS = ['mochalatte', 'bbaekko', 'heehee', 'cheetie', 'oritokki', 'tata', 'rj', 'chimmy', 'bboogyuli', 'bamgeut'];
-export const UNIQUE_NAMES = { mochalatte: 'Mocha Latte', bbaekko: 'Bbaekko', heehee: 'Hee Hee', cheetie: 'Cheetie', oritokki: 'Oritokki', tata: 'TATA', rj: 'RJ', chimmy: 'Chimmy', bboogyuli: 'BBOOGYULI', bamgeut: 'BAMGEUT' };
+export const UNIQUE_NAMES = { mochalatte: 'Hamster', bbaekko: 'Bunny', heehee: 'Sheep', cheetie: 'Fox', oritokki: 'Calico', tata: 'Puppy', rj: 'Penguin', chimmy: 'Raccoon', bboogyuli: 'Bear', bamgeut: 'Owl' };
 
 // ---------------- wardrobe ----------------
 // Accessories worn on a character's bones. Each model's origin is its attach point and its width is 1
@@ -286,6 +287,31 @@ export const HAIR_COLORS = ['#4a3328', '#7a4e33', '#c98b4f', '#f0cf7a', '#e59aa8
 export const OUTFIT_COLORS = ['#f6b8c4', '#a9dcc6', '#9cc3e6', '#f9dd96', '#c9b6e3', '#f5b58d', '#fbfaf5', '#6d6a8a', '#d99aa8', '#b5e0c8', '#7fa7c9', '#e88a7a'];
 // guest fur colours: soft animal tones, none so dark that the dark eyes get lost
 export const GUEST_FUR = ['#fdebcb', '#e9c27a', '#c08a5c', '#96623e', '#b2b2b8', '#f6aa5a', '#fac4d2', '#b9d4ee', '#bfe3cf', '#d4c2ea', '#f8f6f0'];
+// Colours the player can give a staff member (when hiring and in the wardrobe), in any region of the cast's region
+// maps (tools/cast_regions.py): the palette of the prologue (opening-premise). Its centre well, the character's own
+// colour and the neutrals, is open from the start; each of the 8 outer wells fills when its street lot is restored
+// (street.js LOTS, a resident's commission), in the colours of that shop. Dyes are single special colours that
+// commissions and battles hand out (state.dyes); once found they stay.
+export const PALETTE_CENTRE = { id: 'centre', name: 'House', colors: ['#fbf7ee', '#f3e2c8', '#e2e2e2', '#9a9a9e', '#5b5b60', '#c08a5c', '#5a3d2e', '#3f5daa'] };
+export const PALETTE_WELLS = [
+  { id: 'wheat', lot: 'n', name: 'Wheat', colors: ['#fdebcb', '#f3d29a', '#e9c27a', '#f4a042', '#d9894a', '#a8643a'] },
+  { id: 'petal', lot: 'nw', name: 'Petal', colors: ['#ffe1e8', '#fac4d2', '#f2b6c6', '#e88aa3', '#d36b8a', '#f6cdbf'] },
+  { id: 'denim', lot: 'w', name: 'Denim', colors: ['#dfe8f5', '#9cc3e6', '#7fa7c9', '#4c6fb3', '#2f4a8a', '#1f2a4a'] },
+  { id: 'vinyl', lot: 'ne', name: 'Vinyl', colors: ['#efe6fb', '#d4c2ea', '#c9b0e0', '#a98bd1', '#7d5fb0', '#4f3a7a'] },
+  { id: 'suds', lot: 'sw', name: 'Suds', colors: ['#e6f6fb', '#bfe8f2', '#9fd3ff', '#7fc4b8', '#4fa8b8', '#2c5e8c'] },
+  { id: 'cloth', lot: 'e', name: 'Cloth', colors: ['#f7e3dc', '#f5b58d', '#e88a7a', '#d0644e', '#a8473a', '#7a3a32'] },
+  { id: 'garden', lot: 's', name: 'Garden', colors: ['#e4f0dc', '#bfe3cf', '#a9dcc6', '#a8c487', '#6f9a4e', '#3f6a3a'] },
+  { id: 'bell', lot: 'se', name: 'Bell', colors: ['#fff6d6', '#f9dd96', '#f2c94c', '#e2b23c', '#c9962a', '#8a6a1e'] },
+];
+export const DYES = [
+  { id: 'foam', name: 'Latte Foam', color: '#f5ead8' },
+  { id: 'espresso', name: 'Espresso', color: '#2e1c14' },
+  { id: 'night', name: 'Night Shift', color: '#2b3a67' },
+  { id: 'chrome', name: 'Chrome', color: '#c9ced6' },
+  { id: 'gold', name: 'Crema Gold', color: '#d9b44a' },
+  { id: 'mintchip', name: 'Mint Chip', color: '#8fd9c0' },
+];
+export const dyeById = Object.fromEntries(DYES.map((d) => [d.id, d]));
 // guest ear styles (made in code by src/ears.js); 'none' is the earless seal-like head
 export const EAR_STYLES = ['cat', 'bear', 'bunny', 'dog', 'round', 'none'];
 export const HAIR_STYLES = ['bob', 'spiky', 'bun', 'long'];

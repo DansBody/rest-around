@@ -1172,6 +1172,33 @@ button.pick-row:hover { background: var(--fill-2); }
 .starter-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
 .starter-pick .portrait { flex: none; border-radius: 16px; background: var(--surface); }
 .starter-pick h3 { margin: 2px 0 6px; font: 750 20px/1.1 var(--font-display); font-stretch: var(--narrow); }
+/* naming a character: partner pick, hiring, wardrobe and career pages */
+.nick-field { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+.nick-field > span { font-size: 14px; font-weight: 700; color: var(--muted); }
+/* hiring: the portrait beside the palette */
+.coat-pick { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; align-items: flex-start; margin-top: 12px; }
+.coat-pick .portrait { flex: none; border-radius: 16px; background: var(--surface); }
+/* the staff palette (palette.js): region tabs, a round board of wells, the shades of the well in use, the dyes */
+.palette { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 10px 0; width: 100%; }
+.pal-tabs { display: flex; gap: 6px; }
+.pal-tabs button { display: flex; align-items: center; gap: 6px; padding: 6px 12px; min-height: 36px; border-radius: 999px; border: 2px solid transparent; background: var(--fill); font-weight: 700; cursor: pointer; }
+.pal-tabs button.on { border-color: var(--ink); background: var(--surface); }
+.pal-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .2); display: inline-block; }
+.pal-board { position: relative; width: 184px; height: 184px; flex: none; border-radius: 50%; background: radial-gradient(circle, var(--surface) 55%, var(--fill) 56%); }
+.pal-well { position: absolute; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 2px solid rgba(0, 0, 0, .15); cursor: pointer; display: grid; place-items: center; }
+.pal-well.centre { width: 56px; height: 56px; border-style: dashed; border-color: var(--ink); }
+.pal-well.locked { background: repeating-linear-gradient(45deg, #d8d8dc 0 4px, #c6c6cc 4px 8px); color: #6d6d78; }
+.pal-well.on { box-shadow: 0 0 0 3px var(--surface, #fff), 0 0 0 5px var(--ink); }
+.pal-well.used::after { content: ''; position: absolute; right: -2px; top: -2px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); border: 2px solid var(--surface, #fff); }
+.pal-shades { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pal-shades .swatch, .pal-dyes .swatch { width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 2px solid rgba(0, 0, 0, .12); cursor: pointer; }
+.pal-shades .swatch.own { border-style: dashed; border-color: var(--ink); }
+.pal-shades .swatch.on, .pal-dyes .swatch.on { box-shadow: 0 0 0 2px var(--surface, #fff), 0 0 0 4px var(--ink); }
+@media (pointer: coarse) { .pal-shades .swatch, .pal-dyes .swatch { width: 40px; height: 40px; } }
+.pal-hint { text-align: center; font-size: 14px; }
+.coat-name { font-size: 14px; font-weight: 700; color: var(--muted); }
+.coat-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.pal-dyes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .starter-role { margin-bottom: 8px; font-size: 12.5px; }
 .pill.partner { background: #fff4d1; gap: 4px; }
 /* the coach card: at the top by default, mid-screen for hello / goodbye, otherwise beside what it talks about

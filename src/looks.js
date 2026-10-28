@@ -11,6 +11,21 @@ export function staffLook(model) {
   return { model, tint: null, scale: 1, wear: {} };
 }
 
+/** The regions of a cast character the player can recolour (from the palette, data.js PALETTE_*); unset keeps the model's own colour. */
+export const COAT = ['fur', 'light', 'shirt'];
+const isHex = (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+/** A copy of `look` with region colours set (null/'' = back to the model's own); unknown regions are ignored. */
+export function withCoat(look, coat) {
+  const out = { ...look };
+  for (const k of COAT) if (k in coat) { if (isHex(coat[k])) out[k] = coat[k].toLowerCase(); else delete out[k]; }
+  return out;
+}
+/**
+ * A cast character's colour drained to greys of its own light (the grey city of the prologue, opening-premise):
+ * pass it to withCoat and the 3D model and sprite both turn grey; withCoat(look, {fur: null, ...}) brings the colour back.
+ */
+export function castGrey() { return { fur: '#9a9a9e', light: '#e2e2e2', shirt: '#77777b' }; }
+
 /** The first original character nobody on the team is wearing (null when the whole cast is hired). */
 export function nextCast(taken) {
   return UNIQUE_MODELS.find((m) => !taken.has(m)) || null;
@@ -40,6 +55,7 @@ export function sanitizeLook(l, role, taken = new Set()) {
   const look = staffLook(model);
   if (ok) {
     if (typeof l.scale === 'number') look.scale = Math.min(1.1, Math.max(0.9, l.scale));
+    for (const k of COAT) if (isHex(l[k])) look[k] = l[k].toLowerCase();
     look.wear = sanitizeWear(l.wear);
     // saves from before the wardrobe: the barista cap was a job hat, now it's the cap they keep wearing
     if (l.roleHat === 'chef' && !look.wear.head) look.wear.head = { id: 'cap_barista' };

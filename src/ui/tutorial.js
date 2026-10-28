@@ -10,11 +10,12 @@
 // What is done is kept in state.tutorial (step ids), and state.tutorialSeen once it is over.
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
-import { roleLook } from '../looks.js';
-import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, CLUBS, TROUBLE, DAY, starterRole } from '../data.js';
+import { roleLook, withCoat } from '../looks.js';
+import { UNIQUE_MODELS, furnitureById, CLUBS, TROUBLE, DAY, starterRole } from '../data.js';
+import { defaultName, cleanNick, NICK_MAX } from '../staff.js';
 import { DIRS } from '../iso.js';
 import { CLUB_FOR } from '../trouble.js';
-import { kitLines } from './panels.js';
+import { kitLines, coatPicker } from './panels.js';
 import { glyph } from './icons.js';
 import { TILE } from '../models.js';
 import { t } from '../i18n.js';
@@ -73,7 +74,7 @@ const GUARDED = ['pointerdown', 'mousedown', 'click', 'dblclick', 'contextmenu']
 const PRAISE = ['Nice!', "That's it!", 'Perfect!', 'Great job!'];
 const FOCUS_UP = 90;   // px above the middle of the view where the camera keeps a focus (the card waits below it)
 const FOCUS_DIST = 28;   // and it zooms in to at most this distance, so a far-off view still shows who it is about
-const partnerName = (g) => UNIQUE_NAMES[g.state.partner] || '';
+const partnerName = (g) => { const a = g.staff.find((s) => s.look.model === g.state.partner); return a ? a.name : defaultName(g.state.partner); };
 const CHAIR_RULE = () => t('Right beside the table, facing it');
 const partnerId = (g) => { const a = g.staff.find((x) => x.look.model === g.state.partner); return a ? a.id : ''; };
 
@@ -166,23 +167,35 @@ export function startTutorial(ui) {
   ui.tutorial = new Tour(ui);
 }
 
-/** The cast to choose from: tap a portrait to read about them, then start with them. */
+/** The cast to choose from: tap a portrait to read about them, name them, then start with them. */
 function pickCard(ui) {
   const g = ui.game;
   let pick = UNIQUE_MODELS[Math.floor(Math.random() * UNIQUE_MODELS.length)];
+  let coat = {};   // the colours picked for `pick` (cleared when another is picked)
   const card = h('div.card.starter');
-  const render = () => card.replaceChildren(
-    h('div.big-title', t('Pick your partner')),
-    h('div.muted', t('They run the café with you from day one, and show you how it all works.')),
-    h('div.pick-staff.starter-grid', UNIQUE_MODELS.map((m) => h('button.pick-tile' + (m === pick ? '.on' : ''), { onclick: () => { pick = m; render(); }, title: UNIQUE_NAMES[m] },
-      portrait(roleLook(starterRole(m), m), 64, 64), h('b', UNIQUE_NAMES[m])))),
-    h('div.starter-pick',
-      h('div.starter-head', portrait(roleLook(starterRole(pick), pick), 88, 88),
-        h('div.grow', h('h3', UNIQUE_NAMES[pick]),
-          h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
-            : t('Starts as your Barista: brews every drink at the espresso machine.')))),
-      kitLines(pick, true, true).length ? h('div.sklist', ...kitLines(pick, true, true)) : h('div.muted', t('No special skills yet: a steady pair of hands.'))),
-    h('button.btn.primary', { onclick: () => { g.setStarter(pick); ui.closeModal(); ui.tutorial = new Tour(ui); } }, t('Start with {name}', { name: UNIQUE_NAMES[pick] })));
+  // kept across re-renders so the typed name survives picking another portrait
+  const nameIn = h('input.nick-input', { type: 'text', maxlength: NICK_MAX, autocomplete: 'off' });
+  const go = h('button.btn.primary', { onclick: () => { g.setStarter(pick, nameIn.value, coat); ui.closeModal(); ui.tutorial = new Tour(ui); } });
+  const label = () => { go.textContent = t('Start with {name}', { name: cleanNick(nameIn.value) || defaultName(pick) }); };
+  nameIn.addEventListener('input', label);
+  const render = () => {
+    nameIn.placeholder = defaultName(pick);
+    label();
+    card.replaceChildren(
+      h('div.big-title', t('Pick your partner')),
+      h('div.muted', t('They run the café with you from day one, and show you how it all works.')),
+      h('div.pick-staff.starter-grid', UNIQUE_MODELS.map((m) => h('button.pick-tile' + (m === pick ? '.on' : ''), { onclick: () => { if (m !== pick) coat = {}; pick = m; render(); }, title: defaultName(m) },
+        portrait(roleLook(starterRole(m), m), 64, 64), h('b', defaultName(m))))),
+      h('div.starter-pick',
+        h('div.starter-head', portrait(withCoat(roleLook(starterRole(pick), pick), coat), 88, 88),
+          h('div.grow', h('h3', defaultName(pick)),
+            h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
+              : t('Starts as your Barista: brews every drink at the espresso machine.')))),
+        kitLines(pick, true, true).length ? h('div.sklist', ...kitLines(pick, true, true)) : h('div.muted', t('No special skills yet: a steady pair of hands.'))),
+      coatPicker(g, pick, coat, (k, c) => { coat = { ...coat, [k]: c }; render(); }),
+      h('label.nick-field', h('span', t('Give them a name')), nameIn),
+      go);
+  };
   render();
   return card;
 }

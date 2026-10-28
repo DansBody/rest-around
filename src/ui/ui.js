@@ -568,7 +568,8 @@ ${k.desc}
     if (this.panel) {
       const age = performance.now() - (this.lastPanelRender || 0);
       const live = PANELS[this.panel].live && age > 1000;
-      if ((this.dirty || live) && !this.pointerInPanel) this.renderPanel();
+      const typing = document.activeElement && document.activeElement.tagName === 'INPUT' && document.activeElement.type === 'text' && this.el.panelBody.contains(document.activeElement);
+      if ((this.dirty || live) && !this.pointerInPanel && !typing) this.renderPanel();   // never re-render under a name being typed
       else if (PANELS[this.panel].tick) PANELS[this.panel].tick(this, this.el.panelBody);
     }
     this.renderInfo();

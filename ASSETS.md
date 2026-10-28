@@ -80,6 +80,20 @@ them, named after it (`UNIQUE_NAMES` in `src/data.js`), one staff member each, s
 slots tops out at the size of the cast (currently ten). They're never random guests. Guests and passers-by
 use **GuestB** (`guest_b`), a plain body recoloured per guest with fur/shirt colours and procedural ears.
 
+**The original cast (2026-10).** The ten staff are now our own chubby animals (design/cast/CAST.md): a hamster,
+fox, sheep, rabbit, calico cat, puppy, penguin, raccoon, bear and owl. They keep the old cast's ids (`mochalatte` is
+the hamster, `cheetie` the fox, `heehee` the sheep, `bbaekko` the rabbit, `oritokki` the calico, `tata` the puppy,
+`rj` the penguin, `chimmy` the raccoon, `bboogyuli` the bear, `bamgeut` the owl), so saves and kits carry over; their
+manifest entries point at `Cast*.gltf`. Each was drawn as flat-colour front/side/back views without its signature
+accessory (gpt-image-2, `design/cast/prompts/`), made with Meshy 7.1 multi-image-to-3d (remesh 12k in the same task, 30
+credits), and rigged by the `cast_*` entries of `tools/build_character.py` (bones from `design/cast/prompts/derive.py`;
+`scale` levels the head top across the cast). The player names them and recolours three regions (fur, light, shirt)
+from the palette (`src/palette.js`): `python tools/cast_regions.py` writes each model's region map
+(`cast_<name>_regions.png`: red fur, green shirt, blue light, from colour plus height so a shirt never takes the
+blush) and its `recolor` reference colours and `regions` path into the manifest; `models.js` recolours the 3D model
+from the map and the sprite bake keys the same three regions (`spriteColors` 16). After rebuilding a cast model, run
+`cast_regions.py` and re-bake its sprite.
+
 **Wardrobe accessories.** `python tools/build_accessory.py <id> <scene.gltf> --slot head|face|neck|back
 [--rot X,Y,Z]` turns a downloaded glTF (e.g. a Sketchfab "glTF" zip) into `models/wear/<id>.*`: the hierarchy
 is flattened, the origin moved to the attach point for its slot and the width scaled to 1. Add a manifest
@@ -214,8 +228,9 @@ touching the game's sheet: `node tools/sprites/bake.mjs <id> --grid doll --out <
 - **Lost details.** k-means picks colours by how many pixels have them, so a small dark eye on a pale body
   can lose its colour. List the colours a sheet must keep in the manifest entry's `spriteKeep` (sRGB hex,
   as they look lit; Oritokki keeps its eyes and beak, the guest body the pink inside its ears) and re-bake.
-- **Guests (palette swap).** A body with a manifest `recolor` is baked once with its fur and shirt painted
-  grey, plus a flat mask render per frame saying which pixels are fur and which shirt. Those pixels become
+- **Guests and the cast (palette swap).** A body with a manifest `recolor` is baked once with its fur and shirt
+  (and, for the cast, light) painted grey, plus a flat mask render per frame saying which pixels are which (the cast's
+  from its region map, `regions`). Those pixels become
   key slots in the palette (3 shades each, stored as marker colours `255,0,b` and `0,255,b`); the JSON's
   `keys` gives the light each shade caught relative to the grey. Each guest's card gets its own palette strip
   with those slots set to its `look.fur` / `look.shirt` times that light. The ears (`src/ears.js`, every
@@ -263,7 +278,7 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 
 <!-- ASSET-TABLE:START -->
 
-### 3D models (81)
+### 3D models (86)
 
 **Furniture**
 
@@ -284,6 +299,8 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | `m_counter_plain` | `models/cafe/counter_plain.gltf` | surface 0.72 |
 | `m_espresso` | composite: `m_counter_plain` + `m_espresso_machine` | surface 0.72; tintable |
 | `m_espresso_machine_silver` | `models/cafe/espresso_machine_silver.gltf` |  |
+| `m_lever_machine` | `models/cafe/lever_machine.gltf` |  |
+| `m_espresso_lever` | composite: `m_counter_plain` + `m_lever_machine` | surface 0.72 |
 | `m_espresso_silver` | composite: `m_counter_plain` + `m_espresso_machine_silver` | surface 0.72 |
 | `m_espresso_deluxe` | composite: `m_counter_plain` + `m_espresso_machine` + `m_grinder` | surface 0.72 |
 | `m_oven` | `models/cafe/oven.gltf` | surface 1.4 |
@@ -355,16 +372,17 @@ Regenerate with `node tools/assets-table.mjs` after editing the manifest.
 | id | source | notes |
 |---|---|---|
 | `guest_b` | `models/characters/GuestB.gltf` | own rig + clips |
-| `mochalatte` | `models/characters/MochaLatte.gltf` | own rig + clips |
-| `bbaekko` | `models/characters/Bbaekko.gltf` | own rig + clips |
-| `heehee` | `models/characters/HeeHee.gltf` | own rig + clips |
-| `cheetie` | `models/characters/Cheetie.gltf` | own rig + clips |
-| `oritokki` | `models/characters/Oritokki.gltf` | own rig + clips |
-| `tata` | `models/characters/TATA.gltf` | own rig + clips |
-| `rj` | `models/characters/RJ.gltf` | own rig + clips |
-| `chimmy` | `models/characters/Chimmy.gltf` | own rig + clips |
-| `bboogyuli` | `models/characters/Bboogyuli.gltf` | own rig + clips |
-| `bamgeut` | `models/characters/Bamgeut.gltf` | own rig + clips |
+| `mochalatte` | `models/characters/CastHamster.gltf` | own rig + clips |
+| `bbaekko` | `models/characters/CastRabbit.gltf` | own rig + clips |
+| `heehee` | `models/characters/CastSheep.gltf` | own rig + clips |
+| `cheetie` | `models/characters/CastFox.gltf` | own rig + clips |
+| `oritokki` | `models/characters/CastCalico.gltf` | own rig + clips |
+| `tata` | `models/characters/CastDog.gltf` | own rig + clips |
+| `rj` | `models/characters/CastPenguin.gltf` | own rig + clips |
+| `chimmy` | `models/characters/CastRaccoon.gltf` | own rig + clips |
+| `bboogyuli` | `models/characters/CastBear.gltf` | own rig + clips |
+| `bamgeut` | `models/characters/CastOwl.gltf` | own rig + clips |
+| `doll` | `models/characters/Doll.gltf` | own rig + clips |
 
 ### 2D images (77)
 

@@ -89,8 +89,8 @@ export class CharacterView {
       const col = new THREE.Color('#ffffff').lerp(new THREE.Color(look.tint), 0.35);
       this.inst.root.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.multiply(col); } });
     }
-    // guest bodies: their own fur and shirt colours
-    if (look.fur || look.shirt) models.recolorCharacter(this.inst.root, this.modelId, { fur: look.fur, shirt: look.shirt });
+    // guest bodies and staff the player recoloured: their own fur, shirt (and, for the cast, light) colours
+    if (look.fur || look.shirt || look.light) models.recolorCharacter(this.inst.root, this.modelId, { fur: look.fur, shirt: look.shirt, light: look.light });
     if (look.ears) addEars(this.inst.root, look.ears, look.fur);
     if (look.scale) this.inst.root.scale.setScalar(look.scale);
   }

@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Side-by-side preview of built characters: tools/charpreview.html?m=GuestB,MochaLatte&clip=Idle&yaw=0
-     guest ears (src/ears.js): &ears=cat,bear&fur=%23fdebcb,%23c08a5c -->
+     guest ears (src/ears.js): &ears=cat,bear&fur=%23fdebcb,%23c08a5c (per model: &size=1.35&light=%23f8f6f0) -->
 <meta charset="utf-8">
 <title>Character preview</title>
 <style>html,body{margin:0;height:100%;background:#f4efe8}canvas{display:block}</style>
@@ -10,6 +10,40 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 import { addEars } from '../src/ears.js';
 const q = new URLSearchParams(location.search);
+// Preview-only recolour of a cast texture's flat colour regions (fur, light muzzle/belly, tee): each texel
+// belongs to the region whose reference colour it is nearest (fading out with distance, so blush, eyes and
+// nose stay), and takes the new colour with the texel's own light.
+// fur, light, tee (or apron), then any extra region (pattern, horns, beak), as measured from each texture
+const REFS = {
+  CastBase: ['#b4a8a8', '#fcf0e4', '#2a549c'], CastHamster: ['#f4a042', '#fcfaf2', '#1e4880'],
+  CastFox: ['#e87828', '#f8f8e8', '#e8c888'], CastSheep: ['#f8f8e8', '#e8b898', '#b85858', '#986838'],
+  CastRabbit: ['#a8b868', '#f8f8d8', '#d8b878'], CastCalico: ['#f8f8f8', '#f88838', '#5888c8', '#382818'],
+  CastDog: ['#c88858', '#f8f8f8', '#f8e858', '#582818'], CastPenguin: ['#482818', '#f8f8f8', '#f89828'],
+  CastRaccoon: ['#888898', '#f8f8f8', '#f8c848', '#282828'], CastBear: ['#78a8e8', '#f8f8d8', '#f898a8'],
+  CastOwl: ['#687898', '#f8f8d8', '#98e8b8', '#f8d858'],
+};
+function coatTexture(tex, refs, targets) {
+  const img = tex.image, c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const rgb = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };   // sRGB bytes, like the texture
+  const lum = (q) => 0.3 * q[0] + 0.59 * q[1] + 0.11 * q[2];
+  const R = refs.map(rgb), T = targets.map(rgb);
+  for (let i = 0; i < p.length; i += 4) {
+    let k = -1, best = 1e9;
+    R.forEach((r, j) => { const e = Math.hypot(p[i] - r[0], p[i + 1] - r[1], p[i + 2] - r[2]); if (e < best) { best = e; k = j; } });
+    const w = 1 - ss(40, 75, best);
+    if (w <= 0) continue;
+    const s = Math.min(1.15, lum([p[i], p[i + 1], p[i + 2]]) / lum(R[k]));
+    for (let j = 0; j < 3; j++) p[i + j] = p[i + j] * (1 - w) + Math.min(255, T[k][j] * s) * w;
+  }
+  g.putImageData(d, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.flipY = tex.flipY; t.colorSpace = tex.colorSpace;
+  return t;
+}
 const names = (q.get('m') || 'GuestB').split(',');
 const clipName = q.get('clip') || 'Idle';
 const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -30,7 +64,15 @@ await Promise.all(names.map((n, i) => loader.loadAsync(`../assets/models/charact
   g.scene.position.x = (i - (names.length - 1) / 2) * 1.8;
   g.scene.rotation.y = yaw;
   const ears = (q.get('ears') || '').split(',')[i];
-  if (ears) addEars(g.scene, ears, (q.get('fur') || '#fdebcb').split(',')[i] || '#fdebcb');
+  const size = +((q.get('size') || '').split(',')[i] || 1);
+  let light = (q.get('light') || '').split(',')[i] || undefined, fur = (q.get('fur') || '#fdebcb').split(',')[i] || '#fdebcb';
+  const coat = (q.get('coat') || '').split(',')[i];   // cast colours (models in REFS): &coat=furhex.lighthex.shirthex,...
+  if (coat) {
+    const target = coat.split('.').map((h) => '#' + h);
+    [fur, light] = target;
+    g.scene.traverse((o) => { if (o.isSkinnedMesh && o.material.map) { o.material = o.material.clone(); o.material.map = o.material.emissiveMap = coatTexture(o.material.map, REFS[n] || REFS.CastBase, target); } });
+  }
+  if (ears) addEars(g.scene, ears, fur, { size, light });
   const tex = (q.get('tex') || '').split(',')[i];   // try a texture variant: &tex=_preview/v0.jpg,...
   if (tex) new THREE.TextureLoader().load(`../assets/models/characters/${tex}`, (t) => {
     t.flipY = false; t.colorSpace = THREE.SRGBColorSpace;

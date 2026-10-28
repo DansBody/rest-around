@@ -223,13 +223,14 @@ function greyTexture(tex) {
 
 // Region recolour for the guest bodies: the texture is plain cream fur, a mid-grey shirt and white
 // muzzle/belly, so each region is found by its colour (fur: warm and saturated; shirt: neutral mid
-// grey) and takes the new colour with the texel's own light and shade. Masks are made once per
-// texture, the recoloured textures are cached per colour pair.
+// grey) and takes the new colour with the texel's own light and shade. The original cast instead brings
+// a region map (manifest `regions`, made by tools/cast_regions.py: red fur, green shirt, blue light).
+// Masks are made once per texture, the recoloured textures are cached per colour set.
 const regionCache = new Map();
 const recolorCache = new Map();
 const smoothstep = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
-function regionMasks(tex) {
+function regionMasks(tex, map) {
   let r = regionCache.get(tex.uuid);
   if (r) return r;
   const img = tex.image;
@@ -240,6 +241,18 @@ function regionMasks(tex) {
   const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
   const n = p.length / 4;
   const fur = new Float32Array(n), shirt = new Float32Array(n), lum = new Float32Array(n);
+  if (map) {
+    const light = new Float32Array(n);
+    g.drawImage(map, 0, 0, c.width, c.height);
+    const q = g.getImageData(0, 0, c.width, c.height).data;
+    for (let i = 0; i < n; i++) {
+      lum[i] = 0.3 * p[i * 4] + 0.59 * p[i * 4 + 1] + 0.11 * p[i * 4 + 2];
+      fur[i] = q[i * 4] / 255; shirt[i] = q[i * 4 + 1] / 255; light[i] = q[i * 4 + 2] / 255;
+    }
+    r = { w: c.width, h: c.height, base: d, fur, shirt, light, lum };
+    regionCache.set(tex.uuid, r);
+    return r;
+  }
   for (let i = 0; i < n; i++) {
     const R = p[i * 4], G = p[i * 4 + 1], B = p[i * 4 + 2];
     const mx = Math.max(R, G, B), mn = Math.min(R, G, B), sat = (mx - mn) / (mx + 1);
@@ -253,11 +266,11 @@ function regionMasks(tex) {
   return r;
 }
 
-function recolorTexture(tex, ref, colors) {
+function recolorTexture(tex, ref, colors, map) {
   const key = tex.uuid + '|' + Object.keys(colors).map((k) => k + colors[k]).join('|');
   let t = recolorCache.get(key);
   if (t) return t;
-  const m = regionMasks(tex);
+  const m = regionMasks(tex, map);
   const c = document.createElement('canvas');
   c.width = m.w; c.height = m.h;
   const g = c.getContext('2d');
@@ -296,6 +309,7 @@ class ModelStore {
     if (typeof window !== 'undefined' && typeof window.RA_MODEL_URL === 'function') manager.setURLModifier(window.RA_MODEL_URL);
     this.loader = new GLTFLoader(manager);
     this.tintCache = new Map();
+    this.regionMaps = new Map(); // character id -> its region map image (the original cast, see recolorTexture)
   }
 
   async load(manifest, onProgress) {
@@ -314,6 +328,7 @@ class ModelStore {
           g.scene.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.frustumCulled = false; } });
           // every character brings its own rig and clips
           this.characters.set(d.id, { scene: g.scene, clips: g.animations });
+          if (d.regions) await new Promise((ok) => { const im = new Image(); im.onload = () => { this.regionMaps.set(d.id, im); ok(); }; im.onerror = ok; im.src = BASE + d.regions; });
         } else this.placeholder.add(d.id);
       } else {
         this.templates.set(d.id, await this.build(d, fetchGltf));
@@ -374,7 +389,7 @@ class ModelStore {
     if (!ref) return;
     root.traverse((o) => {
       if (!o.isMesh || !o.material || !o.material.map || !o.material.map.image) return;
-      const t = recolorTexture(o.material.map, ref, colors);
+      const t = recolorTexture(o.material.map, ref, colors, this.regionMaps.get(id));
       o.material = o.material.clone();
       o.material.map = t;
       if (o.material.emissiveMap) o.material.emissiveMap = t;
