@@ -25,14 +25,19 @@ import { openBattleRt } from './ui/battlert.js';
 
 const loading = document.getElementById('loading');
 const bar = loading.querySelector('.load-bar i');
-const msg = loading.querySelector('.load-msg');
+const msg = loading.querySelector('.load-text');
+const pctEl = loading.querySelector('.load-pct');
 
-/** Fill the loading bar and the cup on the loading card. */
-function setLoad(pct) { const v = Math.round(pct) + '%'; bar.style.width = v; loading.style.setProperty('--p', v); }
+/** Fill the loading bar, the percentage and the pixel cup (a row of coffee at a time) in the loading window. */
+function setLoad(pct) {
+  const v = Math.round(pct) + '%';
+  bar.style.width = v; pctEl.textContent = v;
+  loading.style.setProperty('--cup', Math.round(pct / 100 * 6) / 6);
+}
 
 async function boot() {
   localizeData();
-  loading.querySelector('.load-msg').textContent = t('Warming up the espresso machine…');
+  msg.textContent = t('Warming up the espresso machine…');
   try {
     await assets.load((p) => setLoad(p * 30));
     msg.textContent = t('Unpacking the coffee beans…');

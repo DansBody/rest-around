@@ -24,13 +24,35 @@
     <canvas id="view"></canvas>
     <canvas id="overlay"></canvas>
     <div id="ui"></div>
+    <!-- the start screen: the denim collage with the sign plates, and a Refillit OS window that loads, then asks how to start (ui/welcome.js) -->
     <div id="loading">
-      <div class="load-card">
-        <div class="load-cup"><div class="steam"><i></i><i></i><i></i></div><div class="cup"></div><div class="handle"></div><div class="saucer"></div></div>
-        <div class="load-title">Re<em>fill</em>it</div>
-        <div class="load-tag">Pour · Sip · Refill</div>
-        <div class="load-bar"><i></i></div>
-        <div class="load-msg">Warming up the espresso machine…</div>
+      <div class="ld-tone"></div>
+      <svg class="ld-orbit" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><ellipse cx="200" cy="470" rx="260" ry="150" transform="rotate(-14 200 470)"/><ellipse class="thin" cx="190" cy="480" rx="330" ry="60" transform="rotate(10 190 480)"/></svg>
+      <div class="ld-stage">
+        <div class="ld-head" aria-label="Refillit">
+          <div class="ld-plate ld-big"><span>RE<em>FILL</em>IT</span></div>
+          <div class="ld-plate ld-tag"><span>POUR · SIP · REFILL</span></div>
+        </div>
+        <div class="ld-mid">
+          <div class="ld-latte" aria-hidden="true"><img src="assets/ui/collage/latte.webp" alt=""></div>
+          <img class="ld-cut ld-hand" src="assets/ui/collage/hand_cup.webp" alt="" aria-hidden="true">
+          <img class="ld-cut ld-moka" src="assets/ui/collage/moka.webp" alt="" aria-hidden="true">
+          <i class="ld-disc ld-star" aria-hidden="true"></i><i class="ld-disc ld-x" aria-hidden="true"></i>
+          <i class="ld-slice" aria-hidden="true"></i><i class="ld-slice thin" aria-hidden="true"></i>
+          <div class="load-card">
+            <div class="ld-title"><span class="box"></span><b>Refillit OS</b></div>
+            <div class="ld-body">
+              <svg class="load-cup" viewBox="0 0 16 14" aria-hidden="true">
+                <path class="steam" d="M3 0h1v1h-1zM6 0h1v1h-1zM9 0h1v1h-1zM4 1h1v1h-1zM7 1h1v1h-1zM10 1h1v1h-1zM3 2h1v1h-1zM6 2h1v1h-1zM9 2h1v1h-1z"/>
+                <path class="body" d="M2 5h8v1h-8zM2 6h8v1h-8zM11 6h3v1h-3zM2 7h8v1h-8zM11 7h1v1h-1zM13 7h1v1h-1zM2 8h8v1h-8zM11 8h3v1h-3zM2 9h8v1h-8zM3 10h6v1h-6z"/>
+                <path class="coffee" d="M2 5h8v1h-8zM2 6h8v1h-8zM2 7h8v1h-8zM2 8h8v1h-8zM2 9h8v1h-8zM3 10h6v1h-6z"/>
+                <path class="ink" d="M1 4h10v1h-10zM1 5h1v1h-1zM10 5h5v1h-5zM1 6h1v1h-1zM10 6h1v1h-1zM14 6h1v1h-1zM1 7h1v1h-1zM10 7h1v1h-1zM14 7h1v1h-1zM1 8h1v1h-1zM10 8h1v1h-1zM14 8h1v1h-1zM1 9h1v1h-1zM10 9h4v1h-4zM2 10h1v1h-1zM9 10h1v1h-1zM3 11h6v1h-6zM2 12h10v1h-10zM1 13h12v1h-12z"/>
+              </svg>
+              <div class="load-bar"><i></i></div>
+              <div class="load-msg"><span class="load-text">Warming up the espresso machine…</span><span class="load-pct">0%</span></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

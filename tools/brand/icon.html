@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- The app icon (design/loading-explore/fused.html, D2): a Refillit OS window with the pixel cup on denim, the latte
+     heart peeking behind. Drawn on a 180-unit square; tools/brand/make_icons.py renders it large and scales it down. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --denim: #3F5DAA; --denim-2: #6A84C8; --ink: #1F2A4A; --frame: #E6ECF5; --lo: #9AABC9; --stripe: #C9D4E8; }
+  html, body { margin: 0; background: #000; }
+  .icon { position: relative; width: 180px; height: 180px; overflow: hidden; background: var(--denim); }
+  .tone { position: absolute; inset: 0; background: radial-gradient(circle, rgba(20,30,70,.45) 1.3px, transparent 1.8px) 0 0 / 7px 7px;
+    -webkit-mask: linear-gradient(160deg, transparent 30%, #000); }
+  .latte { position: absolute; width: 104px; height: 104px; right: -14px; top: -12px; border-radius: 50%; overflow: hidden; border: 4px solid #fff; }
+  .latte img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); display: block; }
+  .win { position: absolute; left: 20px; top: 40px; width: 128px; height: 118px; transform: rotate(-4deg); background: var(--frame);
+    border: 2px solid var(--ink); border-radius: 3px; box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 var(--lo), 7px 8px 0 rgba(15,25,60,.45); }
+  .title { height: 18px; margin: 4px 4px 0; display: flex; align-items: center; padding: 0 6px; background: repeating-linear-gradient(0deg, #fff 0 2px, var(--stripe) 2px 4px); }
+  .title i { width: 11px; height: 11px; border: 2px solid var(--ink); background: var(--frame); box-sizing: border-box; }
+  .body { margin: 4px; height: 82px; padding-top: 8px; box-sizing: border-box; background: #F6F8FC; border: 2px solid var(--ink); box-shadow: inset 2px 2px 0 var(--lo); }
+  svg { display: block; width: 64px; height: 56px; margin: 0 auto; shape-rendering: crispEdges; }
+</style>
+</head>
+<body>
+  <div class="icon">
+    <div class="tone"></div>
+    <div class="latte"><img src="../../assets/ui/collage/latte.webp"></div>
+    <div class="win">
+      <div class="title"><i></i></div>
+      <div class="body">
+        <svg viewBox="0 0 16 14">
+          <path fill="#6A84C8" d="M3 0h1v1h-1zM6 0h1v1h-1zM9 0h1v1h-1zM4 1h1v1h-1zM7 1h1v1h-1zM10 1h1v1h-1zM3 2h1v1h-1zM6 2h1v1h-1zM9 2h1v1h-1z"/>
+          <path fill="#fff" d="M2 5h8v1h-8zM11 6h3v1h-3zM11 7h1v1h-1zM13 7h1v1h-1zM11 8h3v1h-3z"/>
+          <path fill="#6A84C8" d="M2 6h8v1h-8z"/>
+          <path fill="#3F5DAA" d="M2 7h8v1h-8zM2 8h8v1h-8zM2 9h8v1h-8zM3 10h6v1h-6z"/>
+          <path fill="#1F2A4A" d="M1 4h10v1h-10zM1 5h1v1h-1zM10 5h5v1h-5zM1 6h1v1h-1zM10 6h1v1h-1zM14 6h1v1h-1zM1 7h1v1h-1zM10 7h1v1h-1zM14 7h1v1h-1zM1 8h1v1h-1zM10 8h1v1h-1zM14 8h1v1h-1zM1 9h1v1h-1zM10 9h4v1h-4zM2 10h1v1h-1zM9 10h1v1h-1zM3 11h6v1h-6zM2 12h10v1h-10zM1 13h12v1h-12z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -723,55 +723,92 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
 #debug .btn { min-height: 28px; font-size: 12px; padding: 0 10px; }
 #debug label { display: flex; gap: 6px; align-items: center; font-weight: 600; margin: 4px 0; }
 
-/* ---------- loading ---------- */
-/* the start screen keeps the system face it has always had (the in-game UI is Archivo, via manifest.fonts) */
-#loading { --font: 'Inter', -apple-system, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
-  --font-display: var(--font); font-family: var(--font); }
-#loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; transition: opacity .5s; background: #f4f4f5; }
+/* ---------- loading: the start screen ---------- */
+/* The denim collage (丹寧拼貼) with the sign plates up top, and a Refillit OS window that loads, then holds the
+   choices of how to start (ui/welcome.js). Laid out on a 390-wide stage, centred; the cut-outs hang off the window. */
+#loading { --font: var(--os-font); --font-display: var(--os-font); --acc: #B8CBF0;   /* ice blue: FILL and the tag plate */
+  --sticker: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff);
+  position: absolute; inset: 0; z-index: 10; overflow: hidden; display: flex; justify-content: center;
+  background: var(--os-denim); font-family: var(--os-font); color: var(--os-ink); transition: opacity .5s; }
 #loading.hide { opacity: 0; pointer-events: none; }
-.load-card { text-align: center; padding: 34px 44px 28px; }
-.load-cup { position: relative; width: 124px; height: 112px; margin: 0 auto 6px; }
-.load-cup .steam { position: absolute; left: 22px; top: -6px; width: 60px; height: 40px; display: flex; justify-content: space-between; }
-.load-cup .steam i { width: 6px; height: 30px; border-radius: 8px; background: linear-gradient(180deg, transparent, rgba(17,17,17,.25)); opacity: 0; animation: steam 2.2s ease-in-out infinite; }
-.load-cup .steam i:nth-child(2) { animation-delay: .5s; height: 38px; } .load-cup .steam i:nth-child(3) { animation-delay: 1s; }
-@keyframes steam { 0% { opacity: 0; transform: translateY(14px) scaleY(.6); } 40% { opacity: .9; } 100% { opacity: 0; transform: translateY(-14px) scaleY(1.1) translateX(5px); } }
-.load-cup .cup { position: absolute; left: 6px; top: 34px; width: 84px; height: 62px; border-radius: 8px 8px 38px 38px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 3px #111; }
-.load-cup .cup::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: calc(8% + var(--p, 0%) * .72); background: #111; transition: height .25s; }
-.load-cup .handle { position: absolute; left: 87px; top: 44px; width: 30px; height: 34px; border: 6px solid #111; border-left: 0; border-radius: 0 20px 20px 0; }
-.load-cup .saucer { position: absolute; left: 0; top: 96px; width: 108px; height: 6px; border-radius: 6px; background: #111; }
-.load-title { font-family: var(--font-display); font-size: 44px; font-weight: 800; letter-spacing: -.045em; color: #111; }
-.load-title em { font-style: normal; color: #a1a1a6; }
-.load-tag { font-weight: 600; color: var(--ink-soft); letter-spacing: .14em; text-transform: uppercase; font-size: 11px; margin-top: 2px; }
-.load-bar { width: 240px; height: 4px; margin: 22px auto 12px; border-radius: 99px; background: #e4e4e7; overflow: hidden; }
-.load-bar i { display: block; height: 100%; width: 0; background: #111; border-radius: 99px; transition: width .2s; }
-.load-msg { font-weight: 500; font-size: 13.5px; color: var(--ink-soft); }
+.ld-tone { position: absolute; inset: 0; background: radial-gradient(circle, rgba(20,30,70,.5) 1.4px, transparent 1.9px) 0 0 / 7px 7px;
+  -webkit-mask: linear-gradient(180deg, transparent 35%, #000 100%); mask: linear-gradient(180deg, transparent 35%, #000 100%); }
+.ld-orbit { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #fff; stroke-width: 1.4; opacity: .55; }
+.ld-orbit .thin { stroke-width: 1; opacity: .75; }
+.ld-stage { position: relative; width: min(390px, 100%); min-height: 100%; display: flex; flex-direction: column; justify-content: safe center;
+  padding: calc(24px + var(--sat)) 0 calc(24px + var(--sab)); }
+/* the sign: REFILLIT on a slanted ink plate, the tagline on an ice-blue one */
+.ld-head { position: relative; height: 140px; flex: none; z-index: 3; }
+.ld-plate { position: absolute; transform: skewX(-12deg) rotate(-5deg); }
+.ld-plate > span { display: block; transform: skewX(12deg); }
+.ld-big { left: 20px; top: 0; background: var(--os-ink); padding: 6px 22px 8px; }
+.ld-big span { font: italic 900 82px/1 'Refillit Grotesk', 'Arial Black', sans-serif; font-stretch: 70%; letter-spacing: -2px; color: #fff; }
+.ld-big em { font-style: italic; color: var(--acc); }
+.ld-tag { left: 156px; top: 100px; background: var(--acc); padding: 6px 16px; }
+.ld-tag span { font-size: 15px; letter-spacing: 3px; white-space: nowrap; }
+/* the window and what hangs off it */
+.ld-mid { position: relative; flex: none; margin: 168px 44px 150px; }
+.ld-latte { position: absolute; width: 210px; height: 210px; right: -84px; top: -168px; border-radius: 50%; overflow: hidden; border: 6px solid #fff;
+  transform: rotate(8deg); box-shadow: 8px 10px 0 rgba(15,25,60,.35); }
+.ld-latte img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.05); display: block; }
+.ld-cut { position: absolute; filter: grayscale(1) var(--sticker); pointer-events: none; }
+.ld-hand { width: 170px; left: -74px; top: -160px; transform: rotate(14deg) scaleX(-1); z-index: 2; }
+.ld-moka { width: 130px; left: -48px; bottom: -130px; transform: rotate(-12deg); }
+.ld-disc { position: absolute; border-radius: 50%; }
+.ld-star { width: 58px; height: 58px; right: -2px; bottom: -112px; background: #B9B4AE center / 32px no-repeat
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'%3E%3Cpath d='M0-9L2.6-2.8 9-2.8 3.8 1.2 5.6 8 0 4 -5.6 8 -3.8 1.2 -9-2.8 -2.6-2.8z' fill='%23fff'/%3E%3C/svg%3E"); }
+.ld-x { width: 36px; height: 36px; left: 16px; bottom: -186px; background: #111 center / 16px no-repeat
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M3 3l12 12M15 3L3 15' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E"); }
+.ld-slice { position: absolute; left: -44px; right: -44px; top: 56px; height: 6px; background: var(--os-denim-2); mix-blend-mode: screen; opacity: .5; }
+.ld-slice.thin { top: 74px; height: 3px; }
+.load-card { position: relative; z-index: 1; background: var(--os-frame); border: 2px solid var(--os-ink); border-radius: 3px; transform: rotate(-2deg);
+  box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 var(--os-lo), 7px 8px 0 rgba(15,25,60,.45); }
+.ld-title { height: 24px; margin: 4px 4px 0; display: flex; align-items: center; padding: 0 6px; background: var(--os-stripes); }
+.ld-title .box { width: 14px; height: 14px; border: 2px solid var(--os-ink); background: var(--os-frame); flex: none; }
+.ld-title b { font-size: 14px; background: var(--os-frame); padding: 0 8px; margin: 0 auto; }
+.ld-body { margin: 4px; background: var(--os-body); border: 2px solid var(--os-ink); box-shadow: inset 2px 2px 0 var(--os-lo); padding: 18px 14px 14px; text-align: center; }
+/* the pixel cup fills a row of coffee at a time (--cup, 0..1, from main.js); its steam sways */
+.load-cup { display: block; width: 80px; height: 70px; margin: 0 auto 12px; shape-rendering: crispEdges; }
+.load-cup .ink { fill: var(--os-ink); } .load-cup .body { fill: #fff; } .load-cup .coffee { fill: var(--os-denim); }
+.load-cup .coffee { clip-path: inset(calc((5 + (1 - var(--cup, 0)) * 6) / 14 * 100%) 0 0 0); }
+.load-cup .steam { fill: var(--os-denim-2); animation: ld-steam 1.2s steps(1) infinite; }
+@keyframes ld-steam { 50% { transform: translateX(1px); } }
+/* a bar of blocks: the fill is the bar's width, the blocks a repeating gradient */
+.load-bar { height: 22px; border: 2px solid var(--os-ink); background: #fff; padding: 2px; }
+.load-bar i { display: block; width: 0; height: 100%; background: repeating-linear-gradient(90deg, var(--os-denim) 0 11px, transparent 11px 13px); transition: width .2s; }
+.load-msg { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 10px; font-size: 14px; color: #4A5677; text-align: left; }
+.load-pct { font-family: var(--os-lcd); font-size: 18px; color: var(--os-denim); flex: none; }
 
-/* the start screen: sign in to an existing café, or start as a guest (ui/welcome.js), inside the loading card */
-#loading.choosing { overflow-y: auto; align-items: safe center; padding: 16px 0 calc(16px + var(--sab)); }
-#loading.choosing .load-card { padding: 20px 16px; width: min(380px, 100%); }
-.start-pane { display: flex; flex-direction: column; gap: 10px; margin-top: 26px; text-align: left; animation: popin .35s ease-out; }
-.start-pane .btn { width: 100%; min-height: 52px; justify-content: center; gap: 10px; font-size: 15.5px; }
-.start-guest { font-size: 16.5px !important; }
-.start-google, .start-email { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); }
-.start-google:hover, .start-email:hover { background: #fafafa; }
-.start-or { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; color: var(--ink-soft); font-size: 13px; font-weight: 600; }
-.start-or::before, .start-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.start-note { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); text-align: center; margin-top: 4px; }
-.start-err { color: #c0392b; font-size: 13px; font-weight: 600; text-align: center; }
+/* the start screen: sign in to an existing café, or start as a guest (ui/welcome.js), inside the window */
+#loading.choosing { overflow-y: auto; }
+#loading.choosing .ld-mid { margin-top: 120px; }
+#loading.choosing :is(.load-cup, .load-bar, .load-msg) { display: none; }
+.start-pane { display: flex; flex-direction: column; gap: 10px; text-align: left; animation: popin .35s ease-out; }
+.start-pane .btn { width: 100%; min-height: 50px; justify-content: center; gap: 10px; border-radius: 3px; font-family: var(--os-font); font-weight: 400; font-size: 15px; letter-spacing: 0;
+  color: var(--os-ink); background: var(--os-field); border: 2px solid var(--os-ink); box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 var(--os-lo); }
+.start-pane .btn:hover { background: #F3F6FB; }
+.start-pane .btn.primary { color: #fff; background: var(--os-denim); margin: 4px 0 2px;
+  box-shadow: inset 2px 2px 0 var(--os-denim-2), inset -2px -2px 0 var(--os-denim-deep), 0 0 0 2px var(--os-frame), 0 0 0 4px var(--os-ink); }
+.start-pane .btn.primary:hover { background: var(--os-denim-deep); }
+.start-guest { font-size: 16px !important; }
+.start-or { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; color: #4A5677; font-size: 13px; }
+.start-or::before, .start-or::after { content: ''; flex: 1; height: 2px; background: var(--os-stripe-b); }
+.start-note { font-size: 12.5px; line-height: 1.6; color: #4A5677; text-align: center; margin-top: 2px; }
+.start-err { color: var(--os-coral); font-size: 13px; text-align: center; }
 .start-err:empty { display: none; }
 .start-head { display: flex; align-items: center; gap: 10px; }
-.start-head b { font-family: var(--font-display); font-size: 17px; }
-.start-pane .start-back { width: 38px; min-width: 38px; min-height: 38px; padding: 0; flex: none; border-radius: 50%; }
+.start-head b { font-size: 16px; }
+.start-pane .start-back { width: 38px; min-width: 38px; min-height: 38px; padding: 0; flex: none; }
 .start-form { display: flex; flex-direction: column; gap: 10px; }
-.start-form input { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); min-height: 50px; }
-.start-form input:focus { box-shadow: inset 0 0 0 2px var(--ink); }
-.start-pane .start-back { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); }
-.start-pane .linkish { align-self: center; }
-/* short screens (phones held sideways): the cup steps aside so the choices fit */
+.start-form input { font-family: var(--os-font); font-size: 16px; min-height: 48px; padding: 0 12px; border-radius: 0; background: var(--os-field);
+  border: 2px solid var(--os-ink); box-shadow: inset 2px 2px 0 var(--os-lo); color: var(--os-ink); outline: none; }
+.start-form input:focus { border-color: var(--os-denim); box-shadow: inset 2px 2px 0 var(--os-lo), 0 0 0 2px var(--acc); }
+.start-pane .linkish { align-self: center; font-family: var(--os-font); color: var(--os-denim); }
+/* short screens (phones held sideways): the sign shrinks and the cut-outs step aside so the choices fit */
 @media (max-height: 560px) {
-  #loading.choosing .load-cup, #loading.choosing .load-tag { display: none; }
-  #loading.choosing .load-title { font-size: 34px; }
-  #loading.choosing .start-pane { margin-top: 14px; }
+  .ld-head { height: 84px; } .ld-big span { font-size: 52px; } .ld-tag { top: 62px; }
+  .ld-mid, #loading.choosing .ld-mid { margin: 24px 44px; }
+  .ld-latte, .ld-hand, .ld-moka, .ld-disc, .ld-slice { display: none; }
 }
 
 /* desktop build mode: the camera buttons step up above the build tray */

@@ -18,20 +18,17 @@ import { startTap } from './fullscreen.js';
  * @param o        { hasLocal: a café is saved in this browser, error: how a trip to Google went wrong }
  */
 export function chooseStart(loading, o = {}) {
-  const card = loading.querySelector('.load-card');
-  const keep = [...card.querySelectorAll('.load-bar, .load-msg')];
-  for (const el of keep) el.hidden = true;
+  const card = loading.querySelector('.ld-body') || loading.querySelector('.load-card');
   const pane = h('div.start-pane');
   const show = (...kids) => pane.replaceChildren(...kids.filter(Boolean));
   card.appendChild(pane);
-  loading.classList.add('choosing');
+  loading.classList.add('choosing');   // hides the cup, the bar and the message (style.css) while the choices show
 
   return new Promise((resolve) => {
     const done = () => {
       startTap();   // the tap into the game is the gesture fullscreen needs (ui/fullscreen.js)
       loading.classList.remove('choosing');
       pane.remove();
-      for (const el of keep) el.hidden = false;
       resolve();
     };
     const busy = (b, label) => { b.disabled = true; b.classList.add('busy'); if (label) b.lastChild.textContent = label; };
