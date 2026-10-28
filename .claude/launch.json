@@ -43,8 +43,97 @@
     {
       "name": "dist",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8130", "--bind", "127.0.0.1", "--directory", "dist"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8130",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "dist"
+      ],
       "port": 8130
+    },
+    {
+      "name": "refillit-wardrobe",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8126"
+      ],
+      "port": 8126
+    },
+    {
+      "name": "refillit-tour",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8127"
+      ],
+      "port": 8127
+    },
+    {
+      "name": "refillit-sprite",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8128"
+      ],
+      "port": 8128
+    },
+    {
+      "name": "refillit-os",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8129"
+      ],
+      "port": 8129
+    },
+    {
+      "name": "refillit-cast",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8131"
+      ],
+      "port": 8131
+    },
+    {
+      "name": "refillit-battle",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8132"
+      ],
+      "port": 8132
+    },
+    {
+      "name": "refillit-street",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8133"
+      ],
+      "port": 8133
+    },
+    {
+      "name": "refillit-music",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8140"
+      ],
+      "port": 8140
+    },
+    {
+      "name": "refillit-doll",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "tools/devserver.py",
+        "8134"
+      ],
+      "port": 8134
     }
   ]
 }
