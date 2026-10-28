@@ -36,7 +36,12 @@ export class Mate {
   constructor(id, scale = 1.4) {
     this.id = id; this.clip = 'Idle'; this.rest = 'Idle'; this.until = 0; this.t0 = Math.random() * 2;
     this.canvas = h('canvas', { width: 64, height: 80, style: { width: 64 * scale + 'px', height: 80 * scale + 'px' } });
-    sheet(id).then((s) => { this.s = s; }).catch(() => {});
+    sheet(id).then((s) => {
+      // a taller cell (the 64×96 paper-doll grid) grows upward: same feet row from the bottom, so the box stays 80 tall
+      const H = s.meta.grid.height || 80;
+      if (H !== 80) Object.assign(this.canvas, { height: H }).style.cssText += `height:${H * scale}px;margin-top:${(80 - H) * scale}px`;
+      this.s = s;
+    }).catch(() => {});
   }
   /** A clip for sec seconds (its own length when not given), from its first frame. */
   play(clip, sec) {
@@ -50,7 +55,7 @@ export class Mate {
     const sec = this.until ? Math.max(0, now - this.from) / 1000 : now / 1000 + this.t0;   // a frame's time can be a hair before from
     const [x, y, w, hh] = f[Math.floor(sec * clip.fps) % f.length];
     const g = this.canvas.getContext('2d');
-    g.clearRect(0, 0, 64, 80);
+    g.clearRect(0, 0, this.canvas.width, this.canvas.height);
     g.drawImage(this.s.img, x, y, w, hh, 0, 0, w, hh);
   }
 }

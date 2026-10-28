@@ -1,7 +1,8 @@
 {
   "canvas": 64,
+  "height": 80,
   "ppu": 24,
-  "ground": 58,
+  "ground": 74,
   "elev": 18,
   "turn": 0.5,
   "super": 10,
@@ -9,6 +10,9 @@
   "ink": "#1F2A4A",
   "cols": 16,
   "dirs": ["f", "b"],
+  "battle": { "for": ["mochalatte", "cheetie", "heehee", "bbaekko"], "clips": { "Attack": 8, "Cast": 8, "Hurt": 4 } },
+  "furniture": { "canvas": 96, "height": 112, "ground": 84, "elev": 37.8 },
+  "doll": { "height": 96, "ground": 90 },
   "clips": {
     "Idle": 8,
     "Walk": 8,

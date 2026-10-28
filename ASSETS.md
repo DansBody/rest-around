@@ -177,9 +177,12 @@ The house style: a **smooth soft-vinyl toy** (no fur), about 1.9 units tall in t
 
 ### Pixel sprites (pixel-art mode)
 
-With Settings → Display → Pixel art on, a character whose manifest entry has a `sprite` field is drawn as a
-baked 64-px sprite on a card (`src/spriteview.js`) instead of its 3D model; the rest stay 3D. Only
-**Mocha Latte** has one so far (`assets/sprites/mochalatte/`). To bake one (or re-bake after changing a
+With Settings → Display → Pixel art on, every character is drawn as a baked 64-px sprite on a card
+(`src/spriteview.js`) instead of its 3D model: all ten staff (`assets/sprites/<id>/`) and the guests and
+passers-by, who share one recoloured body sheet (`assets/sprites/guest_b/`). A character without a `sprite`
+field in its manifest entry stays 3D. Held things (tray, broom, wrench, shaker cup, bat) stay small 3D props
+at the baked hand and tray anchors: the pixel pass draws and inks them like everything else, and they turn
+with the character. Worn accessories are hidden on sprites for now. To bake one (or re-bake after changing a
 model or a clip), from the repo root:
 
 ```
@@ -187,19 +190,42 @@ node tools/sprites/bake.mjs <id>
 ```
 
 It needs Node, Chrome or Edge (or `CHROME=<path>`), and Python 3 with numpy, scipy and Pillow; it takes
-about 20 seconds. `tools/sprites/bake.html` renders every clip the manifest's `animations` map uses, in two
-directions (`f` front-diagonal, `b` back-diagonal; the game mirrors them for the left), at 10× on the fixed
-grid of `tools/sprites/schedule.json` (64-px cell, 24 px per unit, feet on row 58, 18° elevation, body
-turned 0.5 rad, toon shading under the preview's lights and Neutral tone mapping). `tools/sprites/pixelize.py`
-turns the frames into pixels (one 11-colour k-means palette per character, majority vote per block, 1-px
-`#1F2A4A` outline, no white edge) and writes `<id>.png` (indexed, every frame in a 16-wide grid) and
-`<id>.json`: the grid, the palette, and per clip its frame count, `fps` (frames over the clip's length, so it
-plays at the 3D speed), the frame rects per direction and per-frame anchors measured from the bones: `head`,
-`hand` and `tray` as `[x, y, d]` (sprite px in the cell, and world units out toward the camera; negative is
-behind the body) and `top`, the first filled row, for bubbles. Frame counts per clip are in `schedule.json`.
-`--keep` leaves the raw frames and a 4× `<id>_preview.png` in `%TEMP%/refillit-bake/`; opening
-`tools/sprites/bake.html?c=<id>` from the dev server shows the raw frames. Then add
-`"sprite": "sprites/<id>/<id>.json"` to the character's manifest entry.
+about 20 seconds (the guest body about 40). `tools/sprites/bake.html` renders every clip the manifest's
+`animations` map uses, in two directions (`f` front-diagonal, `b` back-diagonal; the game mirrors them for the
+left), at 10× on the fixed grid of `tools/sprites/schedule.json` (cells 64 px wide and 80 tall so a seated or
+jumping character stays inside, 24 px per unit, feet on row 74, 18° elevation, body turned 0.5 rad, toon
+shading under the preview's lights and Neutral tone mapping). `tools/sprites/pixelize.py` turns the frames
+into pixels (one 11-colour k-means palette per character, majority vote per block, 1-px `#1F2A4A` outline, no
+white edge) and writes `<id>.png` (indexed, every frame in a 16-wide grid) and `<id>.json`: the grid, the
+palette, and per clip its frame count, `fps` (frames over the clip's length, so it plays at the 3D speed), the
+frame rects per direction and per-frame anchors measured from the bones: `head`, `hand` and `tray` as
+`[x, y, d]` (sprite px in the cell, and world units out toward the camera; negative is behind the body) and
+`top`, the first filled row, for bubbles. Frame counts per clip are in `schedule.json`. `--keep` leaves the
+raw frames and a 4× `<id>_preview.png` in `%TEMP%/refillit-bake/`; opening `tools/sprites/bake.html?c=<id>`
+from the dev server shows the raw frames. Then add `"sprite": "sprites/<id>/<id>.json"` to the character's
+manifest entry.
+
+The original 3-head paper-doll bodies (design/paper_doll/) are taller than the plush cast (about 72 px against
+54), so they bake on the `doll` grid of `schedule.json`: cells 64 × 96 with the feet on row 90, same ppu, camera
+and 6 px under the feet, so they stand on the same floor at the same scale. Give such a character
+`"spriteGrid": "doll"` in its manifest entry; the game reads each sheet's own grid. To try a grid without
+touching the game's sheet: `node tools/sprites/bake.mjs <id> --grid doll --out <dir>`.
+
+- **Lost details.** k-means picks colours by how many pixels have them, so a small dark eye on a pale body
+  can lose its colour. List the colours a sheet must keep in the manifest entry's `spriteKeep` (sRGB hex,
+  as they look lit; Oritokki keeps its eyes and beak, the guest body the pink inside its ears) and re-bake.
+- **Guests (palette swap).** A body with a manifest `recolor` is baked once with its fur and shirt painted
+  grey, plus a flat mask render per frame saying which pixels are fur and which shirt. Those pixels become
+  key slots in the palette (3 shades each, stored as marker colours `255,0,b` and `0,255,b`); the JSON's
+  `keys` gives the light each shade caught relative to the grey. Each guest's card gets its own palette strip
+  with those slots set to its `look.fur` / `look.shirt` times that light. The ears (`src/ears.js`, every
+  style) are baked one ear at a time in the same key grey and packed in a band under the frames (`ears` in
+  the JSON: rect and the ear bone's point per style, direction and side); the frames carry `earL` / `earR`
+  anchors, and the game hangs each ear on its own small card just behind the body. `look.scale` scales the
+  card; `look.tint` multiplies it.
+- **Memory.** The game uploads a sheet as one byte per pixel (palette indices, `RedFormat`) plus a 32×1
+  palette strip, about 1 MB a sheet: a full café (ten staff and the guest body) is 11.2 MB on the GPU. Sheets
+  load the first time a character who needs one appears.
 
 ## Conventions for models
 

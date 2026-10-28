@@ -1,7 +1,11 @@
 <!doctype html>
 <!-- Sprite bake, render half (design/art-direction/PLAN.md, step 2): one character's clips from its own glTF, every
      frame on the fixed ortho grid of schedule.json at SUPER× size, lit and tone-mapped as the y2k preview settled
-     (design/y2k-preview/src/Bake.tsx). Bone anchors (head, right hand, tray) are measured per frame on the same grid.
+     (design/y2k-preview/src/Bake.tsx). Bone anchors (head, right hand, tray, ears) are measured per frame on the same grid.
+     A body the game recolours (a manifest `recolor`, the guests) is baked once in key colours: its fur and shirt
+     painted grey, plus a flat mask render per frame saying which pixels are fur and which shirt, so the game can
+     paint any guest's colours over the light the grey caught. Its ears (src/ears.js, every style) are baked one ear at
+     a time in the same key grey, to hang on the per-frame ear anchors.
      Run by tools/sprites/bake.mjs (headless, posts the frames back); opened by hand it just shows them:
        tools/sprites/bake.html?c=mochalatte -->
 <meta charset="utf-8">
@@ -11,19 +15,38 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from '../../vendor/three/addons/loaders/GLTFLoader.js';
+import { addEars } from '../../src/ears.js';
+import { MOVES } from './moves.js';
 
 const q = new URLSearchParams(location.search);
 const id = q.get('c') || 'mochalatte';
-const S = await (await fetch('schedule.json')).json();
+const S0 = await (await fetch('schedule.json')).json();
 const manifest = await (await fetch('../../assets/manifest.json')).json();
-const def = manifest.models.find((m) => m.id === id);
-if (!def) throw new Error('no model ' + id);
-const gltf = await new GLTFLoader().loadAsync('../../assets/' + def.file);
+let def = manifest.models.find((m) => m.id === id);
+// a piece of furniture (a furniture type of src/data.js): the game's own object (models.instance, tint and all), on
+// the furniture grid of schedule.json, seen from each of the 4 angles the game camera can see it at
+const furn = def ? null : (await import('../../src/data.js')).furnitureById[id];
+if (!def && !furn) throw new Error('no model or furniture ' + id);
+// a character whose manifest entry names a grid (`"spriteGrid": "doll"`, the 3-head paper-doll bodies; ?grid= to try one) bakes on that
+// one: same ppu and camera, a taller cell with the feet the same 6 px from its bottom
+const grid = furn ? null : q.get('grid') || def.spriteGrid;
+const S = furn ? { ...S0, ...S0.furniture } : grid ? { ...S0, ...S0[grid] } : S0;
+let root, gltf = null;
+if (furn) {
+  window.RA_MODEL_URL = (u) => (/^(data:|blob:|https?:|\.\.\/|\/)/.test(u) ? u : '../../' + u);   // models.js loads from assets/ at the game's root
+  const { models } = await import('../../src/models.js');
+  await models.load(manifest);
+  root = models.instance(furn.asset, furn.tint);
+  def = { id };
+} else {
+  gltf = await new GLTFLoader().loadAsync('../../assets/' + def.file);
+  root = gltf.scene;
+}
 
-const size = S.canvas * S.super;
+const W = S.canvas, H = S.height || S.canvas;   // cell width and height in sprite px
 const gl = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 gl.setPixelRatio(1);
-gl.setSize(size, size, false);
+gl.setSize(W * S.super, H * S.super, false);
 gl.outputColorSpace = THREE.SRGBColorSpace;
 gl.toneMapping = THREE.NeutralToneMapping;   // as the preview: the colours the palette was picked from
 gl.setClearColor(0x000000, 0);
@@ -35,7 +58,7 @@ const sun = new THREE.DirectionalLight('#ffffff', 2.0); sun.position.set(-3, 6, 
 
 // fixed grid: S.ppu sprite px per world unit, the feet (origin) on row S.ground
 const e = S.elev * Math.PI / 180;
-const cam = new THREE.OrthographicCamera(-S.canvas / 2 / S.ppu, S.canvas / 2 / S.ppu, S.ground / S.ppu, -(S.canvas - S.ground) / S.ppu, 0.1, 50);
+const cam = new THREE.OrthographicCamera(-W / 2 / S.ppu, W / 2 / S.ppu, S.ground / S.ppu, -(H - S.ground) / S.ppu, 0.1, 50);
 cam.position.set(0, 10 * Math.sin(e), 10 * Math.cos(e));
 cam.lookAt(0, 0, 0);
 cam.updateMatrixWorld(); cam.updateProjectionMatrix();
@@ -43,22 +66,76 @@ cam.updateMatrixWorld(); cam.updateProjectionMatrix();
 // three flat steps of light; the cool tint of the shadows comes from the hemisphere's ground colour
 const ramp = new THREE.DataTexture(new Uint8Array([120, 120, 120, 255, 205, 205, 205, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
 ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
-const root = gltf.scene;
+const keyed = !!def.recolor;
+const KEY = 128;   // the grey (sRGB) the recoloured regions are baked in; the game's ramps are relative to it
+const key = keyed ? keyTextures(root, def.recolor) : null;
 root.traverse((o) => {
   if (!o.isMesh) return;
-  o.material = new THREE.MeshToonMaterial({ map: o.material.map, color: o.material.color, gradientMap: ramp });
+  // vertexColors: the paper doll's slots carry their colours per vertex (tools/build_doll.py)
+  o.userData.lit = new THREE.MeshToonMaterial({ map: key ? key.grey : o.material.map, color: o.material.color, gradientMap: ramp,
+    vertexColors: !!o.geometry.attributes.color });
+  if (key) o.userData.mask = new THREE.MeshBasicMaterial({ map: key.mask, toneMapped: false });
+  o.material = o.userData.lit;
 });
+
+/**
+ * The guest body's texture with its fur and shirt (the same masks as models.regionMasks) painted KEY grey times the
+ * texture's own light (as models.recolorTexture paints a guest's colours), and a mask texture: red = fur, green = shirt.
+ */
+function keyTextures(root, ref) {
+  let map = null;
+  root.traverse((o) => { if (o.isMesh && o.material.map) map = o.material.map; });
+  const img = map.image, c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), m = new ImageData(c.width, c.height), p = d.data, mp = m.data;
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const refLum = (r) => 0.3 * r[0] + 0.59 * r[1] + 0.11 * r[2];
+  for (let i = 0; i < p.length; i += 4) {
+    const R = p[i], G = p[i + 1], B = p[i + 2];
+    const mx = Math.max(R, G, B), mn = Math.min(R, G, B), sat = (mx - mn) / (mx + 1), l = 0.3 * R + 0.59 * G + 0.11 * B;
+    const fur = ss(0.08, 0.14, sat) * ss(110, 150, l);
+    const shirt = (1 - ss(0.05, 0.09, sat)) * ss(80, 100, l) * (1 - ss(200, 220, l));
+    for (const [w, lum] of [[fur, refLum(ref.fur)], [shirt, refLum(ref.shirt)]]) {
+      if (w <= 0) continue;
+      const v = Math.min(255, KEY * l / lum);
+      p[i] = p[i] * (1 - w) + v * w; p[i + 1] = p[i + 1] * (1 - w) + v * w; p[i + 2] = p[i + 2] * (1 - w) + v * w;
+    }
+    mp[i] = fur * 255; mp[i + 1] = shirt * 255; mp[i + 2] = 0; mp[i + 3] = 255;
+  }
+  const tex = (data) => {
+    const cv = document.createElement('canvas'); cv.width = c.width; cv.height = c.height;
+    cv.getContext('2d').putImageData(data, 0, 0);
+    const t = new THREE.CanvasTexture(cv);
+    t.flipY = map.flipY; t.wrapS = map.wrapS; t.wrapT = map.wrapT; t.colorSpace = map.colorSpace;
+    return t;
+  };
+  const grey = tex(d), mask = tex(m);
+  mask.colorSpace = THREE.NoColorSpace; mask.magFilter = mask.minFilter = THREE.NearestFilter;
+  return { grey, mask };
+}
+const useMask = (on) => root.traverse((o) => { if (o.isMesh) o.material = on ? o.userData.mask : o.userData.lit; });
 if (def.scale) root.scale.setScalar(def.scale);
-const holder = new THREE.Group(); holder.add(root); scene.add(holder);
+// mover: where a battle move steps and squashes the body, between the facing (holder) and the model's own scale
+const holder = new THREE.Group(), mover = new THREE.Group(); mover.add(root); holder.add(mover); scene.add(holder);
 const mixer = new THREE.AnimationMixer(root);
 const bone = (n) => root.getObjectByName(n);
 const head = bone(def.head || 'head'), hand = bone(def.hand || 'handslot.r');
+const earL = bone('ear_l'), earR = bone('ear_r');
 const trayPos = new THREE.Vector3(...(def.trayPos || [0, 1.05, 0.55]));
 
 // the clips the game plays for this character, in schedule order (any extra ones get 6 frames)
 const used = new Set(Object.values(def.animations || {}));
 const names = [...Object.keys(S.clips).filter((c) => used.has(c)), ...[...used].filter((c) => !(c in S.clips))];
-const clips = names.map((n) => gltf.animations.find((a) => a.name === n)).filter(Boolean);
+const clips = gltf ? names.map((n) => gltf.animations.find((a) => a.name === n)).filter(Boolean) : [];
+// the battle team also gets the moves posed in code (tools/sprites/moves.js) on top of a base clip
+const moves = gltf && S.battle && S.battle.for.includes(id) ? Object.entries(S.battle.clips).map(([name, n]) => ({ name, n, ...MOVES[name],
+  base: gltf.animations.find((a) => a.name === MOVES[name].base) })) : [];
+const only = q.get('only') && q.get('only').split(',');   // opened by hand: just these clips
+const bones = {}, rest = [];
+root.traverse((o) => { if (o.isBone) { bones[o.name] = o; rest.push([o, o.quaternion.clone(), o.position.clone()]); } });
+const bodyH = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()).y;
 
 // an anchor: [x, y] in sprite px within the cell, and how far it stands out toward the camera from the feet (world
 // units, negative = behind the body), so the game can put a held thing in front of the card or behind it
@@ -66,32 +143,104 @@ const v = new THREE.Vector3(), feet = cam.position.length();
 const px = (w) => {
   const d = v.copy(w).applyMatrix4(cam.matrixWorldInverse).z + feet;
   v.copy(w).project(cam);
-  return [+((v.x + 1) / 2 * S.canvas).toFixed(2), +((1 - v.y) / 2 * S.canvas).toFixed(2), +d.toFixed(3)];
+  return [+((v.x + 1) / 2 * W).toFixed(2), +((1 - v.y) / 2 * H).toFixed(2), +d.toFixed(3)];
+};
+const at = (o) => px(o.getWorldPosition(new THREE.Vector3()));
+const pose = (dir, clip, k, n) => {
+  holder.rotation.y = dir === 'f' ? S.turn : Math.PI - S.turn;
+  mover.position.set(0, 0, 0); mover.scale.set(1, 1, 1);
+  mixer.stopAllAction();
+  mixer.clipAction(clip).play();
+  mixer.setTime((k / n) * clip.duration);
+  scene.updateMatrixWorld(true);
+};
+/** A battle move's frame: back to the rest pose (the base clip only sets the bones it keys), the base clip, the code. */
+const posed = (dir, m, k) => {
+  for (const [o, qq, p] of rest) { o.quaternion.copy(qq); o.position.copy(p); }
+  pose(dir, m.base, k, m.n);
+  m.act(k / m.n, bones, mover, bodyH, id);
+  scene.updateMatrixWorld(true);
+};
+const shoot = () => { gl.render(scene, cam); return gl.domElement.toDataURL('image/png'); };
+const shootMask = () => {
+  useMask(true); gl.toneMapping = THREE.NoToneMapping; gl.setClearColor(0x000000, 0);
+  const png = shoot();
+  useMask(false); gl.toneMapping = THREE.NeutralToneMapping;
+  return png;
 };
 const cells = [];
+// furniture: one still per view, `r0`..`r3` = turned -45°, -135°, -225°, -315° from the camera (DIR_YAW minus the
+// camera's yaw, which the game keeps at 45° plus quarter turns)
+if (furn) for (let k = 0; k < 4; k++) {
+  holder.rotation.y = -Math.PI / 4 - k * Math.PI / 2;
+  scene.updateMatrixWorld(true);
+  cells.push({ dir: 'r' + k, clip: 'Still', k: 0, n: 1, duration: 1, anchors: {}, png: shoot() });
+}
+const anchorsNow = () => {
+  const a = {};
+  if (head) { a.head = at(head); a.headY = +head.getWorldPosition(new THREE.Vector3()).y.toFixed(3); }
+  if (hand) a.hand = at(hand);
+  a.tray = px(trayPos.clone().applyMatrix4(holder.matrixWorld));
+  if (keyed && earL && earR) { a.earL = at(earL); a.earR = at(earR); }
+  return a;
+};
 for (const dir of S.dirs) for (const clip of clips) {
+  if (only && !only.includes(clip.name)) continue;
   const n = S.clips[clip.name] || 6;
   for (let k = 0; k < n; k++) {
-    holder.rotation.y = dir === 'f' ? S.turn : Math.PI - S.turn;
-    mixer.stopAllAction();
-    mixer.clipAction(clip).play();
-    mixer.setTime((k / n) * clip.duration);
-    scene.updateMatrixWorld(true);
-    const a = {};
-    if (head) { a.head = px(head.getWorldPosition(new THREE.Vector3())); a.headY = +head.getWorldPosition(new THREE.Vector3()).y.toFixed(3); }
-    if (hand) a.hand = px(hand.getWorldPosition(new THREE.Vector3()));
-    a.tray = px(trayPos.clone().applyMatrix4(holder.matrixWorld));
-    gl.render(scene, cam);
-    cells.push({ dir, clip: clip.name, k, n, duration: clip.duration, anchors: a, png: gl.domElement.toDataURL('image/png') });
+    pose(dir, clip, k, n);
+    const cell = { dir, clip: clip.name, k, n, duration: clip.duration, anchors: anchorsNow(), png: shoot() };
+    if (keyed) cell.mask = shootMask();
+    cells.push(cell);
+  }
+}
+
+for (const dir of S.dirs) for (const m of moves) {
+  if (only && !only.includes(m.name)) continue;
+  for (let k = 0; k < m.n; k++) {
+    posed(dir, m, k);
+    cells.push({ dir, clip: m.name, k, n: m.n, duration: m.dur, anchors: anchorsNow(), png: shoot() });
+  }
+}
+for (const [o, qq, p] of rest) { o.quaternion.copy(qq); o.position.copy(p); }
+
+// the ears, one at a time on the body's first idle pose (the body itself not drawn), in each direction
+const ears = [];
+if (keyed && earL && earR) {
+  const idle = clips.find((c) => c.name === (def.animations.idle || 'Idle')) || clips[0];
+  const furMask = new THREE.MeshBasicMaterial({ color: 0xff0000, toneMapped: false }), otherMask = new THREE.MeshBasicMaterial({ color: 0x0000ff, toneMapped: false });
+  const body = []; root.traverse((o) => { if (o.isMesh) body.push(o); });
+  const grey = '#' + new THREE.Color().setRGB(KEY / 255, KEY / 255, KEY / 255, THREE.SRGBColorSpace).getHexString();
+  for (const style of ['cat', 'bear', 'bunny', 'dog', 'round']) {
+    addEars(root, style, grey);
+    const parts = [];
+    root.traverse((o) => { if (o.name === 'ear') parts.push(o); });
+    for (const m of parts) {
+      const inner = m.material.color.getHexString() === new THREE.Color('#f7c1c9').getHexString();
+      m.userData.lit = new THREE.MeshToonMaterial({ color: m.material.color, gradientMap: ramp });
+      m.userData.mask = inner ? otherMask : furMask;
+      m.material = m.userData.lit;
+    }
+    for (const b of body) b.visible = false;
+    for (const dir of S.dirs) for (const [side, b] of [['l', earL], ['r', earR]]) {
+      for (const m of parts) m.visible = m.parent === b;
+      pose(dir, idle, 0, 1);
+      ears.push({ style, dir, side, anchor: at(b), png: shoot(), mask: shootMask() });
+    }
+    for (const m of parts) m.parent.remove(m);
+    for (const b of body) b.visible = true;
   }
 }
 
 if (q.has('post')) {
-  const r = await fetch('/bake-out', { method: 'POST', body: JSON.stringify({ id, cells }) });
+  const r = await fetch('/bake-out', { method: 'POST', body: JSON.stringify({ id, cells, ears, grid: { canvas: W, height: H, ground: S.ground, elev: S.elev, turn: S.turn, dirs: furn ? ['r0', 'r1', 'r2', 'r3'] : S.dirs } }) });
   document.title = r.ok ? 'posted' : 'post failed';
 } else {
   gl.domElement.remove();
-  for (const c of cells) { const i = new Image(); i.src = c.png; i.title = `${c.clip}_${c.dir} ${c.k}`; document.body.appendChild(i); }
+  for (const c of [...cells, ...ears]) for (const src of [c.png, c.mask]) {
+    if (!src) continue;
+    const i = new Image(); i.src = src; i.title = c.clip ? `${c.clip}_${c.dir} ${c.k}` : `${c.style}_${c.dir}_${c.side}`; document.body.appendChild(i);
+  }
   document.title = `baked ${cells.length}`;
 }
 </script>
