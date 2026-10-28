@@ -293,7 +293,8 @@ export class Staff extends Agent {
     const g = this.game;
     if (this.napping) return;
     if (this.trouble) return this.trouble.kind === 'bat' ? this.batStep() : this.chaseStep();
-    if (this.energy <= 0) return this.startNap();
+    // under 1, not at 0: the rest spread over the opening hours (day.js) lifts a drained 0 a hair before the next think
+    if (this.energy < 1) return this.startNap();
     const j = g.jobs.pick(this);
     if (j) return this.startJob(j);
     this.idle();

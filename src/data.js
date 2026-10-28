@@ -213,7 +213,7 @@ export const OFFLINE = { capHours: 12, efficiency: 0.6, hoursPerDay: 4, minSecon
 
 // Bump whenever a number here, offline.js or authority.js changes what a save earns. The server and the
 // game must run the same balance (see ONLINE.md): deploy the server first, then the game.
-export const BALANCE_VERSION = 12;
+export const BALANCE_VERSION = 13;
 
 /** Guests an hour at this rating, seat count and phase multiplier. Past 4 seats more seats draw more guests (up to 24);
  *  under 4 the street sends fewer, so a room with one table for two isn't swamped by guests it can't seat. */
@@ -302,6 +302,7 @@ export const DAY = {
   length: 6480,           // sim seconds from opening (08:00) to closing (22:00)
   round: 7200,            // sim seconds in a whole round, the night included (2 real hours)
   pace: 480 / 14,         // sim seconds per hour in the arrival rates
+  minGap: 1.5,            // sim seconds at least between two guests walking in (busy rushes bunch up against it)
   startHour: 8, endHour: 22, lastCallHour: 21,
   phases: [
     { id: 'opening', name: 'First Brew', from: 8, mult: 0.8 },
@@ -331,7 +332,7 @@ export const ENERGY = { drainPerSec: 0.3, napRegen: 0.35, wakeAt: 30, overnight:
 // XP, so a waiter who retrains as a chef and later comes back is still a skilled waiter.
 export const SKILL = {
   xp: { order: 1, deliver: 1, clear: 1, cook: 2, drink: 2, sweep: 3, repair: 5 },
-  levels: [0, 40, 120, 260, 480],               // XP needed for skill Lv1..5
+  levels: [0, 40, 120, 260, 480].map(perRound), // XP needed for skill Lv1..5 (set for the old 8-minute day, like the per-round costs)
   mul: [1, 1.08, 1.16, 1.25, 1.35],             // walk + work speed at each level
   titles: ['Novice', 'Apprentice', 'Skilled', 'Expert', 'Master'],
   changeFee: 0.5,                               // retraining costs this × the new role's hire price…

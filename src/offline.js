@@ -21,20 +21,30 @@ import { cleanOuting, shutWithin } from './outing.js';
 import * as pantry from './pantry.js';
 import { STOCK_BAKE_CHANCE } from './pastry.js';
 
-/** How the live café behaves, as numbers (measured against the real simulation, see tools/calibrate). */
+/**
+ * How the live café behaves, as numbers (fitted to the real simulation with tools/calibrate.js, BALANCE_VERSION 13:
+ * staff nap when they run dry, so these times include the work lost to naps in a rush).
+ */
 export const MODEL = {
-  stationOverhead: 3.8,    // seconds a station sits idle around each drink (hand-over to a waiter)
-  stationWalk: 1.5,        // seconds of the barista's own time around each drink, besides brewing
-  waiterSecPerGuest: 9.3,  // waiter work per guest at skill 1: take the order, carry it, clear the table
-  seatSec: 31,             // how long a guest holds a seat: ordering, waiting, sipping, clearing
+  stationOverhead: 5.7,    // seconds a station sits idle around each drink (hand-over to a waiter)
+  stationWalk: 2.8,        // seconds of the barista's own time around each drink, besides brewing
+  waiterSecPerGuest: 13,   // waiter work per guest at skill 1: take the order, carry it, clear the table
+  seatSec: 25,             // how long a guest holds a seat: ordering, waiting, sipping, clearing
   cleanSecPerTrash: 7,     // cleaner work per piece of litter
   trashPerGuest: 0.3,      // afterMeal(): chance a guest leaves litter
   bakeChance: STOCK_BAKE_CHANCE,   // takeOrder(): chance of a bake on the side (a baker keeps the case stocked, so guests see bakes)
   toiletChance: 0.28, arcadeChance: 0.35,
   tipRate: 0.3,            // finishMeal(): tip = 30% of the bill × satisfaction
-  lostWeight: 0.35,        // how much a guest the team could not get to weighs on the service rating (many just see a full house)
+  satFrom: 0.06, satSlope: 0.2,   // a guest's satisfaction drops once guests take more than `satFrom` of what the team can do
+  queueK: 5.8,             // how sharply guests start going unserved as they near what the team can do (lower: earlier)
+  lostWeight: 0.07,        // how much a guest the team could not get to weighs on the service rating (many just see a full house)
   maxDuty: 0.95,
 };
+/**
+ * The fastest a team can go, for the server's ceiling on what an upload may claim (authority.js): the times of a
+ * team that never tires (fitted before naps worked again), so the ceiling stays where it was.
+ */
+export const FASTEST = { ...MODEL, stationOverhead: 3.8, stationWalk: 1.5, waiterSecPerGuest: 9.3, seatSec: 31 };
 
 const phaseTable = () => DAY.phases.map((p, i) => ({ ...p, to: i + 1 < DAY.phases.length ? DAY.phases[i + 1].from : DAY.lastCallHour }));
 /** The model trades in days of the old 8-minute day (the pace the live arrival rates still run at, see DAY.pace). */
@@ -72,7 +82,7 @@ const sum = (a, f) => a.reduce((x, y) => x + f(y), 0);
 const smoothMin = (a, b, k = 14) => (a <= 0 || b <= 0 ? 0 : Math.pow(Math.pow(a, -k) + Math.pow(b, -k), -1 / k));
 
 /** What the team can do per sim-second in a phase, with a share `duty` of the time spent working. */
-export function capacity(team, furn, seats, menu, phase, duty) {
+export function capacity(team, furn, seats, menu, phase, duty, M = MODEL) {
   const foods = menu.filter((id) => dishById[id].cat !== EXTRA_CAT), bakes = menu.filter((id) => dishById[id].cat === EXTRA_CAT);
   const mean = (ids) => (ids.length ? sum(ids, (id) => dishById[id].cook) / ids.length : 0);
   const line = (role, kind, ids) => {
@@ -81,7 +91,7 @@ export function capacity(team, furn, seats, menu, phase, duty) {
     let rate = 0;
     for (let i = 0; i < Math.min(crew.length, st.length); i++) {
       const c = mean(ids) / (st[i] * crew[i]);   // brewing time on this station by this barista
-      rate += Math.min(1 / (c + MODEL.stationOverhead), duty / (c + MODEL.stationWalk));   // the station, or the barista's hours, whichever runs out first
+      rate += Math.min(1 / (c + M.stationOverhead), duty / (c + M.stationWalk));   // the station, or the barista's hours, whichever runs out first
     }
     return ids.length ? rate : 0;
   };
@@ -89,8 +99,8 @@ export function capacity(team, furn, seats, menu, phase, duty) {
   return {
     drinks: line('chef', 'stove', foods),
     bakes: furn.some((f) => furnitureById[f.type].kind === 'bar' && !f.broken) ? line('bartender', 'oven', bakes) : 0,   // baked in the oven, set out in the case
-    service: (waiters / MODEL.waiterSecPerGuest) * duty,
-    seats: seats / MODEL.seatSec,
+    service: (waiters / M.waiterSecPerGuest) * duty,
+    seats: seats / M.seatSec,
   };
 }
 
@@ -134,7 +144,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
 
   // ----- the working copy of the café -----
   const w = { coins: st.coins, level: levelFor(st.points), points: st.points, rating: st.rating, dishes: st.dishes, inv: st.inv || {}, opened: st.opened || {}, snacks: st.snacks || {} };
-  const team = (out.staff || []).map((s) => ({ role: s.role, model: s.look && s.look.model, skills: s.skills || {}, ref: s }));
+  const team = (out.staff || []).map((s) => ({ role: s.role, model: s.look && s.look.model, skills: { ...(s.skills || {}) }, ref: s }));   // skills grow day by day (see below)
   const furn = wd.furniture.map((f) => ({ type: f.t, ref: f, get broken() { return !!f.b; }, set broken(v) { f.b = v; } }));
   const chairs = wd.furniture.filter((f) => furnitureById[f.t] && furnitureById[f.t].kind === 'chair').length;
   const tables = wd.furniture.filter((f) => furnitureById[f.t] && furnitureById[f.t].kind === 'table').length;
@@ -196,19 +206,19 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     }
     const duty = dutyFor(team.length ? snackE / team.length : 0);
 
-    let servedDay = 0, lostDay = 0, soldDay = 0, carry = 0, trashMade = 0, seatLost = 0;
+    let servedDay = 0, bakesDay = 0, lostDay = 0, soldDay = 0, carry = 0, trashMade = 0, seatLost = 0;
     const spans = [];   // per phase: guests whose visit counted toward the service rating, and their summed scores
     for (const p of phases) {
       const hours = (p.to - p.from) * f, secs = hours * SIM_SEC_PER_HOUR;
       const dem = demand(ratingAt(w.rating, target, p, f), seats, p, f, O.efficiency);
       const cap = capacity(team, furn, seats, menu, p, duty);
       const limit = Math.min(cap.drinks, cap.service, cap.seats) * (p.to - p.from) * SIM_SEC_PER_HOUR * f;
-      const served = smoothMin(dem, limit);
+      const served = smoothMin(dem, limit, MODEL.queueK);
       const staffLimit = Math.min(cap.drinks, cap.service) * secs, seatLimit = cap.seats * secs;
       const util = staffLimit > 0 ? dem / staffLimit : 9;   // guests turned away for want of a seat do not feel the service was slow
       const span = { n: 0, sum: 0 };
       spans.push(span);
-      const sat = Math.max(0.3, Math.min(0.95, 0.95 - 0.5 * Math.max(0, util - 0.45)));
+      const sat = Math.max(0.3, Math.min(0.95, 0.95 - MODEL.satSlope * Math.max(0, util - MODEL.satFrom)));
       const guestRate = served / Math.max(1, secs);
       const pBake = cap.bakes > 0 && menu.some((id) => dishById[id].cat === EXTRA_CAT) ? Math.min(MODEL.bakeChance, cap.bakes / Math.max(1e-6, guestRate)) : 0;
       const short = Math.max(0, dem - served);
@@ -229,7 +239,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
         pantry.consume(w, food);
         const bakesOk = pBake > 0 ? menu.filter((id) => dishById[id].cat === EXTRA_CAT && pantry.canMake(w, id)) : [];
         const bake = bakesOk.length && rng() < pBake ? bakesOk[Math.floor(rng() * bakesOk.length)] : null;
-        if (bake) pantry.consume(w, bake);
+        if (bake) { pantry.consume(w, bake); bakesDay++; }
         let bill = 0;
         for (const id of bake ? [food, bake] : [food]) {
           const lv = w.dishes[id].lv;
@@ -251,6 +261,12 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
     const cleanCap = sum(cleaners, (c) => workMul(c, 'cleaner', phases[1], team)) * duty * MODEL_DAY * f / MODEL.cleanSecPerTrash;
     trash = Math.min(maxTrash, seats * 1.25, Math.max(0, trash + trashMade - cleanCap));   // litter lands on the few tiles beside the chairs, so it piles up only so far
     rep.lost += lostDay + soldDay; rep.soldOut += soldDay; rep.noSeat += seatLost;
+    // the day's experience, shared by everyone in the role: a new team gets quicker over a long stretch, as it does live
+    const give = (role, xp) => { const c = team.filter((s) => s.role === role); for (const s of c) s.skills[role] = (s.skills[role] || 0) + xp / c.length; };
+    give('waiter', servedDay * (SKILL.xp.order + SKILL.xp.deliver + SKILL.xp.clear));
+    give('chef', servedDay * SKILL.xp.cook);
+    give('bartender', bakesDay * SKILL.xp.drink);
+    give('cleaner', servedDay * MODEL.trashPerGuest * SKILL.xp.sweep);
     // the service rating is the average of the last 24 guests, so it reads the end of the day
     let sn = 0, ss = 0;
     for (let i = spans.length - 1; i >= 0 && sn < 24; i--) { sn += spans[i].n; ss += spans[i].sum; }
@@ -321,12 +337,7 @@ export function settleOffline(data, elapsedSec, now = Date.now(), opts = {}) {
   wd.trash = (wd.trash || []).slice(0, keep);
   wd.extraTrash = Math.max(0, Math.round(trash) - keep);
   // the team: rested while the café was shut, a little richer in skill, and grumpy if wages went unpaid
-  const per = (role) => team.filter((s) => s.role === role);
-  const give = (role, xp) => { const c = per(role); for (const s of c) s.ref.skills = { ...(s.ref.skills || {}), [role]: Math.floor(((s.ref.skills || {})[role] || 0) + xp / c.length) }; };
-  give('waiter', rep.served * (SKILL.xp.order + SKILL.xp.deliver + SKILL.xp.clear));
-  give('chef', rep.served * SKILL.xp.cook);
-  give('bartender', Object.entries(rep.dishes).reduce((a, [id, n]) => a + (dishById[id].cat === EXTRA_CAT ? n : 0), 0) * SKILL.xp.drink);
-  give('cleaner', Math.round(rep.served * MODEL.trashPerGuest) * SKILL.xp.sweep);
+  for (const s of team) if (s.skills[s.role] != null) s.ref.skills = { ...(s.ref.skills || {}), [s.role]: Math.floor(s.skills[s.role]) };
   for (const s of team) s.ref.energy = Math.max(10, Math.min(100, Math.round((s.ref.energy || 100) + sec * ENERGY.napRegen)) - (rep.unpaid ? COSTS.unpaidEnergy : 0));
   out.savedAt = now;
   rep.net = Math.round(st.coins - startCoins);
@@ -343,7 +354,10 @@ function ratingAt(r0, target, phase, f) {
 
 /** Guests walking in during `phase` for `f` of a day (the live game's arrivalRate, times the away-from-keyboard discount). */
 function demand(rating, seats, phase, f, efficiency) {
-  return arrivalsPerHour(rating, seats, phase.mult) * (phase.to - phase.from) * f * efficiency;
+  // live, a guest never follows the last one sooner than DAY.minGap: an exponential gap clamped below has mean minGap + e^(−minGap·r)/r
+  const r = arrivalsPerHour(rating, seats, phase.mult) / SIM_SEC_PER_HOUR;
+  const rate = r > 0 ? 1 / (DAY.minGap + Math.exp(-DAY.minGap * r) / r) : 0;
+  return rate * SIM_SEC_PER_HOUR * (phase.to - phase.from) * f * efficiency;
 }
 
 export { arrivalsPerHour };   // guests per in-game hour walking in (data.js, shared with day.js arrivalRate)

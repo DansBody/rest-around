@@ -1,43 +1,47 @@
 // Calibrates the away-from-keyboard model (src/offline.js MODEL) against the live simulation.
-// Run in the browser console of a running game (python tools/devserver.py 8123, open the page, paste this file).
+// Run in the browser console of a running game (python tools/devserver.py 8123, open the page with ?offline, paste
+// this file), or call `await window.calibrate(['mid'])` after pasting it once to play only some cases.
 // For each café layout it plays one round (08:00 to closing) with the real simulation (game.fastForward) and
 // settles the same layout with the model at full efficiency for as many model days as a round's opening
 // hours hold (ROUND_SCALE), then prints both side by side. A round is ~2 real hours of simulation, so this
 // takes a while. Tune MODEL until they agree
 // (served within ~10%, rating within ~0.3 stars), then leave OFFLINE.efficiency below 1 to taste.
-(async () => {
+// The live round has trouble on (the lessons are marked done, nobody trained), as a Lv6 café would.
+window.calibrate = async (only) => {
   const g = window.game;
   const { serialize } = await import('/src/save.js');
   const { makeStaff } = await import('/src/staff.js');
-  const { DAY, OFFLINE, ROUND_SCALE } = await import('/src/data.js');
+  const { DAY, ROUND_SCALE, STARTER } = await import('/src/data.js');
   const { settleOffline } = await import('/src/offline.js?v=' + Date.now());
 
-  async function live(o) {
+  function live(o) {
     g.newGame();
     const w = g.world;
     for (const f of [...w.furniture]) w.removeFurniture(f);
     for (const a of [...g.staff]) g.removeAgent(a);
     w.resize(14, 'fl_oak');
-    g.state.coins = 9999; g.state.level = 6; g.state.points = 1700;
-    g.state.inv = { beans: 90, sugar: 90, milk: 90, flour: 90, butter: 90, chocolate: 90, egg: 90 };
-    (o.stoves || ['stove_basic']).forEach((t, i) => w.addFurniture(t, 6 + i * 2, 0, 1));
-    (o.bars || []).forEach((t, i) => w.addFurniture(t, 2 + i * 2, 0, 1));
+    const s = g.state;
+    s.tutorialSeen = true; s.tutorial = ['L-dash', 'L-rude']; s.starter = { i: STARTER.length, prog: 0 };
+    s.coins = 9999; s.level = 6; s.points = 1700;
+    s.inv = { beans: 90, sugar: 90, milk: 90, flour: 90, butter: 90, chocolate: 90, egg: 90 };
+    w.addFurniture('cashier', 5, 0, 1);
+    (o.stoves || ['stove_basic']).forEach((t, i) => w.addFurniture(t, 7 + i * 2, 0, 1));
+    (o.bars || []).forEach((t, i) => w.addFurniture(t, 1 + i * 2, 0, 1));
     let placed = 0;
     for (let row = 0; row < 5 && placed < o.tables; row++) for (let col = 0; col < 3 && placed < o.tables; col++) {
       const x = 3 + col * 4, y = 3 + row * 2;
       w.addFurniture('table_oak', x, y, 1); w.addFurniture('chair_oak', x - 1, y, 0); w.addFurniture('chair_oak', x + 1, y, 2); placed++;
     }
-    const models = ['mochalatte', 'bbaekko', 'heehee', 'cheetie', 'oritokki'];
     let mi = 0;
-    for (const [role, n] of Object.entries(o.staff)) for (let i = 0; i < n; i++) g.addStaff(makeStaff(g, role, models[mi++ % 5]), 1 + mi, 1);
+    for (const [role, n] of Object.entries(o.staff)) for (let i = 0; i < n; i++) { g.addStaff(makeStaff(g, role, 'mochalatte'), 1 + mi, 1); mi++; }
     for (const a of g.staff) a.look.model = 'mochalatte';   // neutral kit: no perks
-    g.state.rating = o.rating ?? 5; g.rating.recompute();
-    g.state.quest = null; g.eco.rollQuest(); g.day.nextSpawn = 2;
-    g.state.clock = 0; g.state.stats = g.day.freshStats();   // from opening, whatever the wall clock says
+    s.rating = o.rating ?? 5; g.rating.recompute();
+    s.round = 0; s.clock = 0; g.day.fresh(); g.day.nextSpawn = 2;   // from opening, whatever the wall clock says
     const snap = JSON.parse(JSON.stringify(serialize(g)));
+    const t0 = performance.now();
     const rounds = g.fastForward(DAY.length + 130);
-    g.day.snap();
-    return { snap, day: { ...rounds[0], rating: rounds[0].ratingEnd } };
+    const r = rounds[0] || { ...s.stats, ratingEnd: s.rating };
+    return { snap, ms: performance.now() - t0, day: { ...r, rating: r.ratingEnd } };
   }
 
   const cases = {
@@ -48,15 +52,21 @@
     mid: { tables: 6, stoves: ['stove_steel', 'stove_basic'], staff: { waiter: 2, chef: 2 }, rating: 3.5 },
     big: { tables: 12, stoves: ['stove_deluxe', 'stove_deluxe'], staff: { waiter: 3, chef: 2 }, rating: 4.5 },
   };
-  const keep = { ...OFFLINE };
-  OFFLINE.efficiency = 1; OFFLINE.hoursPerDay = 3; OFFLINE.capHours = 99;
-  const rows = [];
+  const rows = [], data = {};
   for (const [name, o] of Object.entries(cases)) {
-    const r = await live(o);
-    const m = settleOffline(r.snap, ROUND_SCALE * 3 * 3600 + 1, 1).report;
-    rows.push(`${name.padEnd(8)} live served ${String(r.day.served).padStart(3)} ★${r.day.rating.toFixed(2)} | model served ${String(m.served).padStart(3)} ★${m.ratingTo.toFixed(2)}`);
+    if (only && !only.includes(name)) continue;
+    const r = live(o);
+    // ROUND_SCALE model days at 3 h each, full efficiency, no cap
+    const m = settleOffline(r.snap, ROUND_SCALE * 3 * 3600 + 1, 1, { efficiency: 1, hoursPerDay: 3, capHours: 99 }).report;
+    const L = r.day, gross = m.sales + m.tips + m.fees;
+    data[name] = { live: L, model: m };
+    rows.push(`${name.padEnd(8)} live served ${String(L.served).padStart(4)} lost ${String(L.lost).padStart(4)} dashed ${String(L.dashed || 0).padStart(2)} coins ${String(L.coins).padStart(6)} ★${L.rating.toFixed(2)}`
+      + ` | model served ${String(m.served).padStart(4)} lost ${String(m.lost).padStart(4)} coins ${String(gross).padStart(6)} ★${m.ratingTo.toFixed(2)}`
+      + ` | served ${((m.served / Math.max(1, L.served) - 1) * 100).toFixed(0)}% coins ${((gross / Math.max(1, L.coins) - 1) * 100).toFixed(0)}% (${(r.ms / 1000).toFixed(0)} s)`);
+    console.log(rows[rows.length - 1]);
   }
-  Object.assign(OFFLINE, keep);
   console.log(rows.join('\n'));
+  window.calibration = data;
   return rows;
-})();
+};
+window.calibrate();

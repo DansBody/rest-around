@@ -82,7 +82,7 @@ export class DayCycle {
         if (c) {
           const r = this.arrivalRate();
           // exponential inter-arrival, capped so the room never feels dead
-          this.nextSpawn = clamp(-Math.log(1 - Math.random()) / r, 1.5, g.customers.length ? 26 : 12);
+          this.nextSpawn = clamp(-Math.log(1 - Math.random()) / r, DAY.minGap, g.customers.length ? 26 : 12);
         } else this.nextSpawn = 0.6; // doorway busy, retry shortly
       }
     }

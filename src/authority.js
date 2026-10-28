@@ -25,7 +25,7 @@ import {
   DAILY, dailyCoins, dailyPoints, studySpent, wearById, seatCap, stationCap, STATION_KINDS, STARTER, starterPaid, LEVEL_POINTS, OUTING,
 } from './data.js';
 import { DIRS } from './iso.js';
-import { MODEL, capacity, levelFor, arrivalsPerHour, SIM_SEC_PER_HOUR } from './offline.js';
+import { MODEL, FASTEST, capacity, levelFor, arrivalsPerHour, SIM_SEC_PER_HOUR } from './offline.js';
 import { cleanTickets, cleanOuting } from './outing.js';
 import { wallSec as wallClock, localDay } from './clock.js';   // (capCheck's own wallSec is the seconds between uploads)
 
@@ -95,7 +95,7 @@ function throughput(d, level) {
   const menu = Object.keys(d.state.dishes || {}).filter((id) => dishById[id] && d.state.dishes[id].on && dishById[id].level <= level);
   let rate = 0;
   for (const p of DAY.phases) {
-    const c = capacity(team, furn, seats, menu, p, MODEL.maxDuty);
+    const c = capacity(team, furn, seats, menu, p, MODEL.maxDuty, FASTEST);
     const arrive = arrivalsPerHour(5, seats, p.mult) / SIM_SEC_PER_HOUR;
     rate = Math.max(rate, Math.min(c.drinks, c.service, c.seats, arrive));
   }
