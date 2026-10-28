@@ -1,0 +1,98 @@
+<!doctype html>
+<!-- Paper-doll preview: the doll front / side / back on the turnaround's layout, next to
+     design/paper_doll/turnaround_v1.png, under the sprite bake's lights. By default it runs tools/doll/model.js live
+     (edit, reload); ?gltf loads the built assets/models/characters/Doll.gltf with its clips instead. Slot checkboxes
+     hide parts. tools/dollpreview.html?gltf&clip=Walk&yaw=30&ref=0
+     ?export: build the parts and POST them to /doll-out (tools/doll/export.mjs runs this headless). -->
+<meta charset="utf-8">
+<title>Doll preview</title>
+<style>
+  html, body { margin: 0; background: #f4efe6; font: 12px monospace; color: #1f2a4a }
+  #bar { position: fixed; left: 8px; top: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 2 }
+  #wrap { display: flex; gap: 8px; padding: 40px 8px 8px }
+  canvas { display: block }
+  #ref { height: 640px }
+</style>
+<div id="bar"><select id="clip"></select><span id="slots"></span><label><input type="checkbox" id="spin"> spin</label></div>
+<div id="wrap"><canvas id="c"></canvas><img id="ref" src="../design/paper_doll/turnaround_v1.png"></div>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
+import { buildDoll, exportDoll } from './doll/model.js';
+const q = new URLSearchParams(location.search);
+if (q.has('export')) {
+  const r = await fetch('/doll-out', { method: 'POST', body: JSON.stringify(exportDoll(buildDoll())) });
+  document.body.textContent = 'exported ' + r.status;
+  throw new Error('done');
+}
+if (q.get('ref') === '0') document.getElementById('ref').remove();
+const VIEWS = [0, 90, 180].map((d) => d * Math.PI / 180);   // front, side (facing screen right), back
+const CW = 300, CH = 640;
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+r.setPixelRatio(1); r.setSize(CW * VIEWS.length, CH);
+r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.NeutralToneMapping;
+r.setClearColor('#e8e4dc');
+r.setScissorTest(true);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight('#FFF8EC', '#B7A9C9', 1.7));   // tools/sprites/bake.html's lights
+const sun = new THREE.DirectionalLight('#ffffff', 2.0); sun.position.set(-3, 6, 6); scene.add(sun);
+const H = 3.05;
+const cam = new THREE.OrthographicCamera(-H * CW / CH / 2, H * CW / CH / 2, H - 0.07, -0.07, 0.1, 50);
+cam.position.set(0, 0, 10);
+let doll, anims = [];
+if (q.has('gltf')) {
+  const g = await new GLTFLoader().loadAsync('../assets/models/characters/Doll.gltf');
+  doll = g.scene; anims = g.animations;
+} else doll = buildDoll().group;
+scene.add(doll);
+doll.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+const mixer = new THREE.AnimationMixer(doll);
+const sel = document.getElementById('clip');
+for (const c of ['(rest)', ...anims.map((a) => a.name)]) sel.add(new Option(c, c));
+sel.value = q.get('clip') || '(rest)';
+let action = null;
+function play() {
+  if (action) action.stop();
+  const clip = anims.find((a) => a.name === sel.value);
+  action = clip ? mixer.clipAction(clip).play() : null;
+}
+sel.onchange = play; play();
+const slots = document.getElementById('slots');
+doll.traverse((o) => {
+  if (!o.isMesh) return;
+  const l = document.createElement('label'), cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = true; cb.onchange = () => { o.visible = cb.checked; };
+  l.append(cb, o.name.replace('Doll_', '')); slots.append(l, ' ');
+});
+const yaw0 = +(q.get('yaw') || 0) * Math.PI / 180;
+const clock = new THREE.Clock();
+function draw() {
+  mixer.update(clock.getDelta());
+  const spin = document.getElementById('spin').checked ? clock.elapsedTime * 0.8 : 0;
+  VIEWS.forEach((v, i) => {
+    doll.rotation.y = v + yaw0 + spin;
+    r.setViewport(i * CW, 0, CW, CH); r.setScissor(i * CW, 0, CW, CH);
+    r.render(scene, cam);
+  });
+}
+function frame() { draw(); requestAnimationFrame(frame); }
+frame();
+window.draw = draw;   // renders without a frame tick (a hidden pane pauses rAF)
+// pose(clip, sec): hold a clip at a moment, for checking the skinning frame by frame
+window.pose = (name, sec = 0) => {
+  sel.value = name; play();
+  if (action) { action.paused = true; action.time = sec; mixer.update(0); }
+};
+// ?shot=<port>: shot(name) posts the views (+ the sheet) as a PNG to a local receiver, for side-by-side checks
+if (q.has('shot')) window.shot = async (name, withRef = true) => {
+  draw();
+  const c = document.getElementById('c'), ref = document.getElementById('ref'), out = document.createElement('canvas');
+  const rw = withRef && ref ? Math.round(ref.naturalWidth * c.height / ref.naturalHeight) : 0;
+  out.width = c.width + rw; out.height = c.height;
+  const g = out.getContext('2d'); g.drawImage(c, 0, 0);
+  if (rw) g.drawImage(ref, c.width, 0, rw, c.height);
+  return (await fetch('http://127.0.0.1:' + q.get('shot'), { method: 'POST', body: JSON.stringify({ name, data: out.toDataURL('image/png') }) })).status;
+};
+window.dollReady = true;
+</script>
