@@ -141,6 +141,7 @@ export class BattleScreen {
   close() {
     removeEventListener('resize', this.fit);
     this.auto = false;
+    audio.setScene(null);
     this.root.remove();
     if (this.game) this.game.hold = false;
   }
@@ -211,6 +212,7 @@ export class BattleScreen {
   }
 
   startNode() {
+    audio.setScene('battle');   // the battle loop from the first fight until the result
     const node = this.run.here;
     if (node.type === 'rest') return this.restStop();
     this.fight();
@@ -688,6 +690,7 @@ export class BattleScreen {
     const run = this.run;
     this.auto = false;
     this.mates.clear();
+    audio.setScene(null);
     audio.play(won ? 'levelup' : 'close');
     const back = run.colored.map((id) => t(FOES[id].name));
     this.frame.replaceChildren(this.backdrop(), h('div.bt-sheet', { style: { top: '150px' } },

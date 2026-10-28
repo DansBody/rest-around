@@ -1,13 +1,11 @@
-// Synthesized sound effects and a little lo-fi café loop (WebAudio, no files). Unlocks on the first user gesture.
-const BEAT = 60 / 74, BAR = BEAT * 4;
-const mhz = (m) => 440 * Math.pow(2, (m - 69) / 12);
-// Cmaj9 · Am9 · Dm9 · G13 — warm electric-piano voicings
-const CHORDS = [[48, 52, 55, 59, 62], [45, 48, 52, 55, 59], [50, 53, 57, 60, 64], [43, 47, 53, 57, 64]];
-const BASS = [36, 33, 38, 31];
-const PENTA = [72, 74, 76, 79, 81, 84, 86];
+// Synthesized sound effects (WebAudio, no files) and the café's recorded music loops. Unlocks on the first user gesture.
+const MUSIC = 'assets/audio/';
+const TRACKS = { day: ['cafe_day', 'cafe_day2', 'cafe_day3'], night: ['cafe_night', 'cafe_night2'], battle: ['battle'] };
+const MUSIC_GAIN = 0.5;
+const NEXT_AHEAD = 15;   // seconds before a track's pass ends that the next one starts loading
 
 class Audio {
-  constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; this.last = {}; this.musicEnabled = true; this.musicTimer = null; this.music = null; }
+  constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; this.last = {}; this.musicEnabled = true; this.musicTimer = null; this.music = null; this.moodNow = null; this.turn = {}; this.loading = false; this.musicTok = 0; this.mood = null; this.scene = null; }
 
   unlock() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
@@ -48,81 +46,70 @@ class Audio {
   }
 
   // ---------------- café music ----------------
+  // Recorded loops (tools/music/cafe.py) in two playlists: the day's set while the café is open, the rainy one at
+  // night. Each track plays through once, then the next one in its set takes over as it ends. Each MP3 carries a
+  // little wrap-around on both ends, and assets/audio/music.json gives the loop points.
   setMusic(on) { this.musicEnabled = on; if (on) this.startMusic(); else this.stopMusic(); }
   startMusic() {
     if (!this.ctx || !this.enabled || !this.musicEnabled || this.musicTimer) return;
-    const c = this.ctx;
-    this.music = c.createGain();
-    this.music.gain.setValueAtTime(0.0001, c.currentTime);
-    this.music.gain.linearRampToValueAtTime(0.5, c.currentTime + 5);
-    this.music.connect(this.master);
-    this.bar = 0; this.nextBar = c.currentTime + 0.4;
-    this.musicTimer = setInterval(() => this.scheduleMusic(), 400);
-    this.scheduleMusic();
+    this.musicTimer = setInterval(() => this.followMood(), 2000);
+    this.followMood();
   }
   stopMusic() {
     clearInterval(this.musicTimer); this.musicTimer = null;
-    const m = this.music; this.music = null;
-    if (m) { m.gain.cancelScheduledValues(0); m.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.25); setTimeout(() => m.disconnect(), 1500); }
+    this.moodNow = null; this.loading = false; this.musicTok++;
+    if (this.music) this.fadeOut(this.music, 0.8);
+    this.music = null;
   }
-  scheduleMusic() {
-    const c = this.ctx;
-    if (!c || !this.music) return;
-    while (this.nextBar < c.currentTime + 1.5) { this.playBar(this.bar++, this.nextBar); this.nextBar += BAR; }
+  /** Follows the café's mood (`audio.mood()`, set by main.js): a new mood crossfades to its own set, and near
+   *  the end of a track's pass the next one in the set is loaded to come in as it ends. */
+  followMood() {
+    const mood = this.scene || (this.mood && this.mood()) || 'day', m = this.music;
+    if (mood !== this.moodNow) { this.moodNow = mood; this.queueTrack(this.nextOf(mood), null); return; }
+    if (TRACKS[mood].length > 1 && m && !this.loading && this.ctx.currentTime > m.endsAt - NEXT_AHEAD) this.queueTrack(this.nextOf(mood), m.endsAt);
   }
-  /** One bar: chord stabs, bass, a soft beat, vinyl crackle and a sparse pentatonic melody. */
-  playBar(n, t0) {
-    const idx = n % 4, chord = CHORDS[idx];
-    const hit = (t, vol, dur) => chord.forEach((m, i) => this.voice(t + i * 0.014, mhz(m), dur, vol));
-    hit(t0, 0.05, BEAT * 3.2);
-    hit(t0 + BEAT * 1.5, 0.032, BEAT * 1.2);
-    if (n % 2) hit(t0 + BEAT * 3.5, 0.03, BEAT * 1.2);
-    this.voice(t0, mhz(BASS[idx]), BEAT * 1.6, 0.17, 'triangle', 500);
-    this.voice(t0 + BEAT * 2, mhz(BASS[idx] + (idx === 3 ? 0 : 7)), BEAT * 1.2, 0.12, 'triangle', 500);
-    // beat
-    this.kick(t0); this.kick(t0 + BEAT * 2.5);
-    this.snare(t0 + BEAT); this.snare(t0 + BEAT * 3);
-    for (let i = 0; i < 8; i++) this.hat(t0 + i * BEAT / 2 + (i % 2 ? BEAT * 0.09 : 0), i % 2 ? 0.026 : 0.04);
-    for (let i = 0; i < 7; i++) this.click(t0 + Math.random() * BAR);
-    // melody
-    let p = (n * 3) % PENTA.length;
-    for (let i = 0; i < 8; i++) {
-      if (Math.random() > 0.34) continue;
-      p = Math.max(0, Math.min(PENTA.length - 1, p + Math.floor(Math.random() * 5) - 2));
-      const t = t0 + i * BEAT / 2 + (i % 2 ? BEAT * 0.09 : 0), f = mhz(PENTA[p]);
-      this.voice(t, f, 1.3, 0.05, 'triangle', 3200);
-      this.voice(t + BEAT * 0.75, f, 1.0, 0.016, 'triangle', 2400);
-    }
+  /** A scene's own music over the café's mood (tools/music/battle.py while a battle is on); null hands back. */
+  setScene(scene) { this.scene = scene; if (this.musicTimer) this.followMood(); }
+  nextOf(mood) { const list = TRACKS[mood], i = this.turn[mood] || 0; this.turn[mood] = i + 1; return list[i % list.length]; }
+  /** Starts `name` right away with a slow crossfade (a new mood, or the first track), or at `at`, as the track before ends. */
+  queueTrack(name, at) {
+    const tok = ++this.musicTok;   // a later change of mood, or a stop, wins over a load still under way
+    this.loading = true;
+    this.loadTrack(name).then(({ buf, loop }) => {
+      if (tok !== this.musicTok || !this.musicTimer) return;
+      this.loading = false;
+      const c = this.ctx, now = c.currentTime, src = c.createBufferSource(), g = c.createGain();
+      src.buffer = buf; src.loop = true; src.loopStart = loop[0]; src.loopEnd = loop[1];
+      const next = at != null, t = next ? Math.max(now + 0.05, at - 0.5) : now + 0.05;
+      const cut = !next && this.moodNow === 'battle';   // a fight cuts straight in, no slow café crossfade
+      const [r0, r1] = cut ? [0, 0.1] : next ? [0, 2] : this.music ? [1.5, 5.5] : [0, 3];
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.setValueAtTime(0.0001, t + r0);
+      g.gain.linearRampToValueAtTime(MUSIC_GAIN, t + r1);
+      src.connect(g); g.connect(this.master);
+      src.start(t, loop[0]);
+      if (this.music) this.fadeOut(this.music, cut ? 0.6 : next ? 4 : 5, next ? t - 3.5 : now);   // the one before fades over its last bars
+      this.music = { src, g, endsAt: t + loop[1] - loop[0] };
+    }).catch((e) => { console.warn('Café music unavailable', e); });   // `loading` stays set: no retry every tick
   }
-  voice(t, f, dur, vol, type = 'sine', lp = 2400) {
-    const c = this.ctx, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain(), g2 = c.createGain(), fl = c.createBiquadFilter();
-    o.type = type; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 9;
-    o2.type = 'sine'; o2.frequency.value = f * 2.01; g2.gain.value = 0.2;
-    fl.type = 'lowpass'; fl.frequency.value = lp;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * 0.4), t + Math.min(0.3, dur * 0.4));
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(fl); fl.connect(this.music);
-    o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+  fadeOut({ src, g }, sec, at = this.ctx.currentTime) {
+    const t = this.ctx.currentTime, from = Math.max(t, at);
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.setValueAtTime(g.gain.value, from);
+    g.gain.linearRampToValueAtTime(0.0001, from + sec);
+    try { src.stop(from + sec + 0.1); } catch { /* already stopping */ }
+    src.onended = () => g.disconnect();
   }
-  kick(t) {
-    const c = this.ctx, o = c.createOscillator(), g = c.createGain();
-    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.16);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-    o.connect(g); g.connect(this.music); o.start(t); o.stop(t + 0.25);
+  /** Fetches and decodes one track (at 32 kHz: half the memory of a 48 kHz buffer, nothing audible lost). */
+  async loadTrack(name) {
+    this.musicMeta ||= fetch(MUSIC + 'music.json').then((r) => r.json());
+    const [meta, bytes] = await Promise.all([this.musicMeta, fetch(MUSIC + name + '.mp3').then((r) => r.arrayBuffer())]);
+    let dec = this.ctx;
+    try { dec = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 32000); } catch { /* the live context decodes */ }
+    const buf = await new Promise((res, rej) => { const p = dec.decodeAudioData(bytes, res, rej); if (p && p.then) p.then(res, rej); });
+    return { buf, loop: meta[name].loop };
   }
-  hush(t, dur, vol, freq, type, q = 0.7) {
-    const c = this.ctx, len = Math.max(1, Math.floor(c.sampleRate * dur)), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
-    const src = c.createBufferSource(); src.buffer = buf;
-    const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
-    const g = c.createGain(); g.gain.value = vol;
-    src.connect(f); f.connect(g); g.connect(this.music); src.start(t);
-  }
-  snare(t) { this.hush(t, 0.16, 0.1, 1700, 'bandpass', 0.8); }
-  hat(t, vol) { this.hush(t, 0.05, vol, 7500, 'highpass', 0.5); }
-  click(t) { this.hush(t, 0.012, 0.045, 2600, 'bandpass', 1.2); }
 
   play(name) {
     if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;

@@ -77,6 +77,7 @@ async function boot() {
   audio.enabled = game.state.settings.sound;
   audio.musicEnabled = game.state.settings.music !== false;
   audio.setVolume(game.state.settings.volume);
+  audio.mood = () => (game.day.isNight ? 'night' : 'day');   // the rainy loop plays through the night
   document.title = `${game.state.name} · Refillit`;
 
   const resize = () => { renderer.resize(); };
