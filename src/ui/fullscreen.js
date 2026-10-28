@@ -13,6 +13,23 @@ const store = (k, v) => { try { if (v === undefined) return localStorage.getItem
 
 export const isIOS = () => /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 export const isStandalone = () => navigator.standalone === true || ['standalone', 'fullscreen'].some((m) => matchMedia(`(display-mode: ${m})`).matches);
+/** iPhone from the Home Screen draws under the translucent status bar, yet reports a viewport one status bar short,
+ *  which left a strip of page at the bottom. There the app really fills the screen, so --app-h (style.css: html, body,
+ *  #game, #battle) is set to the screen's height. Only when it is short by about a status bar, so anything else is left
+ *  as it measures. */
+function fitHomeScreen() {
+  if (!/iPhone|iPod/.test(navigator.userAgent) || !isStandalone()) return;
+  const full = matchMedia('(orientation: landscape)').matches ? screen.width : screen.height;   // iOS keeps screen.* portrait
+  const short = full - innerHeight, root = document.documentElement.style;
+  const want = short > 0 && short <= 80 ? full + 'px' : '';
+  if (root.getPropertyValue('--app-h') === want) return;
+  if (want) root.setProperty('--app-h', want); else root.removeProperty('--app-h');
+  window.dispatchEvent(new Event('resize'));   // the renderer and the battle measure again
+}
+fitHomeScreen();
+addEventListener('resize', fitHomeScreen);
+addEventListener('orientationchange', () => setTimeout(fitHomeScreen, 300));
+
 /** The page can go fullscreen here (not on iPhone, where Safari only does it for videos). */
 export const canFullscreen = () => !/iPhone|iPod/.test(navigator.userAgent) && !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
 const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);

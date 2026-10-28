@@ -435,7 +435,7 @@ ${k.desc}
     if (!R) return;
     const pos = (q) => {
       // keep the whole ring (and the label over it) on screen, clear of the HUD and the folded tray
-      const vw = window.innerWidth, vh = window.innerHeight, m = GC_RING + 40;
+      const vw = this.root.clientWidth, vh = this.root.clientHeight, m = GC_RING + 40;
       const x = Math.max(m, Math.min(vw - m - 30, q.x));   // the right side holds the wider Sell pill
       const y = Math.max(GC_RING + 96, Math.min(vh - m - 90, q.y));
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;

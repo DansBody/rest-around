@@ -2,7 +2,7 @@
    The grey world is halftone photos + geometry; the team stands on the one warm thing, a wooden board. Denim for
    everything ordinary, coral only for alerts and money (a foe's big hit, theft). Outside #ui, so it sets its own type.
    The frame is drawn at 390×844 and scaled to fit (ui/battle.js). Text is never cut or stacked on other text. */
-#battle { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; overflow: hidden;
+#battle { position: fixed; inset: 0; height: var(--app-h, auto);z-index: 60; display: grid; place-items: center; overflow: hidden;
   background: radial-gradient(rgba(255, 255, 255, .08) 28%, transparent 31%) 0 0 / 8px 8px, var(--os-ink);
   font-family: var(--os-font); color: var(--os-ink); font-weight: 400; touch-action: manipulation; }
 #battle * { box-sizing: border-box; font-weight: 400; }

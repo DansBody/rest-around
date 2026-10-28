@@ -104,9 +104,10 @@
 }
 * { box-sizing: border-box; }
 /* touch-action: the page scrolls panels but never zooms (pinch or double-tap); see nozoom.js for iOS */
-html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: #ededed; font-family: var(--font); color: var(--ink);
+/* --app-h: the full screen on an iPhone opened from the Home Screen, which reports one status bar short (ui/fullscreen.js) */
+html, body { margin: 0; width: 100%; height: var(--app-h, 100%); overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: #ededed; font-family: var(--font); color: var(--ink);
   -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
-#game { position: fixed; inset: 0; }
+#game { position: fixed; inset: 0; height: var(--app-h, auto); }
 #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 #overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 #view.dragging { cursor: grabbing; }

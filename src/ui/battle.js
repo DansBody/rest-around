@@ -130,7 +130,7 @@ export class BattleScreen {
     this.frame = h('div.bt-frame', { onclick: (e) => { if (e.target === this.frame || e.target.closest('.bt-geo')) this.deselect(); } });
     this.root = h('div#battle', this.frame);
     document.body.appendChild(this.root);
-    this.fit = () => { this.frame.style.transform = `scale(${Math.min(innerWidth / W, innerHeight / H)})`; };
+    this.fit = () => { this.frame.style.transform = `scale(${Math.min(this.root.clientWidth / W, this.root.clientHeight / H)})`; };
     this.fit();
     addEventListener('resize', this.fit);
     const loop = (now) => {
