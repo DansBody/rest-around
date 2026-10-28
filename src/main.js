@@ -14,6 +14,7 @@ import { initAccount } from './ui/account.js';
 import { updateVisit } from './ui/visit.js';
 import { helpedCard } from './ui/friends.js';
 import { chooseStart } from './ui/welcome.js';
+import { preloadTransitions } from './ui/transition.js';
 import { startTutorial } from './ui/tutorial.js';
 import { audio } from './audio.js';
 import { t, localizeData } from './i18n.js';
@@ -38,10 +39,12 @@ function setLoad(pct) {
 async function boot() {
   localizeData();
   msg.textContent = t('Warming up the espresso machine…');
+  const openings = preloadTransitions();   // the menus' opening pictures and faces, fetched alongside the models
   try {
     await assets.load((p) => setLoad(p * 30));
     msg.textContent = t('Unpacking the coffee beans…');
     await models.load(assets.manifest, (p) => setLoad(30 + p * 70));
+    await openings;
     bakeModelIcons();
     await bakeGlyphIcons();
   } catch (e) {

@@ -804,6 +804,33 @@ kbd { background: var(--surface); border-radius: 6px; padding: 1px 6px; box-shad
   border: 2px solid var(--os-ink); box-shadow: inset 2px 2px 0 var(--os-lo); color: var(--os-ink); outline: none; }
 .start-form input:focus { border-color: var(--os-denim); box-shadow: inset 2px 2px 0 var(--os-lo), 0 0 0 2px var(--acc); }
 .start-pane .linkish { align-self: center; font-family: var(--os-font); color: var(--os-denim); }
+/* motion: the sign slams in and the cut-outs stick on one after another, then everything keeps a small idle loop.
+   Only translate / rotate / scale / opacity move (the individual properties, so each part's own transform stays). */
+.ld-orbit .spin { transform-box: view-box; transform-origin: 200px 470px; animation: ld-spin 90s linear infinite; }
+.ld-orbit .spin.back { animation-duration: 140s; animation-direction: reverse; }
+.ld-big { animation: ld-slam-l .5s cubic-bezier(.2, 1.4, .4, 1) .05s both; }
+.ld-tag { animation: ld-slam-r .45s cubic-bezier(.2, 1.4, .4, 1) .25s both; }
+.load-card { animation: ld-pop .4s cubic-bezier(.2, 1.5, .4, 1) .35s both; }
+.ld-latte { animation: ld-stick .35s cubic-bezier(.2, 1.6, .4, 1) .5s both; }
+.ld-latte img { animation: ld-spin 40s linear infinite; }
+.ld-hand { transform-origin: 70% 0; animation: ld-stick .35s cubic-bezier(.2, 1.6, .4, 1) .6s both, ld-dip 3.2s ease-in-out .95s infinite; }
+.ld-moka { transform-origin: 50% 100%; animation: ld-stick .35s cubic-bezier(.2, 1.6, .4, 1) .7s both, ld-boil 4s ease-in-out 1.05s infinite; }
+.ld-star { animation: ld-stick .35s cubic-bezier(.2, 1.6, .4, 1) .8s both, ld-spin 14s linear 1.15s infinite; }
+.ld-x { animation: ld-stick .35s cubic-bezier(.2, 1.6, .4, 1) .85s both, ld-bob 3s ease-in-out 1.2s infinite; }
+.ld-slice { animation: ld-glitch 3.4s steps(1) infinite; }
+.ld-slice.thin { animation-duration: 2.6s; animation-delay: -1.1s; }
+@keyframes ld-spin { to { rotate: 360deg; } }
+@keyframes ld-slam-l { from { translate: -110vw 0; } }
+@keyframes ld-slam-r { from { translate: 110vw 0; } }
+@keyframes ld-pop { from { scale: .6; opacity: 0; } }
+@keyframes ld-stick { from { scale: 1.35; opacity: 0; } }
+@keyframes ld-dip { 0%, 100% { translate: 0 0; rotate: 0deg; } 45% { translate: 4px 12px; rotate: -4deg; } 60% { translate: 4px 10px; rotate: -3deg; } }
+@keyframes ld-boil { 0%, 70%, 100% { translate: 0 0; rotate: 0deg; } 76% { translate: 0 -8px; rotate: -4deg; } 82% { translate: 0 0; rotate: 3deg; } 88% { translate: 0 -4px; rotate: -2deg; } 94% { translate: 0 0; rotate: 0deg; } }
+@keyframes ld-bob { 50% { translate: 0 -7px; } }
+@keyframes ld-glitch { 0%, 100% { translate: 0 0; opacity: .5; } 8% { translate: 18px 0; opacity: .8; } 11% { translate: -10px 2px; opacity: .3; } 14% { translate: 0 0; opacity: .5; } 60% { translate: -24px -3px; opacity: .75; } 62% { translate: 0 0; opacity: .5; } }
+@media (prefers-reduced-motion: reduce) {
+  #loading *, #loading .ld-orbit .spin { animation: none !important; }
+}
 /* short screens (phones held sideways): the sign shrinks and the cut-outs step aside so the choices fit */
 @media (max-height: 560px) {
   .ld-head { height: 84px; } .ld-big span { font-size: 52px; } .ld-tag { top: 62px; }

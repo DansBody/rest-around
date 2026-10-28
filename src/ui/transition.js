@@ -38,6 +38,25 @@ export function wipeIn(win, body, kind = 'paper') {
   return done;
 }
 
+// The pictures the openings and the edge collage draw (os.css backgrounds, the latte <image>) and the faces their text
+// uses. The browser only fetches a CSS background or a font when something first needs it, so the first few openings
+// played with pieces missing; main.js fetches and decodes them all behind the loading bar instead.
+const PICTURES = ['bean', 'bread', 'bust', 'coffee', 'hand_cup', 'ink_coral', 'kettle', 'latte', 'moka', 'paper_denim', 'steam']
+  .map((n) => `assets/ui/collage/${n}.webp`);
+const FACES = ['Refillit Pixel', 'Refillit LCD', 'Refillit Type', 'Refillit Display'];
+const kept = [];   // decoded images held on to, so the browser keeps them ready
+/** Fetch and decode everything the openings use. Never fails: a piece that will not load just loads later, as before. */
+export function preloadTransitions() {
+  const pics = PICTURES.map((src) => {
+    const img = new Image();
+    img.src = src;
+    kept.push(img);
+    return img.decode().catch(() => {});
+  });
+  const faces = document.fonts ? FACES.map((f) => document.fonts.load(`16px "${f}"`).catch(() => {})) : [];
+  return Promise.all([...pics, ...faces]);
+}
+
 const px = (b) => ({ left: b.left + 'px', top: b.top + 'px', width: b.width + 'px', height: b.height + 'px' });
 const gone = (an, el) => an.finished.catch(() => {}).then(() => el.remove());
 let uid = 0;
