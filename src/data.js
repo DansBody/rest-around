@@ -479,7 +479,7 @@ export const STARTER = [
   { kind: 'cups', n: 10, text: 'Brew {n} drinks', coins: 40, points: 35 },
   { kind: 'market', n: 1, text: 'Buy {n} packs at the Market', coins: 40, points: 25 },
   { kind: 'guests', n: 12, text: 'Serve {n} guests', coins: 60, points: 50 },
-  { kind: 'study', n: 1, text: 'Study a drink (Menu → Study)', coins: 60, points: 60 },
+  { kind: 'snack', n: 1, text: 'Give the team a snack (Staff → Feed all)', coins: 60, points: 60 },   // (the tour already has them study a drink)
 ];
 /** Coins and points the starter steps from `from` up to (not including) `to` pay. */
 export const starterPaid = (from, to) => STARTER.slice(Math.max(0, from), Math.max(0, to)).reduce((a, x) => ({ coins: a.coins + x.coins, points: a.points + x.points }), { coins: 0, points: 0 });

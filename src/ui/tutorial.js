@@ -65,8 +65,8 @@ const STEPS = [
     done: (g) => Object.values(g.state.dishes).some((d) => d.lv >= 2) },
   { id: 'bye', center: true, next: true, panel: null, ready: (g, tu) => STEPS.every((x) => x.id === 'bye' || tu.done.includes(x.id)), enter: (tu) => tu.g.camera.fit(tu.g.world.size),
     text: (g) => (g.day.hour >= DAY.lastCallHour
-      ? t("That's the basics! It's late, but tonight we stay open while you settle in. We keep serving while you're away too.")
-      : t("That's the basics! We keep serving while you're away, so come back and see how we did.")) },
+      ? t("That's the basics! Your next goals are in Today, the checklist up top. It's late, but tonight we stay open while you settle in.")
+      : t("That's the basics! Your next goals are in Today, the checklist up top. We keep serving while you're away, so come back and see how we did.")) },
 ];
 // what the tour's guard watches: a tap is a pointerdown and then a click, and both must stop at a blocked control
 const GUARDED = ['pointerdown', 'mousedown', 'click', 'dblclick', 'contextmenu'];
@@ -177,11 +177,11 @@ function pickCard(ui) {
     h('div.pick-staff.starter-grid', UNIQUE_MODELS.map((m) => h('button.pick-tile' + (m === pick ? '.on' : ''), { onclick: () => { pick = m; render(); }, title: UNIQUE_NAMES[m] },
       portrait(roleLook(starterRole(m), m), 64, 64), h('b', UNIQUE_NAMES[m])))),
     h('div.starter-pick',
-      portrait(roleLook(starterRole(pick), pick), 112, 112),
-      h('div.grow', h('h3', UNIQUE_NAMES[pick]),
-        h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
-          : t('Starts as your Barista: brews every drink at the espresso machine.')),
-        kitLines(pick, true, true).length ? h('div.sklist', ...kitLines(pick, true, true)) : h('div.muted', t('No special skills yet: a steady pair of hands.')))),
+      h('div.starter-head', portrait(roleLook(starterRole(pick), pick), 88, 88),
+        h('div.grow', h('h3', UNIQUE_NAMES[pick]),
+          h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
+            : t('Starts as your Barista: brews every drink at the espresso machine.')))),
+      kitLines(pick, true, true).length ? h('div.sklist', ...kitLines(pick, true, true)) : h('div.muted', t('No special skills yet: a steady pair of hands.'))),
     h('button.btn.primary', { onclick: () => { g.setStarter(pick); ui.closeModal(); ui.tutorial = new Tour(ui); } }, t('Start with {name}', { name: UNIQUE_NAMES[pick] })));
   render();
   return card;
@@ -246,6 +246,20 @@ class Tour {
     if (!g.build.active) g.build.enter();
     ui.buildCat = 'dining'; ui.buildOpen = true;   // phones open the tray folded: unfold it
     ui.renderBuild();
+  }
+  /**
+   * Once the table is down, the camera keeps it in the gap between the card and the build tray (on a phone the
+   * tray covers the lower half of the view, right where the table was put), so the chairs go in with it in sight.
+   */
+  keepTableInView() {
+    const g = this.g, table = g.world.byKind('table')[0];
+    if (this.tableKept || !table) return;
+    this.tableKept = true;
+    const on = () => this.ui.tutorial === this && this.stepId === 'seats' && g.build.active && g.world.furniture.includes(table);
+    // measured once, with the tray open: the view stays put when it folds away for a chair in hand (a tap is coming)
+    const vh = g.camera.vh, top = this.card.getBoundingClientRect().bottom, bar = this.ui.el.buildbar.getBoundingClientRect().top;
+    const off = { x: 0, y: vh / 2 - (Math.max(0, top) + Math.min(vh, bar > top ? bar : vh)) / 2 };
+    g.camera.follow(() => (on() ? { x: (table.x + 0.5) * TILE, z: (table.y + 0.5) * TILE } : null), () => off, null, true);
   }
   /** While the table for two is set up, a chair goes only right beside a table, facing it: no stray chair to pay for. */
   guideChairs() {
@@ -375,6 +389,12 @@ class Tour {
       default: return t('Here comes a guest! Watch the door.');
     }
   }
+  /** A panel still playing its opening (transition.js: the latte art over the staff list, say): its rows aren't there yet. */
+  panelOpening() {
+    const ui = this.ui;
+    if (!ui.panel || !ui.el.panel) return false;
+    return ui.el.panel.getAnimations({ subtree: true }).some((a) => a.playState === 'running' && a.effect && a.effect.getComputedTiming().endTime !== Infinity);
+  }
   /** Called with the UI's update (10 times a second). */
   update() {
     const g = this.g, ui = this.ui;
@@ -383,6 +403,7 @@ class Tour {
     // a moment of praise after a step is done, before the next one comes up
     if (this.praise && performance.now() < this.praise.until) { g.focus = null; this.show('praise', null, this.praise.text, null); return; }
     this.praise = null;
+    if (this.panelOpening()) return;   // the card waits for the window it talks about to finish opening
     let st = this.current();
     while (st && st.done && st.done(g, ui, this)) { this.finish(st.id, true); return this.update(); }
     if (!this.steps.some((x) => !this.done.includes(x.id))) return this.end();
@@ -392,6 +413,7 @@ class Tour {
       if (st.enter) st.enter(this);
     }
     if (st && st.id === 'guest') this.callGuest();
+    if (st && st.id === 'seats' && this.seatStage() !== 'table') this.keepTableInView();
     // nothing ready yet (only the guest left, and it's night): say when the doors open
     const text = st ? st.text(g, this, ui) : t("We're closed for the night. The doors open at 08:00, see you then!");
     const target = st && st.target && !ui.modalOpen ? st.target(ui, this) : null;

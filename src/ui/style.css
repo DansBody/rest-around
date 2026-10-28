@@ -1167,7 +1167,9 @@ button.pick-row:hover { background: var(--fill-2); }
 .starter-grid { grid-template-columns: repeat(5, 1fr); margin: 14px 0 10px; }
 .starter-grid .pick-tile { padding: 6px 4px 8px; }
 .starter-grid .pick-tile .portrait { width: 52px; height: 52px; }
-.starter-pick { display: flex; gap: 12px; align-items: flex-start; padding: 12px; margin-bottom: 14px; border-radius: 20px; background: var(--fill); }
+.starter-pick { padding: 12px; margin-bottom: 14px; border-radius: 20px; background: var(--fill); }
+/* portrait beside the name and job; the skills below it at full width (beside the portrait they ran a few characters a line on phones) */
+.starter-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
 .starter-pick .portrait { flex: none; border-radius: 16px; background: var(--surface); }
 .starter-pick h3 { margin: 2px 0 6px; font: 750 20px/1.1 var(--font-display); font-stretch: var(--narrow); }
 .starter-role { margin-bottom: 8px; font-size: 12.5px; }
@@ -1220,7 +1222,10 @@ button.pick-row:hover { background: var(--fill-2); }
 #ui.visiting #coach, #ui.visiting #spot { display: none; }
 @media (max-width: 760px) {
   .starter-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }
-  .starter-grid .pick-tile b { font-size: 10.5px; }
+  .starter-grid .pick-tile { padding: 6px 1px 8px; }
+  /* every name whole: two-word names wrap at the space, BBOOGYULI fits the tile (it was "BBOOG…") */
+  .starter-grid .pick-tile b { font-size: 10px; line-height: 1.15; white-space: normal; text-align: center; }
+  #ui .starter-grid .pick-tile.on b { padding-left: 4px; padding-right: 4px; margin-left: 0; }
   .starter-grid .pick-tile .portrait { width: 44px; height: 44px; }
   #coach .coach-text { font-size: 13px; }
 }
