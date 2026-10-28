@@ -2,7 +2,6 @@
 // every change is carried by one big shape, and the shapes are the café's own: a torn denim sheet, coffee poured in,
 // a loaf out of the oven, latte art, falling beans, steam, a coral ink iris for events. The title slides in last and the rows come in one frame apart.
 // Closing: the window tears into horizontal slices that slide apart. Web Animations only, nothing per frame in JS.
-// Also the collage around the screen edges (style in os.css).
 import { h } from '../util.js';
 
 const FRAME = 1000 / 30;   // one frame of the reference video
@@ -38,10 +37,10 @@ export function wipeIn(win, body, kind = 'paper') {
   return done;
 }
 
-// The pictures the openings and the edge collage draw (os.css backgrounds, the latte <image>) and the faces their text
-// uses. The browser only fetches a CSS background or a font when something first needs it, so the first few openings
-// played with pieces missing; main.js fetches and decodes them all behind the loading bar instead.
-const PICTURES = ['bean', 'bread', 'bust', 'coffee', 'hand_cup', 'ink_coral', 'kettle', 'latte', 'moka', 'paper_denim', 'steam']
+// The pictures the openings draw (os.css backgrounds, the latte <image>) and the faces their text uses. The browser
+// only fetches a CSS background or a font when something first needs it, so the first few openings played with pieces
+// missing; main.js fetches and decodes them all behind the loading bar instead.
+const PICTURES = ['bean', 'bread', 'coffee', 'ink_coral', 'kettle', 'latte', 'paper_denim', 'steam']
   .map((n) => `assets/ui/collage/${n}.webp`);
 const FACES = ['Refillit Pixel', 'Refillit LCD', 'Refillit Type', 'Refillit Display'];
 const kept = [];   // decoded images held on to, so the browser keeps them ready
@@ -232,24 +231,4 @@ export function bump(btn) {
   const ic = btn && btn.querySelector('.pix');
   if (!ic || quiet()) return;
   ic.animate([{ transform: 'none' }, { transform: 'translateY(-4px)' }, { transform: 'translateY(1px)' }, { transform: 'none' }], { duration: 6 * FRAME, easing: 'steps(6, end)' });
-}
-
-const DOVE = '<svg viewBox="0 0 100 70" aria-hidden="true"><path d="M6 40 C18 33 29 33 37 37 C39 25 45 11 60 1 C58 15 56 25 52 35 C62 29 77 27 94 29 C82 38 67 44 55 46 C49 54 41 58 31 58 L18 67 L21 56 C14 54 8 48 6 40 Z"/></svg>';
-const ORBITS = '<svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">'
-  + '<ellipse cx="500" cy="420" rx="620" ry="240" transform="rotate(-24 500 420)"/>'
-  + '<ellipse cx="840" cy="800" rx="360" ry="120" transform="rotate(-12 840 800)"/>'
-  + '<circle cx="500" cy="520" r="690"/><line x1="0" y1="200" x2="1000" y2="620"/><line x1="1000" y1="140" x2="150" y2="1000"/></svg>';
-
-/** The collage layer under the UI: a denim edge, orbit lines that only show near the sides, a peach disc, halftone, a
- *  dove, and the marble bust. Real things gone grey (halftone cut-outs, assets/ui/collage) sit between the windows, not
- *  loose on the screen: the bust here behind the Control Strip, the hand and the typed strip round Status and the moka
- *  pot behind the panel (both in ui.js, so they move with their windows). */
-export function collage() {
-  return h('div#collage', { 'aria-hidden': 'true' },
-    h('i.cl-edge'), h('i.cl-bars'),
-    h('div.cl-orbits', { html: ORBITS }),
-    h('i.cl-disc'), h('i.cl-x'), h('i.cl-dots'),
-    // the marble bust stands behind the Control Strip's far end, its plinth hidden by the strip, in front of the halftone
-    h('i.cl-photo.p-bust'),
-    h('span.cl-dove.d1', { html: DOVE }));
 }

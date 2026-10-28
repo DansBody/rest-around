@@ -536,7 +536,6 @@ export const ZH_TW = {
   'Still being made…': '還在做喔⋯', 'Owner took the order!': '老闆親自點餐！', 'Served by the owner!': '老闆親自送餐！',
   // ---------------- Refillit OS (the HUD windows, the trouble flag, the typed strip)
   'Status': '狀態', 'Next level {n}%': '下一級 {n}%', 'Trouble!': '出事了！',
-  'all is brewing well, the bar is still warm…': '一切順利，吧台還暖著…',
   // ---------------- fullscreen and the Home Screen (ui/fullscreen.js)
   'Fullscreen': '全螢幕', 'Add Refillit to your Home Screen': '把 Refillit 加入主畫面', 'In Safari, tap Share': '在 Safari 點「分享」',
   'then “Add to Home Screen”.': '再選「加入主畫面」。', 'Refillit then opens full screen, like an app.': '之後從主畫面打開，Refillit 就會像 App 一樣全螢幕。', 'Not now': '不用了',

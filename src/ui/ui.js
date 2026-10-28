@@ -14,7 +14,7 @@ import { glyph } from './icons.js';
 import { pixIcon } from './os.js';
 import { StreetUI } from './street.js';
 import { armFullscreen, homeScreenHint } from './fullscreen.js';
-import { collage, wipeIn, wipeOut, bump, iris, slamFrom } from './transition.js';
+import { wipeIn, wipeOut, bump, iris, slamFrom } from './transition.js';
 import { maybeLesson, startWatch } from './tutorial.js';
 import { TILE } from '../models.js';
 import { glassFx } from './glass.js';
@@ -107,8 +107,6 @@ export class UI {
     // ----- HUD: two Refillit OS windows rolled up to their title bars (Mac OS "windowshade"), so the top stays light:
     // the café (its name on a flag, the level, a hairline bar to the next one) and the live numbers in LCD fields -----
     this.el = {};
-    // the collage around the screen edges, under everything else (never over the café's middle)
-    r.appendChild(collage());
     this.el.lvlNum = h('b.hb-lv', 'Lv 1');
     this.el.brandName = h('span.bname', this.game.state.name);
     this.el.lvlTxt = h('span');   // level points and the day go in the tooltips, not on screen
@@ -136,10 +134,7 @@ export class UI {
     const clock = h('span.hs.clock', { title: t('Café clock') }, pixIcon('clock'), this.el.time, this.el.out);
     this.el.speedTxt = h('span.num', '1×');
     this.el.speed = h('span.hs.speed', { style: { display: 'none' } }, pixIcon('fast'), this.el.speedTxt);
-    // the collage threads through the windows: the typed strip under Status, and the plaster hand reaching out from
-    // behind Status, over the strip, its espresso cup dipping in front of an open panel (z-order in os.css)
-    this.el.hud = h('div#hud', brand, h('div.hs-wrap', h('div#hudstats.oswin', { title: t('Status') }, coin, rating, clock, this.el.speed),
-      h('div.cl-strip', { 'aria-hidden': 'true' }, t('all is brewing well, the bar is still warm…')), h('i.cl-photo.p-hand', { 'aria-hidden': 'true' })));
+    this.el.hud = h('div#hud', brand, h('div.hs-wrap', h('div#hudstats.oswin', { title: t('Status') }, coin, rating, clock, this.el.speed)));
     this.el.ratingTip = h('div.card.rating-tip');
     r.append(this.el.hud, this.el.ratingTip);
     // the HUD wraps to a second row when the name and numbers don't fit (text is never cut): what hangs under it
@@ -191,8 +186,7 @@ export class UI {
     this.el.panelTitle = h('h2', '');
     this.el.panelIcon = h('span.ph-ico');
     this.el.panelBody = h('div.panel-body');
-    // a moka pot stands behind every window, peeking over its edge
-    this.el.panel = h('div.card#panel', h('i.cl-photo.p-moka', { 'aria-hidden': 'true' }), h('div.grabber'),
+    this.el.panel = h('div.card#panel', h('div.grabber'),
       h('div.panel-head', this.el.panelIcon, this.el.panelTitle, h('button.btn.small.xbtn', { onclick: () => this.closePanel(), title: t('Close') }, glyph('close', 16))),
       this.el.panelBody);
     this.el.panel.addEventListener('pointerdown', () => { this.pointerInPanel = true; });

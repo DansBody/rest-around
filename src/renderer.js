@@ -274,19 +274,9 @@ export class Renderer {
     const path = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), lam('#ffffff', { map: this.tex('tex_path', 1) }));
     path.rotation.x = -Math.PI / 2; path.position.set(-1, 0.012, (DOOR_Y + 0.5) * TILE); path.receiveShadow = true;
     g.add(path);
-    // street lamps
-    for (const z of [-4, 22]) g.add(this.streetLamp(-5.4, z));
+    // no street lamps: from the camera's height their poles read as stray lines across the café
     this.outdoorGroup = g;
     this.treeGroup = new THREE.Group(); g.add(this.treeGroup);
-  }
-
-  streetLamp(x, z) {
-    const g = new THREE.Group();
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4, 8), lam('#6d6a7a')); pole.position.y = 2; pole.castShadow = true; g.add(pole);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), new THREE.MeshBasicMaterial({ color: '#fff4c8' })); head.position.y = 4.1; g.add(head);
-    head.userData.streetLamp = true;
-    g.position.set(x, 0, z);
-    return g;
   }
 
   tree(x, z, s = 1, seed = 0) {
@@ -576,7 +566,6 @@ export class Renderer {
     const sc = this.sun.shadow.camera;
     if (sc.right !== r) { sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 120; sc.updateProjectionMatrix(); }
     this.lampOn = clamp((hr - 17.5) / 1.5, 0, 1) * (1 - dawn);
-    this.outdoorGroup.traverse((o) => { if (o.userData.streetLamp) o.material.color.set(this.lampOn > 0.1 ? '#ffe9a8' : '#f4f0e6'); });
   }
 
   syncFloors() {

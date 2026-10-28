@@ -34,7 +34,7 @@
 
 /* ---------- HUD: two windows rolled up to their pinstriped title bars (Mac OS "windowshade"): one thin row ----------
    The café: a knob, its name on a flag that sticks up, the level; a hairline along the foot fills to the next level.
-   Status: the live numbers in sunken LCD fields. The typed strip hangs off it (collage). */
+   Status: the live numbers in sunken LCD fields. */
 #hud { top: calc(12px + var(--sat)); left: calc(18px + var(--sal)); right: calc(10px + var(--sar)); justify-content: flex-start; align-items: center; gap: 8px; }
 #ui #hudbrand, #ui #hudstats { position: relative; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 4px; overflow: visible; border-radius: 3px;
   background: var(--os-stripes); box-shadow: var(--os-bevel), 3px 3px 0 rgba(31, 42, 74, .22); }
@@ -58,9 +58,6 @@
 #ui button.hs:hover { background: #F3F6FB; }
 #ui button.hs:active { box-shadow: var(--os-sunk), inset 0 0 0 20px rgba(63, 93, 170, .12); }
 #ui .hs.speed { font-size: 18px; color: var(--os-ink); }
-/* the typed strip hanging off the Status window (collage) */
-#ui .cl-strip { max-width: min(62vw, 300px); padding: 2px 16px 2px 8px; transform: rotate(2deg); pointer-events: none;
-  background: var(--os-denim); color: #fff; font: 12px/1.3 var(--os-type); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rating-tip { top: calc(var(--ht) - 6px); }
 #ui .rating-tip { border-radius: 3px; }
 
@@ -264,42 +261,9 @@
 #ui .stat b { font-family: var(--os-lcd); font-size: 24px; }
 #ui #coach { border-radius: 3px; background: var(--os-frame); border: var(--os-b) solid var(--os-ink); box-shadow: var(--os-bevel), var(--os-drop); }
 
-/* ---------- the collage round the edges: never over the café's middle, never takes a tap ---------- */
-#ui #collage { position: absolute; inset: 0; z-index: 0; pointer-events: none !important; overflow: hidden; }
-#collage > * { position: absolute; display: block; }
-.cl-edge { left: 0; top: 0; bottom: 0; width: calc(10px + var(--sal)); background: var(--os-denim); }
-.cl-orbits { inset: 0; opacity: .5; -webkit-mask-image: radial-gradient(ellipse 62% 56% at 50% 52%, transparent 62%, #000 88%); mask-image: radial-gradient(ellipse 62% 56% at 50% 52%, transparent 62%, #000 88%); }
-.cl-orbits svg { width: 100%; height: 100%; display: block; }
-.cl-orbits svg * { fill: none; stroke: var(--os-denim); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
-.cl-dots { right: calc(46px + var(--sar)); bottom: calc(96px + var(--sab)); width: 58px; height: 74px; opacity: .55; border: 1.5px solid var(--os-denim);
-  background: radial-gradient(var(--os-denim) 30%, transparent 33%) 0 0 / 7px 7px; }
-.cl-disc { right: -74px; bottom: -60px; width: 210px; height: 210px; border-radius: 50%; background: var(--os-peach); border: 5px solid var(--os-denim); }
-.cl-x { right: calc(10px + var(--sar)); bottom: calc(170px + var(--sab)); width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 2px solid var(--os-denim); overflow: hidden; }
-.cl-x::before { content: '××××××××××××××××××××××××××××××××××××'; display: block; padding: 4px; font: 11px/12px var(--os-type); letter-spacing: 3px; color: var(--os-denim); word-break: break-all; }
-.cl-dove svg { display: block; width: 100%; height: auto; }
-.cl-dove path { fill: #fff; }
-.cl-dove.d1 { right: calc(4px + var(--sar)); top: calc(46% + var(--sat)); width: 38px; transform: rotate(-12deg); filter: drop-shadow(2px 2px 0 var(--os-denim)); }
-/* real things gone grey: photos baked to halftone + white edge by tools/collage_cutout.py */
-.cl-photo { background: no-repeat center / contain; filter: drop-shadow(3px 3px 0 var(--os-denim)); }
-.cl-photo::before, .cl-photo::after { content: ''; position: absolute; inset: 0; background: inherit; opacity: 0; }
-.cl-photo::before { clip-path: inset(24% 0 64% 0); animation: cl-glitch 5.3s steps(1, end) infinite; }
-.cl-photo::after { clip-path: inset(57% 0 35% 0); animation: cl-glitch 5.3s steps(1, end) -2.1s infinite; }
-@keyframes cl-glitch { 0%, 90%, 100% { opacity: 0; transform: none; } 91% { opacity: 1; transform: translateX(-9px); } 93% { opacity: 1; transform: translateX(7px); } 95% { opacity: 1; transform: translateX(-3px); } 96% { opacity: 0; } }
-/* z-order inside #ui (one stacking context): collage 0 < bust (in the collage) < Control Strip / panel (auto, later in
-   the DOM) < typed strip 2 < hand 3 < Status 4. The wrapper round Status makes no stacking context of its own. */
+/* the café in play is left clear: no collage round the edges (the start screen keeps its own) */
 .hs-wrap { position: relative; flex: 0 0 auto; display: flex; }
 #ui #hudstats { z-index: 4; }
-#ui .hs-wrap .cl-strip { position: absolute; z-index: 2; right: -12px; top: calc(100% + 5px); }
-.p-hand { position: absolute; z-index: 3; right: -26px; top: 8px; width: 118px; height: 170px; transform: rotate(-4deg); pointer-events: none; background-image: url('../../assets/ui/collage/hand_cup.webp'); }
-.p-bust { right: calc(-8px + var(--sar)); bottom: calc(30px + var(--sab)); width: 92px; height: 119px; transform: rotate(3deg); background-image: url('../../assets/ui/collage/bust.webp'); }
-#ui #panel .p-moka { position: absolute; z-index: -1; left: 22px; top: -50px; width: 48px; height: 56px; transform: rotate(-8deg); pointer-events: none; background-image: url('../../assets/ui/collage/moka.webp'); }
-@media (min-width: 761px) {
-  .p-hand { width: 130px; height: 187px; right: -30px; }
-  .p-bust { width: 130px; height: 168px; right: auto; left: calc(370px + var(--sal)); bottom: calc(34px + var(--sab)); }
-  #ui #panel .p-moka { left: -40px; top: 34%; width: 64px; height: 74px; transform: rotate(-10deg); }
-}
-@media (prefers-reduced-motion: reduce) { .cl-photo::before, .cl-photo::after { animation: none; } }
-#ui.building .cl-photo, #ui.building #collage .cl-dots, #ui.building #collage .cl-x, #ui.building .hs-wrap .cl-strip { display: none; }
 
 /* ---------- phones ---------- */
 @media (max-width: 760px) {
@@ -413,7 +377,6 @@
 #ui .panel-body::-webkit-scrollbar { width: 6px; }
 #ui .panel-body::-webkit-scrollbar-track { background: linear-gradient(90deg, transparent 2px, var(--os-ink) 2px 4px, transparent 4px); border: 0; }
 #ui .panel-body::-webkit-scrollbar-thumb { background: var(--os-denim); border: 0; }
-#ui #panel .p-moka { left: 46%; top: -46px; }
 /* other windows: the same cut sheet (clip-path on the element itself; their own shadow goes) */
 #ui #info, #ui #modal .card, #ui #celebrate .card, #ui #receipt .card, #ui .rating-tip, #ui #coach, #ui #buildbar .card {
   border: 0; border-radius: 0; box-shadow: none; clip-path: var(--cut-win); background: radial-gradient(rgba(63, 93, 170, .1) 28%, transparent 31%) 0 0 / 8px 8px, var(--os-paper); }
@@ -481,7 +444,6 @@
   #ui #panel { top: calc(34px + var(--sat)); }   /* room for the title plate that breaks out of the top */
   #ui #hudbrand .bname { font-size: 24px; }
   #ui .hs.coin { font-size: 34px; height: 38px; }
-  #ui #panel .p-moka { left: -40px; top: 34%; }
 }
 @media (max-width: 600px) {
   #ui .hs, #ui .hs.speed { padding: 0 8px; }
@@ -539,17 +501,12 @@
 #ui .hs-wrap { margin-left: auto; }
 #ui .toast > span, #ui #alerts .al-text b, #ui #alerts .al-text small { white-space: normal; overflow: visible; text-overflow: clip; word-break: keep-all; overflow-wrap: anywhere; }
 #ui .toast { max-width: min(92vw, 420px); }
-#ui .cl-strip { white-space: normal; overflow: visible; text-overflow: clip; max-width: min(64vw, 260px); }
-#ui .hs-wrap .cl-strip { padding-right: 86px; }   /* the hand lies across the strip's empty tail, never across its words */
 #ui #toasts { width: max-content; max-width: calc(100vw - 2 * (var(--hl) + var(--hb) + var(--hg))); }   /* between the side columns, never over a button */
 #ui .toast { width: max-content; max-width: 100%; }
-#ui .hs-wrap .cl-strip { right: 0; white-space: nowrap; }
 /* the chosen staff card's name: bigger on its brush, wrapping rather than cut */
 #ui .scard.open .scard-title b { font-size: 18px; line-height: 1.25; white-space: normal; overflow: visible; text-overflow: clip; word-break: keep-all; overflow-wrap: anywhere; }
-/* phones: an open sheet goes over the hand (its cup slips behind the window, never onto its buttons or words), and the
-   sheet starts under the HUD, lower still while a trouble alert hangs there, so no text lies on other text */
+/* phones: the sheet starts under the HUD, lower still while a trouble alert hangs there, so no text lies on other text */
 @media (max-width: 760px) {
-  #ui.has-sheet .p-hand { z-index: 0; }
   #ui #panel { height: min(68dvh, calc(100dvh - 100px - var(--sab) - var(--ht))); }
   #ui:has(#alerts .alert) #panel { height: min(68dvh, calc(100dvh - 160px - var(--sab) - var(--ht))); }
 }
@@ -581,16 +538,6 @@
 /* steam puffs (transition.js 'steam'): flat white clouds with a faint denim dot screen */
 .tr-steam { position: absolute; z-index: 8; pointer-events: none; clip-path: inset(-24px -16px -8px -16px); }   /* the window's own cloud, not the whole screen's */
 .tr-puff { position: absolute; background: url('../../assets/ui/collage/steam.webp') center / contain no-repeat; }
-
-/* the corner by the Control Strip's end, calmer: the bust shows only head and shoulders over the strip, the filled peach
-   disc behind it becomes a thin denim ring like the orbit lines, the halftone block fades back */
-.p-bust { right: calc(-6px + var(--sar)); bottom: calc(26px + var(--sab)); width: 78px; height: 101px; transform: rotate(2deg); }
-.cl-disc { right: -64px; bottom: -70px; width: 190px; height: 190px; background: none; border: 1.5px solid var(--os-denim); opacity: .6; }
-.cl-dots { right: calc(30px + var(--sar)); bottom: calc(78px + var(--sab)); width: 46px; height: 58px; opacity: .3; }
-.cl-x { right: calc(64px + var(--sar)); bottom: calc(150px + var(--sab)); width: 30px; height: 30px; }
-@media (min-width: 761px) {
-  .p-bust { width: 104px; height: 135px; right: auto; left: calc(380px + var(--sal)); bottom: calc(28px + var(--sab)); }
-}
 
 /* ---- the Home Screen hint (ui/fullscreen.js, iPhone / iPad Safari only) ---- */
 #ui .a2hs .hero-ico { margin: 4px 0 6px; }
