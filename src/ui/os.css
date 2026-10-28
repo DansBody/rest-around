@@ -136,7 +136,7 @@
 /* tabs: rounded OS tabs on a rule, the chosen one denim */
 #ui .tabs { gap: 3px; margin: 0 0 10px; padding: 0 2px; border-bottom: var(--os-b) solid var(--os-ink); align-items: end; }
 #ui .tab, #ui .tab:hover { min-height: 28px; padding: 0 8px; border: var(--os-b) solid var(--os-ink); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--os-frame); color: var(--os-ink);
-  box-shadow: inset 2px 2px 0 #fff; font-size: 12px; transform: none; }
+  box-shadow: inset 2px 2px 0 #fff; font-size: var(--fs); transform: none; }
 #ui .tab:hover { background: #F3F6FB; }
 #ui .tab.on, #ui .tab.on:hover { background: var(--os-denim); color: #fff; box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .35); }
 #ui #panel .tabs .tab { min-height: 30px; }
@@ -146,30 +146,30 @@
 
 /* push buttons: rounded rect, bevel; pressed = inverted; the default (primary) one denim with the thick ring */
 #ui .btn, #ui #panel .btn:not(.primary):not(.danger):not(.ghost):not(.tab):not(.panel-head > .btn), #ui #info .btn:not(.primary):not(.danger):not(.ghost):not(.info-x), #ui #buildbar .btn:not(.primary):not(.danger):not(.ghost):not(.tab) {
-  min-height: 30px; padding: 0 12px; gap: 5px; border-radius: 7px; border: var(--os-b) solid var(--os-ink); background: var(--os-frame); color: var(--os-ink); box-shadow: var(--os-bevel);
-  font-family: var(--os-font); font-size: 12px; line-height: 1; transition: none; }
+  min-height: var(--tap, 30px); padding: 0 12px; gap: 5px; border-radius: 7px; border: var(--os-b) solid var(--os-ink); background: var(--os-frame); color: var(--os-ink); box-shadow: var(--os-bevel);
+  font-family: var(--os-font); font-size: var(--fs); line-height: 1; transition: none; }
 #ui .btn:hover, #ui #panel .btn:not(.primary):not(.danger):not(.ghost):not(.tab):not(.panel-head > .btn):hover { background: #F3F6FB; }
 #ui .btn:active, #ui #panel .btn:not(.primary):not(.danger):not(.ghost):not(.tab):not(.panel-head > .btn):active { transform: none; background: var(--os-ink); color: #fff; box-shadow: none; --pi-ink: #fff; }
 #ui .btn.primary, #ui .btn.primary:hover { background: var(--os-denim); color: #fff; box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .35), inset -2px -2px 0 rgba(0, 0, 0, .25), 0 0 0 2px var(--os-frame), 0 0 0 4px var(--os-ink); }
 #ui .btn.primary:active { background: var(--os-ink); box-shadow: 0 0 0 2px var(--os-frame), 0 0 0 4px var(--os-ink); }
 #ui .btn.danger { background: var(--os-frame); color: #B5432C; box-shadow: var(--os-bevel); }
 #ui .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
-#ui .btn.small { min-height: 26px; padding: 0 10px; font-size: 12px; }
+#ui .btn.small { min-height: var(--tap, 26px); padding: 0 10px; font-size: var(--fs); }
 #ui .btn.icon { width: 36px; min-width: 36px; height: 36px; border-radius: 7px; }
 #ui .btn[disabled], #ui .btn.disabled { opacity: .45; }
 #ui .btn .glyph { color: currentColor; }
-#ui .pill { border-radius: 0; background: var(--os-body); box-shadow: inset 0 0 0 1px var(--os-lo); font-size: 12px; }
+#ui .pill { border-radius: 0; background: var(--os-body); box-shadow: inset 0 0 0 1px var(--os-lo); font-size: var(--fs-sm); }
 #ui .btn .pill, #ui .btn.primary .pill { background: none; box-shadow: none; color: inherit; }
-#ui .bmsg { border-radius: 0; font-size: 12px; background: var(--os-body); box-shadow: inset 0 0 0 1px var(--os-lo); }
+#ui .bmsg { border-radius: 0; font-size: var(--fs); background: var(--os-body); box-shadow: inset 0 0 0 1px var(--os-lo); }
 #ui .bmsg.bad { background: #FCE7E1; color: #A63B25; box-shadow: inset 0 0 0 1px var(--os-coral); }
 #ui .bmsg.good { background: #E7ECF7; color: var(--os-denim-deep); box-shadow: inset 0 0 0 1px var(--os-denim); }
 #ui .bmsg.warn { background: #FCEFE8; color: #8A4A35; }
 
 /* On / Off as two segments, the chosen one filled (denim On, ink Off) */
-#ui .switch { display: grid; grid-template-columns: 1fr 1fr; width: 76px; min-width: 76px; height: 24px; min-height: 0; padding: 0; border-radius: 0; border: var(--os-b) solid var(--os-ink);
+#ui .switch { display: grid; grid-template-columns: 1fr 1fr; width: var(--sw-w, 76px); min-width: var(--sw-w, 76px); height: var(--sw-h, 24px); min-height: 0; padding: 0; border-radius: 0; border: var(--os-b) solid var(--os-ink);
   background: var(--os-field); box-shadow: 2px 2px 0 var(--os-ink); transition: none; overflow: hidden; }
 #ui .switch::before, #ui .switch::after { content: 'On'; position: static; display: grid; place-items: center; width: auto; height: auto; border-radius: 0; transform: none; transition: none;
-  background: var(--os-field); color: var(--os-ink); box-shadow: none; font: 12px/1 var(--os-font); }
+  background: var(--os-field); color: var(--os-ink); box-shadow: none; font: var(--fs-sw, 12px)/1 var(--os-font); }
 #ui .switch::after { content: 'Off'; border-left: var(--os-b) solid var(--os-ink); }
 :lang(zh) #ui .switch::before { content: '開'; }
 :lang(zh) #ui .switch::after { content: '關'; }
@@ -188,9 +188,9 @@
 #ui #panel .scard::before, #ui #panel .scard::after { display: none; }
 #ui .scard-head, #ui .sk, #ui .portrait, #ui .thumb-slot, #ui .row .g-ico, #ui .sp-card, #ui .sp-cicon { border-radius: 0; }
 #ui .portrait { box-shadow: inset 0 0 0 2px var(--os-ink); background: radial-gradient(var(--os-stripe-b) 28%, transparent 31%) 0 0 / 6px 6px, var(--os-body); }
-#ui .row h3, #ui .scard-title b, #ui .tile b, #ui .sk-name b, #ui .section-title, #ui .info-head h3 { font-size: 12px; line-height: 1.35; }
-#ui .section-title { font-size: 12px; text-transform: uppercase; color: var(--os-denim); }
-#ui .muted, #ui .note, #ui .sk-desc, #ui .meta, #ui .scard-status, #ui .skill, #ui .abil, #ui .stock { font-size: 12px; line-height: 1.5; }
+#ui .row h3, #ui .scard-title b, #ui .tile b, #ui .sk-name b, #ui .section-title, #ui .info-head h3 { font-size: var(--fs); line-height: 1.35; }
+#ui .section-title { font-size: var(--fs); text-transform: uppercase; color: var(--os-denim); }
+#ui .muted, #ui .note, #ui .sk-desc, #ui .meta, #ui .scard-status, #ui .skill, #ui .abil, #ui .stock { font-size: var(--fs); line-height: 1.5; }
 #ui .note { border-radius: 0; background: var(--os-body); box-shadow: inset 0 0 0 1px var(--os-lo); }
 #ui .sk-tag, #ui .ing, #ui .sdot, #ui .sk-dot, #ui .sk-ico { border-radius: 0; }
 #ui .ing.done { background: #E7ECF7; color: var(--os-denim-deep); }
@@ -251,8 +251,8 @@
   border: var(--os-b) solid var(--os-ink); font: 12px/1 var(--os-font); text-transform: uppercase; clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%); transform: rotate(-3deg); }
 #ui #alerts .al-ico { border-radius: 0; background: var(--os-coral); border: var(--os-b) solid var(--os-ink); }
 #ui #alerts .al-ico .glyph { color: #fff; }
-#ui #alerts .al-text b { font-size: 12px; color: #B5432C; }
-#ui #alerts .al-text small { font-size: 12px; opacity: 1; }
+#ui #alerts .al-text b { font-size: var(--fs); color: #B5432C; }
+#ui #alerts .al-text small { font-size: var(--fs-sm); opacity: 1; }
 #ui #alerts .alert.sent { box-shadow: 3px 3px 0 var(--os-denim); animation: none; }
 #ui #alerts .alert.sent::before { background: var(--os-denim); }
 #ui #alerts .alert.sent .al-ico { background: var(--c); }
@@ -306,8 +306,8 @@
   #ui #panel, #ui #info { left: calc(14px + var(--sal)); right: calc(8px + var(--sar)); bottom: calc(82px + var(--sab)); border-radius: 3px; }
   #ui #panel { padding: 4px; }
   #ui #info { padding: 32px 12px 12px; }
-  #ui .btn.small { min-height: 32px; }
-  #ui .tab { min-height: 32px; }
+  #ui .btn.small { min-height: var(--tap, 32px); }
+  #ui .tab { min-height: var(--tap-tab, 32px); }
   #ui .tabs { overflow-y: hidden; }
 }
 @media (max-width: 600px) {
@@ -464,7 +464,7 @@
 #ui .pbar { transform: skewX(-22deg); }
 
 /* ---- toasts: typed strips across the screen (coral when something happened); alerts: a coral-flagged plate ---- */
-#ui .toast { padding: 6px 20px 6px 12px; border: 0; background: var(--os-denim); color: #fff; box-shadow: none; font: 12px/1.3 var(--os-type);
+#ui .toast { padding: 6px 20px 6px 12px; border: 0; background: var(--os-denim); color: #fff; box-shadow: none; font: var(--fs)/1.3 var(--os-type);
   clip-path: polygon(0 2px, 100% 0, calc(100% - 8px) 100%, 5px calc(100% - 1px)); transform: rotate(-1.5deg); --pi-ink: #fff; --pi-fill: var(--os-peach); animation: os-strip .2s steps(3, end); }
 #ui .toast:nth-child(even) { transform: rotate(1.2deg); translate: 14px 0; }
 #ui .toast::before { display: none; }
@@ -500,7 +500,7 @@
 #ui .tabs, #ui #panel .tabs:not(.seg), #ui .tabs.seg, #ui #buildbar .bb-top .tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 8px 4px 8px 6px; margin: 0 0 8px;
   overflow: visible; grid-template-columns: none; grid-auto-flow: row; }
 #ui .tabs .tab, #ui #panel .tabs .tab, #ui .tabs.seg .tab, #ui #buildbar .bb-top .tab { flex: 0 0 auto; width: auto; min-width: 0; max-width: 100%; min-height: 0; height: auto; padding: 3px 7px;
-  overflow: visible; white-space: nowrap; text-overflow: clip; color: var(--os-ink); font-size: 12px; line-height: 1.2; }
+  overflow: visible; white-space: nowrap; text-overflow: clip; color: var(--os-ink); font-size: var(--fs); line-height: 1.2; min-height: var(--tap-tab, 0); display: inline-flex; align-items: center; }
 #ui .tabs .tab span, #ui .tabs .tab small { overflow: visible; text-overflow: clip; max-width: none; }
 #ui .tabs .tab::before { display: none; }
 #ui .tabs .tab:nth-child(odd):not(.on) { transform: rotate(-3deg) translateY(-2px); }
@@ -598,3 +598,27 @@
 #ui .a2hs-share { display: inline-grid; place-items: center; vertical-align: -6px; width: 28px; height: 28px; background: var(--os-denim); --pi-ink: #fff; --pi-fill: var(--os-peach); }
 #ui .a2hs .muted { margin-top: 8px; }
 #ui .a2hs .btnrow { margin-top: 14px; }
+
+/* =====================================================================================================================
+   Readable pass (2026-10-28 review): text and touch sizes. The pixel face is drawn on a 12-px grid, so 12 and 24 are
+   crisp everywhere and 16 on 3x phones: body text is 16 (--fs), secondary text (counts, chips, small notes) 12 and
+   never less (--fs-sm). On touch screens anything tappable is at least 44 px tall (--tap); wide screens get 18-px text
+   and a wider panel.
+   ===================================================================================================================== */
+#ui { --fs: 16px; --fs-sm: 12px; }
+#ui small, #ui .g-note, #ui .today-head small, #ui .reset small, #ui .g-n, #ui .chips .pill, #ui .ing { font-size: var(--fs-sm); }
+#ui .goal .g-note { color: var(--ink-soft); }   /* was the faint grey: too pale at 12 px on the peach rows */
+/* the market tiles' two buy buttons share a narrow tile: tight insides so "×5 65" fits */
+#ui #panel .tile .btnrow .btn:not(.primary):not(.danger):not(.ghost):not(.tab):not(.panel-head > .btn) { padding: 0 6px; gap: 2px; font-size: var(--fs-sm); }
+#ui #panel .tile .btnrow .pill { padding: 0 2px; }
+/* the staff strip (seats, wages, feed all, ?) wraps rather than pushing the ? out of the panel */
+#ui #panel .stat-strip { flex-wrap: wrap; row-gap: 8px; }#ui input[type=range] { min-height: var(--tap-range, 16px); }
+#ui :is(input:not([type=range]), textarea, select) { font-size: var(--fs); min-height: var(--tap, 0); }
+@media (pointer: coarse) {
+  #ui { --tap: 44px; --tap-tab: 44px; --tap-range: 44px; --sw-w: 96px; --sw-h: 40px; --fs-sw: 16px; }
+  #ui .coach-acts .btn { min-height: var(--tap); padding: 0 14px; }
+}
+@media (min-width: 1200px) {
+  #ui { --fs: 18px; }
+  #ui #panel { width: 500px; }
+}
