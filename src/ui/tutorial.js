@@ -11,7 +11,8 @@
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
 import { roleLook } from '../looks.js';
-import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, CLUBS, TROUBLE, DAY } from '../data.js';
+import { UNIQUE_MODELS, UNIQUE_NAMES, furnitureById, CLUBS, TROUBLE, DAY, starterRole } from '../data.js';
+import { DIRS } from '../iso.js';
 import { CLUB_FOR } from '../trouble.js';
 import { kitLines } from './panels.js';
 import { glyph } from './icons.js';
@@ -32,7 +33,7 @@ const STEPS = [
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
   // the room starts bare: a table for two first (the guest needs somewhere to sit)
   // build mode opens by itself on the tables tab; the floor takes taps, and so do the buttons round the piece in hand
-  { id: 'seats', panel: null, scene: (g) => g.build.placing(), enter: (tu) => tu.openBuild(), dim: (ui, tu) => tu.seatStage() === 'hammer' || tu.seatStage() === 'done',
+  { id: 'seats', panel: null, scene: (g) => g.build.placing(), enter: (tu) => { tu.openBuild(); tu.guideChairs(); }, dim: (ui, tu) => tu.seatStage() === 'hammer' || tu.seatStage() === 'done',
     target: (ui, tu) => ({ hammer: () => ui.toolBtns.build, table: () => tu.buildTarget('f:table_oak'), chairs: () => tu.buildTarget('f:chair_oak'), done: () => tu.buildTarget('done') })[tu.seatStage()](),
     allow: (ui) => [ui.game.build.placing() ? ui.el.ghostctl : null],
     text: (g, tu) => ({
@@ -40,13 +41,16 @@ const STEPS = [
       table: g.build.locked ? t('Tap the check mark to put it down (the arrow turns it).')
         : g.build.tool ? t('Now tap the floor where it should go.')
         : t('Guests need somewhere to sit. Pick the {name}, then tap the floor to put it down.', { name: furnitureById.table_oak.name }),
-      chairs: g.build.locked ? t('Tap the check mark to put it down (the arrow turns it).')
+      chairs: g.build.locked && g.build.ghost && g.build.ghost.reason === CHAIR_RULE() ? t('Not there: a chair has to be right beside the table to face it. Tap a spot next to the table.')
+        : g.build.locked ? t('Tap the check mark to put it down (the arrow turns it).')
         : g.world.seats.length ? t('One more {name}!', { name: furnitureById.chair_oak.name })
         : t('Now two {name}s facing the table, any side you like. A table seats two.', { name: furnitureById.chair_oak.name }),
       done: t('A table for two! Tap Done to open up.'),
     })[tu.seatStage()],
     done: (g) => !g.build.active && g.world.seats.length >= 2 },
+  // the player takes the order and carries it over (boss.js), the team brews it
   { id: 'guest', panel: null, ready: (g) => g.day.isOpen && g.world.seats.length > 0, enter: (tu) => tu.callGuest(), focus: (tu) => tu.watched().who,
+    scene: (g, tu) => ['tapOrder', 'tapServe'].includes(tu.watched().what),
     text: (g, tu) => tu.guestText(),
     done: (g, ui, tu) => !!(tu.guest && tu.guest.served) },   // the guest the tour called, not whoever else was in
   { id: 'staff', dim: true, panel: 'staff',
@@ -70,6 +74,7 @@ const PRAISE = ['Nice!', "That's it!", 'Perfect!', 'Great job!'];
 const FOCUS_UP = 90;   // px above the middle of the view where the camera keeps a focus (the card waits below it)
 const FOCUS_DIST = 28;   // and it zooms in to at most this distance, so a far-off view still shows who it is about
 const partnerName = (g) => UNIQUE_NAMES[g.state.partner] || '';
+const CHAIR_RULE = () => t('Right beside the table, facing it');
 const partnerId = (g) => { const a = g.staff.find((x) => x.look.model === g.state.partner); return a ? a.id : ''; };
 
 // ---------------- lessons: trouble, taught as it unlocks ----------------
@@ -170,11 +175,12 @@ function pickCard(ui) {
     h('div.big-title', t('Pick your partner')),
     h('div.muted', t('They run the café with you from day one, and show you how it all works.')),
     h('div.pick-staff.starter-grid', UNIQUE_MODELS.map((m) => h('button.pick-tile' + (m === pick ? '.on' : ''), { onclick: () => { pick = m; render(); }, title: UNIQUE_NAMES[m] },
-      portrait(roleLook('waiter', m), 64, 64), h('b', UNIQUE_NAMES[m])))),
+      portrait(roleLook(starterRole(m), m), 64, 64), h('b', UNIQUE_NAMES[m])))),
     h('div.starter-pick',
-      portrait(roleLook('waiter', pick), 112, 112),
+      portrait(roleLook(starterRole(pick), pick), 112, 112),
       h('div.grow', h('h3', UNIQUE_NAMES[pick]),
-        h('div.muted.starter-role', t('Starts as your Server: takes orders, serves drinks and clears tables.')),
+        h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
+          : t('Starts as your Barista: brews every drink at the espresso machine.')),
         kitLines(pick, true, true).length ? h('div.sklist', ...kitLines(pick, true, true)) : h('div.muted', t('No special skills yet: a steady pair of hands.')))),
     h('button.btn.primary', { onclick: () => { g.setStarter(pick); ui.closeModal(); ui.tutorial = new Tour(ui); } }, t('Start with {name}', { name: UNIQUE_NAMES[pick] })));
   render();
@@ -224,7 +230,7 @@ class Tour {
     return ok.some((x) => x instanceof Element && x.contains(el));
   }
   /** A tap on the scene (not a drag) goes through only on steps that work there. */
-  sceneTap() { const st = this.step; return !!(st && st.scene && st.scene(this.g)); }
+  sceneTap() { const st = this.step; return !!(st && st.scene && st.scene(this.g, this)); }
   /** Keys: turning the view always, the piece in hand on steps that work in the scene. */
   key(k) {
     if (k === 'q' || k === 'Q' || k === 'e' || k === 'E' || k === '`' || k === '~') return true;
@@ -241,6 +247,15 @@ class Tour {
     ui.buildCat = 'dining'; ui.buildOpen = true;   // phones open the tray folded: unfold it
     ui.renderBuild();
   }
+  /** While the table for two is set up, a chair goes only right beside a table, facing it: no stray chair to pay for. */
+  guideChairs() {
+    const g = this.g;
+    g.build.guide = (p) => {
+      if (this.ui.tutorial !== this || this.stepId !== 'seats' || p.kind !== 'chair') return '';
+      const d = DIRS[p.dir], front = g.world.furnitureAt(p.x + d.dx, p.y + d.dy);
+      return front && front.kind === 'table' ? '' : CHAIR_RULE();
+    };
+  }
   /**
    * What to tap next in the build tray to get `want` (an item key, or 'done'): the ✓ beside the piece in hand once
    * it is pinned (nothing while it still follows the pointer: the floor comes first), "Back to items" with
@@ -249,7 +264,8 @@ class Tour {
   buildTarget(want) {
     const b = this.g.build, bar = this.ui.el.buildbar;
     if (b.placing()) {
-      if (want !== 'done' && b.tool && 'f:' + b.tool.type === want) return b.locked ? this.ui.el.ghostctl.querySelector('.gc-btn.ok') : null;
+      // (a refused spot rings nothing: the floor, another spot, comes first)
+      if (want !== 'done' && b.tool && 'f:' + b.tool.type === want) return b.locked && b.ghost && b.ghost.valid ? this.ui.el.ghostctl.querySelector('.gc-btn.ok') : null;
       return bar.querySelector('.bb-mini .btn.small');
     }
     const fold = bar.querySelector('.bb-fold');
@@ -285,6 +301,8 @@ class Tour {
       if (!this.g.world.seats.length) { if (this.g.build.active) this.g.build.exit(); this.g.ensureSeats(); }
     }
     for (const type of GUARDED) document.removeEventListener(type, this.guard, true);
+    if (this.g.build.guide) this.g.build.guide = null;
+    if (this.guest) this.guest.held = false;   // skipped halfway: the team takes over
     this.card.remove(); this.spot.remove();
     this.mark(null);
     this.g.focus = null;
@@ -301,6 +319,7 @@ class Tour {
     if (this.guestAt && now - this.guestAt < 15000) return;
     const c = this.guest = this.g.spawnCustomer(true, this.g.world.entry.y - 3);   // a few steps up the street, in sight
     c.patient = true;   // never walks out: no free seat or a slow kitchen just means a longer wait
+    c.held = true;      // the player takes their order and carries it over (jobs.pending leaves those to them)
     this.guestAt = now;
     // the camera keeps whoever is busy with them in view (see watched()), a little above the middle so the card
     // below doesn't cover them; after a drag it comes back
@@ -318,6 +337,8 @@ class Tour {
     if (c.state === 'toSeat') return { who: c, what: 'seat' };
     if (c.state === 'queue') return { who: c, what: 'queue' };
     if (c.state === 'eating') return { who: c, what: 'enjoy' };
+    if (c.held && c.state === 'waitOrder') return { who: c, what: 'tapOrder' };
+    if (c.held && c.state === 'waitFood' && (c.tickets || []).some((tk) => tk.state === 'ready' && tk.station)) return { who: c, what: 'tapServe' };
     // whoever has picked up a job for this guest: taking the order, brewing, baking or carrying it over
     const busy = g.jobs.list.filter((j) => j.customer === c && j.assignee && !j.done && !j.canceled);
     const pick = (type) => busy.find((j) => j.type === type);
@@ -341,6 +362,8 @@ class Tour {
       case 'seat': return t('They pick a free seat.');
       case 'queue': return t('Every seat is taken, so they wait for a table to free up.');
       case 'wantOrder': return t('Seated! Someone will be over to take the order.');
+      case 'tapOrder': return t("Seated and ready to order. You're the owner: tap them and take it yourself!");
+      case 'tapServe': return t("It's ready! Tap the guest to carry it over yourself.");
       case 'order': return me ? t("I'm off to take their order.") : t('{name} is taking their order.', { name });
       case 'cook': return me ? t("I'm brewing their coffee.") : t('{name} is brewing their coffee at the espresso machine.', { name });
       case 'drink': return me ? t("I'm baking their treat.") : t('{name} is baking their treat.', { name });

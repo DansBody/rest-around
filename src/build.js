@@ -26,6 +26,7 @@ export class Build {
     this.hoverWall = null; // { side, a } the pointer is at while hanging a wall piece
     this.movingWall = null;   // id of the wall piece lifted for moving
     this.selectedWall = null; // id of the hung wall piece that is selected
+    this.guide = null;     // (probe) => reason or '': a rule of the moment on top of the usual ones (the tour sets it)
   }
 
   enter() {
@@ -104,7 +105,7 @@ export class Build {
       const d = DIRS[dir];
       const front = w.furnitureAt(x + d.dx, y + d.dy);
       if (front && front.kind === 'table' && (front.seats || []).length >= TABLE_SEATS) { res.reason = t('This table already has two chairs'); return res; }
-      if (!front || front.kind !== 'table') res.hint = t('Tip: chairs must face a table to seat guests (R to rotate)');
+      if (!front || front.kind !== 'table') res.hint = g.touchMode ? t('Tip: chairs must face a table to seat guests (the arrow turns it)') : t('Tip: chairs must face a table to seat guests (R to rotate)');
     }
     let newSeats = 0;
     if (probe.kind === 'chair') {
@@ -123,6 +124,8 @@ export class Build {
       res.reason = t('{name}: {m}/{m} at level {n}, level up for more', { name: furnitureById[type].name, n: lv, m: stationCap(probe.kind, lv) });
       return res;
     }
+    const ruled = this.guide && this.guide(probe);
+    if (ruled) { res.reason = ruled; return res; }
     res.valid = true;
     return res;
   }

@@ -77,7 +77,8 @@ export class Jobs {
     this.add('prebake', { ticket: { id: uid(), dish, kind: 'stock', state: 'queued' } });
   }
 
-  pending(role) { return this.list.filter((j) => j.role === role && !j.assignee && !j.canceled && !j.done); }
+  // a guest `held` for the owner (the tour's first guest): the team leaves taking their order and carrying it over to the player
+  pending(role) { return this.list.filter((j) => j.role === role && !j.assignee && !j.canceled && !j.done && !(j.customer && j.customer.held && (j.type === 'order' || j.type === 'deliver'))); }
 
   /** Choose the best job for a staff member; reserves the espresso station or oven it needs. */
   pick(staff) {

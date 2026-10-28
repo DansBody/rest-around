@@ -411,6 +411,10 @@ export const KITS = {
 };
 /** Every perk and active skill (for the translator). */
 export const KIT_TEXT = Object.values(KITS).flatMap((k) => [...k.perks, k.active].filter(Boolean));
+/** Does this character work a role without a drawback slowing them down there (Bbaekko's Shy Heart off the kitchen)? */
+export const roleFits = (model, role) => !(KITS[model] && KITS[model].perks.some((p) => p.bad && p.roles && p.roles.includes(role)));
+/** The job a new player's partner starts in: Server, unless that would hold them back, then Barista. */
+export const starterRole = (model) => (roleFits(model, 'waiter') ? 'waiter' : 'chef');
 
 // ---------------- trouble & training ----------------
 // Now and then a guest makes trouble: a rude guest storms in and shoves the staff around, or a guest eats
