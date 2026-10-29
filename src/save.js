@@ -130,6 +130,7 @@ export function apply(game, data) {
     totals: { ...d.totals, ...(s.totals || {}) },
     settings: { ...d.settings, ...(s.settings || {}) },
     tutorialSeen: !!s.tutorialSeen,
+    cart: !!s.cart,   // began as a coffee cart (cart.js): cosmetic, the walls stay down till the first expansion
     partner: UNIQUE_MODELS.includes(s.partner) ? s.partner : null,
     street: cleanStreet(s.street),   // cosmetic: which of the street's lots are restored (street.js)
     dyes: cleanDyes(s.dyes),         // cosmetic: the dyes found for the staff palette (palette.js)

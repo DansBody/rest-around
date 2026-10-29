@@ -16,6 +16,7 @@ import { defaultName, cleanNick, NICK_MAX } from '../staff.js';
 import { DIRS } from '../iso.js';
 import { CLUB_FOR } from '../trouble.js';
 import { kitLines, coatPicker } from './panels.js';
+import { playPrologue, prologueSeen } from './prologue.js';
 import { glyph } from './icons.js';
 import { TILE } from '../models.js';
 import { t } from '../i18n.js';
@@ -30,7 +31,7 @@ import { t } from '../i18n.js';
  * `scene` lets taps on the scene through (the view can always be dragged).
  */
 const STEPS = [
-  { id: 'hello', center: true, next: true, text: (g) => t("Hi, I'm {name}! This café is ours now. Let me show you around.", { name: partnerName(g) }) },
+  { id: 'hello', center: true, next: true, text: (g) => t("I'm {name}! That cup brought it all back. Let's open up right here, I'll show you how.", { name: partnerName(g) }) },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
   // the room starts bare: a table for two first (the guest needs somewhere to sit)
   // build mode opens by itself on the tables tab; the floor takes taps, and so do the buttons round the piece in hand
@@ -161,37 +162,59 @@ export function startTutorial(ui) {
   if (s.tutorialSeen) return;
   if (!s.partner) {
     if (s.points > 0) { s.tutorialSeen = true; return; }   // a café from before there was a partner: no tour
-    ui.queueModal(() => pickCard(ui));
+    // the story first (once per browser), then the grey passers-by, one of whom becomes the partner
+    if (prologueSeen()) ui.queueModal(() => pickCard(ui));
+    else playPrologue(ui.game).then(() => ui.queueModal(() => pickCard(ui)));
     return;
   }
   ui.tutorial = new Tour(ui);
 }
 
-/** The cast to choose from: tap a portrait to read about them, name them, then start with them. */
+/**
+ * The grey passers-by (opening-premise, after the prologue): the cast drawn without colour, sheltering from the rain.
+ * Tap one to read about them, then brew them the first cup: their colour comes back, they remember and stay. Then
+ * the player names them and picks their colours, and they start as the partner.
+ */
 function pickCard(ui) {
   const g = ui.game;
   let pick = UNIQUE_MODELS[Math.floor(Math.random() * UNIQUE_MODELS.length)];
   let coat = {};   // the colours picked for `pick` (cleared when another is picked)
+  let brewed = false;   // the cup is served: their colour is back
   const card = h('div.card.starter');
-  // kept across re-renders so the typed name survives picking another portrait
+  // kept across re-renders so the typed name survives picking colours
   const nameIn = h('input.nick-input', { type: 'text', maxlength: NICK_MAX, autocomplete: 'off' });
   const go = h('button.btn.primary', { onclick: () => { g.setStarter(pick, nameIn.value, coat); ui.closeModal(); ui.tutorial = new Tour(ui); } });
   const label = () => { go.textContent = t('Start with {name}', { name: cleanNick(nameIn.value) || defaultName(pick) }); };
   nameIn.addEventListener('input', label);
+  const brew = () => {
+    brewed = true;
+    render();
+    // the colour flows back into them
+    const face = card.querySelector('.starter-head .portrait');
+    if (face) face.animate([{ filter: 'grayscale(1) brightness(1.08)', transform: 'scale(1)' }, { filter: 'grayscale(0) brightness(1.3)', transform: 'scale(1.12)', offset: 0.6 }, { filter: 'none', transform: 'none' }], { duration: 1400, easing: 'ease-out' });
+  };
   const render = () => {
     nameIn.placeholder = defaultName(pick);
     label();
+    const look = withCoat(roleLook(starterRole(pick), pick), coat);
+    const head = h('div.starter-head', h('span' + (brewed ? '' : '.grey'), portrait(look, 88, 88)),
+      h('div.grow', h('h3', defaultName(pick)),
+        h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
+          : t('Starts as your Barista: brews every drink at the espresso machine.'))));
+    if (!brewed) {
+      card.replaceChildren(
+        h('div.big-title', t('Grey passers-by')),
+        h('div.muted', t('They shelter from the rain, the colour of the street. One cup might bring someone back.')),
+        h('div.pick-staff.starter-grid', UNIQUE_MODELS.map((m) => h('button.pick-tile' + (m === pick ? '.on' : ''), { onclick: () => { if (m !== pick) coat = {}; pick = m; render(); }, title: defaultName(m) },
+          h('span.grey', portrait(roleLook(starterRole(m), m), 64, 64)), h('b', defaultName(m))))),
+        h('div.starter-pick', head,
+          kitLines(pick, true, true).length ? h('div.sklist', ...kitLines(pick, true, true)) : h('div.muted', t('No special skills yet: a steady pair of hands.'))),
+        h('button.btn.primary', { onclick: brew }, t('Brew {name} a cup', { name: defaultName(pick) })));
+      return;
+    }
     card.replaceChildren(
-      h('div.big-title', t('Pick your partner')),
-      h('div.muted', t('They run the café with you from day one, and show you how it all works.')),
-      h('div.pick-staff.starter-grid', UNIQUE_MODELS.map((m) => h('button.pick-tile' + (m === pick ? '.on' : ''), { onclick: () => { if (m !== pick) coat = {}; pick = m; render(); }, title: defaultName(m) },
-        portrait(roleLook(starterRole(m), m), 64, 64), h('b', defaultName(m))))),
-      h('div.starter-pick',
-        h('div.starter-head', portrait(withCoat(roleLook(starterRole(pick), pick), coat), 88, 88),
-          h('div.grow', h('h3', defaultName(pick)),
-            h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
-              : t('Starts as your Barista: brews every drink at the espresso machine.')))),
-        kitLines(pick, true, true).length ? h('div.sklist', ...kitLines(pick, true, true)) : h('div.muted', t('No special skills yet: a steady pair of hands.'))),
+      h('div.starter-pick', head,
+        h('div.starter-quote', t("\"…Warm. I think I remember something. I worked in a café, once. I'll stay and help.\""))),
       coatPicker(g, pick, coat, (k, c) => { coat = { ...coat, [k]: c }; render(); }),
       h('label.nick-field', h('span', t('Give them a name')), nameIn),
       go);

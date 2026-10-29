@@ -68,8 +68,17 @@ class Audio {
     if (mood !== this.moodNow) { this.moodNow = mood; this.queueTrack(this.nextOf(mood), null); return; }
     if (TRACKS[mood].length > 1 && m && !this.loading && this.ctx.currentTime > m.endsAt - NEXT_AHEAD) this.queueTrack(this.nextOf(mood), m.endsAt);
   }
-  /** A scene's own music over the café's mood (tools/music/battle.py while a battle is on); null hands back. */
-  setScene(scene) { this.scene = scene; if (this.musicTimer) this.followMood(); }
+  /** A scene's own music over the café's mood (tools/music/battle.py while a battle is on); null hands back.
+   *  `quick`: the scene's first track comes in within a second (the prologue), not over the café's slow fade. */
+  setScene(scene, quick = false) { this.scene = scene; this.quickIn = quick; if (this.musicTimer) this.followMood(); }
+  /** Fetch and decode the track `mood` would start with now, ahead of the tap that lets it play (one kept). */
+  prefetch(mood) {
+    const list = TRACKS[mood];
+    if (!list) return;
+    const name = list[(this.turn[mood] || 0) % list.length];
+    if (!this.pre || this.pre.name !== name) this.pre = { name, p: this.decodeTrack(name) };
+    this.pre.p.catch(() => { this.pre = null; });
+  }
   nextOf(mood) { const list = TRACKS[mood], i = this.turn[mood] || 0; this.turn[mood] = i + 1; return list[i % list.length]; }
   /** Starts `name` right away with a slow crossfade (a new mood, or the first track), or at `at`, as the track before ends. */
   queueTrack(name, at) {
@@ -82,7 +91,9 @@ class Audio {
       src.buffer = buf; src.loop = true; src.loopStart = loop[0]; src.loopEnd = loop[1];
       const next = at != null, t = next ? Math.max(now + 0.05, at - 0.5) : now + 0.05;
       const cut = !next && this.moodNow === 'battle';   // a fight cuts straight in, no slow café crossfade
-      const [r0, r1] = cut ? [0, 0.1] : next ? [0, 2] : this.music ? [1.5, 5.5] : [0, 3];
+      const quick = !next && this.quickIn;   // the prologue: in within a second
+      this.quickIn = false;
+      const [r0, r1] = cut ? [0, 0.1] : quick ? [0, 0.8] : next ? [0, 2] : this.music ? [1.5, 5.5] : [0, 3];
       g.gain.setValueAtTime(0.0001, now);
       g.gain.setValueAtTime(0.0001, t + r0);
       g.gain.linearRampToValueAtTime(MUSIC_GAIN, t + r1);
@@ -102,7 +113,11 @@ class Audio {
     src.onended = () => g.disconnect();
   }
   /** Fetches and decodes one track (at 32 kHz: half the memory of a 48 kHz buffer, nothing audible lost). */
-  async loadTrack(name) {
+  loadTrack(name) {
+    if (this.pre && this.pre.name === name) { const p = this.pre.p; this.pre = null; return p; }   // fetched ahead (prefetch)
+    return this.decodeTrack(name);
+  }
+  async decodeTrack(name) {
     this.musicMeta ||= fetch(MUSIC + 'music.json').then((r) => r.json());
     const [meta, bytes] = await Promise.all([this.musicMeta, fetch(MUSIC + name + '.mp3').then((r) => r.arrayBuffer())]);
     let dec = this.ctx;

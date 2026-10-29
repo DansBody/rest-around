@@ -5,6 +5,7 @@
 // or every side of a chair, are refused with a reason.
 import { World, DOOR_Y } from './world.js';
 import { DIRS } from './iso.js';
+import { isCart } from './cart.js';
 import { furnitureById, floorById, wallById, EXPANSIONS, SELL_RATE, wallDecorById, wallLayout, wallDoorSpan, WALL_GAP, TABLE_SEATS, seatCap, stationCap, STATION_KINDS } from './data.js';
 import { tileKey, bus } from './util.js';
 import { t } from './i18n.js';
@@ -367,10 +368,11 @@ export class Build {
   finishExpansion() {
     const g = this.game, x = g.state.expansion;
     if (!x || g.now() < x.end) return false;
+    const cart = isCart(g);   // the first expansion of a café that began as a cart: the shop pops up (renderer.js)
     g.state.expansion = null;
     if (x.size > g.world.size) { g.world.resize(x.size); g.camera.setRoom(x.size); }
     g.sfx('levelup');
-    g.toast(t('Construction done: the café is now {n}×{n}!', { n: x.size }), 'good');
+    g.toast(cart ? t('Your shop popped up round the cart: {n}×{n}!', { n: x.size }) : t('Construction done: the café is now {n}×{n}!', { n: x.size }), 'good');
     g.changed('build'); g.changed('expansion');
     return true;
   }

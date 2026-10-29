@@ -48,6 +48,7 @@ export function defaultState() {
     wardrobe: {},        // accessories bought: id -> copies (each copy is worn by one character at a time)
     garden: [],
     expansion: null,     // a bigger floor plan being built: { size, start, end } (ms on the wall clock), see Build.expand
+    cart: false,         // began as a coffee cart (cart.js): no walls till the first expansion pops the shop up
     giftDay: 0,          // the calendar day the gift was last opened
     stats: null,
     totals: { served: 0, lost: 0, coins: 0, rounds: 0 },
@@ -120,6 +121,7 @@ export class Game {
     this.addStaff(makeStaff(this, 'waiter', 'mochalatte'), 2, 2);
     this.addStaff(makeStaff(this, 'chef', 'bbaekko'), 6, 2);
     this.state.vouchers = 2;   // enough for the tutorial's first study
+    this.state.cart = true;    // a new café starts as a coffee cart on an empty lot (opening-premise)
     this.day.snap();   // onto the wall clock (and the day's goal)
     this.day.nextSpawn = 3;
     this.rating.recompute();

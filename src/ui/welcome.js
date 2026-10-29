@@ -9,6 +9,7 @@ import { t } from '../i18n.js';
 import { glyph } from './icons.js';
 import { errText } from './account.js';
 import { startTap } from './fullscreen.js';
+import { audio } from '../audio.js';
 
 
 /**
@@ -27,6 +28,7 @@ export function chooseStart(loading, o = {}) {
   return new Promise((resolve) => {
     const done = () => {
       startTap();   // the tap into the game is the gesture fullscreen needs (ui/fullscreen.js)
+      audio.unlock();   // and the one sound needs: the music (the prologue's rain, a new café) starts with it
       loading.classList.remove('choosing');
       pane.remove();
       resolve();

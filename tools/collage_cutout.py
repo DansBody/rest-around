@@ -5,6 +5,8 @@
 #   python tools/collage_cutout.py moka.png assets/ui/collage/moka.webp 300 240 6 4
 # A threshold of 0 keeps the whole picture (no cut-out, no edge), for full-bleed photos:
 #   python tools/collage_cutout.py latte.png assets/ui/collage/latte.webp 640 0 0 4
+# A 7th argument `colour` keeps the photo's own colours under a lighter dot screen (a real-object sticker):
+#   python tools/collage_cutout.py palette_src.png assets/ui/collage/palette.webp 560 246 8 5 colour
 import sys
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
@@ -13,9 +15,11 @@ src, dst, W = sys.argv[1], sys.argv[2], int(sys.argv[3])
 thr = int(sys.argv[4]) if len(sys.argv) > 4 else 246
 edge = int(sys.argv[5]) if len(sys.argv) > 5 else 7
 dot = int(sys.argv[6]) if len(sys.argv) > 6 else 5
+colour = len(sys.argv) > 7 and sys.argv[7] == 'colour'
 
-im = Image.open(src).convert('L')
-im = im.resize((W, round(im.height * W / im.width)), Image.LANCZOS)
+src_im = Image.open(src).convert('RGB')
+src_im = src_im.resize((W, round(src_im.height * W / src_im.width)), Image.LANCZOS)
+im = src_im.convert('L')
 g = np.asarray(im).astype(np.float32)
 
 # background = near-white pixels connected to the border (flood fill on a padded mask)
@@ -61,7 +65,12 @@ edge_m = Image.fromarray((m * 255).astype(np.uint8))
 if edge > 0:   # (a 1-px rank filter crashes Pillow)
     edge_m = edge_m.filter(ImageFilter.MaxFilter(edge * 2 + 1)).filter(ImageFilter.GaussianBlur(0.8))
 alpha = np.asarray(edge_m)
-rgb = np.where(m[..., None], np.repeat(grey[..., None], 3, 2), 255).astype(np.uint8)
+if colour:   # the photo's colours, the dots printed more lightly over them
+    col = np.asarray(src_im).astype(np.float32) * (1 - 0.28 * screen)[..., None] + grain[..., None] * 255
+    body = np.clip(col, 0, 255)
+else:
+    body = np.repeat(grey[..., None], 3, 2)
+rgb = np.where(m[..., None], body, 255).astype(np.uint8)
 res = Image.fromarray(np.dstack([rgb, alpha]), 'RGBA')
 if thr > 0:
     bb = res.getbbox(); res = res.crop(bb)

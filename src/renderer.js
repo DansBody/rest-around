@@ -10,6 +10,7 @@ import { Steam } from './steam.js';
 import { StreetView } from './streetview.js';
 import { DEPTH } from './street.js';
 import { DOOR_Y, World } from './world.js';
+import { isCart, cartSpan, buildCart, paving } from './cart.js';
 import { furnitureById, dishById, wallDecorById, wallLayout } from './data.js';
 import { clamp, easeOutBack, lerp, fmtLeft } from './util.js';
 import { FONT, DISPLAY_FONT } from './placeholder.js';
@@ -408,6 +409,7 @@ export class Renderer {
     sign.position.set(-T / 2, 2.62, DOOR_Y * TILE + TILE / 2);
     room.add(sign);
     this.signMesh = sign;
+    this.signTex = signTex;   // the coffee cart carries the same board
 
     // door mat just inside the door (lies diagonal so its cup reads upright from the default camera)
     const matHolder = new THREE.Group();
@@ -415,6 +417,7 @@ export class Renderer {
     matMesh.rotation.x = -Math.PI / 2; matMesh.receiveShadow = true;
     matHolder.add(matMesh); matHolder.rotation.y = Math.PI / 4; matHolder.position.set(1.7, 0.016, (DOOR_Y + 0.5) * TILE);
     room.add(matHolder);
+    this.matHolder = matHolder;
 
     // flower boxes and a welcome sign outside
     const outside = (id, x, z, rot, sc = 1) => { const o = models.instance(id); o.position.set(x, 0, z); o.rotation.y = rot; o.scale.setScalar(sc); room.add(o); };
@@ -515,9 +518,14 @@ export class Renderer {
       g.camera.setRoom(g.world.size, { x0: e.x0 + DEPTH / 2, x1: e.x1 - DEPTH / 2, z0: e.z0 + DEPTH / 2, z1: e.z1 - DEPTH / 2 });
       this.shadowDirty = true;
     }
+    // the coffee cart stage (cart.js): no walls till the first expansion, which pops the shop up round the cart
+    const cart = isCart(g);
+    if (this.cart && !cart) this.shopPopAt = this.time;
+    this.cart = cart;
     this.updateLighting(realDt);
     this.syncFloors();
     this.syncWalls(realDt);
+    this.syncCart();
     this.syncWallDecor();
     this.syncDoor();
     this.syncConstruction();
@@ -570,7 +578,7 @@ export class Renderer {
 
   syncFloors() {
     const w = this.game.world;
-    const key = w.size + ':' + w.floors.map((c) => c.join(',')).join(';');
+    const key = w.size + ':' + (this.cart ? 'cart' : w.floors.map((c) => c.join(',')).join(';'));
     if (key === this.floorKey) return;
     this.floorKey = key;
     if (this.floorGeo) this.floorGeo.dispose();
@@ -578,9 +586,9 @@ export class Renderer {
     const geo = this.floorGeo = new THREE.PlaneGeometry(TILE, TILE);
     const mats = new Map();
     for (let x = 0; x < w.size; x++) for (let y = 0; y < w.size; y++) {
-      const fl = w.floorOf(x, y);
+      const fl = this.cart ? { id: 'lot' } : w.floorOf(x, y);   // the cart stands on the empty lot's paving
       let m = mats.get(fl.id);
-      if (!m) { m = lam(fl.tint || '#ffffff', { map: this.tex(fl.asset, 1) }); mats.set(fl.id, m); }
+      if (!m) { m = this.cart ? lam('#ffffff', { map: paving() }) : lam(fl.tint || '#ffffff', { map: this.tex(fl.asset, 1) }); mats.set(fl.id, m); }
       const t = new THREE.Mesh(geo, m);
       t.rotation.x = -Math.PI / 2; t.position.set(x * TILE + 1, 0.005, y * TILE + 1); t.receiveShadow = true;
       this.floorGroup.add(t);
@@ -592,22 +600,57 @@ export class Renderer {
     if (this.wallTexId !== wp.asset) { this.wallMat.map = this.tex(wp.asset, 1); this.wallMat.needsUpdate = true; this.wallTexId = wp.asset; }
     this.wallMat.color.set(wp.tint || '#ffffff');
     const v = this.game.camera.viewDir();
-    for (const s of this.sides) {
+    // the shop popping up out of the cart stage: each wall stands up in turn and overshoots, like a pop-up book
+    const pop = this.shopPopAt != null ? (this.time - this.shopPopAt) / 1.3 : 2;
+    if (pop >= 2) this.shopPopAt = null;
+    this.sides.forEach((s, i) => {
       const o = s.userData.outward;
       const front = o.x * v.x + o.z * v.z > 0.25; // wall stands between the camera and the room
-      const target = front ? 0.16 : 1;
+      const target = this.cart ? 0 : front ? 0.16 : 1;
       if (Math.abs(target - s.userData.h) > 1e-4) this.shadowDirty = true;   // a wall folding down moves its shadow
-      s.userData.h += (target - s.userData.h) * Math.min(1, dt * 6);
-      s.scale.y = s.userData.h;
+      if (pop < 1.6) { s.userData.h = target * easeOutBack(clamp(pop * 1.3 - i * 0.12, 0, 1)); this.shadowDirty = true; }
+      else s.userData.h += (target - s.userData.h) * Math.min(1, dt * 6);
+      s.scale.y = Math.max(s.userData.h, 1e-3);
+      s.visible = s.userData.h > 0.01;
       if (s.userData.deco) s.userData.deco.visible = s.userData.h > 0.92;
       if (s.userData.name === 'west') this.doorHidden = s.userData.h < 0.5;
-    }
+    });
+    // no shop front on a cart: the door, the sign over it and the mat come with the walls
+    this.signMesh.visible = this.matHolder.visible = !this.cart;
   }
+
+  /** The coffee cart round the till and the espresso station while the café is a cart (cart.js): built when they
+   *  move, popped up on its own (popCart, after the prologue) and folded away as the shop stands up round it. */
+  syncCart() {
+    const g = this.game, span = this.cart ? cartSpan(g.world) : null;
+    const key = span ? JSON.stringify(span) : '';
+    if (key && key !== this.cartKey) {
+      if (this.cartObj) this.scene.remove(this.cartObj);
+      this.cartObj = buildCart(span, TILE, this.signTex);
+      this.scene.add(this.cartObj);
+      this.cartKey = key;
+      this.shadowDirty = true;
+    }
+    if (!this.cartObj) return;
+    const body = this.cartObj.children[0];
+    if (!this.cart) {   // the shop is up: the cart folds down and goes
+      body.scale.y = Math.max(0, body.scale.y - 0.03);
+      this.shadowDirty = true;
+      if (body.scale.y <= 0) { this.scene.remove(this.cartObj); this.cartObj = null; this.cartKey = ''; }
+      return;
+    }
+    const k = this.cartPopAt != null ? (this.time - this.cartPopAt) / 0.7 : 1;
+    if (k < 1) this.shadowDirty = true;
+    else this.cartPopAt = null;
+    body.scale.y = Math.max(1e-3, easeOutBack(clamp(k, 0, 1)));
+  }
+  /** Pop the cart up like a page of a pop-up book (the prologue's centre well lands on the lot). */
+  popCart() { this.cartPopAt = this.time; }
 
   syncDoor() {
     const open = this.game.doorOpen || 0;
     this.door.rotation.y = -Math.PI / 2 + open * 1.35;
-    this.door.visible = !this.doorHidden;
+    this.door.visible = !this.doorHidden && !this.cart;
   }
 
   placeFurniture(obj, f) {

@@ -23,6 +23,8 @@ import { renderTraining } from './training.js';
 import { renderToday, tickToday } from './today.js';
 import { audio } from '../audio.js';
 import { gl, glyph } from './icons.js';
+import { forgetPrologue } from './prologue.js';
+import { isCart } from '../cart.js';
 import { t, tt, titledRole, LANGS, getLang } from '../i18n.js';
 
 const I = (id, s = 22) => assets.iconEl(id, s);
@@ -468,7 +470,7 @@ function renderSettings(ui, body) {
           g.newGame();
           try { await cloud.reset(serialize(g)); } catch (e) { console.warn(e); g.toast(t('Could not reach the server, try again.'), 'bad'); g.resetting = false; location.reload(); return; }
         }
-        clearSave(); location.reload();
+        clearSave(); forgetPrologue(); location.reload();
       })),
     h('div.muted', { style: { marginTop: '6px' } }, t('Progress autosaves every 10 seconds and when you close the tab. The café keeps trading while you are away (up to {n} hours) and tells you how it went when you come back.', { n: awayHours(s.level) })),
     ...accountSection(ui),
@@ -565,7 +567,7 @@ export function buildTray(ui, bar) {
     if (x) {   // under construction: what is being built and how long it still takes
       const total = x.end - x.start, left = Math.max(0, x.end - g.now());
       items.append(h('div.row.expand-row', { style: { flex: 1 } }, glyph('build', 34),
-        h('div.grow', h('h3', t('Building the {n}×{n} floor plan', { n: x.size })), h('div.muted', t('The café stays open meanwhile.')),
+        h('div.grow', h('h3', isCart(g) ? t('Building your shop ({n}×{n})', { n: x.size }) : t('Building the {n}×{n} floor plan', { n: x.size })), h('div.muted', t('The café stays open meanwhile.')),
           h('div.pbar.gold.expand-bar', h('i', { style: { width: (total ? (1 - left / total) * 100 : 100) + '%' } }))),
         h('b.expand-left', fmtLeft(left))));
     } else if (e) {
@@ -576,7 +578,7 @@ export function buildTray(ui, bar) {
         h('span.pill', glyph('clock', 14), t('{n} h to build', { n: e.hours })),
       ];
       items.append(h('div.row.expand-row', { style: { flex: 1 } }, I('icon_move', 40),
-        h('div.grow', h('h3', t('Expand to {n}×{n}', { n: e.size })), h('div.chips', need),
+        h('div.grow', h('h3', isCart(g) ? t('From cart to shop ({n}×{n})', { n: e.size }) : t('Expand to {n}×{n}', { n: e.size })), h('div.chips', need),
           h('div.muted', why === 'level' ? t('Reach level {n} to unlock', { n: e.level }) : why === 'rating' ? t('Needs a {r}★ rating', { r: e.rating }) : t('Paid now, built in {n} h while the café stays open.', { n: e.hours }))),
         h('button.btn.primary' + (why ? '.disabled' : ''), { onclick: () => b.expand() }, coinPill(e.price))));
     } else items.append(h('div.row', { style: { flex: 1 } }, h('div.grow', h('h3', t('Your café is as big as it gets!')))));

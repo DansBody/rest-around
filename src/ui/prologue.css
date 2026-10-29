@@ -1,0 +1,101 @@
+/* The prologue (src/ui/prologue.js): a grey halftone street in the rain, the colourist as the one denim cut-out,
+   a line box at the foot in the Refillit OS window style. Over everything, the café waiting behind it.
+   Until the cup is drunk (.bw) the whole scene, the colourist and the UI included, is black and white; then the
+   street fills in with faded colour (a colour photo under the halftone print) and the colourist's denim comes in a
+   moment later, the one strong colour. */
+#prologue { position: fixed; inset: 0; z-index: 90; overflow: hidden; background: #2b2b2e; color: var(--os-ink);
+  font-family: var(--os-font); user-select: none; -webkit-user-select: none; cursor: pointer; touch-action: manipulation; }
+#prologue > * { position: absolute; pointer-events: none; }
+#prologue .pr-skip, #prologue .pr-line { pointer-events: auto; }
+#prologue > * { filter: grayscale(0); transition: filter 1.8s ease-out; }
+#prologue.bw > * { filter: grayscale(1); }
+
+.pr-street { inset: -8%; background: #fff; opacity: 0; }
+.pr-street > i { position: absolute; inset: 0; background-position: center 60%; background-size: cover; background-repeat: no-repeat; }
+.pr-col { background-image: url('../../assets/ui/collage/street_colour.webp');
+  -webkit-mask: url('../../assets/ui/collage/bloom.webp') center 50% / 0.1% auto no-repeat; mask: url('../../assets/ui/collage/bloom.webp') center 50% / 0.1% auto no-repeat; }
+.pr-col.full { -webkit-mask: none; mask: none; }
+.pr-paint { background-image: url('../../assets/ui/collage/bloom.webp'); background-position: center 50%; background-size: 0.1% auto; mix-blend-mode: multiply; opacity: 0; }
+.pr-ht { background-image: url('../../assets/ui/collage/street.webp'); mix-blend-mode: multiply; }
+/* two sheets of rain at different speeds */
+.pr-rain { inset: -20% 0 0; opacity: 0;
+  background:
+    repeating-linear-gradient(104deg, transparent 0 31px, rgba(255, 255, 255, .22) 31px 32px, transparent 32px 57px),
+    repeating-linear-gradient(98deg, transparent 0 19px, rgba(255, 255, 255, .12) 19px 20px, transparent 20px 41px);
+  background-size: 220px 180px, 140px 120px; animation: pr-rain .5s linear infinite; }
+@keyframes pr-rain { to { background-position: -40px 180px, -26px 120px; } }
+
+/* the colourist: a denim cut-out under the lamp, on the right */
+.pr-figure { right: 9%; bottom: 13%; height: min(64vh, 560px); aspect-ratio: 410 / 833; opacity: 0;
+  background: url('../../assets/ui/collage/figure.webp') center / contain no-repeat; filter: grayscale(0) drop-shadow(5px 6px 0 rgba(31, 42, 74, .35));
+  transition: filter 2.4s ease-out .9s; }
+#prologue.bw .pr-figure { filter: grayscale(1) drop-shadow(5px 6px 0 rgba(31, 42, 74, .35)); }
+
+/* the grey hand with the cup, coming in from the top right; the cup sits low on the left of the picture */
+.pr-hand { right: max(4%, 50% - 300px); top: 4%; width: min(58vw, 380px); aspect-ratio: 411 / 590; opacity: 0; }
+.pr-hand.on { opacity: 1; }
+.pr-arm { position: absolute; inset: 0; background: url('../../assets/ui/collage/hand_cup.webp') center / contain no-repeat;
+  filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .3)); }
+/* steam out of the cup's mouth (low on the left of the picture), behind the fingers above it: each wisp rises, swells,
+   sways and thins out, the next one already on its way */
+.pr-steam { position: absolute; left: 23%; bottom: 17%; width: 24%; aspect-ratio: 194 / 720; transform: rotate(-14deg); transform-origin: 50% 100%; }
+.pr-steam i { position: absolute; inset: 0; background: url('../../assets/ui/collage/steam_wisp.webp') center bottom / contain no-repeat;
+  transform-origin: 50% 100%; opacity: 0; animation: pr-waft 3.6s linear infinite; animation-delay: calc(var(--i) * -1.2s); }
+.pr-steam i:nth-child(2) { scale: -1 1; }
+@keyframes pr-waft {
+  0% { opacity: 0; transform: translateY(12%) scale(.55, .5); }
+  18% { opacity: .95; }
+  50% { transform: translate(-6%, -14%) scale(.85, .9) skewX(6deg); }
+  75% { opacity: .55; }
+  100% { opacity: 0; transform: translate(4%, -34%) scale(1.15, 1.2) skewX(-5deg); }
+}
+
+/* the palette: a real porcelain one, a sticker; the centre well (in the middle of the picture) glows at the end */
+.pr-palette { left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); width: min(62vw, 300px); aspect-ratio: 1; transform: translate(-50%, 160%);
+  background: url('../../assets/ui/collage/palette.webp') center / contain no-repeat; filter: drop-shadow(6px 7px 0 rgba(31, 42, 74, .4)); }
+.pr-glow { position: absolute; left: 50%; top: 50%; width: 28%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, rgba(255, 236, 190, .95), rgba(255, 214, 140, .5) 45%, transparent 70%); mix-blend-mode: screen; }
+.pr-palette.centre .pr-glow { animation: pr-glow 1.2s ease-in-out infinite; }
+@keyframes pr-glow { 0%, 100% { opacity: .35; scale: 1; } 50% { opacity: 1; scale: 1.18; } }
+
+/* the first card: who we are (a slanted denim plate) */
+.pr-title { left: 6%; top: calc(14% + env(safe-area-inset-top)); max-width: 88%; padding: 10px 20px 12px; opacity: 1; transform: translate(-130%, 0);
+  background: var(--os-denim); color: #fff; font: 30px/1.15 'Refillit Display', var(--os-font); box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--os-ink), 6px 7px 0 5px rgba(31, 42, 74, .45); }
+.pr-title:empty { display: none; }
+
+/* the line box: an OS window at the foot; who speaks on a plate breaking out of its top */
+.pr-line { left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(92vw, 640px); translate: -50% 0; min-height: 92px; padding: 18px 20px 16px;
+  background: var(--os-frame); border: var(--os-b) solid var(--os-ink); border-radius: 3px; box-shadow: var(--os-bevel), var(--os-drop);
+  font-size: 18px; line-height: 1.5; opacity: 0; transform: translateY(14px); transition: opacity .18s, transform .18s; }
+.pr-line.show { opacity: 1; transform: none; }
+.pr-line.narr { background: var(--os-paper); }
+.pr-who { position: absolute; left: 14px; top: -16px; padding: 3px 12px; background: var(--os-denim); color: #fff; font-size: 15px; transform: skewX(-8deg); box-shadow: 3px 3px 0 var(--os-ink); }
+.pr-who:empty { display: none; }
+.pr-more { position: absolute; right: 14px; bottom: 8px; font-style: normal; font-size: 13px; color: var(--os-denim); animation: pr-blink .9s steps(2, end) infinite; }
+@keyframes pr-blink { 50% { opacity: 0; } }
+
+.pr-skip { right: calc(14px + env(safe-area-inset-right)); top: calc(14px + env(safe-area-inset-top)); padding: 6px 14px; cursor: pointer;
+  background: var(--os-frame); color: var(--os-ink); border: var(--os-b) solid var(--os-ink); border-radius: 3px; box-shadow: var(--os-bevel); font: 15px var(--os-font); }
+
+/* before anything has been tapped: a black screen asking for the tap that lets the sound play */
+.pr-start { inset: 0; display: grid; place-items: center; background: #111; z-index: 2; }
+.pr-start span { padding: 8px 18px; color: #e8e8ea; border: 2px solid #e8e8ea; font-size: 18px; animation: pr-blink 1.4s steps(2, end) infinite; }
+
+/* the centre well opening over everything: the café's cream */
+.pr-dive { inset: 0; background: var(--os-paper); }
+
+@media (max-width: 600px) {
+  .pr-figure { right: 2%; bottom: 22%; height: 50vh; }
+  .pr-title { font-size: 24px; }
+  .pr-line { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-rain, .pr-more { animation: none; }
+  .pr-steam i { animation: none; opacity: .8; }
+}
+
+/* the grey passers-by (tutorial.js pickCard): the cast without colour until their cup is brewed */
+.starter .grey { display: contents; }
+.starter .grey .portrait, .starter .grey canvas, .starter .grey img { filter: grayscale(1) brightness(1.08); }
+.starter-head > span { flex: none; display: block; }
+.starter-quote { margin-top: 4px; padding: 10px 12px; background: var(--os-paper); border-left: 4px solid var(--os-denim); font-size: 15px; line-height: 1.5; }
