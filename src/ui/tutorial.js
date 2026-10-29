@@ -156,6 +156,9 @@ export function startWatch(ui, c, kind) {
   return true;
 }
 
+/** The grey passers-by card on its own (developer mode). */
+export function showPassersBy(ui) { ui.queueModal(() => pickCard(ui)); }
+
 /** Start (or pick up) the tour for a new café. Call once the UI is up. */
 export function startTutorial(ui) {
   const s = ui.game.state;

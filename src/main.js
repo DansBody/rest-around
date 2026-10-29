@@ -7,7 +7,7 @@ import { Renderer } from './renderer.js';
 import { UI } from './ui/ui.js';
 import { DebugPanel } from './ui/debug.js';
 import { setupInput } from './input.js';
-import { load, save, serialize, readLocal, apply } from './save.js';
+import { load, save, serialize, readLocal, apply, useSaveSlot } from './save.js';
 import { settleOffline } from './offline.js';
 import { cloud, HEARTBEAT } from './cloud.js';
 import { initAccount } from './ui/account.js';
@@ -23,6 +23,8 @@ import { OFFLINE } from './data.js';
 import { lockPageZoom } from './nozoom.js';
 import { openBattle } from './ui/battle.js';
 import { openBattleRt } from './ui/battlert.js';
+import { openBrew } from './ui/brew.js';
+import { isDev, startScene, setupDev } from './ui/devmode.js';
 
 const loading = document.getElementById('loading');
 const bar = loading.querySelector('.load-bar i');
@@ -62,10 +64,12 @@ async function boot() {
   const game = new Game();
   window.game = game; // handy for the console / automated checks
   // online: the server has the café (and settles the time away); without it, this browser's copy
+  const dev = isDev();
   let status, offline = false;
   msg.textContent = t('Opening the café…');
   try {
-    if (new URLSearchParams(location.search).has('offline')) throw new Error('?offline: playing without the server');   // local testing
+    if (dev) useSaveSlot('dev');   // developer mode: its own sandbox café, never the real one
+    if (dev || new URLSearchParams(location.search).has('offline')) throw new Error('?offline / ?dev: playing without the server');   // local testing
     status = await cloud.login(game, () => { game.newGame(); return serialize(game); }, startScreen);
   } catch (e) {
     console.warn('Server unreachable, playing offline', e);
@@ -96,7 +100,8 @@ async function boot() {
   if (status === 'corrupt') ui.toast(t('Your save was damaged, so a fresh café was opened. (A backup was kept.)'), 'bad');
   else if (status === 'loaded' && !game.awayReport) ui.toast(t('Welcome back to {name}!', { name: game.state.name }), 'good');
   else if (status !== 'loaded') ui.toast(t('Welcome to your new café! Guests are on their way ☕'), 'good');
-  if (offline) ui.toast(t('Could not reach the server: playing offline. Progress made now stays on this device.'), 'bad');
+  if (dev) ui.toast('開發者模式：沙盒存檔，不連 server（?dev=0 關閉）', 'good');
+  else if (offline) ui.toast(t('Could not reach the server: playing offline. Progress made now stays on this device.'), 'bad');
 
   // the server turned this game away: it can no longer save, so stop and offer a reload
   cloud.onStop = (reason) => {
@@ -139,7 +144,7 @@ async function boot() {
     ui.queueModal(() => ui.awayCard(away.report));
   };
   if (game.awayReport) ui.queueModal(() => ui.awayCard(game.awayReport));
-  if (!game.visit) startTutorial(ui);   // a new café: pick a partner, who shows the player around
+  if (!game.visit && !startScene()) startTutorial(ui);   // a new café: pick a partner, who shows the player around (not when a scene is asked for)
   cloud.onIncoming(cloud.incoming);   // after "Welcome back", which says what the café did on its own
 
   let last = performance.now();
@@ -166,7 +171,9 @@ async function boot() {
   loading.classList.add('hide');
   setTimeout(() => loading.remove(), 500);
   const q = new URLSearchParams(location.search);
-  if (q.has('battle')) (q.has('rt') ? openBattleRt : openBattle)(game);   // the battle prototype (design/combat/DESIGN.md); &rt: real time
+  if (dev) setupDev(game, ui, debug);   // the DEV tab, and ?scene=… (ui/devmode.js)
+  else if (q.has('battle')) (q.has('rt') ? openBattleRt : openBattle)(game);   // the battle prototype (design/combat/DESIGN.md); &rt: real time
+  else if (q.has('brew')) openBrew(game);   // the cart's hand brew on its own (ui/brew.js)
 }
 lockPageZoom();
 boot();

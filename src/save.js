@@ -17,7 +17,9 @@ import { cleanDyes } from './palette.js';
 import { cleanTickets, cleanOuting } from './outing.js';
 
 // Kept from the game's old name (Rest Around) so saves survive the rename to Refillit.
-export const SAVE_KEY = 'restAround.save.v1';
+export let SAVE_KEY = 'restAround.save.v1';
+/** Keep this browser's café under another key from now on (developer mode's sandbox: ui/devmode.js). */
+export function useSaveSlot(name) { SAVE_KEY = 'restAround.save.v1.' + name; }
 const num = (v, d, lo = -Infinity, hi = Infinity) => (typeof v === 'number' && isFinite(v) ? clamp(v, lo, hi) : d);
 
 export function serialize(game) {

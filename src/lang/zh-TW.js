@@ -634,4 +634,17 @@ export const ZH_TW = {
   'Building your shop ({n}×{n})': '店舖施工中（{n}×{n}）', 'From cart to shop ({n}×{n})': '從攤車變成店舖（{n}×{n}）',
   'Your shop popped up round the cart: {n}×{n}!': '店舖在攤車四周彈出來了：{n}×{n}！',
   'Tap to begin': '點一下開始',
+  // hand brewing at the cart (ui/brew.js)
+  '1 / 3  Grind': '1 / 3  磨豆', 'Draw circles round the grinder to turn it.': '繞著磨豆機畫圈，把它轉起來。',
+  '2 / 3  Bloom': '2 / 3  悶蒸', 'Hold to pour a little, up to Bloom on the gauge, then let go.': '按住倒一點水，倒到右邊「悶蒸」那格就放開。',
+  'The grounds swell and bubble. Wait till the bubbles settle, then pour again.': '咖啡粉鼓起來冒泡了。等泡泡消下去，再繼續倒。',
+  '3 / 3  Pour': '3 / 3  注水', 'Keep the stream on the dot as it circles. Let go at Full.': '讓水柱跟著發光的點繞圈。倒到「滿」就放開。',
+  'Sweet and clear. Just right.': '甜而乾淨，剛剛好。',
+  'A bit sour: the bloom was cut short, or the cup was poured thin.': '有點酸：悶蒸太短，或水倒得不夠。',
+  'A bit bitter: it sat too long, or the water ran over.': '有點苦：泡太久了，或水溢出來了。',
+  'Uneven: the stream kept losing the dot. Follow it round, slow and steady.': '不太均勻：水柱常常沒跟上光點。慢慢跟著它繞就好。',
+  '% colour back': '% 的顏色回來了', 'Hand it to {name}': '交給{name}',
+  'Serve': '出杯',
+  'Bloom': '悶蒸', 'Full': '滿', 'The bubbles have settled. Put the stream on the glowing dot and pour again.': '泡泡消了。把水柱對準發光的點，繼續倒。',
+  'Too close to the middle': '太中間了', 'That is the paper': '沖到濾紙了', 'Follow the dot': '跟著光點',
 };

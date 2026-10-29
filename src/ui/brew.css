@@ -1,0 +1,93 @@
+/* Hand brewing at the cart (src/ui/brew.js): real-photo collage stickers on paper, one step at a time.
+   The stage is a square; the dripper's photo is placed so its coffee bed is centred on it, BED (0.237) of its width
+   in radius, and the bed's overlays (.br-bed) sit on exactly that circle. */
+#brew { position: fixed; inset: 0; z-index: 88; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  background: radial-gradient(circle at 50% 45%, #f6f1e7, #e6ddcd); color: var(--os-ink); font-family: var(--os-font);
+  user-select: none; -webkit-user-select: none; overflow: hidden; }
+.br-head { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: min(92vw, 560px); text-align: center; }
+.br-step { padding: 4px 14px; background: var(--os-denim); color: #fff; font-size: 15px; transform: skewX(-8deg); box-shadow: 3px 3px 0 var(--os-ink); }
+.br-say { min-height: 3em; font-size: 17px; line-height: 1.5; }
+.br-body { display: flex; align-items: center; gap: 14px; }
+
+.br-stage { position: relative; width: min(calc(100vw - 80px), 58vh, 520px); aspect-ratio: 1; touch-action: none; cursor: grab; }
+.br-stage > * { position: absolute; pointer-events: none; }
+
+/* 1. the grinder: a top-down photo turned round its crank's pivot (the middle of the picture), a ring that fills */
+.br-grinder { left: 11%; top: 11%; width: 78%; aspect-ratio: 1; background: url('../../assets/ui/brew/grinder.webp') center / contain no-repeat;
+  filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .28)); }
+.br-ring { inset: 1%; }
+.br-ring svg { width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+.br-ring circle { fill: none; stroke-width: 3; }
+.br-track { stroke: rgba(31, 42, 74, .12); }
+.br-done { stroke: var(--os-denim); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .1s; }
+
+/* 2-3. the dripper from above, its coffee bed centred; the kettle (a hand and a gooseneck, side on) over the finger */
+.br-dripper { left: 10.3%; top: 10.8%; width: 90%; aspect-ratio: 490 / 466; background: url('../../assets/ui/brew/dripper.webp') center / contain no-repeat;
+  filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .28)); }
+.br-bed { left: 26.3%; top: 26.3%; width: 47.4%; aspect-ratio: 1; border-radius: 50%; }
+.br-bed > i { position: absolute; inset: 0; border-radius: 50%; }
+.br-wet { background: radial-gradient(circle, #2a160c 0 55%, #3a2214 80%, rgba(58, 34, 20, 0) 100%); mix-blend-mode: multiply; opacity: 0; }
+.br-pool { background: radial-gradient(circle at 42% 38%, rgba(255, 240, 220, .35), transparent 22%), radial-gradient(circle, #5a3218 0 50%, #3d200e 75%, rgba(61, 32, 14, 0) 100%);
+  opacity: 0; transform-origin: 50% 50%; transition: transform .2s, opacity .2s; }
+.br-bubbles { opacity: 0; transition: opacity .8s;
+  background: radial-gradient(circle at 30% 40%, rgba(233, 200, 160, .9) 0 3%, transparent 4%), radial-gradient(circle at 62% 30%, rgba(233, 200, 160, .9) 0 2.5%, transparent 3.5%),
+    radial-gradient(circle at 55% 66%, rgba(233, 200, 160, .9) 0 3.5%, transparent 4.5%), radial-gradient(circle at 36% 70%, rgba(233, 200, 160, .8) 0 2%, transparent 3%),
+    radial-gradient(circle at 70% 52%, rgba(233, 200, 160, .8) 0 2.5%, transparent 3.5%), radial-gradient(circle at 46% 48%, rgba(233, 200, 160, .9) 0 4%, transparent 5%); }
+#brew.blooming .br-bubbles { opacity: 1; animation: br-bubble .7s ease-in-out infinite alternate; }
+#brew.blooming.settled .br-bubbles { opacity: 0; animation: none; }
+@keyframes br-bubble { to { transform: scale(1.06) rotate(8deg); } }
+/* the ring the stream should stay in: between RING[0] and RING[1] of the bed's radius */
+.br-band { inset: 11% !important; border: 2px dashed rgba(255, 255, 255, .55); box-shadow: 0 0 0 calc(var(--bw, 1) * 1px) transparent; }
+.br-band::after { content: ''; position: absolute; inset: 31%; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, .45); }
+#brew.drawdown .br-pool { transform: scale(.4) !important; opacity: 0 !important; transition: transform 1.2s ease-in, opacity 1.2s ease-in; }
+#brew.spilt .br-bed { box-shadow: 0 0 0 6px rgba(229, 102, 74, .55); }
+
+.br-kettle { width: 64%; aspect-ratio: 549 / 335; background: url('../../assets/ui/brew/kettle.webp') center / contain no-repeat;
+  transform: translate(-1.8%, calc(-68.7% - 64px)) rotate(-6deg); transform-origin: 1.8% 68.7%; transition: transform .15s;
+  filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .28)); }
+#brew.pouring .br-kettle { transform: translate(-1.8%, calc(-68.7% - 64px)) rotate(6deg); }
+.br-stream { width: 4px; height: 64px; margin-left: -2px; transform: translateY(-100%); border-radius: 2px; opacity: 0;
+  background: linear-gradient(rgba(150, 110, 80, .2), rgba(120, 80, 50, .85)); }
+.br-splash { width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; opacity: 0; border: 2px solid rgba(255, 255, 255, .7); }
+#brew.pouring .br-stream { opacity: 1; }
+#brew.pouring .br-splash { opacity: 1; animation: br-splash .35s ease-out infinite; }
+@keyframes br-splash { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+
+/* what shows when */
+#brew.grind .br-dripper, #brew.grind .br-bed, #brew.grind .br-kettle, #brew.grind .br-stream, #brew.grind .br-splash, #brew.grind .br-gauge { visibility: hidden; }
+#brew.pour .br-grinder, #brew.pour .br-ring { visibility: hidden; }
+#brew.served .br-stage, #brew.served .br-gauge, #brew.served .br-head { visibility: hidden; }
+
+/* the dot to follow while pouring: it glows on the ring, and the ring answers: denim on the dot, coral off it */
+.br-guide { width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(circle, #fff 0 22%, rgba(255, 255, 255, .7) 34%, rgba(255, 236, 190, .35) 55%, transparent 72%);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .8); animation: br-pulse 1s ease-in-out infinite; }
+@keyframes br-pulse { 50% { transform: scale(1.25); } }
+#brew.circling .br-guide { opacity: 1; }
+#brew.near .br-band { border-color: rgba(106, 132, 200, .95); box-shadow: 0 0 14px rgba(106, 132, 200, .8); }
+#brew.off.pouring .br-band { border-color: rgba(229, 102, 74, .9); }
+.br-tip { left: 50%; top: 14%; translate: -50% 0; padding: 3px 10px; background: var(--os-coral); color: #fff; font-size: 14px; white-space: nowrap; transform: skewX(-8deg); }
+.br-tip:empty, #brew:not(.pouring) .br-tip { display: none; }
+
+/* the water gauge: the bloom band low, the cup's line at the top */
+.br-gauge { position: relative; width: 22px; height: min(70vw, 46vh, 420px); background: var(--os-field); border: var(--os-b) solid var(--os-ink); box-shadow: var(--os-sunk); }
+.br-gauge > i { position: absolute; left: 0; right: 0; }
+.br-tag { position: absolute; right: calc(100% + 6px); top: 50%; translate: 0 -50%; padding: 1px 6px; background: var(--os-denim); color: #fff; font-size: 13px; white-space: nowrap; }
+.br-ml { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; font: 14px var(--os-lcd); white-space: nowrap; }
+.br-bloomband { background: rgba(63, 93, 170, .25); border-top: 2px solid var(--os-denim); border-bottom: 2px solid var(--os-denim); }
+.br-fullband { background: rgba(63, 93, 170, .25); border-top: 2px solid var(--os-denim); border-bottom: 2px solid var(--os-denim); }
+.br-level { bottom: 0; height: 0; background: linear-gradient(#7a4a2a, #4a2a16); opacity: .85; }
+
+/* the cup, handed over: the takeaway cup sticker in a glow as bright as the colour that came back */
+.br-result { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(88vw, 400px); display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 22px 20px; background: var(--os-frame); border: var(--os-b) solid var(--os-ink); border-radius: 3px; box-shadow: var(--os-bevel), var(--os-drop); text-align: center;
+  animation: br-in .35s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes br-in { from { transform: translateY(30px) scale(.94); opacity: 0; } }
+.br-cup { position: relative; width: 120px; aspect-ratio: 227 / 317; }
+.br-cup > i { position: absolute; }
+.br-cup-glow { inset: -40%; border-radius: 50%; background: radial-gradient(circle, rgba(242, 201, 76, .85), rgba(232, 138, 122, .4) 45%, transparent 70%); }
+.br-cup-img { inset: 0; background: url('../../assets/ui/brew/cup.webp') center / contain no-repeat; filter: drop-shadow(4px 5px 0 rgba(31, 42, 74, .3)); }
+.br-score b { font: 44px/1 var(--os-lcd); color: var(--os-denim); }
+.br-score span { margin-left: 6px; font-size: 15px; }
+.br-verdict { font-size: 16px; line-height: 1.5; }

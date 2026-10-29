@@ -1,0 +1,11 @@
+/* Developer mode (src/ui/devmode.js): a DEV tab on the right edge, above everything (the prologue and the brew
+   screen too), and its menu of scenes to jump to. */
+#devtab { position: fixed; right: calc(4px + env(safe-area-inset-right)); top: 42%; z-index: 99; padding: 8px 5px; writing-mode: vertical-rl;
+  background: #e5664a; color: #fff; border: 2px solid #1f2a4a; border-radius: 3px; font: 13px/1 monospace; letter-spacing: 2px; cursor: pointer; opacity: .85; }
+#devmenu { position: fixed; right: calc(40px + env(safe-area-inset-right)); top: 50%; translate: 0 -50%; z-index: 99; display: none; flex-direction: column; gap: 6px;
+  width: min(78vw, 300px); max-height: 80vh; overflow: auto; padding: 12px; background: #fffdf8; color: #1f2a4a; border: 2px solid #1f2a4a; border-radius: 3px;
+  box-shadow: 4px 5px 0 rgba(31, 42, 74, .3); font: 14px var(--os-font, sans-serif); }
+#devmenu.show { display: flex; }
+#devmenu b { font-size: 13px; color: #e5664a; }
+#devmenu button { padding: 9px 10px; text-align: left; background: #eef2f9; color: inherit; border: 1px solid #c9d4e8; border-radius: 3px; font: inherit; cursor: pointer; }
+#devmenu button:hover { background: #dce4f1; }

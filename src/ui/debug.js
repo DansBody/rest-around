@@ -5,6 +5,7 @@ import { DAY } from '../data.js';
 import { specialsEnabled, setSpecialsEnabled } from '../specials.js';
 import { openBattle } from './battle.js';
 import { openBattleRt } from './battlert.js';
+import { openBrew } from './brew.js';
 import { restoreNext } from '../street.js';
 
 export class DebugPanel {
@@ -47,6 +48,7 @@ export class DebugPanel {
       h('div.btnrow',
         h('button.btn.small', { onclick: () => { this.toggle(); openBattle(g); } }, 'Battle prototype'),
         h('button.btn.small', { onclick: () => { this.toggle(); openBattleRt(g); } }, 'Battle (real time)')),
+      h('div.btnrow', h('button.btn.small', { onclick: () => { this.toggle(); openBrew(g).then((r) => g.toast(`Brew: ${r.score}% (${r.verdict})`)); } }, 'Hand brew (cart)')),
       h('div.btnrow', h('span.muted', 'Outing'),
         h('button.btn.small', { onclick: () => { g.state.tickets = { ...g.state.tickets, n: Math.min(3, g.state.tickets.n + 1) }; g.toast(`Tickets: ${g.state.tickets.n}`); } }, '+1 ticket'),
         h('button.btn.small', { onclick: () => { g.state.outing = null; g.changed('day'); g.toast('Team back'); } }, 'Call the team back')),

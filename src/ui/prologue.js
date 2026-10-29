@@ -13,7 +13,7 @@ import { audio } from '../audio.js';
 
 const SEEN = 'refillit.prologue';
 export function prologueSeen() { try { return localStorage.getItem(SEEN) === '1'; } catch { return false; } }
-function markSeen() { try { localStorage.setItem(SEEN, '1'); } catch { /* private mode: it just plays again */ } }
+export function markSeen() { try { localStorage.setItem(SEEN, '1'); } catch { /* private mode: it just plays again */ } }
 /** A reset café starts from the story again. */
 export function forgetPrologue() { try { localStorage.removeItem(SEEN); } catch { /* nothing kept */ } }
 
