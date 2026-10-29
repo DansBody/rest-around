@@ -9,6 +9,7 @@
 // the bake measured in every frame.
 import { THREE, models, TILE } from './models.js';
 import { DIR_YAW, SIT_FORWARD, SWING, GLOW, contactShadow, makeBat } from './charview.js';
+import { signaturesOf } from './data.js';
 
 const BASE = 'assets/';
 const MARK = 0.7;     // alpha the card writes: the pixel pass shows these pixels as baked (they were tone mapped in the bake)
@@ -172,6 +173,15 @@ export class SpriteView {
     this.held = {};
     this.heldKey = null;
     this.frame = null;     // the anchors of the frame on show
+    // a hand-held signature accessory (the bunny's whisk) is not in the sheet: a small 3D prop in the hand
+    const sig = signaturesOf(this.modelId).find((g) => g.slot === 'hand' && models.def(g.model));
+    if (sig) {
+      this.sig = models.instance(sig.model);
+      this.sig.scale.setScalar(sig.held || 0.2);
+      this.sig.traverse((m) => { m.castShadow = false; });
+      this.sig.visible = false;
+      this.root.add(this.sig);
+    }
     this.play('idle', 0);
   }
 
@@ -302,6 +312,16 @@ export class SpriteView {
       const at = this.frame[o.userData.anchor] || this.frame.tray;
       this.cardPoint(at[0], at[1], at[2], o.position);
       o.rotation.y = yaw;
+    }
+    // like the 3D cane: only out while standing or walking empty-handed, and not while something else is in that hand
+    if (this.sig) {
+      const w = a.look && a.look.wear;
+      this.sig.visible = !p.held && (anim === 'idle' || anim === 'walk') && !(w && w.hand) && !!this.frame.hand;
+      if (this.sig.visible) {
+        const at = this.frame.hand;
+        this.cardPoint(at[0], at[1], at[2], this.sig.position);
+        this.sig.rotation.y = yaw;
+      }
     }
   }
 

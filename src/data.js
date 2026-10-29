@@ -262,7 +262,9 @@ export const wearById = (id) => WEAR.find((w) => w.id === id);
 // character, worn from the day they join: never bought or moved, not in state.wardrobe. Each is fitted on its wardrobe
 // slot like any accessory (same fields, plus off: a nudge [x, y, z] in the character's frame, a fraction of the head's
 // width) and steps aside while the player wears something else on that slot. The café sprites have it baked in
-// (tools/sprites/bake.html). The kit stays with the character: the accessory is only its symbol.
+// (tools/sprites/bake.html), except a hand-held one, which stays a small 3D prop in the sprite's hand (held: its size
+// there) while the hands are free. A character may have a list of them, one per slot. The kit stays with the
+// character: the accessory is only its symbol.
 export const SIGNATURES = {
   mochalatte: { id: 'sig_clock', slot: 'head', model: 'w_sig_clock', fit: 0.4, sit: 0.06, off: [0.14, 0, 0.04], rot: [0, -20, 14] },
   cheetie: { id: 'sig_sweatband', slot: 'head', model: 'w_sig_sweatband', fit: 0.96, sit: 0.66, rot: [-8, 0, 0] },
@@ -273,7 +275,13 @@ export const SIGNATURES = {
   rj: { id: 'sig_icecube', slot: 'head', model: 'w_sig_icecube', fit: 0.4, sit: 0.04, rot: [0, -25, 8] },
   bboogyuli: { id: 'sig_bakercap', slot: 'head', model: 'w_sig_bakercap', fit: 1.0, sit: 0.3, rot: [-6, 0, 0] },
   bamgeut: { id: 'sig_nightcap', slot: 'head', model: 'w_sig_nightcap', fit: 0.98, sit: 0.46, rot: [-6, 0, 0] },
+  bbaekko: [
+    { id: 'sig_whisk', slot: 'hand', model: 'w_sig_whisk', fit: 0.3, held: 0.22 },
+    { id: 'sig_lantern', slot: 'neck', model: 'w_sig_lantern', fit: 0.26, off: [-0.27, -0.2, -0.03] },
+  ],
 };
+/** A character's signature accessories, as a list (empty for guests). */
+export const signaturesOf = (model) => [SIGNATURES[model] || []].flat();
 // what a player may change when placing an accessory: an offset (world units), a tilt (degrees), a size factor
 export const WEAR_LIMITS = { p: 0.6, r: 45, s: [0.5, 1.6] };
 // guests now and then turn up in something (items marked guest: false never): the chance of a hat, of glasses, of a bow tie, of a cane
@@ -410,7 +418,7 @@ export const KIT_ACTIVES = false;
 export const KITS = {
   cheetie: {
     perks: [
-      { id: 'sprint', glyph: 'dash', name: 'Cheetah Sprint', speed: 1.25,
+      { id: 'sprint', glyph: 'dash', name: 'Fox Sprint', speed: 1.25,
         desc: 'The fastest on the team: walks 25% faster.' },
       { id: 'dislike', glyph: 'sad', bad: true, name: 'Matcha Aversion', dish: 'matcha', mul: 0.55,
         desc: 'Wrinkles its nose at anything green: carries matcha 45% slower.' },

@@ -174,7 +174,7 @@ export const ZH_TW = {
   'Unlocks when {name} is {title}': '{name} 達到{title}時解鎖',
 
   // ---------------- character skills (each character's own kit)
-  'Cheetah Sprint': '獵豹衝刺', 'The fastest on the team: walks 25% faster.': '全隊最快：移動速度 +25%。',
+  'Fox Sprint': '狐狸衝刺', 'The fastest on the team: walks 25% faster.': '全隊最快：移動速度 +25%。',
   'Matcha Aversion': '討厭抹茶', 'Wrinkles its nose at anything green: carries matcha 45% slower.': '看到綠色的東西就皺鼻子：端抹茶時速度 −45%。',
   'Mind Reader': '讀心點餐', 'Reads the mind of every guest waiting to order: all those orders are placed at once, and the guests are delighted.': '讀出所有等著點餐的客人的心思：訂單一次全部下好，客人心情大好。',
   'Caffeine Boost': '咖啡因加持', 'Colleagues within 3 tiles walk and work 12% faster.': '3 格內的同事移動和工作速度 +12%。',
@@ -588,7 +588,7 @@ export const ZH_TW = {
   'Keep going': '繼續打', 'Head home': '撤退', 'Commission done': '委託完成', 'The team came home': '隊伍回來了',
   'The alarm clock got its colour back. The owl finally slept in. It will drop by the café one of these days.': '鬧鐘恢復了顏色，貓頭鷹終於睡了個好覺。過幾天牠會來店裡坐坐。',
   'The grey things were too much this time. Rest up and try again.': '這次灰色怪物太多了。休息一下再試一次。',
-  'Hee Hee tips +15%': 'Hee Hee 小費 +15%', 'Cards picked up on the way': '路上撿到的卡', 'Prototype: nothing is paid into the café yet.': '原型：獎勵還不會真的進店裡。',
+  '{who}: tips +15%': '{who}：小費 +15%', 'Cards picked up on the way': '路上撿到的卡', 'Prototype: the coins are not paid into the café yet; dyes are yours to keep.': '原型：金幣還不會真的進店裡，染料會留下來。', 'New dye': '新染料',
   'Play again': '再打一次', 'Attack': '攻擊', 'Skill': '技能', 'Knot': '打結', 'Hunt': '討伐委託', 'Explore': '探索委託', 'Fight': '戰鬥', 'Boss': 'Boss',
   'Latte Smash': '拿鐵一擊', 'Caffeine Kick': '咖啡因加速', 'Espresso Shot': '濃縮一口', 'Slow Brew': '慢慢沖', 'Dash Combo': '衝刺連擊', 'Mind Read': '讀心術',
   'Sidestep': '側身閃過', 'Pounce': '撲擊', 'Zoomies': '暴衝', 'Bloom': '綻放', 'Curtain Call': '舞台謝幕', 'Encore': '安可', 'Petal Storm': '花瓣風暴',

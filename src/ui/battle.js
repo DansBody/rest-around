@@ -6,7 +6,8 @@
 import { h } from '../util.js';
 import { t } from '../i18n.js';
 import { audio } from '../audio.js';
-import { NIGHT_FROM } from '../data.js';
+import { NIGHT_FROM, DYES } from '../data.js';
+import { unlockDye } from '../palette.js';
 import { defaultName } from '../staff.js';
 import { models } from '../models.js';
 import { keyColors } from '../spriteview.js';
@@ -731,14 +732,18 @@ export class BattleScreen {
     audio.setScene(null);
     audio.play(won ? 'levelup' : 'close');
     const back = run.colored.map((id) => t(FOES[id].name));
+    // a won commission brings home a dye the team hasn't found yet: cosmetic, so even the prototype gives it for keeps
+    const dye = won && this.game ? DYES.find((d) => !(this.game.state.dyes || []).includes(d.id)) : null;
+    if (dye) unlockDye(this.game, dye.id);
     this.frame.replaceChildren(this.backdrop(), h('div.bt-sheet', { style: { top: '150px' } },
       h('div.bt-head' + (won ? '' : '.coral'), won ? t('Commission done') : t('The team came home')),
       h('div.bt-plea', won ? t('The alarm clock got its colour back. The owl finally slept in. It will drop by the café one of these days.') : t('The grey things were too much this time. Rest up and try again.')),
-      h('div.bt-row', h('span.bt-lab', t('Coins')), h('span.bt-pill.coral', '+', h('b', String(run.payout()))), run.team.includes('heehee') && run.coins ? h('span.bt-pill', t('Hee Hee tips +15%')) : null, run.lost ? h('span.bt-pill', t('{n} coins ran off', { n: run.lost })) : null),
+      h('div.bt-row', h('span.bt-lab', t('Coins')), h('span.bt-pill.coral', '+', h('b', String(run.payout()))), run.team.includes('heehee') && run.coins ? h('span.bt-pill', t('{who}: tips +15%', { who: this.name('heehee') })) : null, run.lost ? h('span.bt-pill', t('{n} coins ran off', { n: run.lost })) : null),
       back.length ? h('div.bt-row', h('span.bt-lab', t('Back to colour')), ...back.map((n) => h('span.bt-pill', n))) : null,
       run.picked.length ? h('div.bt-row', h('span.bt-lab', t('Cards picked up on the way')), ...run.picked.map((id) => h('span.bt-pill', t(CARDS[id].name)))) : null,
+      dye ? h('div.bt-row', h('span.bt-lab', t('New dye')), h('span.bt-pill', h('i.bt-dye', { style: { background: dye.color } }), t(dye.name))) : null,
       h('div.bt-row', h('span.bt-lab', 'CHILL'), h('span.bt-pill', run.chill + ' / ' + run.chillMax)),
-      h('div.bt-row', h('span.bt-lab', t('Prototype: nothing is paid into the café yet.'))),
+      h('div.bt-row', h('span.bt-lab', t('Prototype: the coins are not paid into the café yet; dyes are yours to keep.'))),
       h('div.bt-acts',
         h('button.bt-btn', { onclick: () => { this.close(); new this.constructor(this.game).open(); } }, t('Play again')),
         h('button.bt-btn.go', { onclick: () => this.close() }, t('Back to the café')))));

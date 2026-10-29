@@ -252,8 +252,48 @@ def nightcap():
     return k, 'head', shots((0.1, 0, 0.3), 2.6)
 
 
+def whisk():
+    """Bunny: a balloon whisk held up like a wand (Wild Magic). Hand slot: the grip is the origin, the wires point up
+    (+Z, the hand bone's up); build_accessory scales it so the handle's end is 1 below the grip."""
+    k = Kit({'wood': '#b9824a', 'brass': '#e0b04a', 'wire': '#f2cf6a'}, seg=14)
+    k.lathe([(0, -0.3), (0.055, -0.3), (0.075, -0.27), (0.08, -0.1), (0.07, 0.12), (0.058, 0.2)], 'wood')
+    k.lathe([(0.062, 0.19), (0.07, 0.21), (0.07, 0.29), (0.05, 0.31), (0, 0.31)], 'brass')   # the ferrule
+    n = 28
+    for a in (0, 60, 120):   # three wire loops = six wires: out of the ferrule, round over the top and back in
+        c, s = math.cos(math.radians(a)), math.sin(math.radians(a))
+        pts = []
+        for q in range(n + 1):
+            th = 2 * math.pi * q / n
+            x = 0.2 * math.sin(th) * ((1 - math.cos(th)) / 2) ** 0.35   # pinched into the ferrule, round at the top
+            pts.append(Vector((x * c, x * s, 0.28 + 0.68 * (1 - math.cos(th)) / 2)))
+        tube(k, pts, 0.024, lambda i: 'wire', sides=6, caps=False)
+    return k, 'hand', shots((0, 0, 0.35), 3.0)
+
+
+def lantern():
+    """Bunny: a little brass-and-espresso lantern hanging at the hip, its glass always lit (Afraid of the Dark). Neck
+    slot: SIGNATURES nudges it down from under the chin to the hip; the back of the item is its origin."""
+    k = Kit({'frame': '#5a3a26', 'brass': '#d4a440', 'glow': '#ffd76e', 'shine': '#fff3c4'}, seg=16)
+    k.box((0, 0, 0.36), (0.42, 0.42, 0.5), 'glow', bevel=0.05)              # the lit glass
+    blob(k, T(-0.1, -0.215, 0.44) @ S(0.05, 0.012, 0.12), 'shine', 8, 6)    # a glint on the front pane
+    for sx in (-1, 1):   # corner posts
+        for sy in (-1, 1):
+            k.box((sx * 0.2, sy * 0.2, 0.36), (0.07, 0.07, 0.56), 'frame', bevel=0.02)
+    k.box((0, 0, 0.07), (0.5, 0.5, 0.12), 'frame', bevel=0.04)              # the base
+    k.lathe([(0.37, 0.6), (0.37, 0.65), (0.22, 0.78), (0.1, 0.84), (0, 0.85)], 'frame', seg=4,
+            M=RZ(45) @ S(1.0, 1.0, 1))                                      # the roof, four-sided
+    k.lathe([(0.06, 0.84), (0.06, 0.9), (0, 0.9)], 'brass')                 # the knob
+    ring(k, 0.1, 0.035, 0.03, 1.0, lambda j: 'brass', seg=16, z0=0.0, sides=6)   # the hanging ring, upright
+    k.bm.verts.ensure_lookup_table()
+    vs = k.bm.verts[-16 * 6:]
+    for v in vs:
+        v.co = T(0, 0, 1.0) @ RX(90) @ v.co
+    return k, 'neck', shots((0, 0, 0.5), 2.6)
+
+
 ITEMS = {'clock': clock, 'sweatband': sweatband, 'rose': rose, 'goggles': goggles, 'headscarf': headscarf,
-         'bandana': bandana, 'icecube': icecube, 'bakercap': bakercap, 'nightcap': nightcap}
+         'bandana': bandana, 'icecube': icecube, 'bakercap': bakercap, 'nightcap': nightcap,
+         'whisk': whisk, 'lantern': lantern}
 for name, make in ITEMS.items():
     if only and name not in only:
         continue
