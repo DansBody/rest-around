@@ -71,7 +71,6 @@ export const ULTS = {
   },
 };
 
-const ART = 'assets/battle/cutin/';
 // testing: hold the 3D performance at a moment (ms) so a frame can be looked at; null plays it in time
 let held = null;
 export function holdUlt(ms) { held = ms; }
@@ -381,9 +380,12 @@ export function playUlt(frame, id, speed = 1, opts = {}) {
   const dim = h('div.ult-dim');
   const theme = u.theme === 'clock' ? clockFace(T) : u.theme === 'dash' ? dashLines(T) : null;
   const band = h('div.ult-band', h('i.ult-lines'));
-  const chara = live ? h('div.ult-chara.live', st.trail, st.canvas) : h('div.ult-chara', h('img', { src: ART + u.who + '.webp', alt: '' }));
+  // without a 3D stage the performer's own sprite frame stands in, blown up (opts.sprite: its canvas on the board)
+  const still = !live && opts.sprite ? h('canvas', { width: opts.sprite.width, height: opts.sprite.height }) : null;
+  if (still) still.getContext('2d').drawImage(opts.sprite, 0, 0);
+  const chara = live ? h('div.ult-chara.live', st.trail, st.canvas) : h('div.ult-chara', still);
   const panel = live ? h('div.ult-panel') : null;   // the close-up sits in a slanted comic panel until the hard cut
-  if (!live) chara.style.setProperty('--art', `url(${ART + u.who}.webp)`);
+  if (still) chara.style.setProperty('--art', `url(${still.toDataURL()})`);
   const name = h('div.ult-name', h('small', u.en), h('b', t(u.title)));
   const line = h('div.ult-line', h('span', '「' + t(u.line) + '」'));
   const stamp = h('div.ult-stamp' + (u.foeFx === 'splash' ? '.dmg' : ''), u.stamp);

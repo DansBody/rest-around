@@ -568,7 +568,7 @@ export const ZH_TW = {
   'The last card played comes back.': '上一張打出的卡回到手上。',
   'Attack {n}': '攻擊 {n}', 'Ringing Blast {n}': '刺耳鈴聲 {n}', 'Winding up': '蓄力中', 'Snoozing': '睡回籠覺',
   'Jam: next card +{n}': '干擾：下張牌費用 +{n}', 'Calls for help': '呼叫幫手', 'Steal {n} coins': '偷 {n} 金幣', 'Runs off with the coins': '帶著錢跑掉',
-  'Turn': '回合', 'Night: Bbaekko −20%': '夜間：Bbaekko −20%', 'from {who}': '委託人：{who}', 'Route': '路線',
+  'Turn': '回合', 'Night: {who} −20%': '夜間：{who} −20%', 'from {who}': '委託人：{who}', 'Route': '路線',
   'Team · on the board, these work by themselves': '隊伍 · 站上場就會自己生效',
   'Drinks brought from the café': '從店裡帶出來的飲料', 'Head out': '出發',
   'Foam': '奶泡護盾', 'Energy': '能量', 'End turn': '結束回合',

@@ -7,12 +7,18 @@ import { h } from '../util.js';
 import { t } from '../i18n.js';
 import { audio } from '../audio.js';
 import { NIGHT_FROM } from '../data.js';
+import { defaultName } from '../staff.js';
+import { models } from '../models.js';
+import { keyColors } from '../spriteview.js';
 import { CARDS, FOES, PASSIVES, DRINKS, COMMISSION, TEAM } from '../battle/data.js';
 import { Run, autoMove } from '../battle/engine.js';
 import { ULTS, playUlt, preloadUlts } from './ultimate.js';
 
 const W = 390, H = 844;
-export const NAMES = { mochalatte: 'Mocha Latte', cheetie: 'Cheetie', heehee: 'Hee Hee', bbaekko: 'Bbaekko' };
+/** The staff member wearing `id`, if the café has one: their name and colours go into the battle. */
+const staffOf = (game, id) => (game && game.staff.find((s) => s.look.model === id)) || null;
+/** What the team member wearing `id` is called: the name the player gave the staff member, else what they are. */
+export const mateName = (game, id) => (staffOf(game, id) || {}).name || defaultName(id);
 // where each team member stands on the board (left, top of a 1.4× sprite)
 export const MATES = { bbaekko: [2, 236], cheetie: [90, 266], mochalatte: [-2, 326], heehee: [92, 372] };
 // foe spots along the road: the first comes centre stage, then near right, far right, and low centre
@@ -22,21 +28,38 @@ const ART = { clock: { ar: 1.29, eyes: [[0.28, 0.46], [0.55, 0.44]] }, phone: { 
 const ROUTE_ICON = { fight: '⚔', rest: '☕', boss: '✦' };
 
 // ------------------------------------------------------------------ pixel sprites from the game's own sheets
-const sheets = {};
-function sheet(id) {
-  return sheets[id] ||= fetch(`assets/sprites/${id}/${id}.json`).then((r) => r.json()).then(async (meta) => {
+const sheets = {}, painted = {};
+/** A team member's sheet; a cast sheet's key slots (spriteview.js keyColors) painted in `look`'s colours. */
+function sheet(id, look) {
+  sheets[id] ||= fetch(`assets/sprites/${id}/${id}.json`).then((r) => r.json()).then(async (meta) => {
     const img = new Image();
     img.src = `assets/sprites/${id}/${meta.image}`;
     await img.decode();
     return { meta, img };
   });
+  return sheets[id].then((s) => {
+    if (!s.meta.keys) return s;
+    const cols = keyColors(s.meta, models.def(id), look), k = id + [...cols.values()].join();
+    if (!painted[k]) {
+      const c = h('canvas', { width: s.img.width, height: s.img.height }), g = c.getContext('2d');
+      g.drawImage(s.img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+      for (let o = 0; o < px.length; o += 4) {
+        const rgb = px[o + 3] && cols.get('#' + ((1 << 24) | (px[o] << 16) | (px[o + 1] << 8) | px[o + 2]).toString(16).slice(1));
+        if (rgb) [px[o], px[o + 1], px[o + 2]] = rgb;
+      }
+      g.putImageData(d, 0, 0);
+      painted[k] = { meta: s.meta, img: c };
+    }
+    return painted[k];
+  });
 }
 /** A team member on screen: a resting loop (Idle, or Nap once they sit out), or a clip for a moment. */
 export class Mate {
-  constructor(id, scale = 1.4) {
+  constructor(id, scale = 1.4, look) {
     this.id = id; this.clip = 'Idle'; this.rest = 'Idle'; this.until = 0; this.t0 = Math.random() * 2;
     this.canvas = h('canvas', { width: 64, height: 80, style: { width: 64 * scale + 'px', height: 80 * scale + 'px' } });
-    sheet(id).then((s) => {
+    sheet(id, look).then((s) => {
       // a taller cell (the 64×96 paper-doll grid) grows upward: same feet row from the bottom, so the box stays 80 tall
       const H = s.meta.grid.height || 80;
       if (H !== 80) Object.assign(this.canvas, { height: H }).style.cssText += `height:${H * scale}px;margin-top:${(80 - H) * scale}px`;
@@ -60,9 +83,9 @@ export class Mate {
   }
 }
 /** The face of a team member for a card's corner. */
-function face(id) {
+function face(id, look) {
   const c = h('canvas', { width: 40, height: 34 });
-  sheet(id).then(({ meta, img }) => {
+  sheet(id, look).then(({ meta, img }) => {
     const [x, y] = meta.clips.Idle.frames.f[0], top = meta.clips.Idle.anchors.f[0].top;
     c.getContext('2d').drawImage(img, x + 12, y + top - 2, 40, 34, 0, 0, 40, 34);
   }).catch(() => {});
@@ -122,6 +145,16 @@ export class BattleScreen {
     this.extra = [];          // Mates on sheets (the brief)
     this.fv = new Map();      // foe uid → its view
     this.seen = new Set();    // card uids already on screen (new ones are dealt in)
+  }
+
+  name(id) { return mateName(this.game, id); }
+  look(id) { return (staffOf(this.game, id) || {}).look; }
+  /** The night rule (battle/data.js RULES.nightMul), on whoever wears the bunny. */
+  nightNote() { return t('Night: {who} −20%', { who: this.name('bbaekko') }); }
+  /** Card `id`'s cut-in; the performer's sprite frame goes along for when there is no 3D stage. */
+  ult(id, foe) {
+    const m = ULTS[id] && this.mates.get(ULTS[id].who);
+    return playUlt(this.frame, id, this.speed, { foe, sprite: m && m.canvas });
   }
 
   open() {
@@ -190,14 +223,14 @@ export class BattleScreen {
       if (i) kids.push(h('b'));
       kids.push(h('i' + (n.type === 'boss' ? '.boss' : '') + (i < r.node ? '.done' : i === r.node ? '.now' : ''), ROUTE_ICON[n.type]));
     });
-    kids.push(h('span', `${r.node + 1} / ${nodes.length}` + (this.night ? ' · ' + t('Night: Bbaekko −20%') : '')));
+    kids.push(h('span', `${r.node + 1} / ${nodes.length}` + (this.night ? ' · ' + this.nightNote() : '')));
     this.routeEl.replaceChildren(...kids);
   }
 
   // ---------------- the brief: who asked, the route, the team and their passives
   brief() {
     const c = this.run.c;
-    this.extra = TEAM.map((id) => new Mate(id, 1));
+    this.extra = TEAM.map((id) => new Mate(id, 1, this.look(id)));
     const sheetEl = h('div.bt-sheet', { style: { top: '120px' } },
       h('div.bt-head', t(c.title)),
       h('span.bt-k', t(c.kind === 'Hunt' ? 'Hunt' : 'Explore') + ' · ' + t('from {who}', { who: t(c.client) })),
@@ -206,10 +239,10 @@ export class BattleScreen {
       h('div.bt-row', h('span.bt-lab', t('Team · on the board, these work by themselves'))),
       h('div.bt-mates', TEAM.map((id, i) => {
         const p = PASSIVES[id];
-        return h('div', this.extra[i].canvas, h('b', NAMES[id]), h('em' + (p.bad ? '.bad' : ''), t(p.name)), h('em', t(p.desc)));
+        return h('div', this.extra[i].canvas, h('b', this.name(id)), h('em' + (p.bad ? '.bad' : ''), t(p.name)), h('em', t(p.desc)));
       })),
       h('div.bt-row', h('span.bt-lab', t('Drinks brought from the café')), ...this.run.drinks.map((d) => h('span.bt-pill', t(DRINKS[d].name)))),
-      this.night ? h('div.bt-row', h('span.bt-pill.coral', t('Night: Bbaekko −20%'))) : null,
+      this.night ? h('div.bt-row', h('span.bt-pill.coral', this.nightNote())) : null,
       h('div.bt-acts',
         h('button.bt-btn', { onclick: () => this.close() }, t('Back to the café')),
         h('button.bt-btn.go', { onclick: () => { audio.play('open'); this.startNode(); } }, t('Head out'))));
@@ -230,10 +263,10 @@ export class BattleScreen {
     this.sel = null; this.selDrink = null;
     this.foeLayer = h('div.bt-layer', { style: { pointerEvents: 'none' } });
     const crew = h('div.bt-layer', { style: { pointerEvents: 'none' } }, TEAM.map((id) => {
-      const m = new Mate(id);
+      const m = new Mate(id, 1.4, this.look(id));
       this.mates.set(id, m);
       const [x, y] = MATES[id];
-      return m.el = h('div.bt-mate', { style: { left: x + 'px', top: y + 'px' } }, h('i.shadow'), m.canvas, h('span.tag', NAMES[id]),
+      return m.el = h('div.bt-mate', { style: { left: x + 'px', top: y + 'px' } }, h('i.shadow'), m.canvas, h('span.tag', this.name(id)),
         id === 'cheetie' ? h('span.buff', { style: { left: '-4px', top: '30px' } }, t('Mind Reading')) : null,
         id === 'heehee' ? h('span.buff', { style: { left: '76px', top: '40px' } }, t('Blooming Tips')) : null);
     }));
@@ -355,7 +388,7 @@ export class BattleScreen {
     const off = b && !b.canPlay(c);
     return h('button.bt-card' + (c.temp ? '.temp' : '') + (d.type === 'junk' ? '.junk' : '') + (off ? '.off' : '') + (b && this.sel === c ? '.sel' : ''), { 'data-uid': c.uid },
       h('span.cost' + (b && b.jam && !c.free ? '.up' : ''), String(cost)),
-      h('span.who', face(d.who)),
+      h('span.who', face(d.who, this.look(d.who))),
       h('h3', t(d.name)),
       h('p', this.lines(c.id).map((l, i) => [i ? h('br') : null, l])),
       h('span.kind', t(KIND[d.type])));
@@ -434,7 +467,7 @@ export class BattleScreen {
     this.drawStatus(); this.drawHint();
     audio.unlock();
     this.mateAct(who, 'Work');
-    await playUlt(this.frame, id, this.speed, { foe });
+    await this.ult(id, foe);
     const v = [...this.fv.values()].find((x) => x.f.alive);
     if (v && id === 'timestop') { this.shatter(v); await this.wait(500); this.drawFoe(v); }
     this.busy = false;
@@ -519,7 +552,7 @@ export class BattleScreen {
           const el = [...this.handEl.querySelectorAll('.bt-card')].find((x) => x.dataset.uid == e.card);
           if (el) el.remove();
           this.drawHand();
-          if (ULTS[e.id]) { this.mateAct(e.who, 'Work'); await playUlt(this.frame, e.id, this.speed, { foe: e.foe != null && b.foe(e.foe) ? b.foe(e.foe).id : null }); break; }   // the 大絕 cut-in
+          if (ULTS[e.id]) { this.mateAct(e.who, 'Work'); await this.ult(e.id, e.foe != null && b.foe(e.foe) ? b.foe(e.foe).id : null); break; }   // the 大絕 cut-in
           this.mateAct(e.who, CARDS[e.id].type === 'attack' ? 'Cheer' : 'Work');
           this.pop(150, 470, t(CARDS[e.id].name), 'word denim');
           audio.play(CARDS[e.id].type === 'attack' ? 'tap' : 'ability');
@@ -666,7 +699,7 @@ export class BattleScreen {
     this.result(true);
   }
   restStop() {
-    const run = this.run, node = run.here, m = new Mate('mochalatte', 1.6);
+    const run = this.run, node = run.here, m = new Mate('mochalatte', 1.6, this.look('mochalatte'));
     this.extra = [m];
     this.mates.clear();
     const box = h('div', { style: { display: 'flex', justifyContent: 'center', margin: '4px 0' } }, m.canvas);

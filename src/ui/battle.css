@@ -221,7 +221,7 @@
 .ult-lines { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .5) 0 2px, transparent 2px 46px, rgba(255, 255, 255, .25) 46px 47px, transparent 47px 118px);
   background-size: 1400px 100%; }
 .ult-chara { position: absolute; left: -22px; top: 214px; width: 200px; filter: drop-shadow(5px 0 0 #fff) drop-shadow(-5px 0 0 #fff) drop-shadow(0 5px 0 #fff) drop-shadow(0 -5px 0 #fff) drop-shadow(9px 9px 0 var(--os-ink)); }
-.ult-chara img { display: block; width: 100%; }
+.ult-chara:not(.live) canvas { display: block; width: 100%; image-rendering: pixelated; }
 .ult-chara.live { left: -46px; top: 150px; width: 340px; }
 .ult-chara.live::after { display: none; }
 .ult-3d { display: block; width: 340px; height: 472px; image-rendering: pixelated; }

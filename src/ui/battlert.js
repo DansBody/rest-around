@@ -11,8 +11,8 @@ import { OUTING } from '../data.js';
 import { cloud } from '../cloud.js';
 import { Run } from '../battle/engine.js';
 import { RtBattle, autoMoveRt, rtCost } from '../battle/realtime.js';
-import { ULTS, playUlt } from './ultimate.js';
-import { BattleScreen, Mate, NAMES, MATES, cardLines, intentWords } from './battle.js';
+import { ULTS } from './ultimate.js';
+import { BattleScreen, Mate, MATES, cardLines, intentWords } from './battle.js';
 import { styleOf, shoot, dash, spark, struck, staggered, rush, shockwave, impactSound } from './hitfx.js';
 
 const ROLE = { Tank: 'Tank', Striker: 'Striker', Support: 'Support', Caster: 'Caster' };
@@ -80,14 +80,14 @@ class RtScreen extends BattleScreen {
     this.sel = null; this.selDrink = null;
     this.foeLayer = h('div.bt-layer', { style: { pointerEvents: 'none' } });
     const crew = h('div.bt-layer', { style: { pointerEvents: 'none' } }, TEAM.map((id) => {
-      const m = new Mate(id);
+      const m = new Mate(id, 1.4, this.look(id));
       this.mates.set(id, m);
       const [x, y] = MATES[id];
       const mem = b.member(id);
       m.hpEl = h('i');
       // where they stand: home, plus an offset they walk to (they run in from off the left edge)
       m.home = [x, y]; m.at = { x: -200 - x, y: 24 }; m.to = { x: 0, y: 0 }; m.pace = 300; m.next = performance.now() + 3000 + Math.random() * 3000;
-      return m.el = h('div.bt-mate' + (mem && mem.row === 'back' ? '.back' : ''), { style: { left: x + 'px', top: y + 'px' } }, h('i.shadow'), m.canvas, h('span.tag', NAMES[id]),
+      return m.el = h('div.bt-mate' + (mem && mem.row === 'back' ? '.back' : ''), { style: { left: x + 'px', top: y + 'px' } }, h('i.shadow'), m.canvas, h('span.tag', this.name(id)),
         mem ? h('div.bt-mhp', h('b', m.hpEl)) : null,
         id === 'cheetie' ? h('span.buff', { style: { left: '-4px', top: '30px' } }, t('Mind Reading')) : null,
         id === 'heehee' ? h('span.buff', { style: { left: '76px', top: '40px' } }, t('Blooming Tips')) : null);
@@ -340,7 +340,7 @@ class RtScreen extends BattleScreen {
       this.drawStatus(); this.drawHint();
       this.mateAct(p.who, 'Work');
       const foe = p.foe != null && this.b.foe(p.foe);
-      await playUlt(this.frame, p.id, this.speed, { foe: foe ? foe.id : null });
+      await this.ult(p.id, foe ? foe.id : null);
       this.busy = false;
     }
     this.show(ev);
@@ -493,7 +493,7 @@ class RtScreen extends BattleScreen {
         case 'ko': {
           this.sitOut(e.who);
           const m = this.mates.get(e.who);
-          if (m) { const [x, y] = this.matePos(m, -6); this.pop(x - 20, y, t('{who} is too blue to go on', { who: NAMES[e.who] }), 'word coral'); }
+          if (m) { const [x, y] = this.matePos(m, -6); this.pop(x - 20, y, t('{who} is too blue to go on', { who: this.name(e.who) }), 'word coral'); }
           audio.play('close');
           hand = status = true;
           break;

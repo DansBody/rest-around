@@ -94,18 +94,26 @@ function cardMaterial(shared) {
   });
 }
 
+const KEY_GREY = { fur: [200, 200, 200], shirt: [150, 150, 150], light: [240, 240, 240] };
 /**
- * A guest's palette strip: the sheet's, with its key slots (`meta.keys`: per region the marker colour of each shade
- * and the light it caught, relative to the key grey) painted in the guest's fur and shirt (sRGB hex).
+ * What a sheet's key slots (`meta.keys`: per region the marker colour of each shade and the light it caught, relative
+ * to the key grey) turn into for `look`'s colours (sRGB hex), else the model's own (`def.recolor`): marker hex → [r, g, b].
+ * The battle's 2D sprites paint them in too.
  */
-function guestPalette(sheet, colors) {
+export function keyColors(meta, def = {}, look = {}) {
+  const out = new Map(), ref = def.recolor || {};
+  for (const [region, key] of Object.entries(meta.keys || {})) {
+    const v = parseInt(String(look[region] || hexOf(ref[region] || KEY_GREY[region])).replace('#', ''), 16), rgb = [v >> 16, (v >> 8) & 255, v & 255];
+    key.mark.forEach((m, j) => out.set(hexOf(m), rgb.map((c, k) => Math.min(255, Math.round(c * key.ramp[j][k])))));
+  }
+  return out;
+}
+/** A guest's (or cast member's) palette strip: the sheet's, with its key slots painted in its own colours. */
+function guestPalette(sheet, def, look) {
   const b = sheet.pal.slice(), slot = new Map(sheet.meta.palette.map((hex, i) => [hex, i + 1]));
-  for (const [region, key] of Object.entries(sheet.meta.keys)) {
-    const v = parseInt(String(colors[region]).replace('#', ''), 16), rgb = [v >> 16, (v >> 8) & 255, v & 255];
-    key.mark.forEach((m, j) => {
-      const o = slot.get(hexOf(m)) * 4;
-      for (let c = 0; c < 3; c++) b[o + c] = Math.min(255, Math.round(rgb[c] * key.ramp[j][c]));
-    });
+  for (const [hex, rgb] of keyColors(sheet.meta, def, look)) {
+    const o = slot.get(hex) * 4;
+    for (let c = 0; c < 3; c++) b[o + c] = rgb[c];
   }
   return paletteTexture(b);
 }
@@ -129,8 +137,7 @@ export class SpriteView {
     this.H = G.height || G.canvas;
     let pal;
     if (meta.keys) {   // a guest, or one of the cast: its own palette (the texture's own colours where it has none)
-      const ref = this.def.recolor || {}, grey = { fur: [200, 200, 200], shirt: [150, 150, 150], light: [240, 240, 240] };
-      pal = this.ownPal = guestPalette(sheet, Object.fromEntries(Object.keys(meta.keys).map((k) => [k, look[k] || hexOf(ref[k] || grey[k])])));
+      pal = this.ownPal = guestPalette(sheet, this.def, look);
     } else {
       pal = palettes.get(this.modelId);
       if (!pal) palettes.set(this.modelId, (pal = paletteTexture(sheet.pal)));
