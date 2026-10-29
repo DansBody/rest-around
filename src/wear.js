@@ -108,6 +108,7 @@ export function fitMatrix(item, s, t = {}) {
     return new THREE.Matrix4().compose(new THREE.Vector3(f[0] + p[0], f[1] + p[1], f[2] + p[2]), q, new THREE.Vector3().setScalar(f[3] * k));
   }
   const a = anchor(item, s), sc = a.scale * k;
+  if (item.off) a.pos.add(new THREE.Vector3(...item.off).multiplyScalar(s.head.size.x));   // a signature's own nudge
   const m = new THREE.Matrix4().compose(a.pos.add(new THREE.Vector3(...p)), q, new THREE.Vector3(sc, sc * (item.sy ?? 1), sc));
   const inv = s.inv[BONE[item.slot]] || s.inv.head;
   return inv.clone().multiply(m);   // bind space -> the bone's own space

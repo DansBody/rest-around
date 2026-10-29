@@ -103,6 +103,16 @@ from the shape of their head and body; `tools/wardrobe-sheet.html` (on the dev s
 every character. Each model's licence file is collected in `models/wear/LICENSES.txt`. The beret's texture had a
 game logo painted out before building.
 
+**Signature accessories (the original cast's own).** Nine items, one per cast member (the clock clip, sweatband,
+rose, goggles, headscarf, bandana, ice cube, baker's cap and nightcap; concept `design/cast/accessories/
+accessory_sheet_v1.png`), modelled from code in `tools/blender/signatures.py` (flat colours, 2.5k-triangle /
+150 KB budget each) and built like any wear item: `python tools/build_accessory.py sig_<name>
+<out>/sig_<name>.gltf --slot head|neck` (the bandana is `neck`). They are not in `WEAR`: `SIGNATURES` in
+`src/data.js` gives each character's item with its fit, and `CharacterView.setWear` puts it on whenever the player
+wears nothing on that slot. The sprite bake (`tools/sprites/bake.html`) fits it the same way and bakes it into the
+character's sheet, outside every recolour region, so after changing a fit re-bake that character.
+`design/cast/accessories/preview.html` (dev server) shows the bake's front and back frames of all nine, big.
+
 **Café props, drinks, bakes and icons (Refillit's own art).** Everything that makes the place a café
 was made with Meshy from text prompts (the concept art only set the mood), then slimmed by
 `tools/build_prop.py`. Large models are 2 000–9 000 triangles with a 512–1024 px JPG texture

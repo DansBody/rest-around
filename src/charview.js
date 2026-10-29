@@ -4,7 +4,7 @@
 import { THREE, models, TILE } from './models.js';
 import { addEars } from './ears.js';
 import { shape, fitMatrix, wearBone, HAND_SLOTS } from './wear.js';
-import { WEAR_SLOTS, wearById } from './data.js';
+import { WEAR_SLOTS, wearById, SIGNATURES } from './data.js';
 
 export const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
 export const SIT_FORWARD = 0.68;
@@ -95,18 +95,19 @@ export class CharacterView {
     if (look.scale) this.inst.root.scale.setScalar(look.scale);
   }
 
-  /** Put on the wardrobe accessories (look.wear: slot -> { id, p, r, s }), fitted to this character. */
-  setWear(wear) {
+  /** Put on the wardrobe accessories (look.wear: slot -> { id, p, r, s }), fitted to this character, and the
+   *  character's own signature accessory (data.js SIGNATURES) unless something else is worn on its slot. */
+  setWear(wear = {}) {
     for (const o of this.worn) o.parent && o.parent.remove(o);
     this.worn = [];
-    if (!wear) return;
-    const s = shape(this.modelId, this.inst);
+    const s = shape(this.modelId, this.inst), sig = SIGNATURES[this.modelId];
     for (const slot of WEAR_SLOTS) {
-      const item = wear[slot] && wearById(wear[slot].id);
+      const own = wear && wear[slot] && wearById(wear[slot].id);
+      const item = own || (sig && sig.slot === slot && models.def(sig.model) ? sig : null);
       const bone = item && wearBone(item, this.inst.bones);
       if (!bone) continue;
       const o = models.instance(item.model);
-      fitMatrix(item, s, wear[slot]).decompose(o.position, o.quaternion, o.scale);
+      fitMatrix(item, s, own ? wear[slot] : {}).decompose(o.position, o.quaternion, o.scale);
       rimAll(o);
       bone.add(o);
       o.userData.slot = slot;

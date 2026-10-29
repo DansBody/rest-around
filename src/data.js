@@ -258,6 +258,22 @@ export const WEAR = [
   { id: 'cane_coffee', name: 'Coffee Cane', price: 260, slot: 'hand', model: 'w_cane_coffee', fit: 1.02 },
 ];
 export const wearById = (id) => WEAR.find((w) => w.id === id);
+// The original cast's signature accessories (design/cast/CAST.md; modelled by tools/blender/signatures.py). Part of the
+// character, worn from the day they join: never bought or moved, not in state.wardrobe. Each is fitted on its wardrobe
+// slot like any accessory (same fields, plus off: a nudge [x, y, z] in the character's frame, a fraction of the head's
+// width) and steps aside while the player wears something else on that slot. The café sprites have it baked in
+// (tools/sprites/bake.html). The kit stays with the character: the accessory is only its symbol.
+export const SIGNATURES = {
+  mochalatte: { id: 'sig_clock', slot: 'head', model: 'w_sig_clock', fit: 0.4, sit: 0.06, off: [0.14, 0, 0.04], rot: [0, -20, 14] },
+  cheetie: { id: 'sig_sweatband', slot: 'head', model: 'w_sig_sweatband', fit: 0.96, sit: 0.66, rot: [-8, 0, 0] },
+  heehee: { id: 'sig_rose', slot: 'head', model: 'w_sig_rose', fit: 0.56, sit: 0.12, off: [0.16, 0, 0.16], rot: [35, 0, -20] },
+  oritokki: { id: 'sig_goggles', slot: 'head', model: 'w_sig_goggles', fit: 0.96, sit: 0.52, rot: [-12, 0, 0] },
+  chimmy: { id: 'sig_headscarf', slot: 'head', model: 'w_sig_headscarf', fit: 0.97, sit: 0.6, rot: [-10, 0, 0] },
+  tata: { id: 'sig_bandana', slot: 'neck', model: 'w_sig_bandana', fit: 0.7 },
+  rj: { id: 'sig_icecube', slot: 'head', model: 'w_sig_icecube', fit: 0.4, sit: 0.04, rot: [0, -25, 8] },
+  bboogyuli: { id: 'sig_bakercap', slot: 'head', model: 'w_sig_bakercap', fit: 1.0, sit: 0.3, rot: [-6, 0, 0] },
+  bamgeut: { id: 'sig_nightcap', slot: 'head', model: 'w_sig_nightcap', fit: 0.98, sit: 0.46, rot: [-6, 0, 0] },
+};
 // what a player may change when placing an accessory: an offset (world units), a tilt (degrees), a size factor
 export const WEAR_LIMITS = { p: 0.6, r: 45, s: [0.5, 1.6] };
 // guests now and then turn up in something (items marked guest: false never): the chance of a hat, of glasses, of a bow tie, of a cane

@@ -128,6 +128,24 @@ const holder = new THREE.Group(), mover = new THREE.Group(); mover.add(root); ho
 const mixer = new THREE.AnimationMixer(root);
 const bone = (n) => root.getObjectByName(n);
 const head = bone(def.head || 'head'), hand = bone(def.hand || 'handslot.r');
+// one of the original cast: its signature accessory (src/data.js SIGNATURES) is part of the sprite, fitted as the game
+// fits it in 3D (src/wear.js), in its own colours and outside every recolour region (black in the mask)
+const sig = furn ? null : (await import('../../src/data.js')).SIGNATURES[id];
+if (sig) {
+  const { shape, fitMatrix, wearBone } = await import('../../src/wear.js');
+  const file = manifest.models.find((m) => m.id === sig.model).file;
+  const acc = (await new GLTFLoader().loadAsync('../../assets/' + file)).scene;
+  const none = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false });
+  acc.traverse((o) => {
+    if (!o.isMesh) return;
+    o.userData.lit = new THREE.MeshToonMaterial({ color: o.material.color, gradientMap: ramp });
+    o.userData.mask = none;
+    o.material = o.userData.lit;
+  });
+  const b = wearBone(sig, { head, chest: bone('chest'), hand });
+  fitMatrix(sig, shape(id, { root, bones: { head, chest: bone('chest'), hand } })).decompose(acc.position, acc.quaternion, acc.scale);
+  b.add(acc);
+}
 const earL = bone('ear_l'), earR = bone('ear_r');
 const trayPos = new THREE.Vector3(...(def.trayPos || [0, 1.05, 0.55]));
 
