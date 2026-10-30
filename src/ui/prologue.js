@@ -33,7 +33,7 @@ const NOTE = { beans: 15, water: 240 };
 /**
  * The newcomer, seen for the first time in the puddle: pick who they are and how they look.
  * TODO paper-doll: open the paper-doll screen here (it replaces panels.js coatPicker) and resolve with the look
- * picked, so the reflection can show it. Until it exists nothing is picked and the reflection stays a silhouette.
+ * picked, so the reflection can show it. Until it exists nothing is picked and the reflection stays a blur of colour.
  * @returns {Promise<object|null>} the look picked, or null
  */
 async function dressSelf(game) { void game; return null; }
@@ -69,9 +69,10 @@ export function playPrologue(game) {
   const figure = h('div.pr-figure');
   // the cup's steam: a real wisp of steam (a see-through halftone piece), a few copies rising in turn behind the arm
   const hand = h('div.pr-hand', h('div.pr-steam', [0, 1, 2].map((i) => h('i', { style: { '--i': i } }))), h('i.pr-arm'));
-  // looking down: a puddle on the cobbles, and in it, someone looking back
+  // looking down: a shot of its own, nothing but the puddle; in it, rain rings, the lamp's shimmer and a blur of colour
+  // that is you (the paper doll gives it a shape later)
   const self = h('i.pr-self');
-  const puddle = h('div.pr-puddle', h('i.pr-water', self), h('i.pr-ripple'), h('i.pr-ripple.b'));
+  const puddle = h('div.pr-puddle', self, h('i.pr-sheen'), [0, 1, 2, 3, 4].map((i) => h('i.pr-ripple', { style: { '--i': i } })));
   const pal = h('div.pr-palette', h('i.pr-glow'));
   const drop = h('i.pr-drop');
   // TODO share RECIPE (see NOTE)
@@ -88,7 +89,7 @@ export function playPrologue(game) {
   const skip = h('button.pr-skip', t('Skip'));
   // the browser only plays sound after a tap: when nothing has had one yet, the story starts with one
   const start = audio.ctx && audio.ctx.state === 'running' ? null : h('div.pr-start', h('span', t('Tap to begin')));
-  const root = h('div#prologue.bw', street, rain, cart, figure, tarp, hand, puddle, pal, drop, note, title, line, skip, start);   // black and white till the cup
+  const root = h('div#prologue.bw', street, rain, cart, figure, tarp, hand, pal, drop, note, title, puddle, line, skip, start);   // black and white till the cup
   document.body.appendChild(root);
   const held = game.hold;
   game.hold = true;
@@ -189,16 +190,18 @@ export function playPrologue(game) {
     spread.finished.then(() => { spread.cancel(); colour.classList.add('full'); }).catch(() => {});   // no mask edge left over
     await wait(2200);
     await say(t('Warm, bitter, then sweet. The street fills in with colour, faded, like an old photograph.'));
-    // 4. looking down: a puddle at your feet, and in it, you
-    anim(street, [{ transform: 'scale(1.16) translateX(-6%)' }, { transform: 'scale(1.3) translate(-6%, -14%)' }], { duration: 1200, easing: 'ease-in-out' });
+    // 4. looking down: the street tips away and the shot is the puddle alone, close up; in it, a blur of colour: you
+    anim(street, [{ transform: 'scale(1.16) translateX(-6%)' }, { transform: 'scale(1.3) translate(-6%, -14%)' }], { duration: 900, easing: 'ease-in' });
+    await wait(500);
     puddle.classList.add('on');
-    await done(anim(puddle, [{ transform: 'translate(-50%, 110%) rotate(-8deg)' }, { transform: 'translate(-50%, -3%) rotate(2deg)', offset: 0.75 }, { transform: 'translate(-50%, 0) rotate(-2deg)' }], { duration: 1100 }));
+    await done(anim(puddle, [{ opacity: 0, transform: 'scale(1.14) translateY(-4%)' }, { opacity: 1, transform: 'none' }], { duration: 700 }));
     self.classList.add('on');
     await say(t('You look down. In a puddle at your feet, someone looks back at you: you, in colour.'));
     const look = await guard(dressSelf(game));   // TODO paper-doll: the reflection shows `look` once there is one
     if (look) self.classList.add('dressed');
-    anim(street, [{ transform: 'scale(1.3) translate(-6%, -14%)' }, { transform: 'scale(1.16) translateX(-6%)' }], { duration: 1000, easing: 'ease-in-out' });
-    await done(anim(puddle, [{ transform: 'translate(-50%, 0) rotate(-2deg)', opacity: 1 }, { transform: 'translate(-50%, 110%) rotate(6deg)', opacity: 1, offset: 0.9 }, { transform: 'translate(-50%, 120%) rotate(6deg)', opacity: 0 }], { duration: 800, easing: IN }));
+    // and back up to the street, as it was (set back behind the puddle, so the cut is clean)
+    anim(street, [{ transform: 'scale(1.16) translateX(-6%)' }, { transform: 'scale(1.16) translateX(-6%)' }], { duration: 1 });
+    await done(anim(puddle, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(1.06) translateY(3%)' }], { duration: 600, easing: IN }));
     puddle.classList.remove('on');
     // 5. what happened to the colour; "Refill it." (the game's name: said as it is, in every language) and the palette
     await say(t('Every colour of mine was brewed, one cup at a time. Now my hands can\'t brew them any more.'), FIG);
