@@ -3,9 +3,15 @@
    in radius, and the bed's overlays (.br-bed) sit on exactly that circle. */
 #brew { position: fixed; inset: 0; z-index: 88; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
-  background: radial-gradient(circle at 50% 45%, #f6f1e7, #e6ddcd); color: var(--os-ink); font-family: var(--os-font);
+  background: #4a3c2e url('../../assets/ui/brew/cart_bg_wide.webp') center 20% / cover no-repeat; color: var(--os-ink); font-family: var(--os-font);
   user-select: none; -webkit-user-select: none; overflow: hidden; }
-.br-head { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: min(92vw, 560px); text-align: center; }
+/* the cart's counter, seen from behind it, the street beyond: tall phones get the tall photo */
+@media (max-aspect-ratio: 4 / 5) { #brew { background-image: url('../../assets/ui/brew/cart_bg_tall.webp'); background-position: center 70%; } }
+#brew::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 75% 60% at 50% 58%, transparent 55%, rgba(30, 22, 14, .38)); }
+.br-head, .br-body, .br-dosebtns { position: relative; }   /* above the vignette */
+.br-head { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: min(92vw, 560px); text-align: center;
+  padding: 10px 16px 12px; background: var(--os-frame); border: var(--os-b) solid var(--os-ink); border-radius: 3px; box-shadow: var(--os-bevel), var(--os-drop); }
 .br-step { padding: 4px 14px; background: var(--os-denim); color: #fff; font-size: 15px; transform: skewX(-8deg); box-shadow: 3px 3px 0 var(--os-ink); }
 .br-say { min-height: 3em; font-size: 17px; line-height: 1.5; }
 .br-body { display: flex; align-items: center; gap: 14px; }
@@ -13,16 +19,35 @@
 .br-stage { position: relative; width: min(calc(100vw - 80px), 58vh, 520px); aspect-ratio: 1; touch-action: none; cursor: grab; }
 .br-stage > * { position: absolute; pointer-events: none; }
 
-/* 1. the grinder: a top-down photo turned round its crank's pivot (the middle of the picture), a ring that fills */
+/* 1. the dose: the scale from above, its bowl's middle at BOWL (0.483, 0.496) and its window under it; the bag of
+   beans up to the right, its mouth at MOUTH (0.52, 0.32), tipping round it while held; the pile grows in the bowl */
+.br-scale { left: 19.6%; top: 26%; width: 59.9%; aspect-ratio: 416 / 463; background: url('../../assets/ui/brew/scale.webp') center / contain no-repeat;
+  filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .28)); }
+.br-lcd { left: 35.6%; top: 77%; width: 25.4%; height: 8%; display: flex; align-items: center; justify-content: flex-end; padding-right: 2.5%;
+  font: clamp(18px, 5.2vmin, 30px)/1 var(--os-lcd); color: #c9d6c4; letter-spacing: .04em; }
+.br-lcd::after { content: 'g'; margin-left: .25em; font-size: .6em; align-self: flex-end; padding-bottom: .5em; }
+.br-lcd.ok { color: #9fd0ff; text-shadow: 0 0 8px rgba(106, 160, 230, .9); }
+.br-pile { left: 48.3%; top: 49.6%; width: 24%; aspect-ratio: 1; opacity: 0; transform: translate(-50%, -50%) scale(.3);
+  background: url('../../assets/ui/brew/pile.webp') center / contain no-repeat; transition: transform .12s; }
+.br-bean { width: 3.2%; aspect-ratio: 44 / 39; margin: -1.4% 0 0 -1.6%; background: url('../../assets/ui/brew/bean.webp') center / contain no-repeat; }
+.br-bag { left: 45.2%; top: -2.2%; width: 38%; aspect-ratio: 362 / 358; background: url('../../assets/ui/brew/bag.webp') center / contain no-repeat;
+  transform-origin: 18% 91%; rotate: 22deg; transition: rotate .35s cubic-bezier(.3,.7,.4,1); filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .28)); }
+#brew.tipping .br-bag { rotate: 0deg; }
+.br-dosebtns { display: flex; gap: 10px; }
+.br-dosebtns .btn[disabled] { opacity: .9; background: #8f877a; color: #ece6da; box-shadow: none; }   /* still readable on the dark wood */
+#brew:not(.dose) :is(.br-scale, .br-lcd, .br-pile, .br-bean, .br-bag, .br-dosebtns) { display: none; }
+#brew.dose :is(.br-grinder, .br-ring, .br-dripper, .br-bed, .br-kettle, .br-stream, .br-splash, .br-gauge) { visibility: hidden; }
+
+/* 2. the grinder: a top-down photo turned round its crank's pivot (the middle of the picture), a ring that fills */
 .br-grinder { left: 11%; top: 11%; width: 78%; aspect-ratio: 1; background: url('../../assets/ui/brew/grinder.webp') center / contain no-repeat;
   filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .28)); }
 .br-ring { inset: 1%; }
 .br-ring svg { width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
 .br-ring circle { fill: none; stroke-width: 3; }
-.br-track { stroke: rgba(31, 42, 74, .12); }
-.br-done { stroke: var(--os-denim); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .1s; }
+.br-track { stroke: rgba(255, 250, 240, .35); }
+.br-done { stroke: #8fb0ff; filter: drop-shadow(0 0 4px rgba(143, 176, 255, .8)); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .1s; }
 
-/* 2-3. the dripper from above, its coffee bed centred; the kettle (a hand and a gooseneck, side on) over the finger */
+/* 3-4. the dripper from above, its coffee bed centred; the kettle (a hand and a gooseneck, side on) over the finger */
 .br-dripper { left: 10.3%; top: 10.8%; width: 90%; aspect-ratio: 490 / 466; background: url('../../assets/ui/brew/dripper.webp') center / contain no-repeat;
   filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .28)); }
 .br-bed { left: 26.3%; top: 26.3%; width: 47.4%; aspect-ratio: 1; border-radius: 50%; }
@@ -74,7 +99,8 @@
 .br-gauge { position: relative; width: 22px; height: min(70vw, 46vh, 420px); background: var(--os-field); border: var(--os-b) solid var(--os-ink); box-shadow: var(--os-sunk); }
 .br-gauge > i { position: absolute; left: 0; right: 0; }
 .br-tag { position: absolute; right: calc(100% + 6px); top: 50%; translate: 0 -50%; padding: 1px 6px; background: var(--os-denim); color: #fff; font-size: 13px; white-space: nowrap; }
-.br-ml { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; font: 14px var(--os-lcd); white-space: nowrap; }
+.br-ml { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; padding: 2px 6px 0; font: 14px var(--os-lcd); white-space: nowrap;
+  background: var(--os-field); box-shadow: 0 0 0 2px var(--os-ink); }
 .br-bloomband { background: rgba(63, 93, 170, .25); border-top: 2px solid var(--os-denim); border-bottom: 2px solid var(--os-denim); }
 .br-fullband { background: rgba(63, 93, 170, .25); border-top: 2px solid var(--os-denim); border-bottom: 2px solid var(--os-denim); }
 .br-level { bottom: 0; height: 0; background: linear-gradient(#7a4a2a, #4a2a16); opacity: .85; }

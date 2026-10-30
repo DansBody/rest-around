@@ -9,6 +9,7 @@ import { isCart } from '../cart.js';
 import { playPrologue, forgetPrologue, markSeen } from './prologue.js';
 import { showPassersBy } from './tutorial.js';
 import { openBrew } from './brew.js';
+import { openBrew3d } from './brew3d.js';
 import { openBattleRt } from './battlert.js';
 
 const KEY = 'refillit.dev';
@@ -22,7 +23,7 @@ export function isDev() {
 }
 /** The scene the page was opened at (?scene=…, or the older ?brew / ?battle), or null. */
 export function startScene() {
-  return q.get('scene') || (q.has('brew') ? 'brew' : q.has('battle') ? 'battle' : null);
+  return q.get('scene') || (q.has('brew3d') ? 'brew3d' : q.has('brew') ? 'brew' : q.has('battle') ? 'battle' : null);
 }
 
 /** What the DEV tab offers: { id, label, run(game, ui, debug) }. */
@@ -30,6 +31,7 @@ const SCENES = [
   { id: 'prologue', label: '序章', run: (g, ui) => playPrologue(g).then(() => { if (!g.state.partner) showPassersBy(ui); }) },
   { id: 'passersby', label: '灰色路人（選夥伴）', run: (g, ui) => showPassersBy(ui) },
   { id: 'brew', label: '手沖', run: (g) => openBrew(g).then((r) => g.toast(`手沖 ${r.score}%（${r.verdict}）`)) },
+  { id: 'brew3d', label: '手沖 3D（注水原型）', run: (g) => openBrew3d(g).then((r) => g.toast(`手沖 3D ${r.score}%（${r.why}）`)) },
   { id: 'cart', label: '新開一間攤車店（跳過序章和導覽）', run: (g) => freshCart(g, true) },
   { id: 'fresh', label: '新開一間（從序章開始）', run: (g) => freshCart(g, false) },
   { id: 'shop', label: '店舖彈出（攤車 → 10×10）', run: (g, ui) => popShop(g, ui) },
@@ -51,7 +53,7 @@ function freshCart(g, skipStory) {
   }
   g.resetting = true;   // no save on the way out over the one just made
   const u = new URL(location.href);   // and not back into the scene the page was opened at
-  for (const k of ['scene', 'brew', 'battle']) u.searchParams.delete(k);
+  for (const k of ['scene', 'brew', 'brew3d', 'battle']) u.searchParams.delete(k);
   location.replace(u);
 }
 

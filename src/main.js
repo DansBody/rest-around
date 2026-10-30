@@ -24,6 +24,7 @@ import { lockPageZoom } from './nozoom.js';
 import { openBattle } from './ui/battle.js';
 import { openBattleRt } from './ui/battlert.js';
 import { openBrew } from './ui/brew.js';
+import { openBrew3d } from './ui/brew3d.js';
 import { isDev, startScene, setupDev } from './ui/devmode.js';
 
 const loading = document.getElementById('loading');
@@ -161,7 +162,7 @@ async function boot() {
     last = now;
     game.update(dt);
     updateVisit(dt);   // a friend's café, while visiting: drawn instead of yours, which keeps trading
-    renderer.render(dt);
+    if (!game.covered) renderer.render(dt);   // a full-screen scene of its own is up (ui/brew3d.js): no café under it
     ui.update(dt);
     debug.update();
     fpsAcc += dt; frames++;
@@ -173,6 +174,7 @@ async function boot() {
   const q = new URLSearchParams(location.search);
   if (dev) setupDev(game, ui, debug);   // the DEV tab, and ?scene=… (ui/devmode.js)
   else if (q.has('battle')) (q.has('rt') ? openBattleRt : openBattle)(game);   // the battle prototype (design/combat/DESIGN.md); &rt: real time
+  else if (q.has('brew3d')) openBrew3d(game);   // the pour on the counter in 3D (prototype)
   else if (q.has('brew')) openBrew(game);   // the cart's hand brew on its own (ui/brew.js)
 }
 lockPageZoom();

@@ -1,16 +1,24 @@
 // Hand brewing at the cart (opening-premise): every cup in the cart stage is a pour-over the player makes, in the
-// prologue's real-photo collage (a top-down grinder and dripper, a hand with a gooseneck kettle, a takeaway cup).
-// Three steps, about twenty seconds, one finger:
+// prologue's real-photo collage (a scale, the colourist's bag of beans, a top-down grinder and dripper, a hand with a
+// gooseneck kettle, a takeaway cup). Four steps, about twenty-five seconds, one finger:
+//   dose   hold to tip the bag: beans pour onto the scale, faster the longer you hold, and the last few are still
+//          falling when you let go, so stop a little short of the dose; a scoop takes a few back out;
 //   grind  draw circles round the grinder: it turns with the finger, three turns grind a dose;
 //   bloom  hold to pour a little, into the bloom band of the gauge; the grounds swell and bubble, wait till they settle;
 //   pour   hold, and keep the stream on a glowing dot that circles the ring (between the middle and the paper; it only
 //          moves while you pour), up to Full on the gauge, without running over.
-// The result is how much colour comes back into the guest (0-100) and why it fell short (sour, bitter, uneven), which
+// The scale reads the water in grams from then on. The result is how much colour comes back into the guest (0-100)
+// and why it fell short (sour, bitter, uneven, with the one thing that cost the most), which
 // the cart turns into the tip and the colour the guest walks off in. A tap-free prototype opener: debug menu, ?brew.
 import { h } from '../util.js';
 import { t } from '../i18n.js';
 import { audio } from '../audio.js';
 
+const DOSE = 15, DOSE_OK = 0.5;        // grams of beans for a cup (1:16), and how far off still counts as right
+const BEAN_RATE = [4, 10], RAMP = 1.2; // g/s as the bag tips (from the press to RAMP seconds in)
+const LAG = 0.15;                      // seconds of beans still in the air when you let go
+const SCOOP = 0.6;                     // grams the scoop takes back out
+const BOWL_MAX = 30;                   // grams the bowl holds
 const TURNS = 3;                       // grinder turns to a dose
 const BLOOM = [0.12, 0.22];            // the bloom band on the water gauge (of a full cup)
 const FULL = [0.86, 1];                // the cup's line
@@ -19,31 +27,59 @@ const FILL_S = 6.5;                    // seconds of pouring from empty to full
 const SETTLE = [2.6, 7];               // seconds the bloom wants: less is sour, much more goes bitter
 const RING = [0.28, 0.78];             // where the stream should land, as a fraction of the coffee bed's radius
 const BED = 0.237;                     // the coffee bed's radius, of the stage's width (brew.css puts the dripper so)
+const BOWL = { x: 0.483, y: 0.496, r: 0.148 };   // the bowl on the scale, of the stage (brew.css puts the scale so)
+const MOUTH = { x: 0.52, y: 0.32 };    // where beans leave the bag (brew.css puts the bag so)
 const GUIDE = 0.53, LAP = 3.4, NEAR = 0.34;   // the dot: its circle (of BED), seconds a lap, how close counts (of BED)
-const CUP_ML = 240;                    // what Full is, for the gauge's read-out
+const CUP_G = DOSE * 16;               // what Full is on the scale, in grams of water (240)
+/** The bloom and the pour, shared with the 3D counter (ui/brew3d.js) so both score a cup the same way. */
+export const POUR = { DOSE, BLOOM, FULL, SPILL, FILL_S, SETTLE, RING, GUIDE, LAP, NEAR, CUP_G };
+export const DOSING = { DOSE_OK, BEAN_RATE, RAMP, LAG, SCOOP, BOWL_MAX, TURNS };
 const quiet = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 /** A burst of noise (the grinder's crunch, the kettle's trickle), only when sound is on. */
 function hiss(dur, o) { if (audio.enabled && audio.ctx && audio.ctx.state === 'running') try { audio.noise(dur, o); } catch { /* no sound */ } }
 
-/** What the cup comes to, from what happened while it was made: { score, verdict, notes }. */
+/** What each thing that can go wrong tastes like. */
+const TASTE = { many: 'sour', few: 'bitter', bloom: 'sour', short: 'sour', long: 'bitter', uneven: 'uneven', thin: 'sour', over: 'bitter' };
+
+/** What the cup comes to, from what happened while it was made: { score, verdict, why, pen }. */
 export function scoreBrew(r) {
-  const pen = { sour: 0, bitter: 0, uneven: 0 };
+  const pen = { many: 0, few: 0, bloom: 0, short: 0, long: 0, uneven: 0, thin: 0, over: 0 };
+  // the dose: too many beans for the water can't all be drawn out (sour), too few are drawn out too far (bitter, thin)
+  const dose = r.dose ?? DOSE;
+  if (dose > DOSE + DOSE_OK) pen.many += clamp((dose - DOSE - DOSE_OK) / 3, 0, 1) * 18;
+  else if (dose < DOSE - DOSE_OK) pen.few += clamp((DOSE - DOSE_OK - dose) / 3, 0, 1) * 18;
   // bloom: too little or too much water, then too short a wait (sour) or far too long (bitter)
   const bl = r.bloom < BLOOM[0] ? (BLOOM[0] - r.bloom) / BLOOM[0] : r.bloom > BLOOM[1] ? (r.bloom - BLOOM[1]) / BLOOM[1] : 0;
-  pen.sour += clamp(bl, 0, 1) * 12;
-  if (r.wait < SETTLE[0]) pen.sour += (1 - r.wait / SETTLE[0]) * 22;
-  else if (r.wait > SETTLE[1]) pen.bitter += clamp((r.wait - SETTLE[1]) / 8, 0, 1) * 12;
+  pen.bloom += clamp(bl, 0, 1) * 12;
+  if (r.wait < SETTLE[0]) pen.short += (1 - r.wait / SETTLE[0]) * 22;
+  else if (r.wait > SETTLE[1]) pen.long += clamp((r.wait - SETTLE[1]) / 8, 0, 1) * 12;
   // the pour: the stream off the circling dot (through the middle, onto the paper, or left behind)
   pen.uneven += (1 - r.inRing) * 40;
   // the water: short of the line is thin and sour, running over is bitter
-  if (r.water < FULL[0]) pen.sour += clamp((FULL[0] - r.water) / 0.4, 0, 1) * 24;
-  if (r.spilled) pen.bitter += 18;
-  else if (r.water > FULL[1]) pen.bitter += clamp((r.water - FULL[1]) / (SPILL - FULL[1]), 0, 1) * 10;
-  const lost = pen.sour + pen.bitter + pen.uneven;
+  if (r.water < FULL[0]) pen.thin += clamp((FULL[0] - r.water) / 0.4, 0, 1) * 24;
+  if (r.spilled) pen.over += 18;
+  else if (r.water > FULL[1]) pen.over += clamp((r.water - FULL[1]) / (SPILL - FULL[1]), 0, 1) * 10;
+  const lost = Object.values(pen).reduce((a, b) => a + b, 0);
   const score = Math.round(clamp(100 - lost, 5, 100));
   const worst = Object.entries(pen).sort((a, b) => b[1] - a[1])[0];
-  return { score, verdict: score >= 88 || worst[1] < 6 ? 'balanced' : worst[0], pen };   // a good cup is just good
+  const good = score >= 88 || worst[1] < 6;   // a good cup is just good
+  return { score, verdict: good ? 'balanced' : TASTE[worst[0]], why: good ? 'balanced' : worst[0], pen };
+}
+
+/** What the guest says about the cup, by the one thing that cost it the most (scoreBrew's `why`). */
+export function verdictLine(why, dose) {
+  switch (why) {
+    case 'many': return t('A bit sour: too many beans for the water ({g} g). Aim for {n} g.', { g: dose, n: DOSE });
+    case 'few': return t('A bit bitter and thin: too few beans ({g} g). Aim for {n} g.', { g: dose, n: DOSE });
+    case 'bloom': return t('A bit sour: the bloom took too little or too much water.');
+    case 'short': return t('A bit sour: the bloom was cut short. Wait for the bubbles to settle.');
+    case 'long': return t('A bit bitter: the bloom sat too long.');
+    case 'uneven': return t('Uneven: the stream kept losing the dot. Follow it round, slow and steady.');
+    case 'thin': return t('A bit sour: the cup was poured thin. Pour up to Full.');
+    case 'over': return t('A bit bitter: the water ran over.');
+    default: return t('Sweet and clear. Just right.');
+  }
 }
 
 /**
@@ -55,6 +91,10 @@ export function openBrew(game, opts = {}) {
   const still = quiet();
   const say = h('div.br-say');
   const step = h('div.br-step');
+  // the dose: a scale with a bowl on it, the pile growing in the bowl, the bag tipping over it, grams in its window
+  const scale = h('i.br-scale'), pile = h('i.br-pile'), lcd = h('b.br-lcd', '0.0'), bag = h('i.br-bag');
+  const scoop = h('button.btn', { onclick: () => scoopOut() }, t('Scoop a little out'));
+  const doseDone = h('button.btn.primary', { disabled: true, onclick: () => toGrind() }, t('Into the grinder'));
   const grinder = h('i.br-grinder');
   const ring = h('div.br-ring', { html: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="br-track"/><circle cx="50" cy="50" r="46" class="br-done" pathLength="100"/></svg>' });
   // the dripper's photo, and over its coffee bed (centred on the stage, BED wide) the wet grounds, the pool of water,
@@ -65,11 +105,11 @@ export function openBrew(game, opts = {}) {
   const kettle = h('i.br-kettle'), stream = h('i.br-stream'), splash = h('i.br-splash');
   const guide = h('i.br-guide'), tip = h('i.br-tip');   // the dot to follow, and what the stream is doing wrong
   const mark = (lo, hi) => ({ bottom: (lo / 1.12) * 100 + '%', height: ((hi - lo) / 1.12) * 100 + '%' });   // the gauge reads to 1.12
-  const ml = h('b.br-ml', '0 ml');
+  const ml = h('b.br-ml', '0 g');
   const gauge = h('div.br-gauge', h('i.br-bloomband', { style: mark(...BLOOM) }, h('span.br-tag', t('Bloom'))),
     h('i.br-fullband', { style: mark(...FULL) }, h('span.br-tag', t('Full'))), h('i.br-level'), ml);
-  const stage = h('div.br-stage', grinder, ring, dripper, bedBox, guide, tip, stream, splash, kettle);
-  const root = h('div#brew', h('div.br-head', step, say), h('div.br-body', stage, gauge));
+  const stage = h('div.br-stage', scale, pile, lcd, bag, grinder, ring, dripper, bedBox, guide, tip, stream, splash, kettle);
+  const root = h('div#brew', h('div.br-head', step, say), h('div.br-body', stage, gauge), h('div.br-dosebtns', scoop, doseDone));
   document.body.appendChild(root);
   const held = game.hold;
   game.hold = true;
@@ -77,24 +117,79 @@ export function openBrew(game, opts = {}) {
 
   const level = gauge.querySelector('.br-level');
   const doneArc = ring.querySelector('.br-done');
-  const r = { bloom: 0, wait: 0, water: 0, inRing: 1, spilled: false };
-  let phase = 'grind', water = 0, finger = null, pouring = false, last = performance.now();
+  const r = { dose: 0, bloom: 0, wait: 0, water: 0, inRing: 1, spilled: false };
+  let phase = 'dose', water = 0, finger = null, pouring = false, last = performance.now();
+  let tipping = false, tipT = 0, poured = 0, dose = 0, beanT = 0;   // poured: out of the bag; dose: landed on the scale
   let turned = 0, lastAng = null, bloomAt = 0, ringT = 0, pourT = 0, sfxT = 0, gAng = -Math.PI / 2;
 
   const show = (n, text) => { step.textContent = n; say.textContent = text; };
   const at = (e) => { const b = stage.getBoundingClientRect(); return { x: (e.clientX - b.left) / b.width, y: (e.clientY - b.top) / b.height }; };
   const setLevel = () => {
     level.style.height = Math.min(water, 1.12) / 1.12 * 100 + '%';
-    ml.textContent = Math.round(water * CUP_ML) + ' ml';
+    ml.textContent = Math.round(water * CUP_G) + ' g';
     pool.style.opacity = clamp((water - BLOOM[0]) / 0.5, 0, 0.92);
     pool.style.transform = `scale(${0.55 + 0.45 * clamp(water, 0, 1)})`;
     wet.style.opacity = clamp(water / BLOOM[0], 0, 1);
   };
 
-  // ---------------- 1. grind
-  show(t('1 / 3  Grind'), t('Draw circles round the grinder to turn it.'));
-  root.classList.add('grind');
+  // ---------------- 1. dose
+  show(t('1 / 4  Beans'), t('Hold to tip the bag onto the scale, {g} g. Let go a little early: the last beans are still falling.', { g: DOSE }));
+  root.classList.add('dose');
 
+  const setDose = () => {
+    lcd.textContent = dose.toFixed(1);
+    lcd.classList.toggle('ok', Math.abs(dose - DOSE) <= DOSE_OK);
+    pile.style.opacity = clamp(dose / 1.5, 0, 1);
+    pile.style.transform = `translate(-50%, -50%) scale(${0.3 + 0.7 * clamp(dose / DOSE, 0, 1.35)})`;
+    doseDone.disabled = dose < 3;
+  };
+  /** One bean seen falling from the bag's mouth into the bowl (the grams are counted by the clock, not by these). */
+  const dropBean = () => {
+    if (still) return;
+    const b = h('i.br-bean');
+    stage.appendChild(b);
+    const ox = (Math.random() - 0.5) * 0.05, ex = (Math.random() - 0.5) * BOWL.r, ey = (Math.random() - 0.5) * BOWL.r * 0.6;
+    const spin = (Math.random() - 0.5) * 720;
+    b.animate([
+      { left: (MOUTH.x + ox) * 100 + '%', top: MOUTH.y * 100 + '%', rotate: '0deg' },
+      { left: (BOWL.x + ex) * 100 + '%', top: (BOWL.y + ey) * 100 + '%', rotate: spin + 'deg' },
+    ], { duration: LAG * 1000 * 2, easing: 'cubic-bezier(.45,0,.9,.6)' }).finished.catch(() => {}).then(() => b.remove());
+  };
+  /** The bag tips while held, faster the longer; what has left it lands LAG seconds later. */
+  const doseFrame = (dt) => {
+    if (phase !== 'dose') return;
+    if (tipping) {
+      tipT += dt;
+      const rate = BEAN_RATE[0] + (BEAN_RATE[1] - BEAN_RATE[0]) * clamp(tipT / RAMP, 0, 1);
+      const out = Math.min(rate * dt * (0.8 + 0.4 * Math.random()), BOWL_MAX - poured);   // in clumps, till the bowl is full
+      poured += out;
+      if ((beanT += out) > 0.45) { beanT = 0; dropBean(); }
+      if ((sfxT += dt) > 0.09) { sfxT = 0; hiss(0.04, { vol: 0.05, freq: 3200, q: 3 }); }
+    }
+    if (poured - dose < 0.01) { dose = poured; return; }
+    dose += (poured - dose) * (1 - Math.exp(-dt / LAG));   // at full tilt about 1.5 g is still in the air
+    setDose();
+  };
+  const startTip = () => { tipping = true; tipT = 0; root.classList.add('tipping'); };
+  const stopTip = () => { if (!tipping) return; tick(performance.now()); tipping = false; root.classList.remove('tipping'); };
+  function scoopOut() {
+    if (phase !== 'dose' || dose <= 0) return;
+    poured = Math.max(0, poured - SCOOP); dose = Math.min(dose, poured);
+    setDose();
+    hiss(0.08, { vol: 0.05, freq: 1800, q: 1.5 });
+  }
+  function toGrind() {
+    if (phase !== 'dose') return;
+    tipping = false;
+    dose = poured; r.dose = Math.round(dose * 10) / 10;
+    setDose();
+    phase = 'grind';
+    root.classList.remove('dose', 'tipping'); root.classList.add('grind');
+    audio.play('pop');
+    show(t('2 / 4  Grind'), t('Draw circles round the grinder to turn it.'));
+  }
+
+  // ---------------- 2. grind
   const grind = (p) => {
     const ang = Math.atan2(p.y - 0.5, p.x - 0.5);
     if (lastAng != null) {
@@ -112,13 +207,13 @@ export function openBrew(game, opts = {}) {
     phase = 'bloom';
     root.classList.remove('grind'); root.classList.add('pour');
     audio.play('pop');
-    show(t('2 / 3  Bloom'), t('Hold to pour a little, up to Bloom on the gauge, then let go.'));
+    show(t('3 / 4  Bloom'), t('Hold to pour a little, up to Bloom on the gauge, then let go.'));
   };
   /** The dot to follow, at its place on the circle. */
   const putGuide = () => { guide.style.left = (0.5 + Math.cos(gAng) * GUIDE * BED) * 100 + '%'; guide.style.top = (0.5 + Math.sin(gAng) * GUIDE * BED) * 100 + '%'; };
   putGuide();
 
-  // ---------------- 2. bloom, 3. pour
+  // ---------------- 3. bloom, 4. pour
   const startPour = () => {   // from settle: the main pour starts
     if (phase !== 'bloom' && phase !== 'settle' && phase !== 'pour') return;
     tick(performance.now());   // the time before the press doesn't pour
@@ -133,11 +228,11 @@ export function openBrew(game, opts = {}) {
       phase = 'settle';
       bloomAt = performance.now();
       root.classList.add('blooming');
-      show(t('2 / 3  Bloom'), t('The grounds swell and bubble. Wait till the bubbles settle, then pour again.'));
+      show(t('3 / 4  Bloom'), t('The grounds swell and bubble. Wait till the bubbles settle, then pour again.'));
       setTimeout(() => {
         if (phase !== 'settle' && phase !== 'pour') return;
         root.classList.add('settled', 'circling');   // the dot comes up: where to start the main pour
-        if (phase === 'settle') show(t('2 / 3  Bloom'), t('The bubbles have settled. Put the stream on the glowing dot and pour again.'));
+        if (phase === 'settle') show(t('3 / 4  Bloom'), t('The bubbles have settled. Put the stream on the glowing dot and pour again.'));
       }, SETTLE[0] * 1000);
     } else if (phase === 'pour' && water >= FULL[0] * 0.5) finish();
   };
@@ -148,7 +243,7 @@ export function openBrew(game, opts = {}) {
       phase = 'pour';
       root.classList.remove('blooming');
       root.classList.add('circling');
-      show(t('3 / 3  Pour'), t('Keep the stream on the dot as it circles. Let go at Full.'));
+      show(t('4 / 4  Pour'), t('Keep the stream on the dot as it circles. Let go at Full.'));
     }
     water += dt / FILL_S;
     setLevel();
@@ -181,22 +276,24 @@ export function openBrew(game, opts = {}) {
     e.preventDefault();
     try { stage.setPointerCapture(e.pointerId); } catch { /* gone */ }
     finger = at(e);
-    if (phase === 'grind') { lastAng = null; grind(finger); } else startPour();
+    if (phase === 'dose') startTip();
+    else if (phase === 'grind') { lastAng = null; grind(finger); } else startPour();
     place();
   });
   stage.addEventListener('pointermove', (e) => {
     if (!finger && e.pointerType !== 'mouse') return;
     const p = at(e);
+    if (phase === 'dose') return;
     if (phase === 'grind') { if (e.buttons || e.pointerType !== 'mouse') grind(p); return; }
     finger = p; place();
   });
-  const up = () => { if (phase === 'grind') lastAng = null; stopPour(); if (phase !== 'grind') finger = null; place(); };
+  const up = () => { stopTip(); if (phase === 'grind') lastAng = null; stopPour(); if (phase !== 'grind') finger = null; place(); };
   stage.addEventListener('pointerup', up);
   stage.addEventListener('pointercancel', up);
 
   // by the clock, not by frames: a phone that drops frames pours as much water in a second as one that doesn't
   let raf = 0;
-  function tick(now) { const dt = Math.min(0.5, Math.max(0, (now - last) / 1000)); last = now; pourFrame(dt); }
+  function tick(now) { const dt = Math.min(0.5, Math.max(0, (now - last) / 1000)); last = now; doseFrame(dt); pourFrame(dt); }
   const loop = (now) => { tick(performance.now()); raf = requestAnimationFrame(loop); };
   raf = requestAnimationFrame(loop);
 
@@ -215,19 +312,13 @@ export function openBrew(game, opts = {}) {
     root.classList.add('drawdown');
     setTimeout(() => serve(res), still ? 0 : 1200);
   }
-  const VERDICT = {
-    balanced: () => t('Sweet and clear. Just right.'),
-    sour: () => t('A bit sour: the bloom was cut short, or the cup was poured thin.'),
-    bitter: () => t('A bit bitter: it sat too long, or the water ran over.'),
-    uneven: () => t('Uneven: the stream kept losing the dot. Follow it round, slow and steady.'),
-  };
   function serve(res) {
     audio.play(res.score >= 80 ? 'levelup' : 'serve');
     const cup = h('div.br-cup', h('i.br-cup-glow', { style: { opacity: res.score / 100 } }), h('i.br-cup-img'));
     const card = h('div.br-result',
       cup,
       h('div.br-score', h('b', res.score), h('span', t('% colour back'))),
-      h('div.br-verdict', VERDICT[res.verdict]()),
+      h('div.br-verdict', verdictLine(res.why, r.dose)),
       h('button.btn.primary', { onclick: () => close(res) }, opts.guest ? t('Hand it to {name}', { name: opts.guest }) : t('Serve')));
     root.appendChild(card);
     root.classList.add('served');
@@ -236,7 +327,7 @@ export function openBrew(game, opts = {}) {
     game.hold = held;
     const a = root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: still ? 1 : 300, fill: 'forwards' });
     a.finished.catch(() => {}).then(() => root.remove());
-    resolve({ score: res.score, verdict: res.verdict });
+    resolve({ score: res.score, verdict: res.verdict, why: res.why, dose: r.dose });
   }
   return result;
 }

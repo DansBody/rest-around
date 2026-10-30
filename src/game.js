@@ -87,6 +87,7 @@ export class Game {
     this.renderTime = 0;
     this.paused = false;
     this.hold = false;    // a training mini-game is on screen: the café waits
+    this.covered = false; // a full-screen 3D scene of its own covers the café (ui/brew3d.js): main.js doesn't draw it
     this.touchMode = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;   // updated by the last pointer used
     this.selected = null;
     this.doorOpen = 0;
