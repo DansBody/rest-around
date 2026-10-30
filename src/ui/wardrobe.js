@@ -51,7 +51,7 @@ class WardrobeStage extends Stage {
 }
 
 /** A button that repeats while held (a tap is one step). */
-function holdBtn(sel, label, title, step) {
+export function holdBtn(sel, label, title, step) {
   let timer = null;
   const stop = () => { clearTimeout(timer); clearInterval(timer); timer = null; };
   const b = h(sel, { title, 'aria-label': title, type: 'button' }, label);
@@ -59,6 +59,17 @@ function holdBtn(sel, label, title, step) {
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, stop);
   b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(); } });
   return b;
+}
+
+/**
+ * Nudge a worn accessory's offset (an entry of look.wear) one step, in place. Left/right follow the screen: the
+ * preview's nearest quarter turn `yaw`, so a tap never moves diagonally.
+ */
+export function nudgeWear(e, yaw, dx, dy, dz) {
+  const L = WEAR_LIMITS, clampP = (v) => Math.max(-L.p, Math.min(L.p, v));
+  const q = Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2);
+  const p = e.p || [0, 0, 0];
+  e.p = [clampP(p[0] + dx * Math.cos(q) * STEP), clampP(p[1] + dy * STEP), clampP(p[2] + (dx * Math.sin(q) + dz) * STEP)].map((v) => +v.toFixed(3));
 }
 
 /** The card for `a` (a staff member), opened on `slot`. */
@@ -110,13 +121,9 @@ export function wardrobeCard(ui, a, slot = 'head') {
 
   const apply = () => stage.cv.setWear(draft);
   const entry = () => draft[slot];
-  const clampP = (v) => Math.max(-L.p, Math.min(L.p, v));
-  // left/right follow the screen (the preview's nearest quarter turn), so a tap never moves diagonally
   const nudge = (dx, dy, dz) => {
     const e = entry(); if (!e) return;
-    const q = Math.round(stage.goalYaw / (Math.PI / 2)) * (Math.PI / 2);
-    const p = e.p || [0, 0, 0];
-    e.p = [clampP(p[0] + dx * Math.cos(q) * STEP), clampP(p[1] + dy * STEP), clampP(p[2] + (dx * Math.sin(q) + dz) * STEP)].map((v) => +v.toFixed(3));
+    nudgeWear(e, stage.goalYaw, dx, dy, dz);
     apply();
   };
 

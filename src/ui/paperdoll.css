@@ -1,5 +1,5 @@
 /* The paper doll (ui/paperdoll.js; concept design/paper_doll/ui/paper_doll_ui_A.png): a Refillit OS window over a denim
-   halftone; the doll on a cardboard stand over blue dots and orbit lines, cut-outs with fold tabs beside it; a cream
+   halftone; the doll standing on blue dots and orbit lines with a soft shadow, cut-outs with fold tabs beside it; a cream
    sticker sheet with index-card tabs, a torn foot, the name and the denim Save button. Denim only, never coral. */
 #paperdoll { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: stretch;
   padding: calc(8px + var(--sat)) calc(8px + var(--sar)) calc(8px + var(--sab)) calc(8px + var(--sal));
@@ -31,17 +31,17 @@
 .pd-spark path { fill: var(--os-denim); }
 .pd-doll { position: absolute; left: 2%; bottom: 7%; width: 60%; height: 88%; transition: transform .15s; }
 .pd-doll.drop { transform: scale(1.04); }
-.pd-doll.drop .pd-3d { filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 0 0 var(--os-denim)) drop-shadow(2px 0 0 var(--os-denim)) drop-shadow(-2px 0 0 var(--os-denim)); }
-/* the die-cut: a white edge drawn round whatever the canvas shows, then a soft paper shadow */
-.pd-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
-  filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(3px 4px 0 rgba(31, 42, 74, .22)); }
-.pd-floor { position: absolute; left: 12%; right: 12%; bottom: -3%; height: 12%; border-radius: 50%; background: rgba(63, 93, 170, .3); }
-/* the cardboard stand: two folded feet behind the doll */
-.pd-stand { position: absolute; bottom: 0; width: 15%; height: 9%; background: #efe3c9; border: var(--os-b) solid var(--os-ink);
-  clip-path: polygon(0 100%, 100% 100%, 70% 0, 30% 0); }
-.pd-stand::after { content: ''; position: absolute; left: 49%; top: 0; bottom: 0; border-left: 1.5px dashed rgba(31, 42, 74, .5); }
-.pd-stand.l { left: 28%; transform: skewX(18deg); }
-.pd-stand.r { right: 28%; transform: skewX(-18deg); }
+.pd-doll.drop .pd-3d { filter: drop-shadow(0 0 2px var(--os-denim)) drop-shadow(0 0 6px rgba(63, 93, 170, .7)); }
+/* the character straight on the halftone, a faint shadow at its feet */
+.pd-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pd-3d.pixel { image-rendering: pixelated; }   /* the pixel look (pixelview.js): drawn small, blown up crisp */
+.pd-floor { position: absolute; left: 22%; right: 22%; bottom: 0; height: 9%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(42, 63, 122, .32), rgba(42, 63, 122, .12) 60%, transparent); }
+/* a change: a few small denim sparkles that twinkle once */
+.pd-glints { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.pd-glint { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; opacity: 0; background: var(--os-denim);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%); animation: pd-glint .55s ease-out both; }
+@keyframes pd-glint { 0% { opacity: 0; transform: scale(.2) rotate(0); } 35% { opacity: .9; transform: scale(1) rotate(20deg); } 100% { opacity: 0; transform: scale(.5) rotate(45deg); } }
 .pd-hint { position: absolute; left: 8px; bottom: 6px; display: flex; align-items: center; gap: 4px; padding: 2px 6px; font-size: 11px; color: var(--os-denim-deep);
   background: rgba(255, 255, 255, .7); border: 1.5px solid var(--os-denim); pointer-events: none; }
 .pd-hint .ico { width: 13px; height: 13px; }
@@ -102,6 +102,7 @@
   border: 1.5px dashed rgba(31, 42, 74, .38); border-radius: 4px; transition: transform .12s; }
 .pd-tile:active { transform: scale(.95); }
 .pd-tile.on { border: 3.5px solid var(--os-denim); border-radius: 8px; background: rgba(255, 255, 255, .55); box-shadow: 2px 2px 0 rgba(31, 42, 74, .18); }
+.pd-tile.tuning { background: #fff; box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--os-ink); }
 .pd-stk { display: grid; place-items: center; width: 100%; height: 100%; }
 .pd-stk > canvas { width: 88%; height: 88%; object-fit: contain;
   filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(1px 2px 0 rgba(31, 42, 74, .22)); }
@@ -113,6 +114,26 @@
 .pd-own::after { content: ''; position: absolute; width: 74%; aspect-ratio: 1; border-radius: 50%; border: 1.5px dashed var(--os-denim); }
 .pd-note { flex: none; min-height: 0; font-size: 12px; line-height: 1.5; color: #4A5677; padding: 8px 2px 0; }
 .pd-note:empty { display: none; }
+
+/* ---------- fine-tuning a worn accessory (the old wardrobe's controls, ui/wardrobe.js) ---------- */
+.pd-adjust { flex: 1 1 100%; display: grid; gap: 6px; padding: 6px 8px 8px; background: var(--os-field); border: var(--os-b) solid var(--os-ink); box-shadow: 2px 2px 0 rgba(31, 42, 74, .18); }
+.pd-adj-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.pd-adj-head span { color: var(--os-denim-deep); font-size: 12px; }
+.pd-mini { margin-left: auto; display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 7px; cursor: pointer; font: 12px/1 var(--os-font); color: var(--os-ink);
+  background: #eef2f9; border: 1.5px solid var(--os-ink); box-shadow: var(--os-bevel); }
+.pd-mini .ico { width: 14px; height: 14px; }
+.pd-adj-row { display: flex; gap: 10px; align-items: center; }
+.pd-pad { flex: none; display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px) 26px; gap: 3px; }
+.pd-key { display: grid; place-items: center; padding: 0; cursor: pointer; font: 11px/1 var(--os-font); color: var(--os-ink); touch-action: none;
+  background: #f7f1e5; border: 1.5px solid var(--os-ink); box-shadow: inset 2px 2px 0 #fff; }
+.pd-key:active { background: var(--os-denim); color: #fff; box-shadow: none; }
+.pd-key .ico { width: 14px; height: 14px; }
+.pd-key.up { grid-area: 1 / 2; } .pd-key.left { grid-area: 2 / 1; } .pd-key.right { grid-area: 2 / 3; } .pd-key.down { grid-area: 3 / 2; }
+.pd-key.up .ico, .pd-key.down .ico { transform: rotate(90deg); }
+.pd-key.fwd { grid-area: 4 / 1; } .pd-key.bk { grid-area: 4 / 3; }
+.pd-sliders { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.pd-slider { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 6px; font-size: 12px; }
+.pd-slider input { width: 100%; height: 20px; margin: 0; accent-color: var(--os-denim); }
 
 /* ---------- name and Save ---------- */
 .pd-foot { flex: none; display: flex; gap: 10px; align-items: stretch; padding-top: 4px; }
@@ -126,5 +147,7 @@
   clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
 .pd-save:active { box-shadow: inset 2px 2px 0 rgba(0, 0, 0, .28), inset -2px -2px 0 rgba(255, 255, 255, .25); }
 
-@media (max-height: 640px) { .pd-stage { height: 190px; } .pd-tile { padding: 3px; } }
+@media (max-height: 640px) { .pd-stage { height: 190px; } .pd-tile { padding: 3px; }
+  .pd-pad { grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px) 24px; } .pd-adjust { gap: 4px; padding: 4px 8px 6px; }
+  .pd-sub:has(.pd-adjust) + .pd-note { display: none; } .pd-sub:has(.pd-adjust) ~ .pd-grid { min-height: 80px; } }
 @media (prefers-reduced-motion: reduce) { .pd-cut { animation: none; } }
