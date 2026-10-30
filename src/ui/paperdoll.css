@@ -1,0 +1,130 @@
+/* The paper doll (ui/paperdoll.js; concept design/paper_doll/ui/paper_doll_ui_A.png): a Refillit OS window over a denim
+   halftone; the doll on a cardboard stand over blue dots and orbit lines, cut-outs with fold tabs beside it; a cream
+   sticker sheet with index-card tabs, a torn foot, the name and the denim Save button. Denim only, never coral. */
+#paperdoll { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: stretch;
+  padding: calc(8px + var(--sat)) calc(8px + var(--sar)) calc(8px + var(--sab)) calc(8px + var(--sal));
+  background: radial-gradient(rgba(63, 93, 170, .28) 1.2px, transparent 1.7px) 0 0 / 7px 7px, #b8c7e6;
+  font-family: var(--os-font); color: var(--os-ink); touch-action: none; -webkit-user-select: none; user-select: none; }
+#paperdoll * { box-sizing: border-box; font-weight: 400; }
+.pd-win { position: relative; display: flex; flex-direction: column; width: min(100%, 470px); max-height: 100%; min-height: 0;
+  background: var(--os-frame); border: var(--os-b) solid var(--os-ink); border-radius: 3px; box-shadow: var(--os-bevel), var(--os-drop); }
+
+/* ---------- title bar: denim pinstripes, a document icon, the title, a close box ---------- */
+.pd-bar { flex: none; position: relative; display: flex; align-items: center; gap: 8px; height: 34px; margin: 4px 4px 0; padding: 0 6px;
+  border: var(--os-b) solid var(--os-ink); color: #fff;
+  background: repeating-linear-gradient(90deg, transparent 0 3px, rgba(255, 255, 255, .14) 3px 4px), linear-gradient(180deg, #5673bd 0 45%, var(--os-denim) 45%); }
+.pd-doc { flex: none; width: 24px; height: 24px; padding: 1px; background: #fff; color: var(--os-ink); border: var(--os-b) solid var(--os-ink); }
+.pd-doc svg { display: block; width: 100%; height: 100%; }
+.pd-title { flex: 1; min-width: 0; font-size: 16px; letter-spacing: .06em; text-shadow: 2px 2px 0 var(--os-ink); white-space: nowrap; overflow: hidden; }
+.pd-x { flex: none; display: grid; place-items: center; width: 26px; height: 24px; padding: 0; border: var(--os-b) solid var(--os-ink); border-radius: 0;
+  background: var(--os-field); color: var(--os-ink); box-shadow: var(--os-bevel); cursor: pointer; }
+.pd-x:active { box-shadow: var(--os-sunk); }
+
+/* ---------- stage: the doll, the orbit, the cut-outs ---------- */
+.pd-stage { position: relative; flex: 0 0 auto; height: clamp(210px, 40vh, 340px); margin: 4px 4px 0; overflow: hidden; touch-action: none; cursor: grab;
+  border: var(--os-b) solid var(--os-ink);
+  background: radial-gradient(rgba(63, 93, 170, .26) 1.1px, transparent 1.6px) 0 0 / 6px 6px, radial-gradient(ellipse at 40% 45%, #e7eefb 0 30%, #c9d7f1 75%); }
+.pd-stage:active { cursor: grabbing; }
+.pd-orbit { position: absolute; inset: 4% 2% 8% 0; pointer-events: none; }
+.pd-orbit svg { width: 100%; height: 100%; overflow: visible; }
+.pd-orbit ellipse { fill: none; stroke: var(--os-denim); stroke-width: .45; opacity: .55; vector-effect: non-scaling-stroke; }
+.pd-spark path { fill: var(--os-denim); }
+.pd-doll { position: absolute; left: 2%; bottom: 7%; width: 60%; height: 88%; transition: transform .15s; }
+.pd-doll.drop { transform: scale(1.04); }
+.pd-doll.drop .pd-3d { filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 0 0 var(--os-denim)) drop-shadow(2px 0 0 var(--os-denim)) drop-shadow(-2px 0 0 var(--os-denim)); }
+/* the die-cut: a white edge drawn round whatever the canvas shows, then a soft paper shadow */
+.pd-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(3px 4px 0 rgba(31, 42, 74, .22)); }
+.pd-floor { position: absolute; left: 12%; right: 12%; bottom: -3%; height: 12%; border-radius: 50%; background: rgba(63, 93, 170, .3); }
+/* the cardboard stand: two folded feet behind the doll */
+.pd-stand { position: absolute; bottom: 0; width: 15%; height: 9%; background: #efe3c9; border: var(--os-b) solid var(--os-ink);
+  clip-path: polygon(0 100%, 100% 100%, 70% 0, 30% 0); }
+.pd-stand::after { content: ''; position: absolute; left: 49%; top: 0; bottom: 0; border-left: 1.5px dashed rgba(31, 42, 74, .5); }
+.pd-stand.l { left: 28%; transform: skewX(18deg); }
+.pd-stand.r { right: 28%; transform: skewX(-18deg); }
+.pd-hint { position: absolute; left: 8px; bottom: 6px; display: flex; align-items: center; gap: 4px; padding: 2px 6px; font-size: 11px; color: var(--os-denim-deep);
+  background: rgba(255, 255, 255, .7); border: 1.5px solid var(--os-denim); pointer-events: none; }
+.pd-hint .ico { width: 13px; height: 13px; }
+.pd-tape { position: absolute; width: 74px; height: 22px; pointer-events: none; opacity: .85;
+  background: repeating-conic-gradient(rgba(106, 132, 200, .55) 0 25%, rgba(255, 255, 255, .7) 0 50%) 0 0 / 8px 8px; }
+.pd-tape.a { left: -18px; top: 14px; transform: rotate(-24deg); }
+.pd-tape.b { right: -16px; bottom: 20px; transform: rotate(-30deg); background: rgba(240, 228, 200, .85); }
+
+/* the cut-outs: a sticker with a white edge and two fold-over tabs, bobbing a little */
+.pd-cuts { position: absolute; right: 2%; top: 4%; bottom: 4%; width: 40%; pointer-events: none; }
+.pd-cut { position: absolute; display: block; width: 46%; aspect-ratio: 1; min-width: 64px; max-width: 104px; padding: 0; border: 0; background: none; cursor: grab;
+  pointer-events: auto; touch-action: none; animation: pd-bob 3.2s ease-in-out infinite; z-index: 2; }
+.pd-cut.n0 { right: 4%; top: 0; --r: 8deg; }
+.pd-cut.n1 { right: 46%; top: 30%; --r: -6deg; animation-delay: -1.1s; }
+.pd-cut.n2 { right: 2%; top: 56%; --r: 4deg; animation-delay: -2.2s; }
+.pd-cut > canvas { position: relative; width: 100%; height: 100%; display: block; z-index: 1;
+  filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(2px 3px 0 rgba(31, 42, 74, .25)); }
+.pd-cut .pd-px { image-rendering: pixelated; }
+.pd-tab { position: absolute; z-index: 0; width: 18%; height: 22%; background: #fff; border: 1.5px dashed rgba(31, 42, 74, .55); }
+.pd-tab.a { left: 14%; top: 4%; transform: rotate(-14deg); }
+.pd-tab.b { right: 14%; top: 4%; transform: rotate(14deg); }
+.pd-cut.held { animation: none; z-index: 5; cursor: grabbing; transform: rotate(0) scale(1.12); }
+.pd-cut.worn { pointer-events: none; }
+@keyframes pd-bob { 0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); } 50% { transform: rotate(calc(var(--r, 0deg) * -.4)) translateY(-5px); } }
+
+/* ---------- the sheet ---------- */
+.pd-sheet { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin: 0 -6px -14px; padding: 0 12px 26px;
+  background: radial-gradient(rgba(31, 42, 74, .05) .8px, transparent 1.2px) 0 0 / 5px 5px, var(--os-paper);
+  border-top: var(--os-b) solid var(--os-ink); box-shadow: 0 -2px 0 rgba(31, 42, 74, .1); }
+.pd-tabs { flex: none; position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); align-items: end; gap: 4px; height: 50px; margin: 0 4px -2px; padding-top: 6px; }
+.pd-tabbtn { display: grid; place-items: center; height: 40px; padding: 0; border: var(--os-b) solid var(--os-ink); border-bottom: 0; border-radius: 8px 8px 0 0;
+  background: #f7f1e5; color: var(--os-denim); cursor: pointer; box-shadow: inset 2px 2px 0 #fff; }
+.pd-tabbtn svg { width: 24px; height: 24px; fill: currentColor; }
+.pd-tabbtn .pd-hole { fill: #f7f1e5; }
+.pd-tabbtn.on { background: var(--os-denim); color: #fff; box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .35); height: 44px; }
+.pd-tabbtn.on .pd-hole { fill: var(--os-denim); }
+
+.pd-sub { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding-top: 10px; }
+.pd-sub:empty { display: none; }
+.pd-seg { display: flex; gap: 4px; }
+.pd-seg button { display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; font: 13px/1 var(--os-font); color: var(--os-ink); cursor: pointer;
+  background: var(--os-field); border: var(--os-b) solid var(--os-ink); box-shadow: var(--os-bevel); }
+.pd-seg button.on { background: var(--os-denim); color: #fff; box-shadow: var(--os-sunk); }
+.pd-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--os-ink); }
+.pd-wells { display: flex; flex-wrap: wrap; gap: 5px; }
+.pd-well, .pd-ink { position: relative; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: var(--os-b) solid var(--os-ink); box-shadow: 0 0 0 2px #fff; }
+.pd-well.locked { background: repeating-linear-gradient(45deg, #ddd 0 3px, #eee 3px 6px); color: var(--os-ink); cursor: help; }
+.pd-well.locked .ico { width: 12px; height: 12px; }
+.pd-well.on, .pd-ink.on { box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--os-denim); }
+.pd-sublabel { font-size: 12px; color: var(--os-denim-deep); }
+.pd-inks { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-ink { width: 22px; height: 22px; }
+
+.pd-grid { flex: 1 1 auto; min-height: 96px; overflow-y: auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; gap: 8px;
+  padding: 10px 2px 8px; overscroll-behavior: contain; touch-action: pan-y; }
+.pd-tile { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 6px; cursor: pointer; background: transparent;
+  border: 1.5px dashed rgba(31, 42, 74, .38); border-radius: 4px; transition: transform .12s; }
+.pd-tile:active { transform: scale(.95); }
+.pd-tile.on { border: 3.5px solid var(--os-denim); border-radius: 8px; background: rgba(255, 255, 255, .55); box-shadow: 2px 2px 0 rgba(31, 42, 74, .18); }
+.pd-stk { display: grid; place-items: center; width: 100%; height: 100%; }
+.pd-stk > canvas { width: 88%; height: 88%; object-fit: contain;
+  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(1px 2px 0 rgba(31, 42, 74, .22)); }
+.pd-stk > .pd-px { image-rendering: pixelated; }
+.pd-blob { display: block; width: 64%; aspect-ratio: 1; border-radius: 50% 46% 52% 48%; border: var(--os-b) solid var(--os-ink);
+  box-shadow: inset -4px -5px 0 rgba(0, 0, 0, .14), inset 4px 4px 0 rgba(255, 255, 255, .3), 0 0 0 3px #fff, 2px 3px 0 3px rgba(31, 42, 74, .2); }
+.pd-tile.dye .pd-blob { border-radius: 30% 70% 50% 50%; }
+.pd-own { position: relative; display: grid; place-items: center; width: 100%; height: 100%; }
+.pd-own::after { content: ''; position: absolute; width: 74%; aspect-ratio: 1; border-radius: 50%; border: 1.5px dashed var(--os-denim); }
+.pd-note { flex: none; min-height: 0; font-size: 12px; line-height: 1.5; color: #4A5677; padding: 8px 2px 0; }
+.pd-note:empty { display: none; }
+
+/* ---------- name and Save ---------- */
+.pd-foot { flex: none; display: flex; gap: 10px; align-items: stretch; padding-top: 4px; }
+.pd-name { flex: 1 1 52%; min-width: 0; display: flex; align-items: stretch; height: 44px; background: var(--os-field); border: var(--os-b) solid var(--os-ink); box-shadow: var(--os-sunk); }
+.pd-pencil { flex: none; display: grid; place-items: center; width: 38px; border-right: var(--os-b) solid var(--os-ink); background: #eef2f9; }
+.pd-pencil svg { width: 20px; height: 20px; fill: var(--os-denim); }
+.pd-name-in { flex: 1; min-width: 0; height: auto; margin: 0; padding: 0 10px; border: 0 !important; border-radius: 0 !important; outline: 0; box-shadow: none !important; background: transparent !important; font: 16px/1 var(--os-font); color: var(--os-ink); -webkit-user-select: text; user-select: text; }
+.pd-name-in::placeholder { color: #8b95ae; }
+.pd-save { flex: 1 1 48%; min-width: 0; height: 44px; padding: 0 10px; cursor: pointer; font: 16px/1 var(--os-font); color: #fff; letter-spacing: .05em;
+  background: var(--os-denim); border: var(--os-b) solid var(--os-ink); box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .35), inset -2px -2px 0 rgba(0, 0, 0, .28), 0 0 0 2px var(--os-paper), 0 0 0 4px var(--os-ink);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
+.pd-save:active { box-shadow: inset 2px 2px 0 rgba(0, 0, 0, .28), inset -2px -2px 0 rgba(255, 255, 255, .25); }
+
+@media (max-height: 640px) { .pd-stage { height: 190px; } .pd-tile { padding: 3px; } }
+@media (prefers-reduced-motion: reduce) { .pd-cut { animation: none; } }

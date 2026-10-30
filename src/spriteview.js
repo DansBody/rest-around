@@ -8,13 +8,15 @@
 // bake measured (a palette swap), and its ears are small cards of their own behind the body, hung on the ear points
 // the bake measured in every frame.
 import { THREE, models, TILE } from './models.js';
-import { DIR_YAW, SIT_FORWARD, SWING, GLOW, contactShadow, makeBat } from './charview.js';
-import { signaturesOf } from './data.js';
+import { DIR_YAW, SIT_FORWARD, SWING, GLOW, contactShadow, makeBat, CharacterView } from './charview.js';
+import { signaturesOf, wearById } from './data.js';
+import { SPRITE_GLSL, spriteOutfit } from './outfit.js';
 
 const BASE = 'assets/';
 const MARK = 0.7;     // alpha the card writes: the pixel pass shows these pixels as baked (they were tone mapped in the bake)
 const PIVOT = 0.7;    // height the card tumbles round when knocked out
 const FLIP = 0.09;    // seconds for the card to flip from one side to the other
+const FLAT = 0.35;    // worn accessories are pressed this flat toward the camera, so they lie on the card like the head they sit on
 const PAL = 32;       // palette strip width (transparent + the sheet's colours + ink)
 const EAR_GEO = new THREE.PlaneGeometry(1, 1);   // an ear card, sized per ear
 /** Day and night on the sprites (1 at noon): the renderer sets it from its sun and sky. */
@@ -86,10 +88,11 @@ function cardMaterial(shared) {
     uniforms: { ...shared, rect: { value: new THREE.Vector4(0, 0, 1, 1) } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `uniform sampler2D map; uniform sampler2D pal; uniform vec4 rect; uniform vec3 light; uniform vec3 glow; uniform vec3 tint; varying vec2 vUv;
+      ${SPRITE_GLSL}
       void main() {
         float i = floor(texture2D(map, rect.xy + vUv * rect.zw).r * 255.0 + 0.5);
         if (i < 0.5) discard;
-        vec3 c = texture2D(pal, vec2((i + 0.5) / ${PAL.toFixed(1)}, 0.5)).rgb;
+        vec3 c = ofApply(texture2D(pal, vec2((i + 0.5) / ${PAL.toFixed(1)}, 0.5)).rgb, i, vUv);
         gl_FragColor = vec4(c * tint * light + glow, ${MARK.toFixed(2)});
       }`,
   });
@@ -120,6 +123,36 @@ function guestPalette(sheet, def, look) {
 }
 const hexOf = (rgb) => '#' + rgb.map((v) => v.toString(16).padStart(2, '0')).join('');
 
+const fits = new Map();   // model id + wear -> where each worn accessory sits (wornFits)
+/**
+ * The wardrobe's accessories on a sprite (art-direction PLAN step 6): each is the small 3D model, put where it sits on
+ * the character's 3D model in the idle pose, measured once from the head (or, for the hand, the hand) and hung on the
+ * same point of the sprite in every frame. The pixel pass draws them in pixels with an outline like the held things.
+ * Signatures are baked into the sheet, so only what the player put on comes here.
+ */
+function wornFits(modelId, wear) {
+  const key = modelId + JSON.stringify(wear);
+  if (fits.has(key)) return fits.get(key);
+  const scene = new THREE.Scene();
+  const cv = new CharacterView(scene, { look: { model: modelId, wear }, x: 0, y: 0, dir: 1, pose: {} }, { shadow: false });
+  if (cv.inst.mixer) cv.inst.mixer.update(0);
+  cv.root.updateMatrixWorld(true);
+  const head = new THREE.Vector3(), hand = new THREE.Vector3(), b = cv.inst.bones;
+  if (b.head) b.head.getWorldPosition(head);
+  if (b.hand || b.head) (b.hand || b.head).getWorldPosition(hand);
+  const out = [];
+  for (const o of cv.worn) {
+    const slot = o.userData.slot, item = wear[slot] && wearById(wear[slot].id);
+    if (!item) continue;
+    const p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    o.matrixWorld.decompose(p, q, sc);
+    out.push({ slot, model: item.model, off: p.sub(slot === 'hand' ? hand : head), q, s: sc });
+  }
+  cv.dispose(scene);
+  fits.set(key, out);
+  return out;
+}
+
 export class SpriteView {
   constructor(scene, agent) {
     this.sprite = true;
@@ -143,7 +176,10 @@ export class SpriteView {
       pal = palettes.get(this.modelId);
       if (!pal) palettes.set(this.modelId, (pal = paletteTexture(sheet.pal)));
     }
-    this.uniforms = { map: { value: sheet.tex }, pal: { value: pal }, light: SPRITE_LIGHT, glow: { value: new THREE.Color(0, 0, 0) }, tint: { value: ONE } };
+    // the paper doll's pattern and top go on the fur and clothes slots (outfit.js)
+    const of = spriteOutfit(meta, look);
+    this.ownReg = of.patK.value || of.topK.value ? of.ofReg.value : null;
+    this.uniforms = { map: { value: sheet.tex }, pal: { value: pal }, light: SPRITE_LIGHT, glow: { value: new THREE.Color(0, 0, 0) }, tint: { value: ONE }, ...of };
     if (look.tint) this.uniforms.tint = { value: new THREE.Color('#ffffff').lerp(new THREE.Color(look.tint), 0.35) };
     this.mat = cardMaterial(this.uniforms);
     const geo = new THREE.PlaneGeometry(G.canvas / G.ppu, this.H / G.ppu);
@@ -181,6 +217,22 @@ export class SpriteView {
       this.sig.traverse((m) => { m.castShadow = false; });
       this.sig.visible = false;
       this.root.add(this.sig);
+    }
+    // what the player put on (a hand-held one only while the hands are free, like the whisk), in a group turned to
+    // face the camera and pressed flat along its line of sight
+    this.worn = [];
+    this.wornFace = new THREE.Group();
+    this.wornFace.scale.z = FLAT;
+    this.root.add(this.wornFace);
+    if (look.wear && Object.keys(look.wear).length) for (const f of wornFits(this.modelId, look.wear)) {
+      const o = models.instance(f.model);
+      o.position.copy(f.off); o.quaternion.copy(f.q); o.scale.copy(f.s);
+      o.traverse((m) => { m.castShadow = false; });
+      const at = new THREE.Group();
+      at.userData.slot = f.slot;
+      at.add(o);
+      this.wornFace.add(at);
+      this.worn.push(at);
     }
     this.play('idle', 0);
   }
@@ -313,6 +365,7 @@ export class SpriteView {
       this.cardPoint(at[0], at[1], at[2], o.position);
       o.rotation.y = yaw;
     }
+    if (this.worn.length) this.placeWorn(dir, !p.held && (anim === 'idle' || anim === 'walk'));
     // like the 3D cane: only out while standing or walking empty-handed, and not while something else is in that hand
     if (this.sig) {
       const w = a.look && a.look.wear;
@@ -322,6 +375,28 @@ export class SpriteView {
         this.cardPoint(at[0], at[1], at[2], this.sig.position);
         this.sig.rotation.y = yaw;
       }
+    }
+  }
+
+  /**
+   * Hang the accessories on this frame's head (or hand) point, turned the way the sprite shows the character (the
+   * bake's quarter turn toward the camera, front or back, mirrored like the card), and stretched up as the card is:
+   * the bake looked down at `elev`, the café camera at its own pitch.
+   */
+  placeWorn(dir, free) {
+    const G = this.grid, side = Math.sign(this.flip) || 1, turn = G.turn ?? 0.5;
+    const yaw = this.camYaw + side * (dir === 'f' ? turn : Math.PI - turn);
+    const up = Math.cos(((G.elev ?? 18) * Math.PI) / 180) * this.sy, c = this.camYaw;
+    this.wornFace.rotation.y = c;
+    for (const o of this.worn) {
+      const slot = o.userData.slot, at = slot === 'hand' ? this.frame.hand : this.frame.head;
+      // pressed flat, what is on the far side would show through the card: glasses and a bow tie only from the front, a backpack from behind
+      o.visible = !!at && (slot !== 'hand' || free) && !(dir === 'f' ? slot === 'back' : slot === 'face' || slot === 'neck');
+      if (!o.visible) continue;
+      const p = this.cardPoint(at[0], at[1], at[2], o.position);   // root space -> the camera-facing group's
+      p.set(Math.cos(c) * p.x - Math.sin(c) * p.z, p.y, (Math.sin(c) * p.x + Math.cos(c) * p.z) / FLAT);
+      o.rotation.y = yaw - c;
+      o.scale.set(this.k, this.k * up, this.k);
     }
   }
 
@@ -339,7 +414,7 @@ export class SpriteView {
     if (!f || this.camYaw === undefined) { out.copy(this.root.position); out.y += 2.6; return out; }
     this.cardPoint(f.head ? f.head[0] : this.grid.canvas / 2, Math.min(f.top, this.earTop), 0, out);
     out.add(this.root.position);
-    out.y += 0.3;
+    out.y += this.worn.some((o) => o.userData.slot === 'head') ? 0.75 : 0.3;
     return out;
   }
 
@@ -348,6 +423,7 @@ export class SpriteView {
     this.mat.dispose();
     for (const m of this.ears) m.material.dispose();
     if (this.ownPal) this.ownPal.dispose();
+    if (this.ownReg) this.ownReg.dispose();
     this.card.geometry.dispose();
   }
 }

@@ -2,16 +2,15 @@
 import { h, fmt, fmtLeft } from '../util.js';
 import { assets } from '../assets.js';
 import { portrait, thumb } from '../portrait.js';
-import { roleLook, withCoat, COAT } from '../looks.js';
+import { roleLook, withDress } from '../looks.js';
 import { models } from '../models.js';
-import { wellOpen, ownedDyes } from '../palette.js';
-import { LOTS, SHOPS } from '../street.js';
 import { defaultName, cleanNick, NICK_MAX } from '../staff.js';
 import { openWardrobe, SLOT_NAME } from './wardrobe.js';
+import { openPaperDoll, dressStaff } from './paperdoll.js';
 import {
   ROLES, SNACKS, snackById, DISHES, DISH_CATS, EXTRA_CAT, WALL_DECOR, wallDecorById, dishPrice, dishPoints, MAX_DISH_LEVEL, dishCap, menuSlots, staffSlots,
   INGREDIENTS, ingById, FURNITURE, FLOORS, WALLS, furnitureById, SELL_RATE, CASHIER, seatCap, stationCap, EXPANSIONS,
-  awayHours, UNIQUE_MODELS, PALETTE_CENTRE, PALETTE_WELLS, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE, CREDITS, WEAR, WEAR_SLOTS, wearById,
+  awayHours, UNIQUE_MODELS, SKILL, ABILITIES, ABILITY_UNLOCK_LV, KITS, KIT_ACTIVES, CLUBS, staffWage, perRound, servingCost, SERVINGS_PER_UNIT, OFFLINE, CREDITS, WEAR, WEAR_SLOTS, wearById,
 } from '../data.js';
 import { clearSave, serialize } from '../save.js';
 import { CASE_SLOTS } from '../pastry.js';
@@ -58,54 +57,6 @@ function jobSkill(role, unlocked, long = true) {
     unlocked ? t('Auto') : t('Unlocks at {title}', { title: SKILL.titles[ABILITY_UNLOCK_LV - 1] }), long ? ab.desc : null);
 }
 /** A character's own kit: the skill you cast from the dock, then the perks (and drawbacks) that are always on. */
-const COAT_NAME = { fur: 'Fur', light: 'Belly', shirt: 'Clothes' };
-const pal = { region: 'fur', well: PALETTE_CENTRE.id, hint: null };   // which region and well the palette shows (kept between renders)
-const hexOf = (rgb) => '#' + rgb.map((v) => v.toString(16).padStart(2, '0')).join('');
-/**
- * The palette for a cast character (opening-premise): tabs for the regions its region map has, the centre well and
- * the 8 outer wells round it (each filled once its street lot is restored, else grey with a lock), the shades of the
- * well in use, then the dyes found. Tapping a shade calls `pick(region, hex)`; the dashed chip (`null`) is the
- * character's own colour. `coat` holds the colours picked so far.
- */
-export function coatPicker(g, model, coat, pick) {
-  const ref = (models.def(model) || {}).recolor || {};
-  const regions = COAT.filter((k) => ref[k]);
-  if (!regions.includes(pal.region)) pal.region = regions[0];
-  const k = pal.region, cur = coat[k] || null;
-  const wells = [PALETTE_CENTRE, ...PALETTE_WELLS];
-  let well = wells.find((w) => w.id === pal.well && wellOpen(g.state, w)) || PALETTE_CENTRE;
-  const chip = (c, title) => h('button.swatch' + (cur === c ? '.on' : ''), { title, style: { background: c }, onclick: () => pick(k, c) });
-  const R = 66, C = 92;   // ring radius and board centre (px)
-  const board = h('div.pal-board',
-    ...PALETTE_WELLS.map((w, i) => {
-      const a = -Math.PI / 2 + i * Math.PI / 4, open = wellOpen(g.state, w);
-      const lot = LOTS.find((l) => l.id === w.lot);
-      return h('button.pal-well' + (open ? '' : '.locked') + (open && well === w ? '.on' : '') + (w.colors.includes(cur) ? '.used' : ''), {
-        title: open ? t(w.name) : t('Restore the {shop} to fill this well', { shop: t(SHOPS[lot.shop].name) }),
-        style: { left: `${C + R * Math.cos(a) - 22}px`, top: `${C + R * Math.sin(a) - 22}px`, background: open ? w.colors[3] : '' },
-        onclick: () => { if (open) { pal.well = w.id; pal.hint = null; } else pal.hint = w.id; repaint(); },
-      }, open ? null : glyph('lock', 16));
-    }),
-    h('button.pal-well.centre' + (well === PALETTE_CENTRE ? '.on' : ''), { title: t(PALETTE_CENTRE.name),
-      style: { left: `${C - 28}px`, top: `${C - 28}px`, background: hexOf(ref[k]) },
-      onclick: () => { pal.well = PALETTE_CENTRE.id; pal.hint = null; repaint(); } }));
-  const hintWell = pal.hint && PALETTE_WELLS.find((w) => w.id === pal.hint);
-  const hintLot = hintWell && LOTS.find((l) => l.id === hintWell.lot);
-  const dyes = ownedDyes(g.state);
-  const el = h('div.palette',
-    h('div.seg.pal-tabs', regions.map((r) => h('button' + (r === k ? '.on' : ''), { onclick: () => { pal.region = r; repaint(); } },
-      h('i.pal-dot', { style: { background: coat[r] || hexOf(ref[r]) } }), t(COAT_NAME[r])))),
-    board,
-    h('div.pal-shades',
-      well === PALETTE_CENTRE ? h('button.swatch.own' + (cur ? '' : '.on'), { title: t('Original'), style: { background: hexOf(ref[k]) }, onclick: () => pick(k, null) }) : null,
-      ...well.colors.map((c) => chip(c, c))),
-    hintLot ? h('div.muted.pal-hint', t('Restore the {shop} to fill this well', { shop: t(SHOPS[hintLot.shop].name) })) : null,
-    h('div.pal-dyes', h('span.coat-name', t('Dyes')),
-      dyes.length ? h('div.coat-swatches', ...dyes.map((d) => chip(d.color, t(d.name)))) : h('span.muted', t('Found on commissions and outings'))));
-  function repaint() { el.replaceWith(coatPicker(g, model, coat, pick)); }
-  return el;
-}
-
 export function kitLines(model, unlocked = true, long = false) {
   const kit = KITS[model];
   if (!kit) return [];
@@ -253,13 +204,21 @@ function renderHirePick(ui, body, role) {
     h('div.pick-staff', free.map((m) => h('button.pick-tile' + (m === sub.pick ? '.on' : ''), { onclick: () => { sub.pick = m; ui.renderPanel(); }, title: defaultName(m) },
       portrait(roleLook(role, m), 64, 64), h('b', defaultName(m))))));
   if (!sub.pick) return;
-  if (sub.coatFor !== sub.pick) { sub.coat = {}; sub.coatFor = sub.pick; }   // colours are picked per character
+  if (sub.coatFor !== sub.pick) { sub.coat = {}; sub.coatFor = sub.pick; }   // the look is dressed per character (ui/paperdoll.js)
   const name = () => cleanNick(sub.nick) || defaultName(sub.pick);
   const label = h('span', t('Hire {name}', { name: name() }) + ' ');
   const nameIn = h('input.nick-input', { type: 'text', maxlength: NICK_MAX, autocomplete: 'off', placeholder: defaultName(sub.pick), value: sub.nick || '' });
   nameIn.addEventListener('input', () => { sub.nick = nameIn.value; label.textContent = t('Hire {name}', { name: name() }) + ' '; });
-  const pc = portrait(withCoat(roleLook(role, sub.pick), sub.coat), 88, 88);
-  body.append(h('div.coat-pick', pc, coatPicker(g, sub.pick, sub.coat, (k, c) => { sub.coat = { ...sub.coat, [k]: c }; ui.renderPanel(); })),
+  const look = withDress(roleLook(role, sub.pick), sub.coat);
+  const dress = () => openPaperDoll(g, { look, name: sub.nick || '' }).then((res) => {
+    if (!res) return;
+    const { model, scale, ...d } = res.look;
+    sub.coat = { fur: null, light: null, shirt: null, pat: null, top: null, ...d };
+    sub.nick = res.name;
+    ui.renderPanel();
+  });
+  body.append(h('div.coat-pick', portrait(look, 88, 88),
+    h('button.btn.primary', { onclick: dress }, glyph('sparkles', 16), t('Dress {name}', { name: name() }))),
     h('label.nick-field', h('span', t('Give them a name')), nameIn),
     h('button.btn.primary' + (full || !g.eco.canAfford(r.hire) ? '.disabled' : ''), { style: { width: '100%', marginTop: '12px' }, onclick: () => { if (g.eco.hire(role, sub.pick, sub.nick, sub.coat)) back(); } },
       label, coinPill(r.hire)));
@@ -318,10 +277,10 @@ function renderOutfit(ui, body, a) {
   body.append(
     h('div.subhead', h('button.btn.small', { onclick: () => { ui.subview = null; ui.renderPanel(); } }, gl('back', t('Back'), 14)), h('b', t("{name}'s wardrobe", { name: a.name }))),
     pc,
+    h('button.btn.primary', { style: { width: '100%', marginTop: '8px' }, onclick: () => dressStaff(ui.game, a).then((r) => { if (r) ui.renderPanel(); }) },
+      glyph('sparkles', 16), t('Paper doll: colours, patterns, clothes, accessories')),
     nickField(ui, a),
-    h('div.section-title', t('Colours')),
-    coatPicker(ui.game, look.model, look, (k, c) => { a.look = withCoat(a.look, { [k]: c }); ui.game.refreshCharacter(a); ui.game.changed('staff'); ui.renderPanel(); }),
-    h('div.section-title', t('Accessories')),
+    h('div.section-title', t('Fine-tune accessories')),
     ...WEAR_SLOTS.map((slot) => {
       const item = look.wear && look.wear[slot] && wearById(look.wear[slot].id);
       return h('button.orow.wear-row', { onclick: () => openWardrobe(ui, a, slot) },

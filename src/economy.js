@@ -12,7 +12,7 @@ import * as pantry from './pantry.js';
 const FEED_SLACK = 15;   // feeding the whole team skips anyone this close to full energy
 import { DOOR_Y } from './world.js';
 import { makeStaff } from './staff.js';
-import { withCoat } from './looks.js';
+import { withDress } from './looks.js';
 import { t } from './i18n.js';
 import { topUp } from './outing.js';
 import { choice, randInt, clamp } from './util.js';
@@ -394,7 +394,7 @@ export class Economy {
     if (!UNIQUE_MODELS.includes(model) || g.staff.some((a) => a.look.model === model)) return g.toast(t('{name} is already on the team', { name: t(UNIQUE_NAMES[model] || model) }), 'bad');
     if (!this.spend(ROLES[role].hire, t('hiring'))) return;
     const st = makeStaff(g, role, model, nick);
-    if (coat) st.look = withCoat(st.look, coat);
+    if (coat) st.look = withDress(st.look, coat);   // the paper doll's colours, pattern, top and accessories
     const e = g.world.entry;
     const spot = g.freeTileNear(e.x + 1, e.y) || e;
     g.addStaff(st, spot.x, spot.y);

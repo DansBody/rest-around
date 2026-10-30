@@ -5,6 +5,7 @@ import { THREE, models, TILE } from './models.js';
 import { addEars } from './ears.js';
 import { shape, fitMatrix, wearBone, HAND_SLOTS } from './wear.js';
 import { WEAR_SLOTS, wearById, signaturesOf } from './data.js';
+import { applyOutfit, patchOutfit } from './outfit.js';
 
 export const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI]; // +x, +y(+z), -x, -y
 export const SIT_FORWARD = 0.68;
@@ -18,12 +19,14 @@ export const RIM = { value: 0.42 };
 function addRim(m) {
   if (!m || m.userData.rim || !(m.isMeshLambertMaterial || m.isMeshStandardMaterial || m.isMeshPhongMaterial || m.isMeshToonMaterial)) return;
   m.userData.rim = true;
-  m.onBeforeCompile = (sh) => {
+  const prev = m.onBeforeCompile, key = m.customProgramCacheKey === THREE.Material.prototype.customProgramCacheKey ? '' : m.customProgramCacheKey();
+  m.onBeforeCompile = (sh, r) => {
+    prev.call(m, sh, r);   // a pattern or top (outfit.js) goes on first
     sh.uniforms.rimK = RIM;
     sh.fragmentShader = 'uniform float rimK;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
       'float rimF = 1.0 - saturate(dot(normal, normalize(vViewPosition)));\n\toutgoingLight += vec3(1.0, 0.92, 0.8) * pow(rimF, 2.6) * rimK;\n#include <opaque_fragment>');
   };
-  m.customProgramCacheKey = () => 'rim';
+  m.customProgramCacheKey = () => key + 'rim';
   m.needsUpdate = true;
 }
 const rimAll = (root) => root.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) addRim(m); });
@@ -91,6 +94,8 @@ export class CharacterView {
     }
     // guest bodies and staff the player recoloured: their own fur, shirt (and, for the cast, light) colours
     if (look.fur || look.shirt || look.light) models.recolorCharacter(this.inst.root, this.modelId, { fur: look.fur, shirt: look.shirt, light: look.light });
+    // the paper doll's pattern on the fur and top over the clothes (outfit.js)
+    if (look.pat || look.top) applyOutfit(this.inst.root, this.modelId, this.inst, look);
     if (look.ears) addEars(this.inst.root, look.ears, look.fur);
     if (look.scale) this.inst.root.scale.setScalar(look.scale);
   }
@@ -220,7 +225,7 @@ export class CharacterView {
     this.glow = k;
     this.inst.root.traverse((o) => {
       if (!o.isMesh || !o.material || !o.material.emissive) return;
-      if (!o.userData.ownGlow) { o.material = o.material.clone(); o.material.userData = {}; addRim(o.material); o.userData.ownGlow = true; }
+      if (!o.userData.ownGlow) { o.material = o.material.clone(); o.material.userData = {}; patchOutfit(o.material, o.userData.outfit); addRim(o.material); o.userData.ownGlow = true; }
       o.material.emissive.copy(GLOW).multiplyScalar(k);
     });
   }

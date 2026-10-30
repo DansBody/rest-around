@@ -10,12 +10,13 @@
 // What is done is kept in state.tutorial (step ids), and state.tutorialSeen once it is over.
 import { h } from '../util.js';
 import { portrait } from '../portrait.js';
-import { roleLook, withCoat } from '../looks.js';
+import { roleLook, withDress } from '../looks.js';
 import { UNIQUE_MODELS, furnitureById, CLUBS, TROUBLE, DAY, starterRole } from '../data.js';
 import { defaultName, cleanNick, NICK_MAX } from '../staff.js';
 import { DIRS } from '../iso.js';
 import { CLUB_FOR } from '../trouble.js';
-import { kitLines, coatPicker } from './panels.js';
+import { kitLines } from './panels.js';
+import { openPaperDoll } from './paperdoll.js';
 import { playPrologue, prologueSeen } from './prologue.js';
 import { glyph } from './icons.js';
 import { TILE } from '../models.js';
@@ -181,7 +182,7 @@ export function startTutorial(ui) {
 function pickCard(ui) {
   const g = ui.game;
   let pick = UNIQUE_MODELS[Math.floor(Math.random() * UNIQUE_MODELS.length)];
-  let coat = {};   // the colours picked for `pick` (cleared when another is picked)
+  let coat = {};   // the look dressed on `pick` in the paper doll (cleared when another is picked)
   let brewed = false;   // the cup is served: their colour is back
   const card = h('div.card.starter');
   // kept across re-renders so the typed name survives picking colours
@@ -199,7 +200,7 @@ function pickCard(ui) {
   const render = () => {
     nameIn.placeholder = defaultName(pick);
     label();
-    const look = withCoat(roleLook(starterRole(pick), pick), coat);
+    const look = withDress(roleLook(starterRole(pick), pick), coat);
     const head = h('div.starter-head', h('span' + (brewed ? '' : '.grey'), portrait(look, 88, 88)),
       h('div.grow', h('h3', defaultName(pick)),
         h('div.muted.starter-role', starterRole(pick) === 'waiter' ? t('Starts as your Server: takes orders, serves drinks and clears tables.')
@@ -218,7 +219,13 @@ function pickCard(ui) {
     card.replaceChildren(
       h('div.starter-pick', head,
         h('div.starter-quote', t("\"…Warm. I think I remember something. I worked in a café, once. I'll stay and help.\""))),
-      coatPicker(g, pick, coat, (k, c) => { coat = { ...coat, [k]: c }; render(); }),
+      h('button.btn', { onclick: () => openPaperDoll(g, { look, name: nameIn.value }).then((res) => {
+        if (!res) return;
+        const { model, scale, ...d } = res.look;
+        coat = { fur: null, light: null, shirt: null, pat: null, top: null, ...d };
+        nameIn.value = res.name;
+        render();
+      }) }, t('Dress {name}', { name: cleanNick(nameIn.value) || defaultName(pick) })),
       h('label.nick-field', h('span', t('Give them a name')), nameIn),
       go);
   };
