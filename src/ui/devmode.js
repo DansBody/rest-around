@@ -11,6 +11,7 @@ import { showPassersBy } from './tutorial.js';
 import { openBrew } from './brew.js';
 import { openBrew3d } from './brew3d.js';
 import { openBattleRt } from './battlert.js';
+import { openPaperDoll, dressStaff } from './paperdoll.js';
 
 const KEY = 'refillit.dev';
 const q = new URLSearchParams(location.search);
@@ -36,6 +37,7 @@ const SCENES = [
   { id: 'fresh', label: '新開一間（從序章開始）', run: (g) => freshCart(g, false) },
   { id: 'shop', label: '店舖彈出（攤車 → 10×10）', run: (g, ui) => popShop(g, ui) },
   { id: 'skiptour', label: '跳過導覽', run: (g, ui) => { if (ui.tutorial) ui.tutorial.end(); g.state.tutorialSeen = true; ui.closeModal(); } },
+  { id: 'paperdoll', label: '紙娃娃（幫第一位員工換裝）', run: (g) => devDoll(g) },
   { id: 'battle', label: '戰鬥（即時）', run: (g) => openBattleRt(g) },
   { id: 'debug', label: '除錯面板', run: (g, ui, debug) => { debug.toggle(); debug.rerender(); } },
 ];
@@ -55,6 +57,15 @@ function freshCart(g, skipStory) {
   const u = new URL(location.href);   // and not back into the scene the page was opened at
   for (const k of ['scene', 'brew', 'brew3d', 'battle']) u.searchParams.delete(k);
   location.replace(u);
+}
+
+/** The paper doll on the first member of staff (a random one of the cast if there is none), with a few accessories in the sandbox's wardrobe. */
+function devDoll(g) {
+  const w = (g.state.wardrobe = g.state.wardrobe || {});
+  if (!Object.values(w).some((n) => n > 0)) for (const id of ['hat_beret', 'hat_winter', 'glasses_round', 'bowtie', 'backpack', 'cane_coffee']) w[id] = 1;
+  const a = g.staff[0];
+  if (a) return dressStaff(g, a).then((r) => r && g.toast(`已存檔：${a.name}`));
+  return openPaperDoll(g, { model: UNIQUE_MODELS[Math.floor(Math.random() * UNIQUE_MODELS.length)] }).then((r) => r && g.toast(`紙娃娃：${r.name || r.model}`));
 }
 
 /** The cart's first expansion, finished now: the shop pops up round it (needs the cart stage). */

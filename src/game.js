@@ -6,7 +6,7 @@ import { TileClaims } from './agent.js';
 import { Jobs } from './jobs.js';
 import { Customer } from './customer.js';
 import { makeStaff } from './staff.js';
-import { withCoat } from './looks.js';
+import { withDress } from './looks.js';
 import { DayCycle } from './day.js';
 import { Rating } from './rating.js';
 import { Economy } from './economy.js';
@@ -149,7 +149,7 @@ export class Game {
    * The new player's pick: `model` becomes the partner and starts as the Server (the Barista when serving would
    * hold them back, see starterRole); another character, picked at random from those the other job suits, takes
    * it. Only for a brand-new café (the two starter staff swap who they are). `nick` and `coat` are the name and
-   * colours the player gave the partner (the other one keeps its own until changed in the Staff panel).
+   * look the player gave the partner in the paper doll (colours, pattern, top, accessories: looks.js withDress) (the other one keeps its own until changed in the Staff panel).
    */
   setStarter(model, nick, coat) {
     if (!UNIQUE_MODELS.includes(model)) return;
@@ -158,7 +158,7 @@ export class Game {
     const other = choice(UNIQUE_MODELS.filter((m) => m !== model && roleFits(m, theirs ? theirs.role : 'chef')));
     for (const [a, m] of [[mine, model], [theirs, other]]) {
       if (!a) continue;
-      a.look = withCoat({ ...a.look, model: m }, { fur: null, light: null, shirt: null, ...(m === model ? coat : {}) });
+      a.look = withDress({ ...a.look, model: m }, { fur: null, light: null, shirt: null, pat: null, top: null, ...(m === model ? coat : {}) });
       a.setNick(m === model ? nick : null);
       this.refreshCharacter(a);
     }

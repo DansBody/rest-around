@@ -5,6 +5,7 @@
 import { choice, chance, rand } from './util.js';
 import { OUTFIT_COLORS, GUEST_FUR, EAR_STYLES, CHARACTER_MODELS, UNIQUE_MODELS, WEAR, GUEST_WEAR } from './data.js';
 import { sanitizeWear } from './wear.js';
+import { cleanPat, cleanTop } from './outfit.js';
 
 /** A staff member's look: their own character, nothing worn yet (accessories come from the wardrobe). */
 export function staffLook(model) {
@@ -18,6 +19,17 @@ const isHex = (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 export function withCoat(look, coat) {
   const out = { ...look };
   for (const k of COAT) if (k in coat) { if (isHex(coat[k])) out[k] = coat[k].toLowerCase(); else delete out[k]; }
+  return out;
+}
+/**
+ * A copy of `look` dressed as the paper doll left it (`dress`: any of the COAT colours, pat, top, wear; ui/paperdoll.js).
+ * Only what `dress` names changes; pat/top null take them off. The species (model) never changes.
+ */
+export function withDress(look, dress = {}) {
+  const out = withCoat(look, dress);
+  if ('pat' in dress) { const p = cleanPat(dress.pat); if (p) out.pat = p; else delete out.pat; }
+  if ('top' in dress) { const p = cleanTop(dress.top); if (p) out.top = p; else delete out.top; }
+  if ('wear' in dress) out.wear = sanitizeWear(dress.wear);
   return out;
 }
 /**
@@ -57,6 +69,9 @@ export function sanitizeLook(l, role, taken = new Set()) {
     if (typeof l.scale === 'number') look.scale = Math.min(1.1, Math.max(0.9, l.scale));
     for (const k of COAT) if (isHex(l[k])) look[k] = l[k].toLowerCase();
     look.wear = sanitizeWear(l.wear);
+    const pat = cleanPat(l.pat), top = cleanTop(l.top);
+    if (pat) look.pat = pat;
+    if (top) look.top = top;
     // saves from before the wardrobe: the barista cap was a job hat, now it's the cap they keep wearing
     if (l.roleHat === 'chef' && !look.wear.head) look.wear.head = { id: 'cap_barista' };
   }

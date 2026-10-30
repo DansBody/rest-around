@@ -655,4 +655,13 @@ export const ZH_TW = {
   'Serve': '出杯',
   'Bloom': '悶蒸', 'Full': '滿', 'The bubbles have settled. Put the stream on the glowing dot and pour again.': '泡泡消了。把水柱對準發光的點，繼續倒。',
   'Too close to the middle': '太中間了', 'That is the paper': '沖到濾紙了', 'Follow the dot': '跟著光點',
+  // paper-doll (ui/paperdoll.js, outfit.js)
+  'Paper Doll': '紙娃娃', 'Colour': '顏色', 'Pattern': '花紋', 'Save look': '存檔', 'Pattern colour': '花紋顏色', 'No pattern': '沒有花紋',
+  'Polka dots': '圓點', 'Patches': '斑塊', 'Tabby stripes': '虎斑紋', 'Socks': '白襪', 'Freckles': '雀斑',
+  'Plain tee': '素面 T 恤', 'Striped tee': '條紋 T 恤', 'Denim overalls': '丹寧吊帶褲', 'Plaid shirt': '格紋襯衫', 'Cable knit': '麻花毛衣',
+  'Dotted blouse': '點點襯衫', 'Denim jacket': '丹寧外套', 'Grey vest': '灰色背心',
+  'Drag a cut-out onto them to put it on': '把剪紙拖到身上就能穿上，再點一次就脫下。',
+  'Accessories are bought in the Market.': '配件要在市集買。', "{name} doesn't wear clothes.": '{name}沒有穿衣服。',
+  'Dress {name}': '幫{name}換裝', 'Paper doll: colours, patterns, clothes, accessories': '紙娃娃：顏色、花紋、衣服、配件',
+  'Fine-tune accessories': '微調配件位置',
 };
