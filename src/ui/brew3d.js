@@ -134,9 +134,14 @@ function buildScene() {
   const glass = new THREE.Mesh(lathe([[0, 0], [4.6, 0], [5.1, 0.7], [5.3, 3], [5.1, 6.4], [4.3, 8.8], [3.7, 9.6], [3.9, SERVER_H]], 24),
     toon('#dbe8f0', { transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }));
   server.add(glass);
-  const coffeeMat = toon(GREY.clone());
-  const coffee = mesh(lathe([[0, 0], [4.55, 0], [4.95, 0.6], [5.1, 3], [4.9, 6.4], [4.15, 8.8], [0, 8.8]], 20), coffeeMat, false);
-  coffee.position.y = 0.15; coffee.scale.y = 0.001;
+  // the coffee inside, drawn as its own solid so it outlines through the glass; a level plane cuts it at the coffee's
+  // height however the server is held, and its inside, seen through the cut, is the coffee's surface
+  const coffeeCut = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+  const coffeeMat = toon(GREY.clone(), { clippingPlanes: [coffeeCut] });
+  const coffeeTop = flat(GREY.clone(), { side: THREE.BackSide, clippingPlanes: [coffeeCut] });
+  const coffeeGeo = lathe([[0, 0], [4.55, 0], [4.95, 0.6], [5.1, 3], [4.9, 6.4], [4.15, 8.8], [0, 8.8]], 20);
+  const coffee = new THREE.Group(); coffee.position.y = 0.15; coffee.visible = false;
+  coffee.add(mesh(coffeeGeo, coffeeMat, false), mesh(coffeeGeo, coffeeTop, false));
   server.add(coffee);
   const lip = mesh(new THREE.TorusGeometry(3.85, 0.18, 6, 24), toon('#c9d6de'), false);   // the glass's rim, so it reads
   lip.rotation.x = Math.PI / 2; lip.position.y = SERVER_H; server.add(lip);
@@ -146,8 +151,8 @@ function buildScene() {
   const drip = new THREE.Group();
   drip.position.set(0, DRIP_Y, -1.6);
   const cream = toon('#f1ebe0');
-  drip.add(mesh(new THREE.CylinderGeometry(6.4, 6.4, 0.5, 28), cream));
-  const foot = mesh(new THREE.CylinderGeometry(3.2, 3.2, 0.9, 20), cream); foot.position.y = -0.5; drip.add(foot);
+  const flange = mesh(new THREE.CylinderGeometry(6.4, 6.4, 0.5, 28), cream); flange.position.y = 0.45; drip.add(flange);   // resting on the server's lip
+  const foot = mesh(new THREE.CylinderGeometry(3.2, 3.2, 1.4, 20), cream); foot.position.y = -0.25; drip.add(foot);
   const cone = mesh(lathe([[2.2, 0.2], [6.6, 8.6], [6.9, 9.2], [6.1, 9.3], [CONE.r1 + 0.2, CONE.y1], [CONE.r0 + 0.2, CONE.y0], [1.2, 0.6]], 28), cream);
   cone.material = toon('#f1ebe0', { side: THREE.DoubleSide });
   drip.add(cone);
@@ -251,7 +256,7 @@ function buildScene() {
   });
   const label = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 4.6), toon('#ffffff', { map: labelTex }));
   label.position.set(0, -6.2, 2.12); bag.add(label);
-  bag.position.set(2.6, SCALE_TOP + 9.5, -1.6);
+  bag.position.set(2.6, SCALE_TOP + 12, -1.6);   // well clear of the bowl's rim
   scene.add(bag);
   // the measuring spoon: a steel cup on a flat handle, built with the cup's middle at the origin, so it tips round the
   // beans it holds; it lies beside the scale till it's wanted (draw() moves it)
@@ -299,8 +304,10 @@ function buildScene() {
   grindFill.rotation.x = -Math.PI / 2; grindFill.position.y = CRANK_Y - 0.35; grinder.add(grindFill);
   scene.add(grinder);
 
-  // at the back of the counter: a stack of takeaway cups, their lids and a pile of denim sleeves beside them, a jar of
-  // beans, the awning's edge above; the cup that's poured is the top of the stack, taken off it (draw() moves it)
+  // a stack of takeaway cups at the back, their lids and a pile of denim sleeves at the front either side of where the cup
+  // is poured (nothing behind the pour, nothing in front of the finished cup), a jar of beans at the back on the left,
+  // the awning's edge above. The cup that's
+  // poured is the top of the stack, taken off it (draw() moves it)
   const cupGeo = lathe([[0, 0], [3, 0], [3.1, 0.3], [4.1, 9.4], [4.35, 9.6], [4.2, CUP_H], [3.95, 9.7]], 20);
   const cupPaper = toon('#f7f3ea', { side: THREE.DoubleSide });
   const lidGeo = lathe([[0, 1], [2.3, 1], [2.7, 0.55], [3.9, 0.5], [4.5, 0.25], [4.55, -0.45], [4.3, -0.45]], 20);
@@ -313,14 +320,14 @@ function buildScene() {
     ['#e3c36b', '#e7a3b4', '#9fc6e8', '#7fae6a'].forEach((c, i) => { x.fillStyle = c; x.fillRect(w / 2 - 3 + (i % 2) * 4, hh / 2 - 3 + (i >> 1) * 4, 2, 2); });
   });
   const stack = new THREE.Group();
-  for (let i = 0; i < 6; i++) { const c = mesh(cupGeo, cupPaper); c.position.y = i * 1.1; stack.add(c); }
-  stack.position.set(-15, 0, -15); scene.add(stack);
+  for (let i = 0; i < 4; i++) { const c = mesh(cupGeo, cupPaper); c.position.y = i * 1.1; stack.add(c); }
+  stack.position.set(-9, 0, -16); scene.add(stack);
   const lids = new THREE.Group();
   for (let i = 0; i < 5; i++) { const l = mesh(lidGeo, lidMat); l.position.y = 0.45 + i * 0.55; lids.add(l); }
-  lids.position.set(-5.5, 0, -15); scene.add(lids);
+  lids.position.set(3, 0, 21); scene.add(lids);
   const sleeves = new THREE.Group();
   for (let i = 0; i < 4; i++) { const sl = mesh(new THREE.BoxGeometry(7.8, 0.35, 3.2), toon('#3f5daa')); sl.position.y = 0.18 + i * 0.36; sl.rotation.y = (i % 2 ? 0.08 : -0.06); sleeves.add(sl); }
-  sleeves.position.set(-6.5, 0, -22.5); scene.add(sleeves);
+  sleeves.position.set(21, 0, 12); scene.add(sleeves);
   // the cup: paper, the coffee in it (a disc that rises), its lid and sleeve (each carried over from its pile)
   const cup = new THREE.Group(); cup.visible = false;
   cup.add(mesh(cupGeo, cupPaper));
@@ -367,7 +374,7 @@ function buildScene() {
   const awning = new THREE.Mesh(new THREE.PlaneGeometry(130, 16), toon('#ffffff', { map: stripes, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide }));
   scene.add(awning);   // placed by fit(): along the top of the view
 
-  return { scene, sun, rig, bowl, beans, falling, bag, spoon, spoonBeans, lid, crank, adjust, grindRing, grindFill, server, coffee, coffeeMat, drip, bed, bedMat, pool, rings, ringMat, guide, halo, bubbles, dribble, stream, splash, kettle, skin, awning,
+  return { scene, sun, rig, bowl, beans, falling, bag, spoon, spoonBeans, lid, crank, adjust, grindRing, grindFill, server, coffee, coffeeCut, coffeeMat, coffeeTop, drip, bed, bedMat, pool, rings, ringMat, guide, halo, bubbles, dribble, stream, splash, kettle, skin, awning,
     stack, lids, sleeves, cup, inCup, inCupMat, cupLid, cupSleeve, cupStream, drops, spot, swirlRing, swirlFill, glow };
 }
 
@@ -459,17 +466,21 @@ export function openBrew3d(game, opts = {}) {
   gl.shadowMap.enabled = true; gl.shadowMap.type = THREE.PCFShadowMap;
   gl.outputColorSpace = THREE.SRGBColorSpace;
   gl.toneMapping = THREE.NeutralToneMapping; gl.toneMappingExposure = 0.82;
+  gl.localClippingEnabled = true;   // the coffee's level in the server
   const cam = new THREE.PerspectiveCamera(34, 1, 4, 260);
   const s = buildScene();
   const pass = pixelPass(cam);
-  // where the camera looks at each step; it eases from one to the next
+  // where the camera looks while a step waits on the player; while something moves, focus() follows it instead
   const STATION = {
-    dose: new THREE.Vector3(1.5, 6, -1.6),
+    dose: new THREE.Vector3(1, 7, -1.6),
     grind: new THREE.Vector3(GRIND.x, 8, GRIND.z + 0.5),
-    setting: new THREE.Vector3(GRIND.x, 5.3, GRIND.z + 5.2),   // the grinder higher up the view, clear of the dial
+    setting: new THREE.Vector3(GRIND.x, 2, GRIND.z + 3.4),   // the ring at the grinder's foot, seen close
     brew: new THREE.Vector3(0, DRIP_Y + 1, -1.6),
-    serve: new THREE.Vector3(CUP_AT.x / 2 + 1, 7, CUP_AT.z),
-    cups: new THREE.Vector3(-11, 4, -15),
+    server: new THREE.Vector3(0, SCALE_TOP + 6, -1.6),
+    cups: new THREE.Vector3(-9, 7, -16),
+    cup: new THREE.Vector3(CUP_AT.x, 6, CUP_AT.z),
+    lid: new THREE.Vector3(7.5, 4, 9),             // the cup and the lids in front of it, to the left
+    sleeve: new THREE.Vector3(16.5, 4, 5),         // the cup and the sleeves in front of it, to the right
     show: new THREE.Vector3(CUP_AT.x, 0.5, CUP_AT.z + 3),   // below the cup: it stands in the top half, over the card
   };
   // the camera's distance (of camDist) and how high it looks down from: the finished cup is seen closer and lower
@@ -564,7 +575,7 @@ export function openBrew3d(game, opts = {}) {
   }
   /** The beans are in: set the grind on the ring before turning the crank. */
   function toSetting() {
-    phase = 'setting'; station = STATION.setting;
+    phase = 'setting'; station = STATION.setting; zoomTo = 0.62; elevTo = 40;   // close on the ring, from lower down
     root.classList.add('setting');
     setGrind(grind, true);
     show(t('2 / 5  Grind'), t('Set the grind first: turn the ring at the foot. Finer drips slower and goes bitter; coarser drips faster and goes sour.'));
@@ -581,7 +592,7 @@ export function openBrew3d(game, opts = {}) {
   function startGrind() {
     if (phase !== 'setting') return;
     try { localStorage.setItem(GRIND_KEY, String(grind)); } catch { /* storage blocked */ }
-    phase = 'grind'; station = STATION.grind;
+    phase = 'grind'; station = STATION.grind; zoomTo = 1; elevTo = 57;
     root.classList.remove('setting');
     audio.play('pop');
     show(t('2 / 5  Grind'), t('Draw circles round the grinder to turn it.'));
@@ -750,24 +761,43 @@ export function openBrew3d(game, opts = {}) {
   const tipAt = new THREE.Vector3(), tmpP = new THREE.Vector3(), mouthAt = new THREE.Vector3(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e3 = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1);
   const BOWL_AT = new THREE.Vector3(0, SCALE_TOP, -1.6), toP = new THREE.Vector3();
   const POUR_AT = new THREE.Vector3(GRIND.x, GRIND.y + 15.4, GRIND.z - 4.4);   // the bowl's middle while it's tipped over the hopper, behind it
-  const HOLE = new THREE.Vector3(GRIND.x, GRIND.y + 10, GRIND.z), BOWL_DOWN = new THREE.Vector3(12.5, 0, -12);
-  const SPOON_REST = new THREE.Vector3(10.5, 0.95, 4.5);                      // beside the scale
+  const HOLE = new THREE.Vector3(GRIND.x, GRIND.y + 10, GRIND.z), BOWL_DOWN = new THREE.Vector3(GRIND.x + 8, 0, GRIND.z - 9);   // set down behind, to the right
+  const SPOON_REST = new THREE.Vector3(-10.5, 0.95, 4.5);                     // beside the scale, on the side away from the bag
   const ease = (k) => k * k * (3 - 2 * k), seg = (u, a, b) => ease(clamp((u - a) / (b - a), 0, 1));
-  // the spoon's handle points to the front and right on the counter and in the bowl, to the front and left (clear of the
-  // bag) over the bag's mouth, where it tips toward the bag
-  const Y0 = 2.2, Y1 = 0.64;
+  // the spoon's handle points to the front and left: on the counter, in the bowl and over the bag's mouth, where it tips
+  // toward the bag
+  const Y0 = 0.94, Y1 = 0.64;
   /** A scoop's path, [k, where, roll round the handle, pitch, turn]: over the bowl, into the pile, up, over the bag's mouth and tipped, back. */
   const scoopPath = () => {
     const top = BOWL_AT.y + 0.9 + Math.min(1.6, s.beans.count / PILE * 1.8);
     const v = (x, y, z) => new THREE.Vector3(BOWL_AT.x + x, y, BOWL_AT.z + z);
     const over = mouthAt.clone().add(new THREE.Vector3(-2.4, 2.6, 0.4));
-    return [[0, SPOON_REST, 0, 0.2, Y0], [0.2, v(0.8, top + 3.2, 1), -0.2, -0.2, Y0], [0.36, v(0.6, top - 0.3, 0.2), -0.5, -0.45, Y0],
-      [0.5, v(0.4, BOWL_AT.y + 7.5, 1.4), 0, -0.1, 1.4], [0.68, over, 0, -0.1, Y1], [0.78, over, 1.9, -0.1, Y1], [0.86, over, 1.9, -0.1, Y1], [1, SPOON_REST, 0, 0.2, Y0]];
+    // it dips into the top of the pile, never through the bowl's floor, and comes and goes on the left of the bag, clear of it
+    return [[0, SPOON_REST, 0, 0.2, Y0], [0.2, v(0.8, top + 3.2, 1), -0.2, -0.2, Y0], [0.36, v(0.6, Math.max(top + 0.2, BOWL_AT.y + 1.8), 0.2), -0.5, -0.45, Y0],
+      [0.5, v(-2.6, BOWL_AT.y + 6.5, 3), 0, -0.1, Y0], [0.68, over, 0, -0.1, Y1], [0.78, over, 1.9, -0.1, Y1], [0.86, over, 1.9, -0.1, Y1],
+      [0.93, v(-3.5, BOWL_AT.y + 8, 5), 0, 0, Y0], [1, SPOON_REST, 0, 0.2, Y0]];
+  };
+  const FOCUS = new THREE.Vector3(), CUP_MID = CUP_AT.clone().setY(5);
+  const FOLLOW = new Set(['load', 'move', 'lifting', 'taking', 'readying', 'lidding', 'sleeving']);   // the camera keeps up
+  /** Where the camera looks this frame: at whatever is moving in this step, a little ahead of it toward where it's going
+   *  (the camera eases after it, so it keeps it in the middle), else the step's station. */
+  const focus = () => {
+    const o = FOCUS;
+    if (phase === 'dose') { o.copy(STATION.dose); if (scoopK >= 0) o.lerp(s.spoon.position, 0.5); }
+    else if (phase === 'load') { if (loadT < 2) o.copy(s.bowl.position).setY(s.bowl.position.y + 2).lerp(HOLE, 0.3); else o.copy(STATION.grind); }
+    else if (phase === 'move') o.copy(STATION.brew).add(s.rig.position).lerp(STATION.brew, 0.35);
+    else if (phase === 'lifting') o.copy(s.drip.position).lerp(DRIP_OFF, 0.35).setY(o.y + 3);
+    else if (phase === 'taking') o.copy(s.cup.position).lerp(CUP_AT, 0.35).setY(o.y + 5);
+    else if (phase === 'readying' || phase === 'cup') o.set(0, 5, 0).applyQuaternion(s.server.quaternion).add(s.server.position).lerp(CUP_MID, 0.5);
+    else if (phase === 'lidding') o.copy(s.cupLid.position).lerp(dropAt, 0.35);
+    else if (phase === 'sleeving') o.copy(s.cup.position).setY(s.cup.position.y + 5).lerp(s.cupSleeve.position, 0.3);
+    else o.copy(station);
+    return o;
   };
   let lift = 0;
   /** The dose and the grind: the camera, the bag and the beans, the bowl on its way to the grinder, the crank, the dripper's move. */
   const drawWork = (dt) => {
-    camAt.lerp(station, Math.min(1, dt * 3));
+    camAt.lerp(focus(), Math.min(1, dt * (FOLLOW.has(phase) ? 9 : 3)));
     zoom += (zoomTo - zoom) * Math.min(1, dt * 3);
     elev += (elevTo - elev) * Math.min(1, dt * 3); setLook();
     aimCam();
@@ -812,7 +842,7 @@ export function openBrew3d(game, opts = {}) {
     if (loadT >= 0) {
       const u0 = loadT, u = (loadT += dt);
       const off = seg(u, 0, 0.6) - seg(u, 2.2, 2.75);
-      s.lid.position.set(5.5 * off, 10.5 + 6 * off, 2 * off); s.lid.rotation.set(0.3 * off, 0, -0.5 * off);   // its side and crank to the camera
+      s.lid.position.set(6.5 * off, 10.5 + 5 * off, 4.5 * off); s.lid.rotation.set(0.3 * off, 0, -0.5 * off);   // its side and crank to the camera, clear of the bowl
       const there = seg(u, 0, 1), away = seg(u, 2, 2.7);
       if (away > 0) { s.bowl.position.lerpVectors(POUR_AT, BOWL_DOWN, away); s.bowl.position.y += Math.sin(away * Math.PI) * 4; }
       else { s.bowl.position.lerpVectors(BOWL_AT, POUR_AT, there); s.bowl.position.y += Math.sin(there * Math.PI) * 5; }
@@ -850,6 +880,21 @@ export function openBrew3d(game, opts = {}) {
       if (rigGo >= 1) { rigGo = -1; s.rig.position.set(0, 0, 0); arrived(); }
     }
   };
+  // the coffee stays level however the server is held: points spread evenly through the server's inside, and the level
+  // is the height that the poured share of them lies under
+  const PROFILE = [[0, 4.55], [0.6, 4.95], [3, 5.1], [6.4, 4.9], [8.8, 4.15]], INSIDE = [];
+  const insideR = (y) => { let i = 0; while (i < PROFILE.length - 2 && y > PROFILE[i + 1][0]) i++; const [y0, r0] = PROFILE[i], [y1, r1] = PROFILE[i + 1]; return r0 + (r1 - r0) * (y - y0) / (y1 - y0); };
+  while (INSIDE.length < 300) {
+    const x = (Math.random() * 2 - 1) * 5.1, z = (Math.random() * 2 - 1) * 5.1, y = Math.random() * 8.8;
+    if (Math.hypot(x, z) < insideR(y)) INSIDE.push(new THREE.Vector3(x, y + 0.15, z));
+  }
+  const ys = new Float32Array(INSIDE.length);
+  const levelAt = (f) => {
+    s.rig.updateMatrixWorld(true);
+    INSIDE.forEach((p, i) => { ys[i] = tmpP.copy(p).applyMatrix4(s.server.matrixWorld).y; });
+    ys.sort();
+    return ys[Math.min(ys.length - 1, Math.floor(f * ys.length))];
+  };
   const draw = (dt) => {
     drawWork(dt);
     const sy = surfaceY();
@@ -873,9 +918,12 @@ export function openBrew3d(game, opts = {}) {
     // the stream from the spout to the water, a splash where it lands
     s.stream.visible = s.splash.visible = pouring;
     if (pouring) {
-      s.stream.position.copy(tipAt); s.stream.scale.set(1, tipAt.y - sy, 1);
+      // it lands on the water, or on the paper above it when the spout is out past the water's edge (never through it)
+      const rr = Math.hypot(aim.x, aim.z);
+      const land = rr <= coneR(sy - DRIP_Y) - 0.2 ? sy : DRIP_Y + Math.min(CONE.y1 + 0.9, CONE.y0 + (rr + 0.2 - CONE.r0) * (CONE.y1 - CONE.y0) / (CONE.r1 - CONE.r0));
+      s.stream.position.copy(tipAt); s.stream.scale.set(1, tipAt.y - land, 1);
       s.stream.position.x += Math.sin(time * 23) * 0.05;
-      s.splash.position.set(tipAt.x, sy + 0.05, tipAt.z);
+      s.splash.position.set(tipAt.x, land + 0.05, tipAt.z);
       const k = (time * 3) % 1; s.splash.scale.setScalar(0.6 + k * 1.2); s.splash.material.opacity = 0.9 * (1 - k);
     }
     // the water standing in the cone, the grounds (swollen in the bloom), the ring and the dot on top
@@ -890,11 +938,6 @@ export function openBrew3d(game, opts = {}) {
     const gx = Math.cos(gAng) * GUIDE * BED_R, gz = Math.sin(gAng) * GUIDE * BED_R;
     s.guide.position.set(gx, s.rings.position.y + 0.3, gz);
     s.halo.scale.setScalar(1 + 0.25 * Math.sin(time * 6));
-    // the coffee rising in the server, and the thread of it from the dripper's foot while the cone drains
-    const lvl = clamp(served, 0, 1.1) * SERVER_FULL / 8.8;
-    s.coffee.scale.y = Math.max(0.001, lvl); s.coffee.visible = lvl > 0.004;
-    s.dribble.visible = standing > 0.01;
-    s.dribble.scale.y = Math.max(0.1, DRIP_Y - 0.9 - (SCALE_TOP + 0.15 + lvl * 8.8));
     // the scale's LCD (HTML over the 3D, so it stays sharp), the gauge's bands on it: the grams, and once the pour is
     // over, the clock against the time the cup should take
     const timed = phase === 'drawdown' || phase === 'drained';
@@ -908,21 +951,55 @@ export function openBrew3d(game, opts = {}) {
     root.classList.toggle('pouring', pouring);
     root.classList.toggle('near', near && pouring && phase === 'pour');
     drawServe(dt);
+    // the coffee in the server, level however it's held, and the thread of it from the dripper's foot while the cone drains
+    const lvl = clamp(served, 0, 1.1) * SERVER_FULL / 8.8;   // the share of the server's inside it fills
+    s.coffee.visible = lvl > 0.004;
+    const top = s.coffee.visible ? levelAt(lvl) : SCALE_TOP + 0.15;
+    s.coffeeCut.constant = top;
+    s.coffeeTop.color.copy(s.coffeeMat.color).offsetHSL(0, 0, 0.05);
+    s.dribble.visible = standing > 0.01;
+    s.dribble.scale.y = Math.max(0.1, DRIP_Y - 0.9 - top);
     pass.draw(gl, s.scene);
   };
 
   // ---------------- the serve: the dripper off, the swirl, a cup, the pour into it, the lid and the sleeve
-  const DRIP_ON = new THREE.Vector3(0, DRIP_Y, -1.6), DRIP_OFF = new THREE.Vector3(-31, 0.95, 3);   // on the server; set down on the counter
+  const DRIP_ON = new THREE.Vector3(0, DRIP_Y, -1.6), DRIP_OFF = new THREE.Vector3(PARK.x, 0.95, PARK.z - 1.6);   // on the server; back where it waited
   const SERVER_ON = new THREE.Vector3(0, SCALE_TOP, -1.6);
   const LIP = new THREE.Vector3(3.9, SERVER_H, 0);                                // the server's lip, on the cup's side
   const LIP_AT = new THREE.Vector3(CUP_AT.x - 1.8, CUP_AT.y + CUP_H + 2.6, CUP_AT.z);   // held there while it's tipped
   const READY = 0.3, TIP_MAX = 1.3;                                              // the server's tip: held ready, all the way
-  const fromPos = new THREE.Vector3(), poseP = new THREE.Vector3(), dropAt = new THREE.Vector3();
-  /** Where the server stands, tipped by a toward the cup round its lip at LIP_AT. */
-  const poseAt = (a, out) => out.set(LIP.x * Math.cos(a) + LIP.y * Math.sin(a), -LIP.x * Math.sin(a) + LIP.y * Math.cos(a), 0).negate().add(LIP_AT);
+  const fromPos = new THREE.Vector3(), poseP = new THREE.Vector3(), dropAt = new THREE.Vector3(), upAt = new THREE.Vector3();
+  // points round the server's glass (its own frame), which poseAt keeps out of the cup
+  const GLASS = [];
+  for (const [rr, y] of [[4.6, 0], [5.3, 3], [5.1, 6.4], [4.3, 8.8], [3.9, SERVER_H]]) for (let i = 0; i < 12; i++) GLASS.push([Math.cos(i * Math.PI / 6) * rr, y, Math.sin(i * Math.PI / 6) * rr]);
+  let raised = 0;   // how far poseAt last lifted the server over LIP_AT
+  // and points round the cup's rim, which it keeps out of the glass
+  const RIM = [];
+  for (let i = 0; i < 24; i++) RIM.push([CUP_AT.x + Math.cos(i * Math.PI / 12) * 4.4, CUP_AT.y + CUP_H, CUP_AT.z + Math.sin(i * Math.PI / 12) * 4.4]);
+  const glassR = (y) => (y < 0.7 ? 4.6 + y * 0.7 : y < 3 ? 5.1 + (y - 0.7) * 0.09 : y < 6.4 ? 5.3 - (y - 3) * 0.06 : y < 8.8 ? 5.1 - (y - 6.4) * 0.33 : 4.3 - (y - 8.8) * 0.5);
+  /** Where the server stands, tipped by a toward the cup round its lip at LIP_AT, and lifted till the glass and the cup are clear of each other. */
+  const poseAt = (a, out) => {
+    const c = Math.cos(a), sn = Math.sin(a);
+    out.set(LIP.x * c + LIP.y * sn, -LIP.x * sn + LIP.y * c, 0).negate().add(LIP_AT);
+    let need = 0;
+    for (const [x, y, z] of GLASS) {
+      const wx = out.x + x * c + y * sn, wy = out.y - x * sn + y * c, wz = out.z + z;
+      if (Math.hypot(wx - CUP_AT.x, wz - CUP_AT.z) < 4.35 + 0.6) need = Math.max(need, CUP_AT.y + CUP_H + 0.6 - wy);
+    }
+    // the rim under the glass's belly: up a little at a time till no point of it is inside
+    const inGlass = () => RIM.some(([wx, wy, wz]) => {
+      const dx = wx - out.x, dy = wy - out.y - need, x = dx * c - dy * sn, y = dx * sn + dy * c;
+      return y > -0.3 && y < SERVER_H + 0.3 && Math.hypot(x, wz - out.z) < glassR(clamp(y, 0, SERVER_H)) + 0.35;
+    });
+    for (let i = 0; i < 24 && inGlass(); i++) need += 0.25;
+    raised = need;
+    return out.setY(out.y + need);
+  };
   /** One move of the serve over dur seconds: step(k) with k eased 0..1 each frame, then end(). */
   const play = (dur, stepFn, end) => { act = { u: 0, dur: still ? Math.min(dur, 0.25) : dur, step: stepFn, end }; };
   const arc = (o, a, b, k, hgt) => o.lerpVectors(a, b, k).setY(o.y + Math.sin(k * Math.PI) * hgt);
+  /** Off a stack: straight up out of the one under it, then over in an arc. */
+  const pluck = (o, a, b, k, up, hgt) => (k < 0.3 ? o.copy(a).setY(a.y + up * k / 0.3) : arc(o, upAt.copy(a).setY(a.y + up), b, (k - 0.3) / 0.7, hgt));
   const cupTop = () => CUP_AT.y + 0.3 + cupFill * 7.6;
   const drawServe = (dt) => {
     if (act) {
@@ -933,7 +1010,9 @@ export function openBrew3d(game, opts = {}) {
     // the swirl: the server rocks round as the finger circles
     swirlK += ((phase === 'swirl' && pressed ? 1 : 0) - swirlK) * Math.min(1, dt * 6);
     if (phase === 'swirl' || (swirlK > 0.01 && !act)) {
-      s.server.rotation.set(Math.sin(swAng) * 0.1 * swirlK, 0, Math.cos(swAng) * 0.1 * swirlK);
+      const rx = Math.sin(swAng) * 0.1 * swirlK, rz = Math.cos(swAng) * 0.1 * swirlK;
+      s.server.rotation.set(rx, 0, rz);
+      s.server.position.y = SCALE_TOP + 4.6 * Math.sin(Math.hypot(rx, rz));   // rocked on the edge of its foot, not into the scale
     }
     s.swirlRing.visible = s.swirlFill.visible = phase === 'swirl';
     // the pour into the cup: held, the server tips further the longer the press, and pours faster the further it's tipped
@@ -959,8 +1038,8 @@ export function openBrew3d(game, opts = {}) {
     s.cupStream.visible = flow > 0.02 && phase === 'cup';
     if (s.cupStream.visible) {
       const top = cupTop();
-      s.cupStream.position.set(LIP_AT.x + Math.sin(time * 21) * 0.05, LIP_AT.y, LIP_AT.z);
-      s.cupStream.scale.set(0.6 + flow, LIP_AT.y - top, 0.6 + flow);
+      s.cupStream.position.set(LIP_AT.x + Math.sin(time * 21) * 0.05, LIP_AT.y + raised, LIP_AT.z);
+      s.cupStream.scale.set(0.6 + flow, LIP_AT.y + raised - top, 0.6 + flow);
     }
     for (let i = drops.length - 1; i >= 0; i--) {
       const d = drops[i];
@@ -996,14 +1075,16 @@ export function openBrew3d(game, opts = {}) {
     phase = 'lift';
     root.classList.remove('brew', 'timing'); root.classList.add('serve');
     s.kettle.visible = false;
-    station = STATION.serve; zoomTo = 1.1;   // room for the server tipped over the cup
+    station = STATION.brew;
     show(t('5 / 5  Serve'), t('Tap to lift the dripper off.'));
   }
   function liftDripper() {
     phase = 'lifting';
     audio.play('pop');
-    play(0.9, (k) => { arc(s.drip.position, DRIP_ON, DRIP_OFF, k, 7); s.drip.rotation.z = Math.sin(k * Math.PI) * 0.3; }, () => {
-      phase = 'swirl';
+    play(1.1, (k) => {   // up out of the server's mouth first, then over to the counter
+      pluck(s.drip.position, DRIP_ON, DRIP_OFF, k, 2.5, 6); s.drip.rotation.z = k < 0.3 ? 0 : Math.sin((k - 0.3) / 0.7 * Math.PI) * 0.3;
+    }, () => {
+      phase = 'swirl'; station = STATION.server;
       hiss(0.1, { vol: 0.12, freq: 420, q: 1.2 });   // set down on the counter
       show(t('5 / 5  Serve'), t('Draw circles round the server to swirl the coffee together.'));
     });
@@ -1011,8 +1092,8 @@ export function openBrew3d(game, opts = {}) {
   function swirlDone() {
     phase = 'swirled'; lastAng = null;
     audio.play('pop');
-    const r0 = s.server.rotation.x, r1 = s.server.rotation.z;
-    play(0.4, (k) => s.server.rotation.set(r0 * (1 - k), 0, r1 * (1 - k)), () => {
+    const r0 = s.server.rotation.x, r1 = s.server.rotation.z, y0 = s.server.position.y;
+    play(0.4, (k) => { s.server.rotation.set(r0 * (1 - k), 0, r1 * (1 - k)); s.server.position.y = y0 + (SCALE_TOP - y0) * k; }, () => {
       phase = 'take'; station = STATION.cups;
       show(t('5 / 5  Serve'), t('Take a cup from the stack at the back.'));
     });
@@ -1024,10 +1105,10 @@ export function openBrew3d(game, opts = {}) {
     fromPos.copy(s.stack.position).add(top.position);
     s.cup.visible = true; s.cup.position.copy(fromPos);
     audio.play('tap');
-    station = STATION.serve;
-    play(1.1, (k) => arc(s.cup.position, fromPos, CUP_AT, k, 10), () => {
+    station = STATION.cup;
+    play(1.3, (k) => pluck(s.cup.position, fromPos, CUP_AT, k, CUP_H + 0.5, 10), () => {
       hiss(0.08, { vol: 0.1, freq: 600, q: 1 });
-      phase = 'readying';
+      phase = 'readying'; zoomTo = 1.15;   // room for the server held up over the cup
       play(0.7, (k) => { // the server comes up off the scale and is held ready over the cup
         poseAt(READY * k, poseP); arc(s.server.position, SERVER_ON, poseP, k, 3); s.server.rotation.set(0, 0, -READY * k);
       }, () => {
@@ -1042,7 +1123,7 @@ export function openBrew3d(game, opts = {}) {
     fromPos.copy(s.server.position);
     const a0 = pourA;
     play(0.6, (k) => { arc(s.server.position, fromPos, SERVER_ON, k, 2); s.server.rotation.set(0, 0, -a0 * (1 - k)); }, () => {
-      phase = 'lid';
+      phase = 'lid'; station = STATION.lid; zoomTo = 1;
       show(t('5 / 5  Serve'), t('Tap to put the lid on.'));
     });
   }
@@ -1053,9 +1134,9 @@ export function openBrew3d(game, opts = {}) {
     fromPos.copy(s.lids.position).add(top.position);
     s.cupLid.visible = true;
     dropAt.copy(CUP_AT).setY(CUP_AT.y + CUP_H - 0.2);
-    play(0.8, (k) => arc(s.cupLid.position, fromPos, dropAt, k, 9), () => {
+    play(1.1, (k) => pluck(s.cupLid.position, fromPos, dropAt, k, 2.5, 6), () => {
       audio.play('click');
-      phase = 'sleeve';
+      phase = 'sleeve'; station = STATION.sleeve;
       show(t('5 / 5  Serve'), t('Tap to slip a sleeve on.'));
     });
   }
@@ -1063,11 +1144,18 @@ export function openBrew3d(game, opts = {}) {
     phase = 'sleeving';
     const top = s.sleeves.children[s.sleeves.children.length - 1];
     top.visible = false;
-    fromPos.copy(s.sleeves.position).add(top.position);
+    fromPos.copy(s.sleeves.position).add(top.position).setY(top.position.y + 1.5);
     s.cupSleeve.visible = true;
-    const over = CUP_AT.clone().setY(CUP_H + 6), on = CUP_AT.clone().setY(4.9);
-    play(1, (k) => {   // over to the cup, then down round it
-      if (k < 0.6) arc(s.cupSleeve.position, fromPos, over, k / 0.6, 6); else s.cupSleeve.position.lerpVectors(over, on, (k - 0.6) / 0.4);
+    // the rim is wider than the sleeve, so it goes on from below: the cup is lifted, the sleeve (opening out of the flat
+    // pile) comes in under it, and slides up onto it as the cup is set back down
+    const under = CUP_AT.clone().setY(1.5), RAISE = 9;   // the sleeve comes in low, under the cup's foot
+    play(1.8, (k) => {
+      const up = ease(clamp(k / 0.25, 0, 1)), down = ease(clamp((k - 0.6) / 0.4, 0, 1)), fly = clamp((k - 0.1) / 0.5, 0, 1);
+      s.cup.position.y = CUP_AT.y + RAISE * (up - down);
+      s.cupLid.position.y = s.cup.position.y + CUP_H - 0.2;
+      s.cupSleeve.scale.y = 0.12 + 0.88 * fly;
+      if (k < 0.6) arc(s.cupSleeve.position, fromPos, under, fly, 2.5);
+      else s.cupSleeve.position.copy(under).setY(1.5 + (s.cup.position.y + 4.9 - 1.5) * down);
     }, () => {
       hiss(0.08, { vol: 0.08, freq: 1400, q: 1 });
       serve(res);
@@ -1080,10 +1168,14 @@ export function openBrew3d(game, opts = {}) {
     crank: onScreen(new THREE.Vector3(GRIND.x, GRIND.y + CRANK_Y, GRIND.z)), crankR: onScreen(new THREE.Vector3(GRIND.x + CRANK_R, GRIND.y + CRANK_Y, GRIND.z)),
     server: onScreen(new THREE.Vector3(0, SCALE_TOP + SERVER_H * 0.6, -1.6)), serverR: onScreen(new THREE.Vector3(6, SCALE_TOP + SERVER_H * 0.6, -1.6)) });
 
+  root.at = (name) => onScreen(s[name].getWorldPosition(new THREE.Vector3()));   // where a prop is on screen
+  root.props = s;                                                                  // for the tests' clipping checks
+
   let raf = 0;
   function tick(now) { const dt = Math.min(0.5, Math.max(0, (now - last) / 1000)); last = now; doseFrame(dt); step3d(dt); return dt; }
-  const loop = () => { const dt = tick(performance.now()); draw(dt); raf = requestAnimationFrame(loop); };
-  root.frame = () => draw(tick(performance.now()));   // for tests in a hidden pane, where rAF hardly runs
+  const loop = () => { if (!root.paused) draw(tick(performance.now())); raf = requestAnimationFrame(loop); };
+  // for tests in a hidden pane, where rAF hardly runs: one frame (of dt seconds, if given); root.paused stops the loop
+  root.frame = (dt) => { if (dt != null) last = performance.now() - dt * 1000; draw(tick(performance.now())); };
   fit();
   raf = requestAnimationFrame(loop);
 
