@@ -7,6 +7,8 @@
 #   python tools/collage_cutout.py latte.png assets/ui/collage/latte.webp 640 0 0 4
 # A 7th argument `colour` keeps the photo's own colours under a lighter dot screen (a real-object sticker):
 #   python tools/collage_cutout.py palette_src.png assets/ui/collage/palette.webp 560 246 8 5 colour
+# `holes=N` also clears white pockets the object closes in (under the cart's awning, between its poles) bigger than N px:
+#   python tools/collage_cutout.py cart_src.png assets/ui/collage/cart_colour.webp 720 250 7 5 colour holes=400
 import sys
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
@@ -16,6 +18,7 @@ thr = int(sys.argv[4]) if len(sys.argv) > 4 else 246
 edge = int(sys.argv[5]) if len(sys.argv) > 5 else 7
 dot = int(sys.argv[6]) if len(sys.argv) > 6 else 5
 colour = len(sys.argv) > 7 and sys.argv[7] == 'colour'
+holes = next((int(a[6:]) for a in sys.argv[7:] if a.startswith('holes=')), 0)
 
 src_im = Image.open(src).convert('RGB')
 src_im = src_im.resize((W, round(src_im.height * W / src_im.width)), Image.LANCZOS)
@@ -40,6 +43,12 @@ while q:
         ny, nx = y + dy, x + dx
         if 0 <= ny < h and 0 <= nx < w and bgc[ny, nx] and not seen[ny, nx]:
             seen[ny, nx] = True; q.append((ny, nx))
+if holes and thr > 0:   # enclosed white pockets, big enough not to be a highlight
+    from scipy import ndimage
+    lab, n = ndimage.label(bgc & ~seen)
+    if n:
+        size = ndimage.sum(np.ones_like(g), lab, range(1, n + 1))
+        seen |= np.isin(lab, 1 + np.flatnonzero(size > holes))
 obj = Image.fromarray(((~seen) * 255).astype(np.uint8))
 obj = obj.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))   # close, open
 m = np.asarray(obj) > 127
