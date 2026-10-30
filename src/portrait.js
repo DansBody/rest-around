@@ -1,6 +1,8 @@
-// UI images rendered from the 3D models: character portraits, build-shop thumbnails and food icons.
+// UI images rendered from the 3D models: character portraits, build-shop thumbnails and food icons. With the pixel look
+// on (pixelview.js) a portrait is drawn as the café draws the character: toon light, the sprites' PPU, an ink outline.
 import { THREE, models, renderIcon } from './models.js';
 import { CharacterView } from './charview.js';
+import { PPU, pixelLook, toonize, bakeLights, InkPass } from './pixelview.js';
 import { assets } from './assets.js';
 import { ICON_GLYPHS, glyphDataURL } from './ui/icons.js';
 
@@ -13,9 +15,65 @@ function copy(c, w, h) {
   return n;
 }
 
+// the pixel portraits' own renderer (tone mapped as the sprite bake, unlike renderIcon's)
+let pxGl = null, pxInk = null;
+const ELEV = (18 * Math.PI) / 180, TURN = 0.5;   // the sprite bake's view (tools/sprites/schedule.json: elev, turn)
+/** A character in the pixel look, `ppu` pixels to a unit, on a transparent square just big enough. */
+function pixelArt(look, ppu) {
+  if (!pxGl) {
+    pxGl = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true });
+    pxGl.setClearColor(0x000000, 0);
+    pxGl.outputColorSpace = THREE.SRGBColorSpace;
+    pxGl.toneMapping = THREE.NeutralToneMapping;
+    pxInk = new InkPass(pxGl);
+  }
+  const scene = new THREE.Scene();
+  bakeLights(scene);
+  const cv = new CharacterView(scene, { look, x: 0, y: 0, dir: 1, pose: {} }, { shadow: false });
+  toonize(cv.root);
+  if (cv.inst.mixer) cv.inst.mixer.update(0.5);
+  cv.root.position.set(0, 0, 0); cv.root.rotation.y = TURN;
+  cv.root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(cv.root), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+  const n = Math.ceil(Math.max(s.x, s.y) * 1.08 * ppu) + 2, r = n / ppu / 2;
+  const cam = new THREE.OrthographicCamera(-r, r, r, -r, 0.1, 40);
+  cam.position.set(c.x, c.y + 10 * Math.sin(ELEV), c.z + 10 * Math.cos(ELEV));
+  cam.lookAt(c);
+  pxGl.setSize(n, n, false);
+  pxInk.render(scene, cam, n, n);
+  const out = document.createElement('canvas');
+  out.width = out.height = n;
+  out.getContext('2d').drawImage(pxGl.domElement, 0, 0);
+  cv.dispose(scene);
+  return out;
+}
+/** The pixel portrait for a box `size` CSS px across: the art blown up a whole number of times, past the screen's pixels. */
+function pixelPortrait(look, size) {
+  const dpr = window.devicePixelRatio || 1, want = size * dpr;
+  // the café's PPU when the box has the room for it, fewer pixels to a unit (still crisp) on a small low-dpi box
+  const ppu = Math.max(12, Math.min(PPU, Math.floor(want / 2.4)));
+  const key = 'px|' + ppu + '|' + JSON.stringify(look);
+  let art = cache.get(key);
+  if (!art) cache.set(key, (art = pixelArt(look, ppu)));
+  const k = Math.max(1, Math.ceil(want / art.width));
+  const big = document.createElement('canvas');
+  big.width = big.height = art.width * k;
+  const g = big.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(art, 0, 0, big.width, big.height);
+  return big;
+}
+
 /** Idle-pose character portrait (square; w/h are the box it should fit). */
 export function portrait(look, w = 64, h = 80, cls = 'portrait') {
   w = h = Math.min(w, h);
+  if (pixelLook.on) {
+    const out = pixelPortrait(look, w);
+    out.style.width = w + 'px'; out.style.height = h + 'px';
+    out.className = cls;
+    out.style.objectFit = 'contain';
+    return out;
+  }
   const key = 'p|' + JSON.stringify(look);
   let c = cache.get(key);
   if (!c) {

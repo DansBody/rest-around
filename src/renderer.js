@@ -15,6 +15,7 @@ import { furnitureById, dishById, wallDecorById, wallLayout } from './data.js';
 import { clamp, easeOutBack, lerp, fmtLeft } from './util.js';
 import { FONT, DISPLAY_FONT } from './placeholder.js';
 import { t } from './i18n.js';
+import { PPU, INK, TOON_RAMP, toonize, pixelLook } from './pixelview.js';
 
 const DIR_YAW = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
 const Y_UP = new THREE.Vector3(0, 1, 0);
@@ -25,32 +26,14 @@ const tmpColor = new THREE.Color();
 const FOCUS_COLOR = '#ffc531';   // the UI's one accent (--yellow)
 // pixel-art mode (design/art-direction/PLAN.md, steps 1 and 3): the scene is drawn at PPU pixels per world unit where
 // the camera looks (the baked sprites' grid, so their pixels and the scene's are one size) and blown up with nearest
-// sampling, with a 1-px INK outline round everything
-const PPU = 24;
-const INK = '#1F2A4A';
+// sampling, with a 1-px INK outline round everything (PPU, INK and the toon light are shared with the paper doll and
+// the portraits: pixelview.js)
 const INK_SOFT = '#7E879E';   // the outline round the street's grey print (streetview.js): softer, so the café stays the focus
 const SUN_STEP = 0.25;   // with the shadow map frozen, the sun only moves (and redraws its shadows) in steps this big
 const SPRITE_NOON = new THREE.Color('#fff6e8').multiplyScalar(0.84).add(new THREE.Color('#fff4e2').multiplyScalar(3.05 * 0.4));   // updateLighting's sky + sun at noon
 
-// pixel art: furniture (and what rests on it) lit in the sprites' three flat steps (the ramp tools/sprites/bake.html
-// bakes the characters with) instead of smooth shading, so the room and the sprites read as one drawing
-const TOON_RAMP = new THREE.DataTexture(new Uint8Array([120, 120, 120, 255, 205, 205, 205, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
-TOON_RAMP.minFilter = TOON_RAMP.magFilter = THREE.NearestFilter; TOON_RAMP.needsUpdate = true;
-const toonTwins = new WeakMap();   // smooth material -> its toon twin, shared like the smooth ones are
-function toonOf(m) {
-  if (!m || m.isMeshToonMaterial || m.isMeshBasicMaterial || m.isShaderMaterial) return m;
-  let t = toonTwins.get(m);
-  if (!t) {
-    t = new THREE.MeshToonMaterial({ map: m.map, color: m.color, gradientMap: TOON_RAMP, transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest });
-    toonTwins.set(m, t);
-  }
-  return t;
-}
-/** A fresh furniture instance (or a thing on it) in toon light. */
-function toonize(root) {
-  root.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(toonOf) : toonOf(o.material); });
-  return root;
-}
+// pixel art: furniture (and what rests on it) lit in the sprites' three flat steps (pixelview.js toonize) instead of
+// smooth shading, so the room and the sprites read as one drawing
 
 function lam(color, o = {}) { return new THREE.MeshLambertMaterial({ color, ...o }); }
 /** A little painted sign (shop sign, OPEN plaque) as a texture. */
@@ -99,7 +82,7 @@ export class Renderer {
     this.abilityFx = new AbilityFx(this.scene);
     this.steam = new Steam(this.scene);
     this.debugGroup = new THREE.Group(); this.scene.add(this.debugGroup);
-    this.pixelArt = game.state.settings.pixel !== false;
+    this.pixelArt = pixelLook.on = game.state.settings.pixel !== false;
     this.shadowDirty = true;
     this.applyPixelArt();
   }
@@ -107,7 +90,7 @@ export class Renderer {
   /** Turn the pixel-art look on or off (Settings → Display). Off is the smooth renderer exactly as it was. */
   setPixelArt(on) {
     if (on === this.pixelArt) return;
-    this.pixelArt = on;
+    this.pixelArt = pixelLook.on = on;   // the paper doll and the portraits follow (pixelview.js)
     this.applyPixelArt();
     this.reset();   // characters, trash and the door get their shadows back (or lose them) as they are rebuilt
     this.resize();

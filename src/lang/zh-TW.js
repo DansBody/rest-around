@@ -691,4 +691,5 @@ export const ZH_TW = {
   'Accessories are bought in the Market.': '配件要在市集買。', "{name} doesn't wear clothes.": '{name}沒有穿衣服。',
   'Dress {name}': '幫{name}換裝', 'Paper doll: colours, patterns, clothes, accessories': '紙娃娃：顏色、花紋、衣服、配件',
   'Fine-tune accessories': '微調配件位置',
+  'Tap one you have on to move it.': '點已經戴上的配件，可以微調位置。', 'Tap it again to take it off.': '用方向鍵和滑桿微調，再點一次就拿下。',
 };
