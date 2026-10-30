@@ -34,17 +34,56 @@ const CUP_G = DOSE * 16;               // what Full is on the scale, in grams of
 /** The bloom and the pour, shared with the 3D counter (ui/brew3d.js) so both score a cup the same way. */
 export const POUR = { DOSE, BLOOM, FULL, SPILL, FILL_S, SETTLE, RING, GUIDE, LAP, NEAR, CUP_G };
 export const DOSING = { DOSE_OK, BEAN_RATE, RAMP, LAG, SCOOP, BOWL_MAX, TURNS };
+// The grind (the 3D counter sets it on the grinder's ring) and the brew's clock: from the first drop of the bloom to the
+// last drip through the paper, in brew seconds (the counter's clock runs CLOCK times the real one while you pour).
+// A finer grind holds the water back: each click finer drips STEP times longer, so the total lands in TIME at BEST.
+const GRIND = { MIN: 1, MAX: 10, BEST: 6 };
+const TIME = [150, 180];               // 2:30-3:00: faster is sour (too coarse), slower is bitter (too fine)
+const CLOCK = 10;                      // brew seconds a real second, from the bloom to the end of the pour
+const DRAW = 75, STEP = 1.42;         // brew seconds the last of the water takes to drip through at BEST, and per click
+const POUR_END = 90;                   // where the clock usually stands as the pour ends (a 3.5 s bloom, then up to Full)
+/** Brew seconds the water still standing in the cone takes to drip through, at this grind. */
+export const drawdownS = (grind) => DRAW * STEP ** (GRIND.BEST - grind);
+/** How fast the cone drains at this grind, of how fast it does at BEST. */
+export const flowAt = (grind) => clamp(STEP ** (grind - GRIND.BEST), 0.25, 3);
+export const GRINDING = { ...GRIND, TIME, CLOCK };
+/** m:ss */
+export const clock = (sec) => { const s = Math.max(0, Math.round(sec)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+/**
+ * The recipe, as the card on the brew screen and the colourist's note in the prologue both give it. The lines are
+ * English source strings; recipeText() fills them in, in the player's language.
+ */
+export const RECIPE = {
+  dose: DOSE, water: CUP_G, grind: GRIND.BEST, time: TIME, bloom: Math.round((BLOOM[0] + BLOOM[1]) / 2 * CUP_G / 5) * 5,
+  title: 'Recipe',
+  lines: ['{dose} g of beans, ground at {grind}', '{water} g of water', 'Bloom first: about {bloom} g, and wait for the bubbles to settle',
+    'Then pour in slow circles, and let it drip through in {time}'],
+  quote: 'Don\'t hurry the water. Let it bloom, and the colour comes up on its own.',
+  by: 'the colourist',
+};
+/** The recipe in the player's language: { title, lines, quote, by }. */
+export function recipeText() {
+  const v = { dose: RECIPE.dose, water: RECIPE.water, grind: RECIPE.grind, bloom: RECIPE.bloom, time: clock(TIME[0]) + '–' + clock(TIME[1]) };
+  return { title: t(RECIPE.title), lines: RECIPE.lines.map((l) => t(l, v)), quote: t(RECIPE.quote), by: t(RECIPE.by) };
+}
 const quiet = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 /** A burst of noise (the grinder's crunch, the kettle's trickle), only when sound is on. */
 function hiss(dur, o) { if (audio.enabled && audio.ctx && audio.ctx.state === 'running') try { audio.noise(dur, o); } catch { /* no sound */ } }
 
 /** What each thing that can go wrong tastes like. */
-const TASTE = { many: 'sour', few: 'bitter', bloom: 'sour', short: 'sour', long: 'bitter', uneven: 'uneven', thin: 'sour', over: 'bitter' };
+const TASTE = { many: 'sour', few: 'bitter', bloom: 'sour', short: 'sour', long: 'bitter', uneven: 'uneven', thin: 'sour', over: 'bitter', coarse: 'sour', fine: 'bitter' };
 
-/** What the cup comes to, from what happened while it was made: { score, verdict, why, pen }. */
+/**
+ * What the cup comes to, from what happened while it was made: { score, verdict, why, pen }.
+ * r.time (brew seconds, bloom to last drip) or else r.grind scores the grind; without either (the sticker version) it isn't.
+ */
 export function scoreBrew(r) {
-  const pen = { many: 0, few: 0, bloom: 0, short: 0, long: 0, uneven: 0, thin: 0, over: 0 };
+  const pen = { many: 0, few: 0, bloom: 0, short: 0, long: 0, uneven: 0, thin: 0, over: 0, coarse: 0, fine: 0 };
+  // the grind, by how long the cup took to drip through: too fast is under-drawn (sour), too slow over-drawn (bitter)
+  const time = r.time ?? (r.grind != null ? POUR_END + drawdownS(r.grind) : null);
+  if (time != null && time < TIME[0]) pen.coarse += clamp((TIME[0] - time) / 45, 0, 1) * 30;
+  else if (time != null && time > TIME[1]) pen.fine += clamp((time - TIME[1]) / 60, 0, 1) * 30;
   // the dose: too many beans for the water can't all be drawn out (sour), too few are drawn out too far (bitter, thin)
   const dose = r.dose ?? DOSE;
   if (dose > DOSE + DOSE_OK) pen.many += clamp((dose - DOSE - DOSE_OK) / 3, 0, 1) * 18;
@@ -68,8 +107,10 @@ export function scoreBrew(r) {
 }
 
 /** What the guest says about the cup, by the one thing that cost it the most (scoreBrew's `why`). */
-export function verdictLine(why, dose) {
+export function verdictLine(why, dose, time) {
   switch (why) {
+    case 'fine': return t('Dripped for {time}: too bitter. Ground too fine; set the grind coarser next time.', { time: clock(time) });
+    case 'coarse': return t('Dripped for {time}: too sour. Ground too coarse; set the grind finer next time.', { time: clock(time) });
     case 'many': return t('A bit sour: too many beans for the water ({g} g). Aim for {n} g.', { g: dose, n: DOSE });
     case 'few': return t('A bit bitter and thin: too few beans ({g} g). Aim for {n} g.', { g: dose, n: DOSE });
     case 'bloom': return t('A bit sour: the bloom took too little or too much water.');

@@ -29,3 +29,47 @@
 .b3-btns .btn[disabled] { opacity: .9; background: #8f877a; color: #ece6da; box-shadow: none; }   /* still readable on the wood */
 #brew3d.served :is(.br-head, .b3-lcd, .b3-tip) { visibility: hidden; }
 #brew3d .br-result { z-index: 3; }
+
+/* the brew's clock on the scale, from the first drop: blue inside 2:30-3:00, warm past it */
+.b3-clock { margin-top: -4px; padding: 3px 10px 1px; background: #26302c; color: #c9e8d6; font: 24px/1 var(--os-lcd); box-shadow: 0 0 0 3px var(--os-ink); }
+#brew3d:not(.timing) .b3-clock { display: none; }
+.b3-clock.ok { color: #9fd0ff; text-shadow: 0 0 8px rgba(106, 160, 230, .9); }
+.b3-clock.over { color: #ffc29a; }
+
+/* the grind's dial, under the grinder: - [number] +, fine to coarse, and the button that starts the crank */
+.b3-dial { position: absolute; z-index: 2; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); translate: -50% 0; width: min(calc(100vw - 150px), 260px); min-width: 196px;
+  display: none; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px 12px; box-sizing: border-box;
+  background: var(--os-frame); border: var(--os-b) solid var(--os-ink); border-radius: 3px; box-shadow: var(--os-bevel), var(--os-drop); }
+#brew3d.setting .b3-dial { display: flex; }
+.b3-dial-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.b3-dial-b { min-width: 48px; min-height: 44px; font-size: 24px; }
+.b3-dial-read { display: flex; flex-direction: column; align-items: center; }
+.b3-dial-read small { font-size: 14px; }
+.b3-dial-n { min-width: 2.2em; padding: 4px 8px 1px; text-align: center; background: #26302c; color: #c9e8d6; font: 34px/1 var(--os-lcd); box-shadow: 0 0 0 3px var(--os-ink); }
+.b3-dial-scale { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.b3-dial-track { position: relative; flex: 1; height: 8px; background: repeating-linear-gradient(90deg, var(--os-ink) 0 2px, transparent 2px calc(100% / 9 - .01px)), var(--os-field);
+  box-shadow: 0 0 0 2px var(--os-ink); }
+.b3-dial-mark { position: absolute; top: -7px; width: 0; height: 0; margin-left: -7px; border: 7px solid transparent; border-top-color: var(--os-denim); border-bottom: 0;
+  transition: left .12s; }
+
+/* the recipe card: a small paper card in the corner, opened up big on a tap (brew.js's RECIPE) */
+.b3-recipe-btn { position: absolute; z-index: 2; left: 14px; bottom: calc(20px + env(safe-area-inset-bottom)); padding: 0; border: 0; background: none; cursor: pointer; }
+#brew3d.served .b3-recipe-btn { display: none; }
+.b3-recipe { position: relative; background: #fbf6ea; color: var(--os-ink); border: 2px solid var(--os-ink); box-shadow: 4px 5px 0 rgba(31, 42, 74, .3); text-align: left; }
+.b3-recipe::before { content: ''; position: absolute; left: 50%; top: -9px; width: 46%; height: 16px; translate: -50% 0; rotate: -3deg; background: rgba(106, 132, 200, .55); }   /* tape */
+.b3-recipe.mini { width: 58px; height: 74px; box-sizing: border-box; padding: 12px 7px 0; rotate: -6deg; transition: rotate .15s, translate .15s; }
+.b3-recipe-btn:hover .b3-recipe.mini, .b3-recipe-btn:focus-visible .b3-recipe.mini { rotate: -2deg; translate: 0 -3px; }
+.b3-recipe.mini .b3-rc-title { display: block; font-size: 13px; text-align: center; }
+.b3-rc-lines { display: block; height: 34px; margin-top: 5px; background: repeating-linear-gradient(transparent 0 6px, rgba(31, 42, 74, .45) 6px 8px); }
+.b3-recipe-open { position: absolute; z-index: 5; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(31, 42, 74, .42); cursor: pointer; }
+.b3-recipe-open.show { display: flex; }
+.b3-recipe-open .b3-recipe { width: min(100%, 340px); box-sizing: border-box; padding: 24px 22px 18px; rotate: -1.5deg; animation: br-in .3s cubic-bezier(.2,.8,.3,1) both;
+  background: #fbf6ea repeating-linear-gradient(transparent 0 29px, rgba(63, 93, 170, .16) 29px 30px); }
+.b3-recipe-open .b3-rc-title { display: block; margin-bottom: 8px; font-size: 22px; color: var(--os-denim); }
+.b3-recipe ul { margin: 0; padding-left: 1.2em; font-size: 16px; line-height: 30px; }
+.b3-rc-quote { margin: 12px 0 0; font-size: 16px; line-height: 1.6; }
+.b3-rc-by { margin: 4px 0 0; text-align: right; font-size: 14px; }
+
+/* the cup stands in the top half, in its glow (3D); the card goes under it */
+#brew3d .br-result { top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); translate: -50% 0; gap: 8px; padding: 16px 18px; }
+.b3-total { font-size: 14px; color: #4a5470; }
