@@ -26,7 +26,7 @@
   background-size: 220px 180px, 140px 120px; animation: pr-rain .5s linear infinite; }
 @keyframes pr-rain { to { background-position: -40px 180px, -26px 120px; } }
 
-/* the colourist: a denim cut-out under the lamp, on the right; it walks off into the rain when it goes */
+/* the colourist: a denim cut-out under the lamp, on the right; it fades into the rain when it goes */
 .pr-figure { right: 9%; bottom: 13%; height: min(64vh, 560px); aspect-ratio: 410 / 833; }
 .pr-figure { opacity: 0; background: url('../../assets/ui/collage/figure.webp') center / contain no-repeat; filter: grayscale(0) drop-shadow(5px 6px 0 rgba(31, 42, 74, .35));
   transition: filter 2.4s ease-out .9s; }
