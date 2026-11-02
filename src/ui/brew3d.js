@@ -418,7 +418,7 @@ function pixelPass(cam) {
 /**
  * Open the 3D hand brew over the game. Resolves with { score, verdict, why } once the cup is handed over.
  * @param game  held (and not drawn) while the cup is made
- * @param opts  { guest: a name to make it for }
+ * @param opts  { guest: a name to make it for, handOff: no result card, the cup goes straight over (the first cup) }
  */
 export function openBrew3d(game, opts = {}) {
   const still = quiet();
@@ -1200,6 +1200,8 @@ export function openBrew3d(game, opts = {}) {
     phase = 'show'; station = STATION.show; zoomTo = innerWidth > innerHeight ? 0.95 : 0.78; elevTo = 32;
     s.glow.visible = true;
     audio.play(res.score >= 80 ? 'levelup' : 'serve');
+    // the first cup: a moment in its glow, then it's handed over; what they think of it they say themselves
+    if (opts.handOff) { setTimeout(() => close(res), still ? 300 : 1600); return; }
     const aim = clock(TIME[0]) + '–' + clock(TIME[1]);
     const card = h('div.br-result',
       h('div.br-score', h('b', res.score), h('span', t('% colour back'))),

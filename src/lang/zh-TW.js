@@ -442,8 +442,6 @@ export const ZH_TW = {
     '研習飲品或烘焙就能升級（Lv1→10）：賣價更高，咖啡廳點數也更多。每升一級要用掉食材和研習券（從「今日」取得），咖啡廳等級決定餐點最高能升到幾級。',
   // ---------------- first visit: partner pick & tour (ui/tutorial.js)
   'Pick your partner': '選一位夥伴', 'They run the café with you from day one, and show you how it all works.': '夥伴從第一天起就和你一起顧店，也會帶你熟悉咖啡廳的一切。',
-  'Starts as your Server: takes orders, serves drinks and clears tables.': '從服務生做起：點餐、送飲料、收桌子。', 'No special skills yet: a steady pair of hands.': '目前沒有特殊技能，是個穩穩的好幫手。',
-  'Starts as your Barista: brews every drink at the espresso machine.': '從咖啡師做起：在咖啡機前沖每一杯飲料。',
   'Give them a name': '幫牠取個名字', 'Name': '名字',
   'Fur': '毛色', 'Belly': '肚子', 'Clothes': '衣服', 'Original': '原色', 'Colours': '顏色',
   // the staff palette (palette.js): wells named for the street's shops, dyes from commissions and outings
@@ -452,7 +450,7 @@ export const ZH_TW = {
   'New dye: {name}': '找到新染料：{name}', 'Latte Foam': '拿鐵奶泡', 'Espresso': '濃縮咖啡', 'Night Shift': '夜班藍', 'Chrome': '鉻銀', 'Crema Gold': '克立瑪金', 'Mint Chip': '薄荷巧克力',
   // the cast's default names until the player names them (UNIQUE_NAMES)
   'Hamster': '倉鼠', 'Bunny': '兔子', 'Sheep': '綿羊', 'Fox': '狐狸', 'Calico': '三花貓', 'Puppy': '小狗', 'Penguin': '企鵝', 'Raccoon': '浣熊', 'Bear': '熊', 'Owl': '貓頭鷹',
-  'Start with {name}': '和 {name} 一起開店', "Let's go!": '開始吧！', 'Next': '下一步', 'Skip tour': '跳過導覽', 'Partner': '夥伴',
+  "Let's go!": '開始吧！', 'Next': '下一步', 'Skip tour': '跳過導覽', 'Partner': '夥伴',
   '{name} is your partner and stays with the café.': '{name} 是你的夥伴，會一直留在店裡。',
   "I'm {name}! That cup brought it all back. Let's open up right here, I'll show you how.": '我是 {name}！那杯咖啡讓我全想起來了。我們就在這裡開店吧，我教你怎麼做。',
   'Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.': '拖曳畫面可以四處看看；用兩指縮放或滾輪拉近拉遠，兩指旋轉可以轉換角度。',
@@ -625,10 +623,6 @@ export const ZH_TW = {
   'Warm, bitter, then sweet. The street fills in with colour, faded, like an old photograph.': '暖暖的，先苦後甜。街道慢慢有了顏色，卻像一張褪色的舊照片。',
   "Eight wells, one for each corner of the street. Fill them again, and I'll come back.": '八個顏料格，一格對應街上的一個角落。把它們重新填滿，我就會回來。',
   'The centre well still holds a little colour. Enough for one small café.': '中間那格還剩一點顏色。夠開一間小小的咖啡店了。',
-  'Grey passers-by': '灰色的路人',
-  'They shelter from the rain, the colour of the street. One cup might bring someone back.': '他們在屋簷下躲雨，跟街道一樣灰。也許一杯咖啡，就能讓誰想起什麼。',
-  'Brew {name} a cup': '沖一杯給{name}',
-  '"…Warm. I think I remember something. I worked in a café, once. I\'ll stay and help."': '「……好暖。我好像想起來了，我以前在咖啡店工作過。我留下來幫你吧。」',
   'Building your shop ({n}×{n})': '店舖施工中（{n}×{n}）', 'From cart to shop ({n}×{n})': '從攤車變成店舖（{n}×{n}）',
   'Your shop popped up round the cart: {n}×{n}!': '店舖在攤車四周彈出來了：{n}×{n}！',
   'Tap to begin': '點一下開始',
@@ -692,4 +686,17 @@ export const ZH_TW = {
   'Dress {name}': '幫{name}換裝', 'Paper doll: colours, patterns, clothes, accessories': '紙娃娃：顏色、花紋、衣服、配件',
   'Fine-tune accessories': '微調配件位置',
   'Tap one you have on to move it.': '點已經戴上的配件，可以微調位置。', 'Tap it again to take it off.': '用方向鍵和滑桿微調，再點一次就拿下。',
+  // the first cup (ui/firstcup.js)
+  'Someone in a hood': '戴帽兜的人',
+  'The rain comes down harder. Footsteps splash up the street, in a hurry.': '雨下得更大了。有人踩著水窪，急急忙忙跑過來。',
+  "Someone ducks in under the awning, hood pulled low, the colour of the street. You can't tell who it is.": '有人鑽進雨棚下躲雨，帽兜壓得低低的，全身跟街道一樣灰。看不出是誰。',
+  '...Are you open? Anything warm would do.': '……有開嗎？什麼熱的都好。',
+  '(The note on the counter: brew it for whoever comes in out of the rain.)': '（檯面上的字條寫著：煮給從雨裡走進來的人喝。）',
+  'They wrap both hands round the cup and drink.': '對方用兩手捧著杯子，喝了一口。',
+  'A little bitter... but warm.': '有點苦……但很暖。', 'A little sour... but warm.': '有點酸……但很暖。',
+  'A little uneven... but warm.': '味道有點不均勻……但很暖。', "Oh. That's good. Really good.": '哇，好好喝。真的好好喝。',
+  '(The recipe card on the counter says how. Next time.)': '（檯面角落的配方卡有寫怎麼煮。下次會更好。）',
+  "The colour comes back into them: it's {name}!": '顏色回到對方身上了：是{name}！',
+  '...Warm. I remember now. I worked in a café, once.': '……好暖。我想起來了，我以前在咖啡店工作過。',
+  "This cart could use a pair of hands. I'll stay and help.": '這台攤車需要人手吧。我留下來幫你。',
 };

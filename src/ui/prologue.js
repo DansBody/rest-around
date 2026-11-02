@@ -4,13 +4,13 @@
 // faded; a puddle shows the newcomer to themselves; the colourist says "Refill it." and leaves a palette: a centre
 // well with a little colour left and eight empty wells, one per street lot (street.js, palette.js). It pulls the sheet
 // off the cart (beans with the palette's label on, the brewing things), leaves a note with the recipe and is torn away
-// like paper; the centre well runs into the cart, its awning goes denim again and its sign lights up. Then the grey
-// passers-by (tutorial.js pickCard) and the tour.
+// like paper; the centre well runs into the cart, its awning goes denim again and its sign lights up. Then the first
+// cup (firstcup.js) and the tour.
 // Staged in 2D over the café as Refillit OS collage: the grey halftone street, real objects as stickers, the colourist
 // as the one denim cut-out. All of it black and white until the cup is drunk; then the street fills in with faded
 // colour, but the cart stays grey till the centre well reaches it. A tap moves the story on (and finishes a line still
-// typing); Skip ends it at once. Seen once per browser (localStorage): a reload before a partner is picked goes
-// straight to the passers-by, and Reset game (panels.js) forgets it, so a new café starts with the story again.
+// typing); Skip ends it at once. Seen once per browser (localStorage): a reload before there is a partner goes
+// straight to the first cup, and Reset game (panels.js) forgets it, so a new café starts with the story again.
 import { h } from '../util.js';
 import { t } from '../i18n.js';
 import { audio } from '../audio.js';
@@ -48,40 +48,14 @@ function tornEdge(y, rnd) {
 const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}% ${y.toFixed(1)}%`).join(', ')})`;
 
 /**
- * Play the prologue over the game. Resolves when it is over (watched or skipped); the game is held meanwhile.
- * @param game the Game (held while the story plays)
+ * The collage stage the prologue and the first cup (firstcup.js) are played on: a full-screen #prologue over the café
+ * with the line at the foot, Skip and (when nothing has unlocked sound yet) Tap to begin. Its helpers throw STOP once
+ * Skip is pressed, so a story written with them simply stops there.
+ * @param pieces  what to put on the stage, back to front (the line and Skip go on top)
+ * @param cls     the stage's own classes ('.bw' starts it black and white)
  */
-export function playPrologue(game) {
+export function collageStage(game, pieces, cls = '') {
   const still = quiet();
-  const colour = h('i.pr-col');   // the same street in faded colour, under the halftone print
-  const print = h('i.pr-ht');      // the grey halftone, which thins out as the colour comes in
-  const paint = h('i.pr-paint');   // a real watercolour bloom spreading over it: the colour comes in where it has run
-  const street = h('div.pr-street', colour, paint, print);
-  const rain = h('div.pr-rain');
-  // the old cart under the lamp: grey, under its sheet; the same photo in colour underneath, let in at the end
-  const sign = h('i.pr-sign', h('span', 'Refillit'));
-  const label = h('i.pr-label');   // the palette's own label on the bag of beans
-  const goods = h('div.pr-goods', h('i.pr-g.grinder'), h('i.pr-g.scale'), h('i.pr-g.dripper'), h('i.pr-g.bag', label), h('i.pr-g.cup'));
-  const cartCol = h('i.pr-cart-col');
-  const cover = h('i.pr-cover');
-  const cart = h('div.pr-cart', h('i.pr-cart-grey'), cartCol, sign, goods, cover);
-  const tarp = h('div.pr-tarp');
-  const figure = h('div.pr-figure');
-  // the cup's steam: a real wisp of steam (a see-through halftone piece), a few copies rising in turn behind the arm
-  const hand = h('div.pr-hand', h('div.pr-steam', [0, 1, 2].map((i) => h('i', { style: { '--i': i } }))), h('i.pr-arm'));
-  // looking down: a shot of its own, nothing but the puddle; in it, rain rings, the lamp's shimmer and a blur of colour
-  // that is you (the paper doll gives it a shape later)
-  const self = h('i.pr-self');
-  const puddle = h('div.pr-puddle', self, h('i.pr-sheen'), [0, 1, 2, 3, 4].map((i) => h('i.pr-ripple', { style: { '--i': i } })));
-  const pal = h('div.pr-palette', h('i.pr-glow'));
-  const drop = h('i.pr-drop');
-  // TODO share RECIPE (see NOTE)
-  const note = h('div.pr-note', h('div.pr-note-in',
-    h('p.pr-note-row', h('b', t('Beans')), h('span', `${NOTE.beans} g`)),
-    h('p.pr-note-row', h('b', t('Water')), h('span', `${NOTE.water} g`)),
-    h('p', t('Bloom first: a splash of water, wait for the bubbles to settle, then pour the rest in slow circles.')),
-    h('p.pr-note-sign', t('Brew it for whoever comes in out of the rain.'))));
-  const title = h('div.pr-title');
   const who = h('b.pr-who');
   const text = h('span.pr-text');
   const more = h('i.pr-more', '▼');
@@ -89,12 +63,10 @@ export function playPrologue(game) {
   const skip = h('button.pr-skip', t('Skip'));
   // the browser only plays sound after a tap: when nothing has had one yet, the story starts with one
   const start = audio.ctx && audio.ctx.state === 'running' ? null : h('div.pr-start', h('span', t('Tap to begin')));
-  const root = h('div#prologue.bw', street, rain, cart, figure, tarp, hand, pal, drop, note, title, puddle, line, skip, start);   // black and white till the cup
+  const root = h('div#prologue' + cls, pieces, line, skip, start);
   document.body.appendChild(root);
   const held = game.hold;
   game.hold = true;
-  audio.prefetch('night');   // the rainy set, decoded while the screen comes up
-  audio.setScene('night', true);
 
   let skipped = false, wake = null, onSkip;
   const skipP = new Promise((res) => { onSkip = res; });
@@ -129,33 +101,88 @@ export function playPrologue(game) {
     await tap();
     line.classList.remove('show');
   }
-
-  /** The colourist goes the way a paper cut-out does: torn across, the two halves drifting apart. */
-  async function tearAway() {
-    let seed = 7;
-    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    const edge = tornEdge(46, rnd);
-    const halves = [
-      [[0, 0], [100, 0], ...edge.slice().reverse()],        // the top, down to the tear
-      [...edge, [100, 100], [0, 100]],                     // the tear, down to the feet
-    ].map((pts) => {
-      const half = h('div.pr-half', h('i', { style: { clipPath: poly(pts), webkitClipPath: poly(pts) } }));
-      root.insertBefore(half, tarp);
-      return half;
-    });
-    figure.style.visibility = 'hidden';
-    anim(halves[0], [{ transform: 'none', opacity: 1 }, { transform: 'translate(-4%, -3%) rotate(-7deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(-22%, -26%) rotate(-24deg)', opacity: 0 }], { duration: 1400, easing: 'cubic-bezier(.4,0,.6,1)' });
-    await done(anim(halves[1], [{ transform: 'none', opacity: 1 }, { transform: 'translate(3%, 2%) rotate(4deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(14%, 30%) rotate(16deg)', opacity: 0 }], { duration: 1400, easing: 'cubic-bezier(.4,0,.6,1)' }));
-    halves.forEach((x) => x.remove());
+  /** The tap that lets the rain play, if one is needed. */
+  async function begin() {
+    if (!start) return;
+    await tap();
+    await guard(start.animate([{ opacity: 1 }, { opacity: 0 }], { duration: still ? 1 : 500, fill: 'forwards' }).finished);
+    start.remove();
   }
+  /** Run `story` on the stage; once it is over (or skipped) the stage fades out and the game goes on. */
+  function run(story) {
+    return story().catch((e) => { if (e !== STOP) console.warn('Story', e); }).then(async () => {
+      game.hold = held;
+      const a = root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: still ? 1 : 500, fill: 'forwards' });
+      await a.finished.catch(() => {});
+      root.remove();
+    });
+  }
+  return { root, still, guard, tap, wait, anim, done, at, say, begin, run, get skipped() { return skipped; } };
+}
+
+/** A paper cut-out torn across, the two halves drifting apart (the colourist leaving; the first guest's hood). */
+export async function tearPaper(stage, el, image, before = el) {
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const edge = tornEdge(46, rnd);
+  const halves = [
+    [[0, 0], [100, 0], ...edge.slice().reverse()],        // the top, down to the tear
+    [...edge, [100, 100], [0, 100]],                     // the tear, down to the feet
+  ].map((pts) => {
+    const half = h('div.pr-half', h('i', { style: { clipPath: poly(pts), webkitClipPath: poly(pts), ...(image ? { backgroundImage: image } : {}) } }));
+    const r = el.getBoundingClientRect(), root = stage.root.getBoundingClientRect();
+    Object.assign(half.style, { left: `${r.left - root.left}px`, top: `${r.top - root.top}px`, width: `${r.width}px`, height: `${r.height}px`, right: 'auto', bottom: 'auto' });
+    stage.root.insertBefore(half, before.nextSibling);
+    return half;
+  });
+  el.style.visibility = 'hidden';
+  stage.anim(halves[0], [{ transform: 'none', opacity: 1 }, { transform: 'translate(-4%, -3%) rotate(-7deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(-22%, -26%) rotate(-24deg)', opacity: 0 }], { duration: 1400, easing: 'cubic-bezier(.4,0,.6,1)' });
+  await stage.done(stage.anim(halves[1], [{ transform: 'none', opacity: 1 }, { transform: 'translate(3%, 2%) rotate(4deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(14%, 30%) rotate(16deg)', opacity: 0 }], { duration: 1400, easing: 'cubic-bezier(.4,0,.6,1)' }));
+  halves.forEach((x) => x.remove());
+}
+
+/**
+ * Play the prologue over the game. Resolves when it is over (watched or skipped); the game is held meanwhile.
+ * @param game the Game (held while the story plays)
+ */
+export function playPrologue(game) {
+  const colour = h('i.pr-col');   // the same street in faded colour, under the halftone print
+  const print = h('i.pr-ht');      // the grey halftone, which thins out as the colour comes in
+  const paint = h('i.pr-paint');   // a real watercolour bloom spreading over it: the colour comes in where it has run
+  const street = h('div.pr-street', colour, paint, print);
+  const rain = h('div.pr-rain');
+  // the old cart under the lamp: grey, under its sheet; the same photo in colour underneath, let in at the end
+  const sign = h('i.pr-sign', h('span', 'Refillit'));
+  const label = h('i.pr-label');   // the palette's own label on the bag of beans
+  const goods = h('div.pr-goods', h('i.pr-g.grinder'), h('i.pr-g.scale'), h('i.pr-g.dripper'), h('i.pr-g.bag', label), h('i.pr-g.cup'));
+  const cartCol = h('i.pr-cart-col');
+  const cover = h('i.pr-cover');
+  const cart = h('div.pr-cart', h('i.pr-cart-grey'), cartCol, sign, goods, cover);
+  const tarp = h('div.pr-tarp');
+  const figure = h('div.pr-figure');
+  // the cup's steam: a real wisp of steam (a see-through halftone piece), a few copies rising in turn behind the arm
+  const hand = h('div.pr-hand', h('div.pr-steam', [0, 1, 2].map((i) => h('i', { style: { '--i': i } }))), h('i.pr-arm'));
+  // looking down: a shot of its own, nothing but the puddle; in it, rain rings, the lamp's shimmer and a blur of colour
+  // that is you (the paper doll gives it a shape later)
+  const self = h('i.pr-self');
+  const puddle = h('div.pr-puddle', self, h('i.pr-sheen'), [0, 1, 2, 3, 4].map((i) => h('i.pr-ripple', { style: { '--i': i } })));
+  const pal = h('div.pr-palette', h('i.pr-glow'));
+  const drop = h('i.pr-drop');
+  // TODO share RECIPE (see NOTE)
+  const note = h('div.pr-note', h('div.pr-note-in',
+    h('p.pr-note-row', h('b', t('Beans')), h('span', `${NOTE.beans} g`)),
+    h('p.pr-note-row', h('b', t('Water')), h('span', `${NOTE.water} g`)),
+    h('p', t('Bloom first: a splash of water, wait for the bubbles to settle, then pour the rest in slow circles.')),
+    h('p.pr-note-sign', t('Brew it for whoever comes in out of the rain.'))));
+  const title = h('div.pr-title');
+  const stage = collageStage(game, [street, rain, cart, figure, tarp, hand, pal, drop, note, title, puddle], '.bw');   // black and white till the cup
+  const { root, guard, wait, anim, done, at, say } = stage;
+  audio.prefetch('night');   // the rainy set, decoded while the screen comes up
+  audio.setScene('night', true);
 
   const story = async () => {
     const FIG = t('Someone under the lamp');
-    if (start) {   // the tap that lets the rain play
-      await tap();
-      await guard(start.animate([{ opacity: 1 }, { opacity: 0 }], { duration: still ? 1 : 500, fill: 'forwards' }).finished);
-      start.remove();
-    }
+    await stage.begin();
     // 1. the last bus, rain, a grey street; the old cart under its sheet, under the lamp, from the first shot
     anim(street, [{ opacity: 0, transform: 'scale(1.18) translateX(-3%)' }, { opacity: 1, transform: 'scale(1.06) translateX(0)' }], { duration: 2600, easing: 'ease-out' });
     anim(cart, [{ opacity: 0, transform: 'translateX(-4%) scale(1.04)' }, { opacity: 1, transform: 'none' }], { duration: 2400, delay: 300, easing: 'ease-out' });
@@ -241,7 +268,7 @@ export function playPrologue(game) {
       const dx = to.x - (n.left + n.width / 2), dy = to.y - (n.top + n.height / 2);
       await done(anim(note, [{ transform: 'translate(-50%, -50%) rotate(-4deg)' }, { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(-14deg) scale(${k})` }], { duration: 700, easing: IN }));
     }
-    await tearAway();
+    await tearPaper(stage, figure, null, figure);
     // 8. the centre well runs into the cart: the awning goes denim again and the sign lights up
     pal.classList.add('centre');
     await say(t('The centre well still holds a little colour. Enough for one small café.'));
@@ -267,13 +294,7 @@ export function playPrologue(game) {
     await done(anim(dive, [{ clipPath: `circle(0% at ${c.x}px ${c.y}px)` }, { clipPath: `circle(150% at ${c.x}px ${c.y}px)` }], { duration: 900, easing: IN }));
   };
 
-  return story().catch((e) => { if (e !== STOP) console.warn('Prologue', e); }).then(async () => {
-    markSeen();
-    audio.setScene(null);
-    game.hold = held;
-    // (no renderer.popCart here: the cart is already standing, and popping up is kept for the Lv3 shop)
-    const a = root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: still ? 1 : 500, fill: 'forwards' });
-    await a.finished.catch(() => {});
-    root.remove();
-  });
+  // (no renderer.popCart at the end: the cart is already standing, and popping up is kept for the Lv3 shop)
+  // the rain keeps on: the first cup (firstcup.js) comes straight after, under the same awning, and stops it
+  return stage.run(story).then(() => { markSeen(); });
 }
