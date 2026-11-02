@@ -170,9 +170,28 @@
 /* the centre well opening over everything: the café's cream */
 .pr-dive { inset: 0; background: var(--os-paper); }
 
+/* the first cup (firstcup.js): the street as the prologue left it, in faded colour, the cart open and lit; someone in a
+   hood runs in under the awning where the colourist stood, and is torn away to show who it was, in colour */
+#prologue.firstcup { background: #3a3c42; }
+.pr-street.fc-on, .pr-cart.fc-on, .pr-rain.fc-on { opacity: 1; }
+.pr-street.fc-on { transform: scale(1.16) translateX(-6%); }
+.pr-ht.fc-faded { opacity: .42; }
+.pr-sign.fc-lit { opacity: 1; box-shadow: 0 0 28px 10px rgba(255, 226, 160, .55); }
+.fc-passer, .fc-guest, .fc-bloom { right: 9%; bottom: 13%; }
+.fc-passer { height: min(46vh, 400px); aspect-ratio: 408 / 606; opacity: 0; transform-origin: 50% 100%;
+  background: url('../../assets/ui/collage/passerby.webp') center / contain no-repeat; filter: drop-shadow(5px 6px 0 rgba(31, 42, 74, .35)); }
+.fc-guest, .fc-bloom { height: min(40vh, 340px); aspect-ratio: 1; }
+.fc-guest { opacity: 0; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 2px #fff) drop-shadow(0 0 1px #fff) drop-shadow(5px 6px 0 rgba(31, 42, 74, .35)); }
+.fc-guest.on { opacity: 1; }
+.fc-art { display: block; width: 100% !important; height: 100% !important; image-rendering: pixelated; }
+.fc-bloom { opacity: 0; background: url('../../assets/ui/collage/bloom.webp') center / contain no-repeat; mix-blend-mode: multiply; }
+
 @media (max-width: 600px) {
   .pr-street > i { background-position: 70% 60%; }   /* the lamp in the picture, over the colourist and the cart */
   .pr-figure, .pr-half { right: 2%; bottom: 22%; height: 50vh; }
+  .fc-passer, .fc-guest, .fc-bloom { right: 4%; bottom: 22%; }
+  .fc-passer { height: 36vh; }
+  .fc-guest, .fc-bloom { height: 32vh; }
   .pr-cart { right: auto; left: -9%; bottom: 23%; width: 80vw; }
   .pr-title { font-size: 24px; }
   .pr-line { font-size: 16px; }
@@ -182,9 +201,3 @@
   .pr-steam i { animation: none; opacity: .8; }
   .pr-self, .pr-ripple, .pr-sheen { animation: none; }
 }
-
-/* the grey passers-by (tutorial.js pickCard): the cast without colour until their cup is brewed */
-.starter .grey { display: contents; }
-.starter .grey .portrait, .starter .grey canvas, .starter .grey img { filter: grayscale(1) brightness(1.08); }
-.starter-head > span { flex: none; display: block; }
-.starter-quote { margin-top: 4px; padding: 10px 12px; background: var(--os-paper); border-left: 4px solid var(--os-denim); font-size: 15px; line-height: 1.5; }

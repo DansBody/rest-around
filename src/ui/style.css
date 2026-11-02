@@ -1161,24 +1161,13 @@ button.pick-row:hover { background: var(--fill-2); }
 .tryout-title { position: relative; }
 .tryout-x { position: absolute; right: 0; top: 50%; translate: 0 -50%; width: 32px; height: 32px; min-width: 32px; padding: 0; justify-content: center; border-radius: 50%; background: var(--fill); }
 
-/* ---------- first visit: partner pick & the tour (ui/tutorial.js) ---------- */
-#modal .card.starter { width: min(520px, 100%); text-align: left; }
-#modal .card.starter .big-title, #modal .card.starter > .muted { text-align: center; }
-.starter-grid { grid-template-columns: repeat(5, 1fr); margin: 14px 0 10px; }
-.starter-grid .pick-tile { padding: 6px 4px 8px; }
-.starter-grid .pick-tile .portrait { width: 52px; height: 52px; }
-.starter-pick { padding: 12px; margin-bottom: 14px; border-radius: 20px; background: var(--fill); }
-/* portrait beside the name and job; the skills below it at full width (beside the portrait they ran a few characters a line on phones) */
-.starter-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
-.starter-pick .portrait { flex: none; border-radius: 16px; background: var(--surface); }
-.starter-pick h3 { margin: 2px 0 6px; font: 750 20px/1.1 var(--font-display); font-stretch: var(--narrow); }
-/* naming a character: partner pick, hiring, wardrobe and career pages */
+/* ---------- first visit: the tour (ui/tutorial.js) ---------- */
+/* naming a character: hiring, wardrobe and career pages */
 .nick-field { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
 .nick-field > span { font-size: 14px; font-weight: 700; color: var(--muted); }
 /* hiring: the portrait beside the paper doll's button */
 .coat-pick { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; align-items: center; margin-top: 12px; }
 .coat-pick .portrait { flex: none; border-radius: 16px; background: var(--surface); }
-.starter-role { margin-bottom: 8px; font-size: 12.5px; }
 .pill.partner { background: #fff4d1; gap: 4px; }
 /* the coach card: at the top by default, mid-screen for hello / goodbye, otherwise beside what it talks about
    (tutorial.js sets left / top / width and --ax, where the arrow points) */

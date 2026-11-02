@@ -3,11 +3,12 @@
 // everything that jumps straight to a scene, so testing one part never means playing from the start again.
 // ?dev&scene=<id> opens a scene as the page loads (and skips the prologue / tour that would start on their own).
 import { h } from '../util.js';
+import { audio } from '../audio.js';
 import { save, clearSave } from '../save.js';
 import { UNIQUE_MODELS } from '../data.js';
 import { isCart } from '../cart.js';
 import { playPrologue, forgetPrologue, markSeen } from './prologue.js';
-import { showPassersBy } from './tutorial.js';
+import { firstCup } from './tutorial.js';
 import { openBrew } from './brew.js';
 import { openBrew3d } from './brew3d.js';
 import { openBattleRt } from './battlert.js';
@@ -29,8 +30,8 @@ export function startScene() {
 
 /** What the DEV tab offers: { id, label, run(game, ui, debug) }. */
 const SCENES = [
-  { id: 'prologue', label: '序章', run: (g, ui) => playPrologue(g).then(() => { if (!g.state.partner) showPassersBy(ui); }) },
-  { id: 'passersby', label: '灰色路人（選夥伴）', run: (g, ui) => showPassersBy(ui) },
+  { id: 'prologue', label: '序章', run: (g, ui) => playPrologue(g).then(() => (g.state.partner ? audio.setScene(null) : firstCup(ui))) },
+  { id: 'firstcup', label: '第一杯（躲雨路人 → 第一位員工）', run: (g, ui) => firstCup(ui) },
   { id: 'brew', label: '手沖', run: (g) => openBrew(g).then((r) => g.toast(`手沖 ${r.score}%（${r.verdict}）`)) },
   { id: 'brew3d', label: '手沖 3D（注水原型）', run: (g) => openBrew3d(g).then((r) => g.toast(`手沖 3D ${r.score}%（${r.why}）`)) },
   { id: 'cart', label: '新開一間攤車店（跳過序章和導覽）', run: (g) => freshCart(g, true) },
