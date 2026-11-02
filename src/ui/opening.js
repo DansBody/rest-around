@@ -32,7 +32,7 @@ import { openPaperDoll } from './paperdoll.js';
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 const SHADOW = new THREE.Color(0.012, 0.013, 0.017), WHITE = new THREE.Color(1, 1, 1);   // linear: 0.07 still showed a red shirt through
-const WALK = 1.5;   // tiles a second
+const WALK = 1.9;   // tiles a second
 
 /** Who comes in out of the rain: anyone of the cast but the player's own species. */
 export function pickPasserBy(game) {
@@ -94,6 +94,22 @@ function shade(cv, tint, k) {
       else if (m.color) { if (!m.userData.base) m.userData.base = m.color.clone(); m.color.copy(m.userData.base).multiply(tint); }
     }
   });
+}
+
+/** A soft dark patch on the wet ground under something lying there (darker than a character's contact shadow). */
+let patch = null;
+function groundShadow() {
+  if (!patch) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(24,22,34,0.7)'); gr.addColorStop(0.55, 'rgba(24,22,34,0.38)'); gr.addColorStop(1, 'rgba(24,22,34,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+    const geo = new THREE.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
+    patch = { geo, mat: new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }) };
+  }
+  const m = new THREE.Mesh(patch.geo, patch.mat);
+  m.renderOrder = -1;
+  return m;
 }
 
 /** Someone walking up to the cart, moved by the opening itself (the café is held): drawn like a passer-by. */
@@ -180,6 +196,8 @@ export async function playOpening(ui) {
   /** Lay an item where it lies (k 0) or partway home (k 0..1, along an arc). */
   const place = (it) => {
     const lie = new THREE.Vector3(it.x * TILE, 0, it.y * TILE), k = ease(it.k), lift = Math.sin(it.k * Math.PI) * 2.4;
+    it.blob.position.set(lie.x, 0.12, lie.z);   // (just over the paving)
+    it.blob.visible = it.k < 0.5;
     if (it.big) {
       const home = homes.get(it.v), o = it.v.obj;
       const p = lie.clone().lerp(home.pos, k);
@@ -192,22 +210,32 @@ export async function playOpening(ui) {
       it.obj.scale.setScalar(it.s * (1 - 0.9 * clamp((it.k - 0.6) / 0.4, 0, 1)));
     }
   };
+  // a soft shadow on the ground under each thing lying about (the sun's own shadows are only redrawn when told to: they
+  // are, every frame something moves), gone once it is lifted
+  for (const it of items) {
+    it.blob = groundShadow();
+    it.blob.scale.set(it.big ? 3.6 : 1.3 * it.s, 1, it.big ? 2.8 : 1.3 * it.s);
+    it.blob.rotation.y = it.big ? homes.get(it.v).rot.y + it.yaw : it.yaw;
+    r.scene.add(it.blob);
+  }
   items.forEach(place);
   const dressing = r.dressing || [];
   const staff = game.staff;
   const passers = game.ambient.splice(0);
-  const visitor = new Visitor(look0, -2.15, w.size + 3);   // up the street on the lot's left, toward the cart
+  const visitor = new Visitor(look0, front.x - 5.5, front.y + 1.6);   // across the bare lot from its left, toward the cart
   const tint = new THREE.Color().copy(SHADOW);
   let tintK = 0;
 
   // ---- every frame while it plays: keep the lot bare, the visitor dark, the hints over what's left to pick up
-  let raf = 0, last = performance.now(), walking = null;
+  let raf = 0, last = performance.now(), walking = null, first = true;
   const markEls = new Map();
   const frame = () => {
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
     for (const v of r.furn.values()) if (!counters.includes(v)) v.obj.visible = false;   // (the renderer may rebuild a view)
     for (const o of dressing) o.visible = false;
     for (const a of staff) a.visible = false;
+    if (first || items.some((it) => it.anim)) r.shadowDirty = true;   // (the lot's shadows, without the hidden things')
+    first = false;
     for (const it of items) if (it.anim) { it.k = clamp(it.k + dt / it.anim.dur, 0, 1); place(it); if (it.k >= 1) { const f = it.anim.done; it.anim = null; f(); } }
     if (walking) walking(dt);
     shade(r.chars.get(visitor), tint, tintK);
@@ -250,7 +278,7 @@ export async function playOpening(ui) {
   /** Everything as the café keeps it: the lot furnished again, the staff and HUD back, the opening's things gone. */
   const restore = () => {
     cancelAnimationFrame(raf);
-    for (const it of items) if (!it.big) r.scene.remove(it.obj);
+    for (const it of items) { r.scene.remove(it.blob); if (!it.big) r.scene.remove(it.obj); }
     for (const v of counters) { const home = homes.get(v); v.base.copy(home.base); v.obj.position.copy(home.pos); v.obj.rotation.copy(home.rot); }
     for (const v of r.furn.values()) v.obj.visible = true;
     for (const o of dressing) o.visible = true;
@@ -309,19 +337,20 @@ export async function playOpening(ui) {
     // the cart stands complete
     audio.play('levelup');
     for (const it of items) if (it.big) it.v.f.bounce = 1;
-    await wait(1400);
-    // someone you can't make out, coming up the street out of the rain, to the cart
+    await wait(700);
+    // someone you can't make out, coming across the lot out of the rain, to the cart
     game.ambient.push(visitor);
     cam.flyTo(((mid.x + front.x) / 2 - 1) * TILE, ((mid.y + front.y) / 2 + 0.5) * TILE, { dist: cam.fitDist(w.size) * 0.62 });
-    await walkTo(-2.15, front.y + 0.8);
-    await walkTo(front.x, front.y + 0.8);
+    await walkTo(front.x - 0.6, front.y + 0.6);
     await walkTo(front.x, front.y);
     face(mid.x, mid.y);
-    await wait(900);
+    await wait(500);
     const DARK = t('Someone you can\'t make out');
     await say(t('...Still open?'), DARK);
     // the first cup, on the counter in 3D; no result card: it comes straight back here
+    root.style.zIndex = '87';   // under the brew, or a finger lands on the stage instead
     const cup = await guard(openBrew3d(game, { guest: DARK, handOff: true }));
+    root.style.zIndex = '';
     // they drink, and nothing is said for a moment
     await tween(1400, (k) => { visitor.hop = Math.sin(k * Math.PI) * 0.18; });
     visitor.hop = 0;

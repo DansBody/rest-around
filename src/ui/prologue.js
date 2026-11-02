@@ -3,7 +3,7 @@
 // colourist, never named here) who brewed the last cup of colour on it. Drinking it brings the street's colour back,
 // faded; a puddle shows the newcomer to themselves; the colourist says "Refill it." and leaves a palette: a centre
 // well with a little colour left and eight empty wells, one per street lot (street.js, palette.js). It pulls the sheet
-// off the cart (bare: its things are scattered round the lot, opening.js), leaves a note with the recipe and walks off
+// off the cart (bare: its things are scattered round the lot, opening.js), leaves a note with the recipe and fades
 // into the rain; a paintbrush takes the centre well's last colour to the cart, brushes the awning and the body blue
 // again and signs the board with the name. Then the opening on the lot (opening.js) and the tour.
 // Staged in 2D over the café as Refillit OS collage: the grey halftone street, real objects as stickers, the colourist
@@ -123,22 +123,9 @@ export function collageStage(game, pieces, cls = '') {
   return { root, still, guard, tap, wait, anim, done, at, say, beat, begin, run, get skipped() { return skipped; } };
 }
 
-/**
- * Someone walks off down the street into the rain: a few steps away from us, smaller and fainter with each one, toward
- * where the street meets the dark (fx, fy of the screen), till the rain has them; then the street lamp flickers once.
- */
-export async function walkAway(stage, el, street, fx = 0.43, fy = 0.5) {
-  const r = el.getBoundingClientRect(), root = stage.root.getBoundingClientRect();
-  const dx = root.width * fx - (r.left + r.width / 2), dy = root.height * fy - r.bottom;
-  el.style.transformOrigin = '50% 100%';
-  const at = (k, bob = 0) => `translate(${dx * k}px, ${dy * k - bob}px) scale(${1 - 0.86 * k})`;
-  // a turn (the cut-out flips through its edge to show it going), then steps that bob and shrink
-  await stage.done(stage.anim(el, [{ transform: 'none' }, { transform: 'scaleX(.06)', offset: 0.5 }, { transform: 'scaleX(-1)' }], { duration: 420, easing: 'ease-in-out' }));
-  const steps = [];
-  for (let i = 0; i <= 10; i++) { const k = i / 10, e = 1 - (1 - k) * (1 - k); steps.push({ transform: `${at(e, i % 2 ? 6 * (1 - k) : 0)} scaleX(-1)`, opacity: 1 - 0.95 * k ** 1.6, filter: `blur(${(k * 1.6).toFixed(2)}px)`, offset: k }); }
-  await stage.done(stage.anim(el, steps, { duration: 3600, easing: 'linear' }));
-  el.style.visibility = 'hidden';
-  await stage.done(stage.anim(street, [{ filter: 'brightness(1)' }, { filter: 'brightness(.72)', offset: 0.18 }, { filter: 'brightness(1.04)', offset: 0.32 }, { filter: 'brightness(.85)', offset: 0.45 }, { filter: 'brightness(1)' }], { duration: 700, easing: 'steps(6, end)' }));
+/** Someone fades out where they stand, into the rain. */
+export function fadeAway(stage, el) {
+  return stage.done(stage.anim(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 1800, easing: 'ease-in-out' })).then(() => { el.style.visibility = 'hidden'; });
 }
 
 /**
@@ -250,7 +237,7 @@ export function playPrologue(game) {
     await done(anim(tarp, [{ transform: 'none', opacity: 1 }, { transform: 'translate(30%, -40%) rotate(14deg) scale(1.05)', opacity: 1, offset: 0.55 }, { transform: 'translate(90%, -110%) rotate(32deg) scale(.9)', opacity: 0 }], { duration: 1100, easing: 'cubic-bezier(.3,.1,.4,1)' }));
     tarp.classList.remove('on');
     await say(t('Its things are scattered about. Not many beans, but enough for a few cups.'), FIG);
-    // 7. a note, left on the counter; then the colourist walks off into the rain
+    // 7. a note, left on the counter; then the colourist fades into the rain
     note.classList.add('on');
     await done(anim(note, [{ transform: 'translate(-50%, -50%) scale(1.5) rotate(10deg)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(.96) rotate(-5deg)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%, -50%) rotate(-4deg)', opacity: 1 }], { duration: 600 }));
     await say(t('(They leave you a note, in a careful hand.)'));
@@ -259,7 +246,7 @@ export function playPrologue(game) {
       const dx = to.x - (n.left + n.width / 2), dy = to.y - (n.top + n.height / 2);
       await done(anim(note, [{ transform: 'translate(-50%, -50%) rotate(-4deg)' }, { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(-14deg) scale(${k})` }], { duration: 700, easing: IN }));
     }
-    await walkAway(stage, figure, street);
+    await fadeAway(stage, figure);
     // 8. a paintbrush takes the centre well's last colour to the cart: it dips into the well (which goes empty), and
     // brushes the awning stroke by stroke, then the body and the wheels, each stroke a real one (the colour comes in
     // where the paint has gone); the last gaps fill in, and it signs the board with the name, left to right
