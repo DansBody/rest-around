@@ -1,4 +1,4 @@
-// First visit: whoever the player brewed the first cup for (firstcup.js) is the partner, and walks them through
+// First visit: whoever the player brewed the first cup for (opening.js) is the partner, and walks them through
 // the café one thing at a time. The coach card sits next to whatever the step is about (with a little arrow),
 // a yellow ring marks it, and for "tap this" steps the rest of the screen dims a little. Only what the step is
 // about can be tapped (and the view dragged): anything else just nudges the card (Tour.allows). A character
@@ -16,7 +16,7 @@ import { defaultName } from '../staff.js';
 import { DIRS } from '../iso.js';
 import { CLUB_FOR } from '../trouble.js';
 import { playPrologue, prologueSeen } from './prologue.js';
-import { playFirstCup } from './firstcup.js';
+import { playOpening } from './opening.js';
 import { glyph } from './icons.js';
 import { TILE } from '../models.js';
 import { t } from '../i18n.js';
@@ -31,7 +31,7 @@ import { t } from '../i18n.js';
  * `scene` lets taps on the scene through (the view can always be dragged).
  */
 const STEPS = [
-  { id: 'hello', center: true, next: true, text: (g) => t("I'm {name}! That cup brought it all back. Let's open up right here, I'll show you how.", { name: partnerName(g) }) },
+  { id: 'hello', center: true, next: true, text: () => t("Let's open up, right here. I'll show you, one thing at a time.") },
   { id: 'look', text: () => t('Drag to look around. Pinch or scroll to zoom, twist with two fingers to turn.'), done: (g, ui, tu) => tu.moved },
   // the room starts bare: a table for two first (the guest needs somewhere to sit)
   // build mode opens by itself on the tables tab; the floor takes taps, and so do the buttons round the piece in hand
@@ -162,16 +162,17 @@ export function startTutorial(ui) {
   if (s.tutorialSeen) return;
   if (!s.partner) {
     if (s.points > 0) { s.tutorialSeen = true; return; }   // a café from before there was a partner: no tour
-    // the story first (once per browser), then the first cup: whoever comes in out of the rain becomes the partner
-    (prologueSeen() ? Promise.resolve() : playPrologue(ui.game)).then(() => firstCup(ui));
+    // the story first (once per browser), then the opening on the lot: whoever comes in out of the rain becomes the partner
+    (prologueSeen() ? Promise.resolve() : playPrologue(ui.game)).then(() => opening(ui));
     return;
   }
   ui.tutorial = new Tour(ui);
 }
 
-/** The first cup, then the tour with whoever it was (developer mode plays it on its own too). */
-export function firstCup(ui) {
-  return playFirstCup(ui.game).then(() => { if (!ui.tutorial && !ui.game.state.tutorialSeen) ui.tutorial = new Tour(ui); });
+/** The opening on the lot (gather the cart's things, the first cup), then the tour with whoever it was (developer mode
+ *  plays it on its own too). */
+export function opening(ui) {
+  return playOpening(ui).then(() => { if (!ui.tutorial && !ui.game.state.tutorialSeen) ui.tutorial = new Tour(ui); });
 }
 
 /**

@@ -375,14 +375,21 @@ export class Renderer {
     open.rotation.y = Math.PI; open.position.set(0.62, 1.55, -0.33);
     this.door.add(open);
 
-    // shop sign above the doorway (both faces)
-    const signTex = signTexture(512, 160, (ctx, w, h) => {
-      ctx.fillStyle = '#6e4328'; roundRect(ctx, 4, 4, w - 8, h - 8, 30); ctx.fill();
-      ctx.lineWidth = 7; ctx.strokeStyle = '#f0d3a2'; roundRect(ctx, 14, 14, w - 28, h - 28, 22); ctx.stroke();
-      ctx.fillStyle = '#fbeed6'; ctx.font = `800 84px ${DISPLAY_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('Refillit', w / 2 - 22, h / 2 + 6);
-      ctx.font = '700 64px sans-serif'; ctx.fillText('\u2615', w - 76, h / 2 + 4);
-    });
+    // shop sign above the doorway (both faces): a cream-painted board with the name brushed on by hand in denim, the
+    // same lettering as the prologue's cart (assets/ui/collage/sign_lettering.webp, painted in once it has loaded)
+    const board = (ctx, w, h) => {
+      ctx.fillStyle = '#7a5134'; roundRect(ctx, 4, 4, w - 8, h - 8, 16); ctx.fill();
+      ctx.fillStyle = '#efe3c8'; roundRect(ctx, 12, 12, w - 24, h - 24, 10); ctx.fill();
+    };
+    const signTex = signTexture(512, 160, board);
+    const letters = new Image();
+    letters.onload = () => {
+      const c = signTex.image, ctx = c.getContext('2d'), w = c.width, h = c.height, lh = h * 0.8, lw = lh * letters.width / letters.height;
+      board(ctx, w, h);
+      ctx.drawImage(letters, (w - lw) / 2, (h - lh) / 2 + 2, lw, lh);
+      signTex.needsUpdate = true;
+    };
+    letters.src = 'assets/ui/collage/sign_lettering.webp';
     const sign = new THREE.Group();
     for (const [rot, off] of [[0, 0.05], [Math.PI, -0.05]]) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.78), new THREE.MeshBasicMaterial({ map: signTex, transparent: true }));
@@ -402,8 +409,9 @@ export class Renderer {
     room.add(matHolder);
     this.matHolder = matHolder;
 
-    // flower boxes and a welcome sign outside
-    const outside = (id, x, z, rot, sc = 1) => { const o = models.instance(id); o.position.set(x, 0, z); o.rotation.y = rot; o.scale.setScalar(sc); room.add(o); };
+    // flower boxes and a welcome sign outside (this.dressing: what the opening's bare lot hides, ui/opening.js)
+    this.dressing = [matHolder];
+    const outside = (id, x, z, rot, sc = 1) => { const o = models.instance(id); o.position.set(x, 0, z); o.rotation.y = rot; o.scale.setScalar(sc); room.add(o); this.dressing.push(o); };
     outside('m_welcome_sign', -1.5, DOOR_Y * TILE - 0.9, -Math.PI / 2 + 0.25);
     outside('m_flower_box', -1.1, DOOR_Y * TILE + TILE + 1.4, -Math.PI / 2, 0.9);
     for (const f of [0.22, 0.52, 0.8]) outside('m_flower_box', W * f, W + 1.15, Math.PI, 0.95);
