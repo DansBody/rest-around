@@ -5,6 +5,7 @@
   padding: calc(8px + var(--sat)) calc(8px + var(--sar)) calc(8px + var(--sab)) calc(8px + var(--sal));
   background: radial-gradient(rgba(63, 93, 170, .28) 1.2px, transparent 1.7px) 0 0 / 7px 7px, #b8c7e6;
   font-family: var(--os-font); color: var(--os-ink); touch-action: none; -webkit-user-select: none; user-select: none; }
+#paperdoll.clear { background: rgba(28, 32, 44, .32); }   /* over a scene of its own (the first cup's street after the rain) */
 #paperdoll * { box-sizing: border-box; font-weight: 400; }
 .pd-win { position: relative; display: flex; flex-direction: column; width: min(100%, 470px); max-height: 100%; min-height: 0;
   background: var(--os-frame); border: var(--os-b) solid var(--os-ink); border-radius: 3px; box-shadow: var(--os-bevel), var(--os-drop); }

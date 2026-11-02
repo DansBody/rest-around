@@ -210,6 +210,7 @@ function patPic(p, fur, ink) {
  * @param opts.who      the staff member being dressed, if they are on the team (the accessories they wear stay theirs)
  * @param opts.title    the window's title (default 紙娃娃)
  * @param opts.closable false: no close box (a look has to be saved, e.g. the prologue's reflection)
+ * @param opts.clear    true: no denim backdrop of its own, the scene behind shows through (the first cup's street)
  * @param opts.onSave   called with the result just before the promise resolves
  * @returns Promise of { model, look, name } (name: the cleaned nickname, '' for the default one), or null if closed
  */
@@ -248,7 +249,7 @@ export function openPaperDoll(game, opts = {}) {
       h('div.pd-bar', h('span.pd-doc', { html: ICON.doc }), h('b.pd-title', opts.title || t('Paper Doll')),
         opts.closable === false ? null : h('button.pd-x', { type: 'button', title: t('Close'), 'aria-label': t('Close'), onclick: () => finish(false) }, glyph('close', 14))),
       stage, tabs, sheet);
-    const root = h('div#paperdoll', win);
+    const root = h('div#paperdoll' + (opts.clear ? '.clear' : ''), win);
     document.body.appendChild(root);
     tornEdge(sheet);
     const held = game.hold;
